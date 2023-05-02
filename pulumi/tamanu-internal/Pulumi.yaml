@@ -1,0 +1,3 @@
+name: tamanu-internal
+description: Internal Tamanu deployments
+runtime: nodejs
