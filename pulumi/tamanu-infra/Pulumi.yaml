@@ -1,0 +1,3 @@
+name: tamanu-infra
+description: Tamanu deployment infrastructure
+runtime: nodejs
