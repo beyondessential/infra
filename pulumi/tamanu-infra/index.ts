@@ -21,14 +21,14 @@ const ecrRepositories = Object.fromEntries([
 // Common infra for internal tamanu services
 const { vpcId } = new VPC("tamanu-internal-vpc", {
   enableDnsSupport: true,
-  cidrBlock: "10.32.0.0/14",
+  cidrBlock: "10.32.0.0/16",
 });
 new EgressOnlyInternetGateway("tamanu-internal-egw", {
   vpcId,
 });
 const subnet = new Subnet("tamanu-internal-subnet", {
   vpcId,
-  cidrBlock: "10.32.0.0/16",
+  cidrBlock: "10.32.0.0/20",
   availabilityZone: "ap-southeast-2a",
 });
 const cluster = new Cluster("tamanu-internal-cluster");
