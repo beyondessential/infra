@@ -38,7 +38,7 @@ class TamanuCluster extends ComponentResource {
     this.#cluster = this.#infra.getOutput(
       "internalEcsCluster"
     ) as Output<string>;
-    this.#subnet = this.#infra.getOutput("internalSubnet") as Output<string>;
+    this.#subnet = (this.#infra.getOutput("internalSubnets") as Output<string[]>)[0];
     this.#vpc = this.#infra.getOutput("internalVpc") as Output<string>;
 
     this.central = this.container("central", { cores: 2, memoryGB: 4 });
@@ -49,32 +49,15 @@ class TamanuCluster extends ComponentResource {
       desiredCount: numberOfFacilities,
     });
 
-    const dbSecGroup = new SecurityGroup(
-      `tamanu-internal-${name}-database-secgroup`,
-      {
-        vpcId: this.#vpc,
-      },
-      {
-        parent: this,
-      }
-    );
-
-    const dbSubnetGroup = new SubnetGroup(
-      `tamanu-internal-${name}-database-subnetgroup`,
-      {
-        subnetIds: [this.#subnet],
-      },
-      {
-        parent: this,
-      }
-    );
+    const dbSubnetGroup = this.#infra.getOutput("internalDbSubnetGroup") as Output<string>;
+    const dbSecGroup = this.#infra.getOutput("internalDbSecGroup") as Output<string>;
 
     const db = new DBInstance(
       `tamanu-internal-${name}-database`,
       {
         allocatedStorage: 20,
         autoMinorVersionUpgrade: true,
-        dbSubnetGroupName: dbSubnetGroup.name,
+        dbSubnetGroupName: dbSubnetGroup,
         engine: "postgres",
         engineVersion: "14.6",
         instanceClass: "db.t4g.medium", // ARM64
@@ -84,7 +67,7 @@ class TamanuCluster extends ComponentResource {
         publiclyAccessible: false,
         storageType: "gp3",
         username: "postgres",
-        vpcSecurityGroupIds: [dbSecGroup.id],
+        vpcSecurityGroupIds: [dbSecGroup],
       },
       {
         parent: this,
