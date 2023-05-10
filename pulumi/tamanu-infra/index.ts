@@ -1,33 +1,20 @@
-import { Netmask } from "netmask";
-import {
-  ComponentResource,
-  ComponentResourceOptions,
-  Output,
-  getStack,
-} from "@pulumi/pulumi";
-import {
-  Repository,
-  RepositoryImageTagMutability,
-} from "@pulumi/aws-native/ecr";
-import { Cluster } from "@pulumi/aws-native/ecs";
-import { PrivateDnsNamespace } from "@pulumi/aws/servicediscovery";
-import {
-  Vpc,
-  EgressOnlyInternetGateway,
-  Subnet,
-  SecurityGroup,
-} from "@pulumi/aws/ec2";
-import { SubnetGroup } from "@pulumi/aws/rds";
+import { Netmask } from 'netmask';
+import { ComponentResource, ComponentResourceOptions, Output, getStack } from '@pulumi/pulumi';
+import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr';
+import { Cluster } from '@pulumi/aws-native/ecs';
+import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
+import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/aws/ec2';
+import { SubnetGroup } from '@pulumi/aws/rds';
 
 // Container repos for tamanu server images
 const ecrRepositories = Object.fromEntries(
-  ["central", "facility", "meta"].map((image) => [
+  ['central', 'facility', 'meta'].map((image) => [
     image,
     new Repository(`tamanu-${image}`, {
       repositoryName: `tamanu/${image}`,
       imageTagMutability: RepositoryImageTagMutability.Immutable,
     }),
-  ])
+  ]),
 );
 
 export const repoCentral = ecrRepositories.central.repositoryUri;
@@ -60,12 +47,8 @@ class ClusterInfra extends ComponentResource {
 
   outputs: ClusterInfraOutputs;
 
-  constructor(
-    name: string,
-    args: ClusterInfraArgs,
-    opts: ComponentResourceOptions = {}
-  ) {
-    super("pkg:index:ClusterInfra", name, {}, opts);
+  constructor(name: string, args: ClusterInfraArgs, opts: ComponentResourceOptions = {}) {
+    super('pkg:index:ClusterInfra', name, {}, opts);
     this.#name = name;
     this.#args = args;
 
@@ -79,14 +62,14 @@ class ClusterInfra extends ComponentResource {
           Name: `${name}-vpc-${getStack()}`,
         },
       },
-      { parent: this }
+      { parent: this },
     );
     const eigw = new EgressOnlyInternetGateway(
       `${name}-eigw`,
       {
         vpcId: this.#vpc.id,
       },
-      { parent: this }
+      { parent: this },
     );
 
     for (const az of args.azCoverage) {
@@ -101,7 +84,7 @@ class ClusterInfra extends ComponentResource {
       },
       {
         parent: this,
-      }
+      },
     );
     const dbSubnetGroup = new SubnetGroup(
       `${name}-dbsubnetgroup`,
@@ -110,7 +93,7 @@ class ClusterInfra extends ComponentResource {
       },
       {
         parent: this,
-      }
+      },
     );
 
     const ecsCluster = new Cluster(`${name}-cluster`, {}, { parent: this });
@@ -119,7 +102,7 @@ class ClusterInfra extends ComponentResource {
       {
         vpc: this.#vpc.id,
       },
-      { parent: this }
+      { parent: this },
     );
 
     this.registerOutputs(
@@ -131,7 +114,7 @@ class ClusterInfra extends ComponentResource {
         dbSubnetGroup: dbSubnetGroup.name,
         ecsCluster: ecsCluster.arn,
         cloudmapNamespace: namespace.arn,
-      })
+      }),
     );
   }
 
@@ -139,7 +122,7 @@ class ClusterInfra extends ComponentResource {
     const subnetIndex = this.#subnets.length;
     let ipv4BlockCalc = new Netmask(
       new Netmask(this.#args.ipv4Cidr).base,
-      this.#args.ipv4SubnetBlock?.toString()
+      this.#args.ipv4SubnetBlock?.toString(),
     );
     for (let i = 0; i < subnetIndex; i += 1) {
       ipv4BlockCalc = ipv4BlockCalc.next();
@@ -147,10 +130,7 @@ class ClusterInfra extends ComponentResource {
     const ipv4Block = ipv4BlockCalc.toString();
 
     const ipv6Block = this.#vpc.ipv6CidrBlock.apply((cidr) =>
-      cidr.replace(
-        "00::/56",
-        `${subnetIndex.toString(16).padStart(2, "0")}::/64`
-      )
+      cidr.replace('00::/56', `${subnetIndex.toString(16).padStart(2, '0')}::/64`),
     );
 
     this.#subnets.push(
@@ -164,17 +144,17 @@ class ClusterInfra extends ComponentResource {
         },
         {
           parent: this,
-        }
-      )
+        },
+      ),
     );
   }
 }
 
-const { outputs: internal } = new ClusterInfra("tamanu-internal", {
-  ipv4Cidr: "10.32.0.0/16",
+const { outputs: internal } = new ClusterInfra('tamanu-internal', {
+  ipv4Cidr: '10.32.0.0/16',
   ipv4SubnetBlock: 20,
   ipv6SubnetBlock: 64,
-  azCoverage: ["a", "b"],
+  azCoverage: ['a', 'b'],
 });
 
 export const internalVpc = internal.vpc;
