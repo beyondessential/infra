@@ -6,8 +6,7 @@ import {
   getStack,
 } from "@pulumi/pulumi";
 import { FargateService } from "@pulumi/awsx/ecs";
-import { Instance as DBInstance, SubnetGroup } from "@pulumi/aws/rds";
-import { SecurityGroup } from "@pulumi/aws/ec2";
+import { Instance as DBInstance } from "@pulumi/aws/rds";
 
 interface TamanuClusterArgs {
   /** @default 2 */
@@ -39,7 +38,9 @@ class TamanuCluster extends ComponentResource {
     this.#cluster = this.#infra.getOutput(
       "internalEcsCluster"
     ) as Output<string>;
-    this.#subnet = (this.#infra.getOutput("internalSubnets") as Output<string[]>)[0];
+    this.#subnet = (
+      this.#infra.getOutput("internalSubnets") as Output<string[]>
+    )[0];
     this.#vpc = this.#infra.getOutput("internalVpc") as Output<string>;
 
     this.central = this.container("central", { cores: 2, memoryGB: 4 });
@@ -50,8 +51,12 @@ class TamanuCluster extends ComponentResource {
       desiredCount: numberOfFacilities,
     });
 
-    const dbSubnetGroup = this.#infra.getOutput("internalDbSubnetGroup") as Output<string>;
-    const dbSecGroup = this.#infra.getOutput("internalDbSecGroup") as Output<string>;
+    const dbSubnetGroup = this.#infra.getOutput(
+      "internalDbSubnetGroup"
+    ) as Output<string>;
+    const dbSecGroup = this.#infra.getOutput(
+      "internalDbSecGroup"
+    ) as Output<string>;
 
     const db = new DBInstance(
       `tamanu-${name}`,
