@@ -1,17 +1,17 @@
 {
-    "name": "pulumi-bes",
-    "main": "index.ts",
-    "devDependencies": {
-        "@beyondessential/eslint-config-js": "^1.1.1",
-        "@types/node": "^16",
-        "eslint-plugin-prettier": "^4.2.1"
-    },
-    "dependencies": {
-        "@pulumi/aws": "^5.39.0",
-        "@pulumi/aws-native": "^0.8.0",
-        "@pulumi/awsx": "^1.0.2",
-        "@pulumi/pulumi": "^3.0.0",
-        "@types/netmask": "^2.0.0",
-        "netmask": "^2.0.2"
-    }
+  "name": "pulumi-bes",
+  "main": "index.ts",
+  "devDependencies": {
+    "@beyondessential/eslint-config-js": "^1.1.1",
+    "@types/node": "^16",
+    "eslint-plugin-prettier": "^4.2.1"
+  },
+  "dependencies": {
+    "@pulumi/aws": "^5.39.0",
+    "@pulumi/aws-native": "^0.8.0",
+    "@pulumi/awsx": "^1.0.2",
+    "@pulumi/pulumi": "^3.0.0",
+    "@types/netmask": "^2.0.0",
+    "netmask": "^2.0.2"
+  }
 }

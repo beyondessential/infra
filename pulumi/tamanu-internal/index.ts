@@ -3,6 +3,7 @@ import {
   ComponentResourceOptions,
   Output,
   StackReference,
+  getStack,
 } from "@pulumi/pulumi";
 import { FargateService } from "@pulumi/awsx/ecs";
 import { Instance as DBInstance, SubnetGroup } from "@pulumi/aws/rds";
@@ -53,7 +54,7 @@ class TamanuCluster extends ComponentResource {
     const dbSecGroup = this.#infra.getOutput("internalDbSecGroup") as Output<string>;
 
     const db = new DBInstance(
-      `tamanu-internal-${name}-database`,
+      `tamanu-${name}`,
       {
         allocatedStorage: 20,
         autoMinorVersionUpgrade: true,
@@ -126,7 +127,7 @@ class TamanuCluster extends ComponentResource {
   }
 }
 
-const cluster = new TamanuCluster("tamanu-internal");
+const cluster = new TamanuCluster(getStack());
 export const { facilityCount } = cluster;
 export const serviceCentral = cluster.central.service.apply((s) => s.id);
 export const serviceMeta = cluster.meta.service.apply((s) => s.id);
