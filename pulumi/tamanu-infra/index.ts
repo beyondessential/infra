@@ -48,16 +48,12 @@ const namespace = new PrivateDnsNamespace("tamanu-internal-cloudmap", {
 });
 
 // Outputs
-export const repos = {
-  central: ecrRepositories.central.repositoryUri,
-  facility: ecrRepositories.facility.repositoryUri,
-  meta: ecrRepositories.meta.repositoryUri,
-};
-export const internal = {
-  vpc: vpcId,
-  subnet: subnet.id,
-  subnetIpv4,
-  subnetIpv6,
-  ecsCluster: cluster.arn,
-  cloudmapNamespace: namespace.arn,
-};
+export const repoCentral = ecrRepositories.central.repositoryUri;
+export const repoFacility = ecrRepositories.facility.repositoryUri;
+export const repoMeta = ecrRepositories.meta.repositoryUri;
+export const internalVpc = vpcId;
+export const internalSubnet = subnet.id;
+export const internalSubnetIpv4 = subnetIpv4;
+export const internalSubnetIpv6 = subnetIpv6;
+export const internalEcsCluster = cluster.arn;
+export const internalCloudmapNamespace = namespace.arn;
