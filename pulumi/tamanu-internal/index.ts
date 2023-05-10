@@ -1,9 +1,11 @@
 import {
   ComponentResource,
   ComponentResourceOptions,
+  Output,
   StackReference,
+  log,
 } from "@pulumi/pulumi";
-import { FargateTaskDefinition } from "@pulumi/awsx/ecs";
+import { FargateTaskDefinition, FargateService } from "@pulumi/awsx/ecs";
 
 interface TamanuClusterArgs {
   /** @default 2 */
@@ -12,6 +14,13 @@ interface TamanuClusterArgs {
 
 class TamanuCluster extends ComponentResource {
   #infra: StackReference;
+  #cluster: Output<string>;
+  #subnet: Output<string>;
+
+  central: FargateService;
+  meta: FargateService;
+  facility: FargateService;
+  facilityCount: number;
 
   constructor(
     name: string,
@@ -21,32 +30,27 @@ class TamanuCluster extends ComponentResource {
     super("pkg:index:TamanuCluster", name, {}, opts);
 
     const { numberOfFacilities = 2 } = args;
+    this.facilityCount = numberOfFacilities;
 
     this.#infra = new StackReference("bes/tamanu-infra/main");
+    this.#cluster = this.#infra.getOutput("internalEcsCluster") as Output<string>;
+    this.#subnet = this.#infra.getOutput("internalSubnet") as Output<string>;
 
-    const central = this.container("central", { cores: 2, memoryGB: 4 });
-    const meta = this.container("meta", { cores: 1, memoryGB: 1 });
-    const facilities = Array.from({ length: numberOfFacilities }).map(
-      (_, index) =>
-        this.container("facility", { index: index + 1, cores: 2, memoryGB: 4 })
-    );
-
-    const task = new FargateTaskDefinition(
-      name,
-      {
-        runtimePlatform: {
-          operatingSystemFamily: "LINUX",
-          cpuArchitecture: "X86_64",
-        },
-        containers: Object.fromEntries(
-          [central, meta, ...facilities].map((c) => [c.name, c])
-        ),
-      },
-      { parent: this }
-    );
+    this.central = this.container("central", { cores: 2, memoryGB: 4 });
+    this.meta = this.container("meta", { cores: 1, memoryGB: 1 });
+    this.facility = this.container("facility", {
+      cores: 2,
+      memoryGB: 4,
+      desiredCount: numberOfFacilities,
+    });
 
     this.registerOutputs({
-      task: task.taskDefinition.arn,
+      facilityCount: this.facilityCount,
+      services: {
+        central: this.central.service.id,
+        meta: this.meta.service.id,
+        facility: this.facility.service.id,
+      },
     });
   }
 
@@ -55,24 +59,49 @@ class TamanuCluster extends ComponentResource {
     {
       cores = 1,
       memoryGB = 1,
-      index = null,
-    }: { cores?: number; memoryGB?: number; index?: number | null } = {}
-  ) {
+      desiredCount = 1,
+    }: { cores?: number; memoryGB?: number; desiredCount?: number } = {}
+  ): FargateService {
     const image = this.#infra
       .getOutput("repos")
       .apply((repos) => repos[imageName]);
 
-    return {
-      name: index ? `${imageName}-${index}` : imageName,
-      image,
-      memory: memoryGB * 1024,
-      cpu: cores * 1024,
-      essential: !(index && index > 1), // only for central, meta, and the first facility
+    const task = {
+      runtimePlatform: {
+        operatingSystemFamily: "LINUX",
+        cpuArchitecture: "X86_64",
+      },
+      container: {
+        image,
+        memory: memoryGB * 1024,
+        cpu: cores * 1024,
+        essential: true,
+      },
     };
+
+    return new FargateService(
+      imageName,
+      {
+        cluster: this.#cluster,
+        taskDefinitionArgs: task,
+        desiredCount,
+        propagateTags: "SERVICE",
+        networkConfiguration: {
+          subnets: [this.#subnet],
+        },
+      },
+      { parent: this }
+    );
   }
 }
 
-export const cluster = new TamanuCluster("tamanu-internal");
+const cluster = new TamanuCluster("tamanu-internal");
+export const { facilityCount } = cluster;
+export const services = {
+  central: cluster.central.service.apply((s) => s.id),
+  meta: cluster.meta.service.apply((s) => s.id),
+  facility: cluster.facility.service.apply((s) => s.id),
+};
 
 // import { Instance as DBInstance } from "@pulumi/aws/rds";
 // import { SecurityGroup } from "@pulumi/aws/ec2";
