@@ -1,11 +1,23 @@
-import { getStack } from "@pulumi/pulumi";
+import { Netmask } from "netmask";
+import {
+  ComponentResource,
+  ComponentResourceOptions,
+  Output,
+  getStack,
+} from "@pulumi/pulumi";
 import {
   Repository,
   RepositoryImageTagMutability,
 } from "@pulumi/aws-native/ecr";
 import { Cluster } from "@pulumi/aws-native/ecs";
 import { PrivateDnsNamespace } from "@pulumi/aws/servicediscovery";
-import { Vpc, EgressOnlyInternetGateway, Subnet } from "@pulumi/aws/ec2";
+import {
+  Vpc,
+  EgressOnlyInternetGateway,
+  Subnet,
+  SecurityGroup,
+} from "@pulumi/aws/ec2";
+import { SubnetGroup } from "@pulumi/aws/rds";
 
 // Container repos for tamanu server images
 const ecrRepositories = Object.fromEntries(
@@ -18,42 +30,157 @@ const ecrRepositories = Object.fromEntries(
   ])
 );
 
-// Common infra for internal tamanu services
-const { id: vpcId, ipv6CidrBlock } = new Vpc("tamanu-internal-vpc", {
-  enableDnsSupport: true,
-  cidrBlock: "10.32.0.0/16",
-  assignGeneratedIpv6CidrBlock: true,
-  tags: {
-    Name: `tamanu-internal-vpc-${getStack()}`,
-  },
-});
-new EgressOnlyInternetGateway("tamanu-internal-egw", {
-  vpcId,
-});
-
-const subnetIpv4 = "10.32.0.0/20";
-const subnetIpv6 = ipv6CidrBlock.apply((cidr) => cidr.replace("::/56", "::/64"));
-const subnet = new Subnet("tamanu-internal-subnet", {
-  vpcId,
-  cidrBlock: subnetIpv4,
-  availabilityZone: "ap-southeast-2a",
-
-  // get the first /64 from the /56 allocated to the VPC
-  ipv6CidrBlock: subnetIpv6,
-});
-
-const cluster = new Cluster("tamanu-internal-cluster");
-const namespace = new PrivateDnsNamespace("tamanu-internal-cloudmap", {
-  vpc: vpcId,
-});
-
-// Outputs
 export const repoCentral = ecrRepositories.central.repositoryUri;
 export const repoFacility = ecrRepositories.facility.repositoryUri;
 export const repoMeta = ecrRepositories.meta.repositoryUri;
-export const internalVpc = vpcId;
-export const internalSubnet = subnet.id;
-export const internalSubnetIpv4 = subnetIpv4;
-export const internalSubnetIpv6 = subnetIpv6;
-export const internalEcsCluster = cluster.arn;
-export const internalCloudmapNamespace = namespace.arn;
+
+interface ClusterInfraArgs {
+  ipv4Cidr: string;
+  ipv4SubnetBlock?: number;
+  ipv6SubnetBlock?: number;
+  azCoverage: string[];
+}
+
+interface ClusterInfraOutputs {
+  vpc: Output<string>;
+  eigw: Output<string>;
+  subnets: Output<string>[];
+  dbSecGroup: Output<string>;
+  dbSubnetGroup: Output<string>;
+  ecsCluster: Output<string>;
+  cloudmapNamespace: Output<string>;
+}
+
+class ClusterInfra extends ComponentResource {
+  #name: string;
+  #args: ClusterInfraArgs;
+
+  #vpc: Vpc;
+  #subnets: Subnet[] = [];
+
+  outputs: ClusterInfraOutputs;
+
+  constructor(
+    name: string,
+    args: ClusterInfraArgs,
+    opts: ComponentResourceOptions = {}
+  ) {
+    super("pkg:index:ClusterInfra", name, {}, opts);
+    this.#name = name;
+    this.#args = args;
+
+    this.#vpc = new Vpc(
+      `${name}-vpc`,
+      {
+        enableDnsSupport: true,
+        cidrBlock: args.ipv4Cidr,
+        assignGeneratedIpv6CidrBlock: true,
+        tags: {
+          Name: `${name}-vpc-${getStack()}`,
+        },
+      },
+      { parent: this }
+    );
+    const eigw = new EgressOnlyInternetGateway(
+      `${name}-eigw`,
+      {
+        vpcId: this.#vpc.id,
+      },
+      { parent: this }
+    );
+
+    for (const az of args.azCoverage) {
+      this.addSubnet(az);
+    }
+
+    // Subnet config for databases
+    const dbSecGroup = new SecurityGroup(
+      `${name}-dbsecgroup`,
+      {
+        vpcId: this.#vpc.id,
+      },
+      {
+        parent: this,
+      }
+    );
+    const dbSubnetGroup = new SubnetGroup(
+      `${name}-dbsubnetgroup`,
+      {
+        subnetIds: this.#subnets.map((subnet) => subnet.id),
+      },
+      {
+        parent: this,
+      }
+    );
+
+    const ecsCluster = new Cluster(`${name}-cluster`, {}, { parent: this });
+    const namespace = new PrivateDnsNamespace(
+      `${name}-cloudmap`,
+      {
+        vpc: this.#vpc.id,
+      },
+      { parent: this }
+    );
+
+    this.registerOutputs(
+      (this.outputs = {
+        vpc: this.#vpc.id,
+        eigw: eigw.id,
+        subnets: this.#subnets.map((subnet) => subnet.id),
+        dbSecGroup: dbSecGroup.id,
+        dbSubnetGroup: dbSubnetGroup.name,
+        ecsCluster: ecsCluster.arn,
+        cloudmapNamespace: namespace.arn,
+      })
+    );
+  }
+
+  addSubnet(az: string) {
+    const subnetIndex = this.#subnets.length;
+    let ipv4BlockCalc = new Netmask(
+      new Netmask(this.#args.ipv4Cidr).base,
+      this.#args.ipv4SubnetBlock?.toString()
+    );
+    for (let i = 0; i < subnetIndex; i += 1) {
+      ipv4BlockCalc = ipv4BlockCalc.next();
+    }
+    const ipv4Block = ipv4BlockCalc.toString();
+
+    const ipv6Block = this.#vpc.ipv6CidrBlock.apply((cidr) =>
+      cidr.replace(
+        "00::/56",
+        `${subnetIndex.toString(16).padStart(2, "0")}::/64`
+      )
+    );
+
+    this.#subnets.push(
+      new Subnet(
+        `${this.#name}-subnet-${az}`,
+        {
+          vpcId: this.#vpc.id,
+          cidrBlock: ipv4Block,
+          availabilityZone: `ap-southeast-2${az}`,
+          ipv6CidrBlock: ipv6Block,
+        },
+        {
+          parent: this,
+        }
+      )
+    );
+  }
+}
+
+const { outputs: internal } = new ClusterInfra("tamanu-internal", {
+  ipv4Cidr: "10.32.0.0/16",
+  ipv4SubnetBlock: 20,
+  ipv6SubnetBlock: 64,
+  azCoverage: ["a", "b"],
+});
+
+export const internalVpc = internal.vpc;
+export const internalEigw = internal.eigw;
+export const internalSubnets = internal.subnets;
+export const internalDbSecGroup = internal.dbSecGroup;
+export const internalDbSubnetGroup = internal.dbSubnetGroup;
+export const internalEcsCluster = internal.ecsCluster;
+export const internalCloudmapNamespace = internal.cloudmapNamespace;
