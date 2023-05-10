@@ -1,8 +1,10 @@
 {
-    "name": "bes",
+    "name": "pulumi-bes",
     "main": "index.ts",
     "devDependencies": {
-        "@types/node": "^16"
+        "@beyondessential/eslint-config-js": "^1.1.1",
+        "@types/node": "^16",
+        "eslint-plugin-prettier": "^4.2.1"
     },
     "dependencies": {
         "@pulumi/aws": "^5.39.0",
