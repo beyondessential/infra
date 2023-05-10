@@ -3,9 +3,10 @@ import {
   ComponentResourceOptions,
   Output,
   StackReference,
-  log,
 } from "@pulumi/pulumi";
-import { FargateTaskDefinition, FargateService } from "@pulumi/awsx/ecs";
+import { FargateService } from "@pulumi/awsx/ecs";
+import { Instance as DBInstance, SubnetGroup } from "@pulumi/aws/rds";
+import { SecurityGroup } from "@pulumi/aws/ec2";
 
 interface TamanuClusterArgs {
   /** @default 2 */
@@ -16,6 +17,7 @@ class TamanuCluster extends ComponentResource {
   #infra: StackReference;
   #cluster: Output<string>;
   #subnet: Output<string>;
+  #vpc: Output<string>;
 
   central: FargateService;
   meta: FargateService;
@@ -33,8 +35,11 @@ class TamanuCluster extends ComponentResource {
     this.facilityCount = numberOfFacilities;
 
     this.#infra = new StackReference("bes/tamanu-infra/main");
-    this.#cluster = this.#infra.getOutput("internalEcsCluster") as Output<string>;
+    this.#cluster = this.#infra.getOutput(
+      "internalEcsCluster"
+    ) as Output<string>;
     this.#subnet = this.#infra.getOutput("internalSubnet") as Output<string>;
+    this.#vpc = this.#infra.getOutput("internalVpc") as Output<string>;
 
     this.central = this.container("central", { cores: 2, memoryGB: 4 });
     this.meta = this.container("meta", { cores: 1, memoryGB: 1 });
@@ -44,7 +49,50 @@ class TamanuCluster extends ComponentResource {
       desiredCount: numberOfFacilities,
     });
 
+    const dbSecGroup = new SecurityGroup(
+      `tamanu-internal-${name}-database-secgroup`,
+      {
+        vpcId: this.#vpc,
+      },
+      {
+        parent: this,
+      }
+    );
+
+    const dbSubnetGroup = new SubnetGroup(
+      `tamanu-internal-${name}-database-subnetgroup`,
+      {
+        subnetIds: [this.#subnet],
+      },
+      {
+        parent: this,
+      }
+    );
+
+    const db = new DBInstance(
+      `tamanu-internal-${name}-database`,
+      {
+        allocatedStorage: 20,
+        autoMinorVersionUpgrade: true,
+        dbSubnetGroupName: dbSubnetGroup.name,
+        engine: "postgres",
+        engineVersion: "14.6",
+        instanceClass: "db.t4g.medium", // ARM64
+        manageMasterUserPassword: true,
+        networkType: "DUAL",
+        performanceInsightsEnabled: true,
+        publiclyAccessible: false,
+        storageType: "gp3",
+        username: "postgres",
+        vpcSecurityGroupIds: [dbSecGroup.id],
+      },
+      {
+        parent: this,
+      }
+    );
+
     this.registerOutputs({
+      database: db.arn,
       facilityCount: this.facilityCount,
       services: {
         central: this.central.service.id,
@@ -62,9 +110,9 @@ class TamanuCluster extends ComponentResource {
       desiredCount = 1,
     }: { cores?: number; memoryGB?: number; desiredCount?: number } = {}
   ): FargateService {
-    const image = this.#infra
-      .getOutput("repos")
-      .apply((repos) => repos[imageName]);
+    const image = this.#infra.getOutput(
+      `repo${imageName[0].toUpperCase() + imageName.slice(1)}`
+    );
 
     const task = {
       runtimePlatform: {
@@ -97,32 +145,9 @@ class TamanuCluster extends ComponentResource {
 
 const cluster = new TamanuCluster("tamanu-internal");
 export const { facilityCount } = cluster;
-export const services = {
-  central: cluster.central.service.apply((s) => s.id),
-  meta: cluster.meta.service.apply((s) => s.id),
-  facility: cluster.facility.service.apply((s) => s.id),
-};
-
-// import { Instance as DBInstance } from "@pulumi/aws/rds";
-// import { SecurityGroup } from "@pulumi/aws/ec2";
-//
-// // Create a security group for the RDS Instance
-// const rdsSecurityGroup = new SecurityGroup("rds-security-group", {
-//   vpc,
-// });
-
-// // Create an RDSInstance
-// const rdsInstance = new DBInstance("rds-instance", {
-//   allocatedStorage: 20,
-//   engine: "mysql",
-//   engineVersion: "8.0",
-//   instanceClass: "db.t4g.medium", // Graviton (ARM) based instance class
-//   dbSubnetGroupName: rdsSecurityGroup.subnetGroup.id,
-//   vpcSecurityGroupIds: [rdsSecurityGroup.id],
-//   username: "admin",
-//   password: "your_secure_password",
-//   availabilityZone: "YOUR_AWS_AVAILABILITY_ZONE", // Replace with your AWS availability zone
-// });
+export const serviceCentral = cluster.central.service.apply((s) => s.id);
+export const serviceMeta = cluster.meta.service.apply((s) => s.id);
+export const serviceFacility = cluster.facility.service.apply((s) => s.id);
 
 // // Stack Export
 // export const ecsCluster = cluster.arn;
