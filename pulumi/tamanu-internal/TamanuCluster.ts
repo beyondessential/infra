@@ -104,7 +104,9 @@ export class TamanuCluster extends ComponentResource {
   ): FargateService {
     const image = this.#infra.getOutput(`repo${imageName[0].toUpperCase() + imageName.slice(1)}`);
     const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
-    const subnet = (this.#infra.getOutput('internalSubnets') as Output<string[]>)[0];
+    const subnets = (
+      this.#infra.getOutput('internalSubnetsRt') as Output<string[]>
+    );
 
     const task = {
       runtimePlatform: {
@@ -120,14 +122,14 @@ export class TamanuCluster extends ComponentResource {
     };
 
     return new FargateService(
-      imageName,
+      `${this.#name}-${imageName}`,
       {
         cluster,
         taskDefinitionArgs: task,
         desiredCount,
         propagateTags: 'SERVICE',
         networkConfiguration: {
-          subnets: [subnet],
+          subnets,
         },
       },
       { parent: this },
