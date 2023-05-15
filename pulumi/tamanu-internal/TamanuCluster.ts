@@ -118,6 +118,9 @@ export class TamanuCluster extends ComponentResource {
         memory: memoryGB * 1024,
         cpu: cores * 1024,
         essential: true,
+        linuxParameters: {
+          initProcessEnabled: true,
+        },
       },
     };
 
