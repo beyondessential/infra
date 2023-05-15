@@ -6,7 +6,7 @@ import {
   Output,
   output,
 } from '@pulumi/pulumi';
-import { Cluster } from '@pulumi/aws-native/ecs';
+import { Cluster } from '@pulumi/aws/ecs';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
 import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/aws/ec2';
 import { SubnetGroup } from '@pulumi/aws/rds';
@@ -103,7 +103,6 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    const ecsCluster = new Cluster(`${name}-cluster`, {}, { parent: this });
     const namespace = new PrivateDnsNamespace(
       `${name}-cloudmap`,
       {
@@ -111,6 +110,12 @@ export class ClusterInfra extends ComponentResource {
       },
       { parent: this },
     );
+
+    const ecsCluster = new Cluster(`${name}-cluster`, {
+      serviceConnectDefaults: {
+        namespace: namespace.arn,
+      }
+    }, { parent: this });
 
     this.registerOutputs(
       (this.outputs = {
