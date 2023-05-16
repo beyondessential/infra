@@ -7,6 +7,7 @@
     "eslint-plugin-prettier": "^4.2.1"
   },
   "dependencies": {
+    "@aws-sdk/client-ecs": "^3.332.0",
     "@pulumi/aws": "^5.39.0",
     "@pulumi/aws-native": "^0.8.0",
     "@pulumi/awsx": "^1.0.2",

@@ -4,8 +4,9 @@ import {
   Output,
   StackReference,
 } from '@pulumi/pulumi';
-import { FargateService } from '@pulumi/awsx/ecs';
+import { FargateService, FargateTaskDefinition } from '@pulumi/awsx/ecs';
 import { Instance as DBInstance } from '@pulumi/aws/rds';
+import { EcsRunTask } from '../common/EcsRunTask';
 
 export interface TamanuClusterArgs {
   /** @default 2 */
@@ -44,14 +45,15 @@ export class TamanuCluster extends ComponentResource {
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
     this.#db = this.setupRds();
+    this.runDbProvisioner();
 
-    // const central = this.service('central', { cores: 2, memoryGB: 4 });
-    // const meta = this.service('meta', { cores: 1, memoryGB: 1, database: false });
-    // const facility = this.service('facility', {
-    //   cores: 2,
-    //   memoryGB: 4,
-    //   desiredCount: this.#args.numberOfFacilities,
-    // });
+    const central = this.service('central', { cores: 2, memoryGB: 4 });
+    const meta = this.service('meta', { cores: 1, memoryGB: 1, database: false });
+    const facility = this.service('facility', {
+      cores: 2,
+      memoryGB: 4,
+      desiredCount: this.#args.numberOfFacilities,
+    });
 
     this.registerOutputs(
       (this.outputs = {
@@ -59,9 +61,9 @@ export class TamanuCluster extends ComponentResource {
         databaseEndpoint: this.#db.endpoint,
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          // central: central.service.id,
-          // meta: meta.service.id,
-          // facility: facility.service.id,
+          central: central.service.id,
+          meta: meta.service.id,
+          facility: facility.service.id,
         },
       }),
     );
@@ -94,8 +96,50 @@ export class TamanuCluster extends ComponentResource {
     );
   }
 
-  database(name: string) {
-    // TODO
+  runDbProvisioner() {
+    const { taskDefinition } = new FargateTaskDefinition(
+      'db-provisioner',
+      {
+        runtimePlatform: {
+          operatingSystemFamily: 'LINUX',
+          cpuArchitecture: 'X86_64',
+        },
+        container: {
+          image: 'alpine',
+          memory: 512,
+          cpu: 1024,
+          essential: true,
+          linuxParameters: {
+            initProcessEnabled: true,
+          },
+          environment: [
+            { name: 'PG_HOST', value: this.#db.endpoint },
+            { name: 'PG_USER', value: this.#db.username },
+          ],
+          secrets: [
+            {
+              name: 'PG_PASSWORD',
+              valueFrom: this.#db.masterUserSecrets.apply(
+                ([firstSecret]) => `${firstSecret.secretArn}:password::`,
+              ),
+            },
+          ],
+        },
+      },
+      {
+        parent: this,
+      },
+    );
+
+    const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
+    new EcsRunTask(
+      'db-provisioner',
+      {
+        cluster,
+        taskDefinition: taskDefinition.arn,
+      },
+      { parent: this },
+    );
   }
 
   service(
@@ -104,9 +148,7 @@ export class TamanuCluster extends ComponentResource {
   ): FargateService {
     const image = this.#infra.getOutput(`repo${imageName[0].toUpperCase() + imageName.slice(1)}`);
     const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
-    const subnets = (
-      this.#infra.getOutput('internalSubnetsRt') as Output<string[]>
-    );
+    const subnets = this.#infra.getOutput('internalSubnetsRt') as Output<string[]>;
 
     const task = {
       runtimePlatform: {
