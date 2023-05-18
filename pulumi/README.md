@@ -7,7 +7,8 @@
 Install pulumi CLI: https://www.pulumi.com/docs/get-started/install/
 
 - Mac: `brew install pulumi`
-- Arch: `yay -S pulumi`
+- Linux: `curl -fsSL https://get.pulumi.com | sh`
+  - **On Arch, do not use the one from `community`, it is missing important binaries!**
 - Windows: `choco install pulumi` (or as Linuxes in WSL)
 
 ### Login
