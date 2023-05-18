@@ -84,8 +84,9 @@ export class TamanuCluster extends ComponentResource {
         instanceClass: 'db.t4g.medium', // ARM64
         manageMasterUserPassword: true,
         networkType: 'DUAL',
-        performanceInsightsEnabled: true,
+        performanceInsightsEnabled: false, // adds two minutes to the boot/create time
         publiclyAccessible: false,
+        skipFinalSnapshot: true, // tamanu-internal DBs should never contain important data
         storageType: 'gp3',
         username: 'postgres',
         vpcSecurityGroupIds: [dbSecGroup],
@@ -96,18 +97,69 @@ export class TamanuCluster extends ComponentResource {
     );
   }
 
-  runDbProvisioner() {
-    const { taskDefinition } = new FargateTaskDefinition(
-      'db-provisioner',
+  databaseProvisionConfig(kind: string, index?: number) {
+    const name = `${kind}${index ? `-${index}` : ''}`;
+    const secretMeta = new Secret(
+      name,
       {
+        namePrefix: `tamanu-internal-db-${this.#name}-`,
+        description: `PostgresSQL credentials for Tamanu Internal deployment ${
+          this.#name
+        }, ${kind} server ${index ?? ''}`,
+      },
+      { parent: this },
+    );
+
+    // Make the secret deterministic from the db name and a per-stack salt,
+    // so it doesn't change on every invocation but is still reasonable secure.
+    // !! For production setups, this should be redone with e.g. Bitwarden. !!
+    const cfg = new Config();
+    const salt = cfg.requireSecret('salt');
+    const password = salt.apply((salt) =>
+      createHash('sha256').update(salt).update(name).digest('hex'),
+    );
+
+    new SecretVersion(
+      name,
+      {
+        secretId: secretMeta.id,
+        secretString: jsonStringify({
+          database: name,
+          username: name,
+          password,
+        }),
+      },
+      {
+        parent: secretMeta,
+      },
+    );
+
+    return {
+      database: name,
+      owner: name,
+      password,
+    };
+  }
+
+  runDbProvisioner() {
+    const provisionConfig = [this.databaseProvisionConfig('central')];
+    for (let i = 1; i <= this.#args.numberOfFacilities; i++) {
+      this.databaseProvisionConfig('facility', i);
+    }
+
+    const taskDefinition = new FargateTaskDefinition(
+      `${this.#name}-provisioner`,
+      {
+        family: `tamanu-${this.#name}-provisioner`,
         runtimePlatform: {
           operatingSystemFamily: 'LINUX',
           cpuArchitecture: 'X86_64',
         },
         container: {
           image: 'alpine',
+          command: ['env'],
           memory: 512,
-          cpu: 1024,
+          cpu: 512,
           essential: true,
           linuxParameters: {
             initProcessEnabled: true,
@@ -115,6 +167,10 @@ export class TamanuCluster extends ComponentResource {
           environment: [
             { name: 'PG_HOST', value: this.#db.endpoint },
             { name: 'PG_USER', value: this.#db.username },
+            {
+              name: 'PROVISION_CONFIG',
+              value: jsonStringify(provisionConfig),
+            },
           ],
           secrets: [
             {
@@ -125,6 +181,25 @@ export class TamanuCluster extends ComponentResource {
             },
           ],
         },
+        executionRole: {
+          args: {
+            inlinePolicies: [
+              {
+                name: 'secretsmanager-getdbsecret',
+                policy: jsonStringify({
+                  Version: '2012-10-17',
+                  Statement: [
+                    {
+                      Effect: 'Allow',
+                      Action: ['secretsmanager:GetSecretValue'],
+                      Resource: this.#db.masterUserSecrets[0].secretArn,
+                    },
+                  ],
+                }),
+              },
+            ],
+          },
+        },
       },
       {
         parent: this,
@@ -133,10 +208,10 @@ export class TamanuCluster extends ComponentResource {
 
     const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
     new EcsRunTask(
-      'db-provisioner',
+      `${this.#name}-provisioner`,
       {
         cluster,
-        taskDefinition: taskDefinition.arn,
+        taskDefinition: taskDefinition.taskDefinition.apply((td) => td.arn),
       },
       { parent: this },
     );
@@ -163,6 +238,9 @@ export class TamanuCluster extends ComponentResource {
         linuxParameters: {
           initProcessEnabled: true,
         },
+        environment: [
+          { name: 'PG_HOST', value: this.#db.endpoint },
+        ],
       },
     };
 

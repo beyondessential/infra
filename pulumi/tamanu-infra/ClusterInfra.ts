@@ -148,7 +148,7 @@ export class ClusterInfra extends ComponentResource {
     );
 
     return new Subnet(
-      `${this.#name}-subnet-${az}`,
+      `${this.#name}-subnet-${index}`,
       {
         vpcId: this.#vpc.id,
         cidrBlock: ipv4Block,
