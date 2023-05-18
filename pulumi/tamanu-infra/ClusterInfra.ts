@@ -34,6 +34,7 @@ export interface ClusterInfraOutputs {
   eigw: Output<string>;
   subnets: Output<ClusterInfraSubnetOutputs>;
   dbSecGroup: Output<string>;
+  rtSecGroup: Output<string>;
   dbSubnetGroup: Output<string>;
   ecsCluster: Output<string>;
   cloudmapNamespace: Output<string>;
@@ -83,16 +84,10 @@ export class ClusterInfra extends ComponentResource {
       rt: [this.addSubnet('b', 2), this.addSubnet('c', 3)],
     };
 
+    // Security groups
+    const { dbSecGroup, rtSecGroup } = this.securityGroups();
+
     // Subnet config for databases
-    const dbSecGroup = new SecurityGroup(
-      `${name}-dbsecgroup`,
-      {
-        vpcId: this.#vpc.id,
-      },
-      {
-        parent: this,
-      },
-    );
     const dbSubnetGroup = new SubnetGroup(
       `${name}-dbsubnetgroup`,
       {
@@ -126,6 +121,7 @@ export class ClusterInfra extends ComponentResource {
           rt: this.#subnets.rt.map((subnet) => subnet.id),
         }),
         dbSecGroup: dbSecGroup.id,
+        rtSecGroup: rtSecGroup.id,
         dbSubnetGroup: dbSubnetGroup.name,
         ecsCluster: ecsCluster.arn,
         cloudmapNamespace: namespace.arn,
@@ -160,4 +156,53 @@ export class ClusterInfra extends ComponentResource {
       },
     );
   }
+
+  securityGroups() {
+    const allEgress = {
+      fromPort: 0,
+      toPort: 0,
+      protocol: '-1',
+      cidrBlocks: ['0.0.0.0/0'],
+      ipv6CidrBlocks: ['::/0'],
+    };
+    const ingressVpcPort = (description: string, port: number, protocol: string = 'tcp') => ({
+      description: `${description} from VPC`,
+      fromPort: 0,
+      toPort: port,
+      protocol,
+      cidrBlocks: [this.#vpc.cidrBlock],
+      ipv6CidrBlocks: [this.#vpc.ipv6CidrBlock],
+    });
+
+    const dbSecGroup = new SecurityGroup(
+      `${this.#name}-dbsecgroup`,
+      {
+        vpcId: this.#vpc.id,
+        ingress: [ingressVpcPort('Postgres', 5432)],
+        egress: [allEgress],
+      },
+      {
+        parent: this,
+      },
+    );
+
+    const rtSecGroup = new SecurityGroup(
+      `${this.#name}-rtsecgroup`,
+      {
+        vpcId: this.#vpc.id,
+        ingress: [
+          ingressVpcPort('HTTP', 80),
+          ingressVpcPort('HTTPS', 443),
+          ingressVpcPort('HTTP/3', 443, 'udp'),
+        ],
+        egress: [allEgress],
+      },
+      {
+        parent: this,
+      },
+    );
+
+    return { dbSecGroup, rtSecGroup };
+  }
+
 }
