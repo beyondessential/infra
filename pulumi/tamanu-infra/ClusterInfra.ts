@@ -14,11 +14,13 @@ import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/a
 import { SubnetGroup } from '@pulumi/aws/rds';
 import { Function } from '@pulumi/aws-native/lambda';
 import { Role } from '@pulumi/aws-native/iam';
+import { lambda } from '@pulumi/aws-native/types/input';
 
 export interface ClusterInfraArgs {
   ipv4Cidr: string;
   ipv4SubnetBlock?: number;
   ipv6SubnetBlock?: number;
+  dbProvisionerLambda: lambda.FunctionCodeArgs;
 }
 
 export interface ClusterInfraSubnets {
@@ -224,24 +226,43 @@ export class ClusterInfra extends ComponentResource {
       `${this.#name}-db-provisioner`,
       {
         assumeRolePolicyDocument: {
-          version: '2012-10-17',
-          statement: [
+          Version: '2012-10-17',
+          Statement: [
             {
-              effect: 'Allow',
-              principal: { service: 'lambda.amazonaws.com' },
-              action: 'sts:AssumeRole',
+              Effect: 'Allow',
+              Principal: { Service: 'lambda.amazonaws.com' },
+              Action: 'sts:AssumeRole',
             },
           ],
         },
         policies: [
           {
-            policyName: 'secretsmanager-getdbsecret',
+            // basic policy required for lambda
+            policyName: 'lambda-basic',
+            policyDocument: jsonStringify({
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: [
+                    'logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents',
+                    'ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface',
+                  ],
+                  Resource: '*',
+                },
+              ],
+            }),
+          },
+          {
+            // policy to allow reading db secrets for this cluster
+            policyName: 'secretsmanager-getdbsecrets',
             policyDocument: jsonStringify({
               Version: '2012-10-17',
               Statement: [
                 {
                   Effect: 'Allow',
                   Action: ['secretsmanager:GetSecretValue'],
+                  Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:${this.#name}-db-*`,
                 },
               ],
             }),
@@ -254,10 +275,9 @@ export class ClusterInfra extends ComponentResource {
     return new Function(
       `${this.#name}-db-provisioner`,
       {
-        code: {
-          zipFile: '../../lambdas/provisioner/target/lambda/provisioner.zip',
-        },
+        code: this.#args.dbProvisionerLambda,
         runtime: 'provided.al2',
+        handler: 'bootstrap',
         architectures: ['arm64'],
         role: dbProvisionerRole.arn,
         description: 'Provision databases and users for an RDS instance',

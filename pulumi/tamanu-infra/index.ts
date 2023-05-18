@@ -1,4 +1,5 @@
 import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr';
+import { Bucket } from '@pulumi/aws-native/s3';
 import { ClusterInfra } from './ClusterInfra';
 
 // Container repos for tamanu server images
@@ -17,8 +18,20 @@ export const repoFacility = ecrRepositories.facility.repositoryUri;
 export const repoMeta = ecrRepositories.meta.repositoryUri;
 
 // Common runtime infrastructure for tamanu clusters
+export const lambdaBucket = 'tamanu-lambdas';
+new Bucket(lambdaBucket, {
+  bucketName: lambdaBucket,
+});
+// As the bucket creates here before you'll have a chance to upload the zip file,
+// the pulumi up will fail, but the bucket will then be alive, so go and upload
+// to it, then run pulumi up again and it will succeed.
+
 const { outputs: internal } = new ClusterInfra('tamanu-internal', {
   ipv4Cidr: '10.32.0.0/16',
+  dbProvisionerLambda: {
+    s3Bucket: lambdaBucket,
+    s3Key: 'db-provisioner.zip',
+  },
 });
 
 export const internalVpc = internal.vpc;
