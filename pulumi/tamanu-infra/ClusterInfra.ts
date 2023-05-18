@@ -5,11 +5,15 @@ import {
   getStack,
   Output,
   output,
+  jsonStringify,
+  all,
 } from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
 import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/aws/ec2';
 import { SubnetGroup } from '@pulumi/aws/rds';
+import { Function } from '@pulumi/aws-native/lambda';
+import { Role } from '@pulumi/aws-native/iam';
 
 export interface ClusterInfraArgs {
   ipv4Cidr: string;
@@ -36,6 +40,7 @@ export interface ClusterInfraOutputs {
   dbSecGroup: Output<string>;
   rtSecGroup: Output<string>;
   dbSubnetGroup: Output<string>;
+  dbProvisioner: Output<string>;
   ecsCluster: Output<string>;
   cloudmapNamespace: Output<string>;
 }
@@ -106,11 +111,17 @@ export class ClusterInfra extends ComponentResource {
       { parent: this },
     );
 
-    const ecsCluster = new Cluster(`${name}-cluster`, {
-      serviceConnectDefaults: {
-        namespace: namespace.arn,
-      }
-    }, { parent: this });
+    const ecsCluster = new Cluster(
+      `${name}-cluster`,
+      {
+        serviceConnectDefaults: {
+          namespace: namespace.arn,
+        },
+      },
+      { parent: this },
+    );
+
+    const dbProvisioner = this.dbProvisioner(rtSecGroup);
 
     this.registerOutputs(
       (this.outputs = {
@@ -123,6 +134,9 @@ export class ClusterInfra extends ComponentResource {
         dbSecGroup: dbSecGroup.id,
         rtSecGroup: rtSecGroup.id,
         dbSubnetGroup: dbSubnetGroup.name,
+        dbProvisioner: all([dbProvisioner.functionName, dbProvisioner.arn]).apply(
+          ([name, arn]) => name ?? arn,
+        ),
         ecsCluster: ecsCluster.arn,
         cloudmapNamespace: namespace.arn,
       }),
@@ -205,4 +219,54 @@ export class ClusterInfra extends ComponentResource {
     return { dbSecGroup, rtSecGroup };
   }
 
+  dbProvisioner(rtSecGroup: SecurityGroup) {
+    const dbProvisionerRole = new Role(
+      `${this.#name}-db-provisioner`,
+      {
+        assumeRolePolicyDocument: {
+          version: '2012-10-17',
+          statement: [
+            {
+              effect: 'Allow',
+              principal: { service: 'lambda.amazonaws.com' },
+              action: 'sts:AssumeRole',
+            },
+          ],
+        },
+        policies: [
+          {
+            policyName: 'secretsmanager-getdbsecret',
+            policyDocument: jsonStringify({
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: ['secretsmanager:GetSecretValue'],
+                },
+              ],
+            }),
+          },
+        ],
+      },
+      { parent: this },
+    );
+
+    return new Function(
+      `${this.#name}-db-provisioner`,
+      {
+        code: {
+          zipFile: '../../lambdas/provisioner/target/lambda/provisioner.zip',
+        },
+        runtime: 'provided.al2',
+        architectures: ['arm64'],
+        role: dbProvisionerRole.arn,
+        description: 'Provision databases and users for an RDS instance',
+        vpcConfig: {
+          subnetIds: this.#subnets.rt.map((subnet) => subnet.id),
+          securityGroupIds: [rtSecGroup.id],
+        },
+      },
+      { parent: this },
+    );
+  }
 }

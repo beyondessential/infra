@@ -1,12 +1,16 @@
 import {
   ComponentResource,
   ComponentResourceOptions,
+  Config,
   Output,
   StackReference,
+  jsonStringify,
 } from '@pulumi/pulumi';
-import { FargateService, FargateTaskDefinition } from '@pulumi/awsx/ecs';
+import { FargateService } from '@pulumi/awsx/ecs';
 import { Instance as DBInstance } from '@pulumi/aws/rds';
-import { EcsRunTask } from '../common/EcsRunTask';
+import { createHash } from 'crypto';
+import { Secret, SecretVersion } from '@pulumi/aws/secretsmanager';
+import { Invocation } from '@pulumi/aws/lambda';
 
 export interface TamanuClusterArgs {
   /** @default 2 */
@@ -137,7 +141,8 @@ export class TamanuCluster extends ComponentResource {
     return {
       database: name,
       owner: name,
-      password,
+      passwordFromSecret: secretMeta.arn,
+      extensions: ['uuid-ossp'],
     };
   }
 
@@ -147,71 +152,13 @@ export class TamanuCluster extends ComponentResource {
       this.databaseProvisionConfig('facility', i);
     }
 
-    const taskDefinition = new FargateTaskDefinition(
-      `${this.#name}-provisioner`,
-      {
-        family: `tamanu-${this.#name}-provisioner`,
-        runtimePlatform: {
-          operatingSystemFamily: 'LINUX',
-          cpuArchitecture: 'X86_64',
-        },
-        container: {
-          image: 'alpine',
-          command: ['env'],
-          memory: 512,
-          cpu: 512,
-          essential: true,
-          linuxParameters: {
-            initProcessEnabled: true,
-          },
-          environment: [
-            { name: 'PG_HOST', value: this.#db.endpoint },
-            { name: 'PG_USER', value: this.#db.username },
-            {
-              name: 'PROVISION_CONFIG',
-              value: jsonStringify(provisionConfig),
-            },
-          ],
-          secrets: [
-            {
-              name: 'PG_PASSWORD',
-              valueFrom: this.#db.masterUserSecrets.apply(
-                ([firstSecret]) => `${firstSecret.secretArn}:password::`,
-              ),
-            },
-          ],
-        },
-        executionRole: {
-          args: {
-            inlinePolicies: [
-              {
-                name: 'secretsmanager-getdbsecret',
-                policy: jsonStringify({
-                  Version: '2012-10-17',
-                  Statement: [
-                    {
-                      Effect: 'Allow',
-                      Action: ['secretsmanager:GetSecretValue'],
-                      Resource: this.#db.masterUserSecrets[0].secretArn,
-                    },
-                  ],
-                }),
-              },
-            ],
-          },
-        },
-      },
-      {
-        parent: this,
-      },
-    );
+    const dbProvisioner = this.#infra.getOutput(`internalDbProvisioner`) as Output<string>;
 
-    const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
-    new EcsRunTask(
+    new Invocation(
       `${this.#name}-provisioner`,
       {
-        cluster,
-        taskDefinition: taskDefinition.taskDefinition.apply((td) => td.arn),
+        functionName: dbProvisioner,
+        input: jsonStringify(provisionConfig),
       },
       { parent: this },
     );
