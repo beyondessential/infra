@@ -10,7 +10,8 @@ import {
 import { FargateService } from '@pulumi/awsx/ecs';
 import { Instance as DBInstance } from '@pulumi/aws/rds';
 import { Secret, SecretVersion } from '@pulumi/aws/secretsmanager';
-import { Invocation } from '@pulumi/aws/lambda';
+// this form is required to import lambda as otherwise it creates a circular dependency error
+import * as aws from '@pulumi/aws';
 
 export interface TamanuClusterArgs {
   /** @default 2 */
@@ -171,7 +172,7 @@ export class TamanuCluster extends ComponentResource {
 
     const dbProvisioner = this.#infra.getOutput(`internalDbProvisioner`) as Output<string>;
 
-    new Invocation(
+    new aws.lambda.Invocation(
       `${this.#name}-provisioner`,
       {
         functionName: dbProvisioner,
