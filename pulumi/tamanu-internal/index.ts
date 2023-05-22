@@ -1,5 +1,7 @@
-import { getStack } from '@pulumi/pulumi';
+import { Config, getStack } from '@pulumi/pulumi';
 import { TamanuCluster } from './TamanuCluster';
 
-const { outputs: cluster } = new TamanuCluster(getStack());
+const cfg = new Config();
+const imageTag = cfg.require('imageTag');
+const { outputs: cluster } = new TamanuCluster(getStack(), { imageTag });
 export const { database, databaseEndpoint, facilityCount, services } = cluster;

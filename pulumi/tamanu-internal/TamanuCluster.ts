@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { camelCase } from 'lodash';
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -14,6 +15,8 @@ import { Secret, SecretVersion } from '@pulumi/aws/secretsmanager';
 import * as aws from '@pulumi/aws';
 
 export interface TamanuClusterArgs {
+  imageTag: string;
+
   /** @default 2 */
   numberOfFacilities?: number;
 }
@@ -44,7 +47,7 @@ export class TamanuCluster extends ComponentResource {
 
   #db: DBInstance;
 
-  constructor(name: string, args: TamanuClusterArgs = {}, opts: ComponentResourceOptions = {}) {
+  constructor(name: string, args: TamanuClusterArgs, opts: ComponentResourceOptions = {}) {
     super('pkg:index:TamanuCluster', name, {}, opts);
     this.#name = name;
     this.#args = { numberOfFacilities: 2, ...args };
@@ -204,7 +207,7 @@ export class TamanuCluster extends ComponentResource {
       },
       containers: {
         main: {
-          image,
+          image: `${image}:${this.#args.imageTag}`,
           command,
           memory: memoryGB * 1024,
           cpu: cores * 1024,
@@ -245,7 +248,7 @@ export class TamanuCluster extends ComponentResource {
     };
 
     return new FargateService(
-      `${this.#name}-${imageName}`,
+      [this.#name, imageName, index, camelCase(command.join(' '))].filter(Boolean).join('-'),
       {
         cluster,
         taskDefinitionArgs: task,

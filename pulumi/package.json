@@ -3,6 +3,7 @@
   "main": "index.ts",
   "devDependencies": {
     "@beyondessential/eslint-config-js": "^1.1.1",
+    "@types/lodash": "^4.14.194",
     "@types/node": "^16",
     "eslint-plugin-prettier": "^4.2.1"
   },
@@ -13,6 +14,7 @@
     "@pulumi/awsx": "^1.0.2",
     "@pulumi/pulumi": "^3.0.0",
     "@types/netmask": "^2.0.0",
+    "lodash": "^4.17.21",
     "netmask": "^2.0.2"
   }
 }
