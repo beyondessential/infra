@@ -60,7 +60,7 @@ export class TamanuCluster extends ComponentResource {
     const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) => ({
       server: this.service('facility', ['serve'], {
         index: i + 1,
-      cores: 2,
+        cores: 2,
         memoryGB: 2,
       }),
       tasks: this.service('facility', ['tasks'], {
@@ -203,17 +203,43 @@ export class TamanuCluster extends ComponentResource {
       },
       containers: {
         main: {
-        image,
+          image,
           command,
-        memory: memoryGB * 1024,
-        cpu: cores * 1024,
-        essential: true,
-        linuxParameters: {
-          initProcessEnabled: true,
+          memory: memoryGB * 1024,
+          cpu: cores * 1024,
+          essential: true,
+          linuxParameters: {
+            initProcessEnabled: true,
+          },
         },
-        environment: [
-          { name: 'PG_HOST', value: this.#db.endpoint },
-        ],
+        // TODO: sidecar container that reads secrets and writes a config
+      },
+      executionRole: {
+        args: {
+          inlinePolicies: [
+            {
+              policy: jsonStringify({
+                Version: '2012-10-17',
+                Statement: [
+                  // read secrets for the databases in this ECS cluster
+                  database && {
+                    Effect: 'Allow',
+                    Action: ['secretsmanager:GetSecretValue'],
+                    Resource: 'arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-internal-db-*',
+                  },
+                  // read secrets for this application / Tamanu cluster
+                  {
+                    Effect: 'Allow',
+                    Action: ['secretsmanager:GetSecretValue'],
+                    Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-${
+                      this.#name
+                    }-app-*`,
+                  },
+                ].filter(Boolean),
+              }),
+            },
+          ],
+        },
       },
     };
 
