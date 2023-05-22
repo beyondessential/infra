@@ -166,6 +166,7 @@ export class ClusterInfra extends ComponentResource {
         cidrBlock: ipv4Block,
         availabilityZone: `ap-southeast-2${az}`,
         ipv6CidrBlock: ipv6Block,
+        assignIpv6AddressOnCreation: true,
       },
       {
         parent: this,
@@ -183,7 +184,7 @@ export class ClusterInfra extends ComponentResource {
     };
     const ingressVpcPort = (description: string, port: number, protocol: string = 'tcp') => ({
       description: `${description} from VPC`,
-      fromPort: 0,
+      fromPort: port,
       toPort: port,
       protocol,
       cidrBlocks: [this.#vpc.cidrBlock],
