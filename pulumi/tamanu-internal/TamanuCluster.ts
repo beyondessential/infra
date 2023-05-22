@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -8,7 +9,6 @@ import {
 } from '@pulumi/pulumi';
 import { FargateService } from '@pulumi/awsx/ecs';
 import { Instance as DBInstance } from '@pulumi/aws/rds';
-import { createHash } from 'crypto';
 import { Secret, SecretVersion } from '@pulumi/aws/secretsmanager';
 import { Invocation } from '@pulumi/aws/lambda';
 
@@ -27,10 +27,11 @@ export interface TamanuClusterOutputs {
 }
 
 export interface TamanuClusterServiceArgs {
+  index?: number;
   cores?: number;
   memoryGB?: number;
-  desiredCount?: number;
-  database?: boolean;
+  scale?: number;
+  database?: string | false;
 }
 
 export class TamanuCluster extends ComponentResource {
@@ -51,13 +52,23 @@ export class TamanuCluster extends ComponentResource {
     this.#db = this.setupRds();
     this.runDbProvisioner();
 
-    const central = this.service('central', { cores: 2, memoryGB: 4 });
-    const meta = this.service('meta', { cores: 1, memoryGB: 1, database: false });
-    const facility = this.service('facility', {
+    // const meta = this.service('meta', [], { cores: 1, memoryGB: 1, database: false });
+    const central = {
+      server: this.service('central', ['serve'], { cores: 2, memoryGB: 4 }),
+      tasks: this.service('central', ['tasks'], { cores: 2, memoryGB: 4 }),
+    };
+    const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) => ({
+      server: this.service('facility', ['serve'], {
+        index: i + 1,
       cores: 2,
-      memoryGB: 4,
-      desiredCount: this.#args.numberOfFacilities,
-    });
+        memoryGB: 2,
+      }),
+      tasks: this.service('facility', ['tasks'], {
+        index: i + 1,
+        cores: 2,
+        memoryGB: 2,
+      }),
+    }));
 
     this.registerOutputs(
       (this.outputs = {
@@ -65,9 +76,15 @@ export class TamanuCluster extends ComponentResource {
         databaseEndpoint: this.#db.endpoint,
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          central: central.service.id,
-          meta: meta.service.id,
-          facility: facility.service.id,
+          // meta: meta.service.id,
+          centralServer: central.server.service.id,
+          centralTasks: central.tasks.service.id,
+          ...Object.fromEntries(
+            facilities.flatMap(({ server, tasks }, i) => [
+              [`facility${i + 1}Server`, server.service.id],
+              [`facility${i + 1}Tasks`, tasks.service.id],
+            ]),
+          ),
         },
       }),
     );
@@ -102,7 +119,7 @@ export class TamanuCluster extends ComponentResource {
   }
 
   databaseProvisionConfig(kind: string, index?: number) {
-    const name = `${kind}${index ? `-${index}` : ''}`;
+    const name = [kind, index].filter(Boolean).join('-');
     const secretMeta = new Secret(
       name,
       {
@@ -166,7 +183,14 @@ export class TamanuCluster extends ComponentResource {
 
   service(
     imageName: string,
-    { cores = 1, memoryGB = 1, desiredCount = 1, database = true }: TamanuClusterServiceArgs = {},
+    command: string[],
+    {
+      index,
+      cores = 1,
+      memoryGB = 1,
+      scale = 1,
+      database = [imageName, index].filter(Boolean).join('-'),
+    }: TamanuClusterServiceArgs = {},
   ): FargateService {
     const image = this.#infra.getOutput(`repo${imageName[0].toUpperCase() + imageName.slice(1)}`);
     const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
@@ -177,8 +201,10 @@ export class TamanuCluster extends ComponentResource {
         operatingSystemFamily: 'LINUX',
         cpuArchitecture: 'X86_64',
       },
-      container: {
+      containers: {
+        main: {
         image,
+          command,
         memory: memoryGB * 1024,
         cpu: cores * 1024,
         essential: true,
@@ -196,7 +222,7 @@ export class TamanuCluster extends ComponentResource {
       {
         cluster,
         taskDefinitionArgs: task,
-        desiredCount,
+        desiredCount: scale,
         propagateTags: 'SERVICE',
         networkConfiguration: {
           subnets,
