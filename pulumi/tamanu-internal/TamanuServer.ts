@@ -1,4 +1,3 @@
-import { camelCase } from 'lodash';
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -48,8 +47,8 @@ export class TamanuServer extends ComponentResource {
     };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
-    const http = this.service(['serve']);
-    const tasks = this.service(['tasks']);
+    const http = this.service('http', ['serve']);
+    const tasks = this.service('tasks', ['tasks']);
 
     this.registerOutputs(
       (this.outputs = {
@@ -59,7 +58,7 @@ export class TamanuServer extends ComponentResource {
     );
   }
 
-  service(command: string[]): FargateService {
+  service(name: string, command: string[]): FargateService {
     const { imageName, memoryGB, cores, index, database, httpScale } = this.#args;
     const image = this.#infra.getOutput(`repo${imageName[0].toUpperCase() + imageName.slice(1)}`);
     const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
@@ -113,7 +112,7 @@ export class TamanuServer extends ComponentResource {
     };
 
     return new FargateService(
-      [this.#name, imageName, index, camelCase(command.join(' '))].filter(Boolean).join('-'),
+      [this.#name, index, name].filter(Boolean).join('-'),
       {
         cluster,
         taskDefinitionArgs: task,
