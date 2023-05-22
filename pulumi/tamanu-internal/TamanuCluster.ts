@@ -1,5 +1,4 @@
 import { createHash } from 'crypto';
-import { camelCase } from 'lodash';
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -8,11 +7,11 @@ import {
   StackReference,
   jsonStringify,
 } from '@pulumi/pulumi';
-import { FargateService } from '@pulumi/awsx/ecs';
 import { Instance as DBInstance } from '@pulumi/aws/rds';
 import { Secret, SecretVersion } from '@pulumi/aws/secretsmanager';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
+import { TamanuServer, TamanuServerOutputs } from './TamanuServer';
 
 export interface TamanuClusterArgs {
   imageTag: string;
@@ -26,7 +25,7 @@ export interface TamanuClusterOutputs {
   databaseEndpoint: Output<string>;
   facilityCount: number;
   services: {
-    [name: string]: Output<string>;
+    [name: string]: TamanuServerOutputs;
   };
 }
 
@@ -56,23 +55,25 @@ export class TamanuCluster extends ComponentResource {
     this.#db = this.setupRds();
     this.runDbProvisioner();
 
-    // const meta = this.service('meta', [], { cores: 1, memoryGB: 1, database: false });
-    const central = {
-      server: this.service('central', ['serve'], { cores: 2, memoryGB: 4 }),
-      tasks: this.service('central', ['tasks'], { cores: 2, memoryGB: 4 }),
-    };
-    const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) => ({
-      server: this.service('facility', ['serve'], {
-        index: i + 1,
+    const central = new TamanuServer(
+      `${this.#name}-central`,
+      {
+        imageName: 'central',
+        imageTag: this.#args.imageTag,
         cores: 2,
-        memoryGB: 2,
-      }),
-      tasks: this.service('facility', ['tasks'], {
-        index: i + 1,
-        cores: 2,
-        memoryGB: 2,
-      }),
-    }));
+        memoryGB: 4,
+      },
+      { parent: this },
+    );
+    // const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) =>
+    //   new TamanuServer(`${this.#name}-central`, {
+    //     imageName: 'facility',
+    //     imageTag: this.#args.imageTag,
+    //     cores: 2,
+    //     memoryGB: 2,
+    //     index: i + 1,
+    //   }, { parent: this })
+    // );
 
     this.registerOutputs(
       (this.outputs = {
@@ -81,14 +82,12 @@ export class TamanuCluster extends ComponentResource {
         facilityCount: this.#args.numberOfFacilities,
         services: {
           // meta: meta.service.id,
-          centralServer: central.server.service.id,
-          centralTasks: central.tasks.service.id,
-          ...Object.fromEntries(
-            facilities.flatMap(({ server, tasks }, i) => [
-              [`facility${i + 1}Server`, server.service.id],
-              [`facility${i + 1}Tasks`, tasks.service.id],
-            ]),
-          ),
+          centralServer: central.outputs,
+          // ...Object.fromEntries(
+          //   facilities.map((facility, i) =>
+          //     [`facility${i + 1}`, facility.outputs]
+          //   ),
+          // ),
         },
       }),
     );
@@ -180,83 +179,6 @@ export class TamanuCluster extends ComponentResource {
       {
         functionName: dbProvisioner,
         input: jsonStringify(provisionConfig),
-      },
-      { parent: this },
-    );
-  }
-
-  service(
-    imageName: string,
-    command: string[],
-    {
-      index,
-      cores = 1,
-      memoryGB = 1,
-      scale = 1,
-      database = [imageName, index].filter(Boolean).join('-'),
-    }: TamanuClusterServiceArgs = {},
-  ): FargateService {
-    const image = this.#infra.getOutput(`repo${imageName[0].toUpperCase() + imageName.slice(1)}`);
-    const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
-    const subnets = this.#infra.getOutput('internalSubnetsRt') as Output<string[]>;
-
-    const task = {
-      runtimePlatform: {
-        operatingSystemFamily: 'LINUX',
-        cpuArchitecture: 'X86_64',
-      },
-      containers: {
-        main: {
-          image: `${image}:${this.#args.imageTag}`,
-          command,
-          memory: memoryGB * 1024,
-          cpu: cores * 1024,
-          essential: true,
-          linuxParameters: {
-            initProcessEnabled: true,
-          },
-        },
-        // TODO: sidecar container that reads secrets and writes a config
-      },
-      executionRole: {
-        args: {
-          inlinePolicies: [
-            {
-              policy: jsonStringify({
-                Version: '2012-10-17',
-                Statement: [
-                  // read secrets for the databases in this ECS cluster
-                  database && {
-                    Effect: 'Allow',
-                    Action: ['secretsmanager:GetSecretValue'],
-                    Resource: 'arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-internal-db-*',
-                  },
-                  // read secrets for this application / Tamanu cluster
-                  {
-                    Effect: 'Allow',
-                    Action: ['secretsmanager:GetSecretValue'],
-                    Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-${
-                      this.#name
-                    }-app-*`,
-                  },
-                ].filter(Boolean),
-              }),
-            },
-          ],
-        },
-      },
-    };
-
-    return new FargateService(
-      [this.#name, imageName, index, camelCase(command.join(' '))].filter(Boolean).join('-'),
-      {
-        cluster,
-        taskDefinitionArgs: task,
-        desiredCount: scale,
-        propagateTags: 'SERVICE',
-        networkConfiguration: {
-          subnets,
-        },
       },
       { parent: this },
     );
