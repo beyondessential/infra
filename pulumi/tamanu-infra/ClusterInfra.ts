@@ -283,8 +283,17 @@ export class ClusterInfra extends ComponentResource {
       new Route(
         `${this.#name}-subrt-${index}-out4`,
         {
-          routeTableId: this.#routeTable.id,
+          routeTableId: routeTable.id,
           destinationCidrBlock: '0.0.0.0/0',
+          natGatewayId: natGateway.id,
+        },
+        { parent: routeTable },
+      );
+      new Route(
+        `${this.#name}-subrt-${index}-out64`,
+        {
+          routeTableId: routeTable.id,
+          destinationIpv6CidrBlock: '64:ff9b::/96',
           natGatewayId: natGateway.id,
         },
         { parent: routeTable },
@@ -292,9 +301,9 @@ export class ClusterInfra extends ComponentResource {
       new Route(
         `${this.#name}-subrt-${index}-out6`,
         {
-          routeTableId: this.#routeTable.id,
+          routeTableId: routeTable.id,
           destinationIpv6CidrBlock: '::/0',
-          natGatewayId: natGateway.id,
+          egressOnlyGatewayId: this.#v6gw.id,
         },
         { parent: routeTable },
       );
