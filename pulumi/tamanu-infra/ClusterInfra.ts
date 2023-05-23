@@ -15,14 +15,12 @@ import { SubnetGroup } from '@pulumi/aws/rds';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
 import { Role } from '@pulumi/aws-native/iam';
-import { BucketObject } from '@pulumi/aws/s3';
-import { Archive } from '@pulumi/pulumi/asset';
+import { FileArchive } from '@pulumi/pulumi/asset';
 
 export interface ClusterInfraArgs {
   ipv4Cidr: string;
   ipv4SubnetBlock?: number;
   ipv6SubnetBlock?: number;
-  dbProvisioner: Archive;
 }
 
 export interface ClusterInfraSubnets {
@@ -279,18 +277,20 @@ export class ClusterInfra extends ComponentResource {
       { parent: this },
     );
 
+    const code = new FileArchive('../../glue/provisioner/target/lambda/provisioner.zip');
     return new aws.lambda.Function(
       `${this.#name}-db-provisioner`,
       {
-        code: this.#args.dbProvisioner,
+        code,
         runtime: 'provided.al2',
         handler: 'bootstrap',
         architectures: ['arm64'],
         role: dbProvisionerRole.arn,
         description: 'Provision databases and users for an RDS instance',
+        timeout: 300,
         environment: {
           variables: {
-            RUST_LOG: 'info',
+            RUST_LOG: 'trace',
           },
         },
         vpcConfig: {
