@@ -290,9 +290,7 @@ export class ClusterInfra extends ComponentResource {
         handler: 'bootstrap',
         architectures: ['arm64'],
         role: dbProvisionerRole.arn,
-        description: this.#args.dbProvisioner.versionId.apply(
-          (vid) => `Provision databases and users for an RDS instance {${vid}}`,
-        ),
+        description: 'Provision databases and users for an RDS instance',
         environment: {
           variables: {
             RUST_LOG: 'info',
@@ -307,7 +305,7 @@ export class ClusterInfra extends ComponentResource {
         parent: this,
         // this is so that the lambda is recreated when the db provisioner zip
         // changes (as its versionid goes in the description)
-        replaceOnChanges: ['description'],
+        // replaceOnChanges: ['description'],
       },
     );
   }
