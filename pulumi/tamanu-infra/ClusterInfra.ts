@@ -86,7 +86,7 @@ export class ClusterInfra extends ComponentResource {
         cidrBlock: args.ipv4Cidr,
         assignGeneratedIpv6CidrBlock: true,
         tags: {
-          Name: `${name}-vpc-${getStack()}`,
+          Name: name,
           Application: 'Tamanu',
         },
       },
@@ -98,6 +98,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#vpc.id,
         tags: {
+          Name: `${this.#name}-ingw`,
           Application: 'Tamanu',
         },
       },
@@ -109,6 +110,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#vpc.id,
         tags: {
+          Name: `${this.#name}-v6gw`,
           Application: 'Tamanu',
         },
       },
@@ -120,6 +122,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#vpc.id,
         tags: {
+          Name: `${this.#name}-rt`,
           Application: 'Tamanu',
         },
       },
@@ -150,6 +153,7 @@ export class ClusterInfra extends ComponentResource {
       {
         subnetIds: this.#subnets.db.map((subnet) => subnet.id),
         tags: {
+          Name: `${name}-database`,
           Purpose: 'database',
           Application: 'Tamanu',
         },
@@ -243,7 +247,8 @@ export class ClusterInfra extends ComponentResource {
         `${this.#name}-pubip-${index}`,
         {
           tags: {
-            Purpose: 'runtime',
+            Name: `${this.#name}-natgw-${index}`,
+            Purpose: purpose,
             Application: 'Tamanu',
           },
         },
@@ -256,7 +261,8 @@ export class ClusterInfra extends ComponentResource {
           connectivityType: 'public',
           allocationId: publicIP.allocationId,
           tags: {
-            Purpose: 'runtime',
+            Name: `${this.#name}-natgw-${index}`,
+            Purpose: purpose,
             Application: 'Tamanu',
           },
         },
@@ -267,7 +273,8 @@ export class ClusterInfra extends ComponentResource {
         {
           vpcId: this.#vpc.id,
           tags: {
-            Purpose: 'public',
+            Name: `${this.#name}-subrt-${index}`,
+            Purpose: purpose,
             Application: 'Tamanu',
           },
         },
