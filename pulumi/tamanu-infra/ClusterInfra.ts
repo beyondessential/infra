@@ -16,6 +16,7 @@ import {
   Subnet,
   SecurityGroup,
   InternetGateway,
+  Route,
 } from '@pulumi/aws/ec2';
 import { SubnetGroup } from '@pulumi/aws/rds';
 // this form is required to import lambda as otherwise it creates a circular dependency error
@@ -84,7 +85,7 @@ export class ClusterInfra extends ComponentResource {
     );
 
     // free, but only IPv6
-    new EgressOnlyInternetGateway(
+    const v6gw = new EgressOnlyInternetGateway(
       `${name}-eigw`,
       {
         vpcId: this.#vpc.id,
@@ -93,13 +94,25 @@ export class ClusterInfra extends ComponentResource {
     );
 
     // paid, but required due to AWS APIs in our region not supporting IPv6
-    new InternetGateway(
+    const v4gw = new InternetGateway(
       `${name}-igw`,
       {
         vpcId: this.#vpc.id,
       },
       { parent: this },
     );
+
+    new Route('outbound-v4', {
+      routeTableId: this.#vpc.mainRouteTableId,
+      destinationCidrBlock: '0.0.0.0/0',
+      gatewayId: v4gw.id,
+    });
+
+    new Route('outbound-v6', {
+      routeTableId: this.#vpc.mainRouteTableId,
+      destinationIpv6CidrBlock: '::/0',
+      egressOnlyGatewayId: v6gw.id,
+    });
 
     // up to 16 /20 subnets
     this.#subnets = {
