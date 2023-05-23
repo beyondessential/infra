@@ -65,7 +65,7 @@ export class TamanuCluster extends ComponentResource {
         memoryGB: 4,
         configTemplate: 'configTemplates/central.json',
         dbEndpoint: this.#db.endpoint,
-        dbCredentialArn: provisionConfig.find((c) => c.name === 'central')!.passwordFromSecret,
+        dbCredentialArn: provisionConfig.find((c) => c.name === 'central')!.password_from_secret,
       },
       { parent: this },
     );
@@ -80,7 +80,7 @@ export class TamanuCluster extends ComponentResource {
     //     index: i + 1,
     //     configTemplate: 'configTemplates/facility.json',
     //     dbEndpoint: this.#db.endpoint,
-    //     dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!.passwordFromSecret,
+    //     dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!.password_from_secret,
     //   }, { parent: this })
     // );
 
@@ -161,7 +161,7 @@ export class TamanuCluster extends ComponentResource {
     return {
       name,
       owner: name,
-      passwordFromSecret: secretMeta.outputs.arn,
+      password_from_secret: secretMeta.outputs.arn,
       extensions: ['uuid-ossp'],
     };
   }
@@ -175,10 +175,10 @@ export class TamanuCluster extends ComponentResource {
     const dbProvisioner = this.#infra.getOutput(`internalDbProvisioner`) as Output<string>;
 
     const dbProvisionerInput: DbProvisionerInput = {
-      dbInstance: {
+      db_instance: {
         host: this.#db.endpoint,
         database: 'postgres',
-        credentialFromSecret: this.#db.masterUserSecrets.apply(([secret]) => secret.secretArn),
+        credential_from_secret: this.#db.masterUserSecrets.apply(([secret]) => secret.secretArn),
       },
       databases: provisionConfig,
     };
@@ -197,7 +197,7 @@ export class TamanuCluster extends ComponentResource {
 }
 
 interface DbProvisionerInput {
-  dbInstance: DbProvisionerDbInstance;
+  db_instance: DbProvisionerDbInstance;
   databases: DbProvisionerDatabase[];
 }
 
@@ -207,7 +207,7 @@ interface DbProvisionerDbInstance {
   database: string;
 
   // Secret ARN for the username+password
-  credentialFromSecret: Output<string>;
+  credential_from_secret: Output<string>;
 }
 
 interface DbProvisionerDatabase {
@@ -215,7 +215,7 @@ interface DbProvisionerDatabase {
   owner: string;
 
   // Secret ARN for the password
-  passwordFromSecret: Output<string>;
+  password_from_secret: Output<string>;
 
   // PostgreSQL extensions to install
   extensions?: string[];
