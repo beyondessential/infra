@@ -106,13 +106,13 @@ export class ClusterInfra extends ComponentResource {
       routeTableId: this.#vpc.mainRouteTableId,
       destinationCidrBlock: '0.0.0.0/0',
       gatewayId: v4gw.id,
-    });
+    }, { parent: this });
 
     new Route('outbound-v6', {
       routeTableId: this.#vpc.mainRouteTableId,
       destinationIpv6CidrBlock: '::/0',
       egressOnlyGatewayId: v6gw.id,
-    });
+    }, { parent: this });
 
     // up to 16 /20 subnets
     this.#subnets = {
