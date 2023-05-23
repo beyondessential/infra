@@ -2,7 +2,6 @@ import { Netmask } from 'netmask';
 import {
   ComponentResource,
   ComponentResourceOptions,
-  getStack,
   Output,
   output,
   jsonStringify,
@@ -12,7 +11,6 @@ import { Cluster } from '@pulumi/aws/ecs';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
 import {
   Vpc,
-  EgressOnlyInternetGateway,
   Subnet,
   SecurityGroup,
   InternetGateway,
@@ -63,8 +61,8 @@ export class ClusterInfra extends ComponentResource {
 
   #vpc: Vpc;
   #subnets: ClusterInfraSubnets;
-  #v4gw: InternetGateway;
-  #v6gw: EgressOnlyInternetGateway;
+  #igw: InternetGateway;
+  #natgw: NatGateway;
   #publicRoutes: RouteTable;
   #privateRoutes: RouteTable;
   #cluster: Cluster;
@@ -84,8 +82,8 @@ export class ClusterInfra extends ComponentResource {
       `${name}-vpc`,
       {
         enableDnsSupport: true,
+        enableDnsHostnames: true,
         cidrBlock: args.ipv4Cidr,
-        assignGeneratedIpv6CidrBlock: true,
         tags: {
           Name: name,
           Application: 'Tamanu',
@@ -94,7 +92,7 @@ export class ClusterInfra extends ComponentResource {
       { parent: this },
     );
 
-    this.#v4gw = new InternetGateway(
+    this.#igw = new InternetGateway(
       `${this.#name}-igw`,
       {
         vpcId: this.#vpc.id,
@@ -105,17 +103,24 @@ export class ClusterInfra extends ComponentResource {
       },
       { parent: this.#vpc },
     );
-
-    this.#v6gw = new EgressOnlyInternetGateway(
-      `${name}-eigw`,
+    const igwRoutes = new RouteTable(
+      `${this.#name}-v4gw`,
       {
         vpcId: this.#vpc.id,
         tags: {
-          Name: `${this.#name}-v6gw`,
+          Name: `${this.#name}-v4gw`,
           Application: 'Tamanu',
         },
       },
-      { parent: this.#vpc },
+      { parent: this.#igw },
+    );
+    new RouteTableAssociation(
+      `${this.#name}-v4gw`,
+      {
+        routeTableId: igwRoutes.id,
+        gatewayId: this.#igw.id,
+      },
+      { parent: this.#igw },
     );
 
     this.#publicRoutes = new RouteTable(
@@ -135,18 +140,35 @@ export class ClusterInfra extends ComponentResource {
       {
         routeTableId: this.#publicRoutes.id,
         destinationCidrBlock: '0.0.0.0/0',
-        gatewayId: this.#v4gw.id,
+        gatewayId: this.#igw.id,
       },
       { parent: this.#publicRoutes },
     );
-    new Route(
-      `${this.#name}-rtpub-out6`,
+
+    const rt = [this.addSubnet('b', 2, 'runtime'), this.addSubnet('c', 3, 'runtime')];
+
+    const natIP = new Eip(
+      `${this.#name}-natgw`,
       {
-        routeTableId: this.#publicRoutes.id,
-        destinationIpv6CidrBlock: '::/0',
-        egressOnlyGatewayId: this.#v6gw.id,
+        tags: {
+          Name: `${this.#name}-natgw`,
+          Application: 'Tamanu',
+        },
       },
-      { parent: this.#publicRoutes },
+      { parent: this.#vpc },
+    );
+    this.#natgw = new NatGateway(
+      `${this.#name}-natgw`,
+      {
+        subnetId: rt[0].id,
+        connectivityType: 'public',
+        allocationId: natIP.allocationId,
+        tags: {
+          Name: `${this.#name}-natgw`,
+          Application: 'Tamanu',
+        },
+      },
+      { parent: this.#vpc, dependsOn: [this.#igw] },
     );
 
     this.#privateRoutes = new RouteTable(
@@ -162,11 +184,11 @@ export class ClusterInfra extends ComponentResource {
       { parent: this.#vpc },
     );
     new Route(
-      `${this.#name}-rt-out6`,
+      `${this.#name}-rt-out4`,
       {
         routeTableId: this.#privateRoutes.id,
-        destinationIpv6CidrBlock: '::/0',
-        egressOnlyGatewayId: this.#v6gw.id,
+        destinationCidrBlock: '0.0.0.0/0',
+        gatewayId: this.#natgw.id,
       },
       { parent: this.#privateRoutes },
     );
@@ -174,7 +196,7 @@ export class ClusterInfra extends ComponentResource {
     // up to 16 /20 subnets
     this.#subnets = {
       db: [this.addSubnet('a', 0, 'database'), this.addSubnet('b', 1, 'database')],
-      rt: [this.addSubnet('b', 2, 'runtime'), this.addSubnet('c', 3, 'runtime')],
+      rt,
     };
 
     // Security groups
@@ -251,18 +273,15 @@ export class ClusterInfra extends ComponentResource {
     }
     const ipv4Block = ipv4BlockCalc.toString();
 
-    const ipv6Block = this.#vpc.ipv6CidrBlock.apply((cidr) =>
-      cidr.replace('00::/56', `${index.toString(16).padStart(2, '0')}::/64`),
-    );
-
     const subnet = new Subnet(
       `${this.#name}-subnet-${index}`,
       {
         vpcId: this.#vpc.id,
         cidrBlock: ipv4Block,
         availabilityZone: `ap-southeast-2${az}`,
-        ipv6CidrBlock: ipv6Block,
-        assignIpv6AddressOnCreation: true,
+        mapPublicIpOnLaunch: purpose === 'runtime',
+        privateDnsHostnameTypeOnLaunch: 'resource-name',
+        enableResourceNameDnsARecordOnLaunch: true,
         tags: {
           Name: `${this.#name}-subnet-${index}-${purpose}`,
           Purpose: purpose,
@@ -275,65 +294,10 @@ export class ClusterInfra extends ComponentResource {
     );
 
     if (purpose === 'runtime') {
-      const publicIP = new Eip(
-        `${this.#name}-pubip-${index}`,
-        {
-          tags: {
-            Name: `${this.#name}-natgw-${index}`,
-            Purpose: purpose,
-            Application: 'Tamanu',
-          },
-        },
-        { parent: subnet },
-      );
-      const nat = new NatGateway(
-        `${this.#name}-natgw-${index}`,
-        {
-          subnetId: subnet.id,
-          connectivityType: 'public',
-          allocationId: publicIP.allocationId,
-          tags: {
-            Name: `${this.#name}-natgw-${index}`,
-            Purpose: purpose,
-            Application: 'Tamanu',
-          },
-        },
-        { parent: subnet, dependsOn: [this.#v4gw] },
-      );
-      const routes = new RouteTable(
-        `${this.#name}-rtpub-${index}`,
-        {
-          vpcId: this.#vpc.id,
-          tags: {
-            Name: `${this.#name}-rtpub-${index}`,
-            Purpose: 'runtime',
-            Application: 'Tamanu',
-          },
-        },
-        { parent: subnet },
-      );
-      new Route(
-        `${this.#name}-rtpub-${index}-out4`,
-        {
-          routeTableId: routes.id,
-          destinationCidrBlock: '0.0.0.0/0',
-          gatewayId: nat.id,
-        },
-        { parent: routes },
-      );
-      new Route(
-        `${this.#name}-rtpub-${index}-out6`,
-        {
-          routeTableId: routes.id,
-          destinationIpv6CidrBlock: '::/0',
-          egressOnlyGatewayId: this.#v6gw.id,
-        },
-        { parent: routes },
-      );
       new RouteTableAssociation(
         `${this.#name}-subnetrtassoc-${index}`,
         {
-          routeTableId: routes.id,
+          routeTableId: this.#publicRoutes.id,
           subnetId: subnet.id,
         },
         { parent: subnet },
@@ -359,7 +323,6 @@ export class ClusterInfra extends ComponentResource {
       toPort: 0,
       protocol: '-1',
       cidrBlocks: ['0.0.0.0/0'],
-      ipv6CidrBlocks: ['::/0'],
     };
     const allICMPv4 = {
       fromPort: -1,
@@ -368,33 +331,24 @@ export class ClusterInfra extends ComponentResource {
       description: 'ICMPv4',
       protocol: '1',
     };
-    const allICMPv6 = {
-      fromPort: -1,
-      toPort: -1,
-      ipv6CidrBlocks: ['::/0'],
-      description: 'ICMPv6',
-      protocol: '58',
-    };
     const ingressPort = (description: string, port: number, protocol: string = 'tcp') => ({
       description,
       fromPort: port,
       toPort: port,
       protocol,
       cidrBlocks: ['0.0.0.0/0'],
-      ipv6CidrBlocks: ['::/0'],
     });
     const ingressVpcPort = (description: string, port: number, protocol: string = 'tcp') => ({
       ...ingressPort(description, port, protocol),
       description: `${description} from VPC`,
       cidrBlocks: [this.#vpc.cidrBlock],
-      ipv6CidrBlocks: [this.#vpc.ipv6CidrBlock],
     });
 
     const dbSecGroup = new SecurityGroup(
       `${this.#name}-dbsecgroup`,
       {
         vpcId: this.#vpc.id,
-        ingress: [allICMPv6, ingressVpcPort('Postgres', 5432)],
+        ingress: [ingressVpcPort('Postgres', 5432)],
         egress: [all],
         tags: {
           Name: `${this.#name}-database`,
@@ -413,7 +367,6 @@ export class ClusterInfra extends ComponentResource {
         vpcId: this.#vpc.id,
         ingress: [
           allICMPv4,
-          allICMPv6,
           ingressPort('SSH', 22), // FIXME: testing
           ingressPort('HTTP', 80),
           ingressPort('HTTPS', 443),
@@ -502,7 +455,7 @@ export class ClusterInfra extends ComponentResource {
         timeout: 300,
         environment: {
           variables: {
-            RUST_LOG: 'trace',
+            RUST_LOG: 'debug',
           },
         },
         vpcConfig: {
