@@ -6,25 +6,26 @@ import {
   StackReference,
   jsonStringify,
 } from '@pulumi/pulumi';
-import { FargateService } from '@pulumi/awsx/ecs';
+import * as awsx from '@pulumi/awsx';
 import { Parameter } from '@pulumi/aws/ssm';
 
 export interface TamanuServerArgs {
   clusterName: string;
   imageName: string;
   imageTag: string;
-  /** @default null */
-  index?: number | null;
+  configTemplate: string;
+  dbEndpoint: Output<string>;
+  dbCredentialArn: Output<string>;
+
   /** @default 1 */
   cores?: number;
   /** @default 1 */
   memoryGB?: number;
   /** @default 1 */
   httpScale?: number;
-  /** @default false */
-  database?: string | false;
-  /** @default false */
-  configTemplate?: string | false;
+
+  // for facilities
+  index?: null | number;
 }
 
 export interface TamanuServerOutputs {
@@ -37,7 +38,7 @@ export class TamanuServer extends ComponentResource {
   #args: Required<TamanuServerArgs>;
   #infra: StackReference;
 
-  #config: Parameter | false;
+  #config: Parameter;
 
   outputs: TamanuServerOutputs;
 
@@ -49,27 +50,22 @@ export class TamanuServer extends ComponentResource {
       cores: 1,
       memoryGB: 1,
       httpScale: 1,
-      configTemplate: false,
-      database: [args.imageName, args.index].filter(Boolean).join('-'),
       ...args,
     };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
-    this.#config =
-      this.#args.configTemplate === false
-        ? false
-        : new Parameter(
-            `${this.#name}-config`,
-            {
-              type: 'SecureString',
-              description: `JSON config for Tamanu Internal deployment ${this.#args.clusterName}, ${
-                this.#args.imageName
-              } server ${this.#args.index ?? ''}`,
-              value: readFileSync(this.#args.configTemplate, 'utf8'),
-              overwrite: false,
-            },
-            { parent: this },
-          );
+    this.#config = new Parameter(
+      `${this.#name}-config`,
+      {
+        type: 'SecureString',
+        description: `JSON config for Tamanu Internal deployment ${this.#args.clusterName}, ${
+          this.#args.imageName
+        } server ${this.#args.index ?? ''}`,
+        value: readFileSync(this.#args.configTemplate, 'utf8'),
+        overwrite: false,
+      },
+      { parent: this },
+    );
 
     const http = this.service('http', ['serve']);
     const tasks = this.service('tasks', ['tasks']);
@@ -82,20 +78,25 @@ export class TamanuServer extends ComponentResource {
     );
   }
 
-  service(name: string, command: string[]): FargateService {
-    const { imageName, memoryGB, cores, index, database, httpScale } = this.#args;
-    const image = this.#infra.getOutput(`repo${imageName[0].toUpperCase() + imageName.slice(1)}`);
+  service(name: string, command: string[]): awsx.ecs.FargateService {
+    const { imageName, memoryGB, cores, index, dbEndpoint, dbCredentialArn, httpScale } =
+      this.#args;
     const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
     const subnets = this.#infra.getOutput('internalSubnetsRt') as Output<string[]>;
 
-    const task = {
+    const serverImage = this.#infra.getOutput(
+      `repo${imageName[0].toUpperCase() + imageName.slice(1)}`,
+    );
+    const configuratorImage = this.#infra.getOutput('repoConfigurator');
+
+    const task: awsx.ecs.FargateTaskDefinitionArgs = {
       runtimePlatform: {
         operatingSystemFamily: 'LINUX',
         cpuArchitecture: 'X86_64',
       },
       containers: {
         main: {
-          image: `${image}:${this.#args.imageTag}`,
+          image: `${serverImage}:${this.#args.imageTag}`,
           command,
           memory: memoryGB * 1024,
           cpu: cores * 1024,
@@ -112,7 +113,7 @@ export class TamanuServer extends ComponentResource {
           ],
         },
         configurator: {
-          image: `alpine`,
+          image: configuratorImage,
           command: [],
           memory: 512,
           cpu: 256,
@@ -121,8 +122,10 @@ export class TamanuServer extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: '', value: '' },
-            { name: '', value: '' },
+            { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
+            dbEndpoint.apply((value) => ({ name: 'DB_HOST', value })),
+            dbCredentialArn.apply((value) => ({ name: 'DB_CREDENTIALS_SECRET_ARN', value })),
+            { name: 'TARGET_FILE', value: '/config/local.json' },
           ],
           mountPoints: [
             {
@@ -141,25 +144,17 @@ export class TamanuServer extends ComponentResource {
               policy: jsonStringify({
                 Version: '2012-10-17',
                 Statement: [
-                  // read secrets for the databases in this ECS cluster
-                  database && {
-                    Effect: 'Allow',
-                    Action: ['secretsmanager:GetSecretValue'],
-                    Resource: 'arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-internal-db-*',
-                  },
-                  // read secrets for this application / Tamanu cluster
+                  // read credentials for this Tamanu cluster's database
                   {
                     Effect: 'Allow',
                     Action: ['secretsmanager:GetSecretValue'],
-                    Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-${
-                      this.#args.clusterName
-                    }-app-*`,
+                    Resource: dbCredentialArn,
                   },
                   // read parameter for this server's config
-                  this.#config && {
+                  {
                     Effect: 'Allow',
                     Action: ['ssm:GetParameter'],
-                    Resource: this.#config.arn,
+                    Resource: this.#config!.arn,
                   },
                 ].filter(Boolean),
               }),
@@ -169,7 +164,7 @@ export class TamanuServer extends ComponentResource {
       },
     };
 
-    return new FargateService(
+    return new awsx.ecs.FargateService(
       [this.#name, index, name].filter(Boolean).join('-'),
       {
         cluster,
