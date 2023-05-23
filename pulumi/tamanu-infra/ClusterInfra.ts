@@ -17,12 +17,16 @@ import {
   SecurityGroup,
   InternetGateway,
   Route,
+  RouteTable,
+  RouteTableAssociation,
+  NatGateway,
 } from '@pulumi/aws/ec2';
 import { SubnetGroup } from '@pulumi/aws/rds';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
 import { Role } from '@pulumi/aws-native/iam';
 import { FileArchive } from '@pulumi/pulumi/asset';
+import { Eip } from '@pulumi/aws/ec2/eip';
 
 export interface ClusterInfraArgs {
   ipv4Cidr: string;
@@ -59,6 +63,9 @@ export class ClusterInfra extends ComponentResource {
 
   #vpc: Vpc;
   #subnets: ClusterInfraSubnets;
+  #v6gw: EgressOnlyInternetGateway;
+  #routeTable: RouteTable;
+  #cluster: Cluster;
 
   outputs: ClusterInfraOutputs;
 
@@ -79,45 +86,44 @@ export class ClusterInfra extends ComponentResource {
         assignGeneratedIpv6CidrBlock: true,
         tags: {
           Name: `${name}-vpc-${getStack()}`,
+          Application: 'Tamanu',
         },
       },
       { parent: this },
     );
 
     // free, but only IPv6
-    const v6gw = new EgressOnlyInternetGateway(
+    this.#v6gw = new EgressOnlyInternetGateway(
       `${name}-eigw`,
       {
         vpcId: this.#vpc.id,
+        tags: {
+          Application: 'Tamanu',
+        },
       },
-      { parent: this },
+      { parent: this.#vpc },
     );
 
-    // paid, but required due to AWS APIs in our region not supporting IPv6
-    const v4gw = new InternetGateway(
-      `${name}-igw`,
+    this.#routeTable = new RouteTable(
+      `${this.#name}-rt`,
       {
         vpcId: this.#vpc.id,
+        tags: {
+          Application: 'Tamanu',
+        },
       },
-      { parent: this },
+      { parent: this.#vpc },
     );
-
-    new Route('outbound-v4', {
-      routeTableId: this.#vpc.mainRouteTableId,
-      destinationCidrBlock: '0.0.0.0/0',
-      gatewayId: v4gw.id,
-    }, { parent: this });
-
-    new Route('outbound-v6', {
-      routeTableId: this.#vpc.mainRouteTableId,
+    new Route(`${this.#name}-rt-out6`, {
+      routeTableId: this.#routeTable.id,
       destinationIpv6CidrBlock: '::/0',
-      egressOnlyGatewayId: v6gw.id,
-    }, { parent: this });
+      egressOnlyGatewayId: this.#v6gw.id,
+    }, { parent: this.#routeTable });
 
     // up to 16 /20 subnets
     this.#subnets = {
-      db: [this.addSubnet('a', 0), this.addSubnet('b', 1)],
-      rt: [this.addSubnet('b', 2), this.addSubnet('c', 3)],
+      db: [this.addSubnet('a', 0, 'database'), this.addSubnet('b', 1, 'database')],
+      rt: [this.addSubnet('b', 2, 'runtime'), this.addSubnet('c', 3, 'runtime')],
     };
 
     // Security groups
@@ -128,9 +134,13 @@ export class ClusterInfra extends ComponentResource {
       `${name}-dbsubnetgroup`,
       {
         subnetIds: this.#subnets.db.map((subnet) => subnet.id),
+        tags: {
+          Purpose: 'database',
+          Application: 'Tamanu',
+        },
       },
       {
-        parent: this,
+        parent: this.#vpc,
       },
     );
 
@@ -138,15 +148,21 @@ export class ClusterInfra extends ComponentResource {
       `${name}-cloudmap`,
       {
         vpc: this.#vpc.id,
+        tags: {
+          Application: 'Tamanu',
+        },
       },
-      { parent: this },
+      { parent: this.#vpc },
     );
 
-    const ecsCluster = new Cluster(
+    this.#cluster = new Cluster(
       `${name}-cluster`,
       {
         serviceConnectDefaults: {
           namespace: namespace.arn,
+        },
+        tags: {
+          Application: 'Tamanu',
         },
       },
       { parent: this },
@@ -167,13 +183,13 @@ export class ClusterInfra extends ComponentResource {
         dbProvisioner: all([dbProvisioner.name, dbProvisioner.arn]).apply(
           ([name, arn]) => name ?? arn,
         ),
-        ecsCluster: ecsCluster.arn,
+        ecsCluster: this.#cluster.arn,
         cloudmapNamespace: namespace.arn,
       }),
     );
   }
 
-  addSubnet(az: string, index: number) {
+  addSubnet(az: string, index: number, purpose: string) {
     let ipv4BlockCalc = new Netmask(
       new Netmask(this.#args.ipv4Cidr).base,
       this.#args.ipv4SubnetBlock.toString(),
@@ -187,7 +203,7 @@ export class ClusterInfra extends ComponentResource {
       cidr.replace('00::/56', `${index.toString(16).padStart(2, '0')}::/64`),
     );
 
-    return new Subnet(
+    const subnet = new Subnet(
       `${this.#name}-subnet-${index}`,
       {
         vpcId: this.#vpc.id,
@@ -195,11 +211,80 @@ export class ClusterInfra extends ComponentResource {
         availabilityZone: `ap-southeast-2${az}`,
         ipv6CidrBlock: ipv6Block,
         assignIpv6AddressOnCreation: true,
+        tags: {
+          Name: `${this.#name}-subnet-${index}-${purpose}`,
+          Purpose: purpose,
+          Application: 'Tamanu',
+        },
       },
       {
-        parent: this,
+        parent: this.#vpc,
       },
     );
+
+    if (purpose === 'runtime') {
+      // public route table
+      const publicIP = new Eip(`${this.#name}-pubip-${index}`, {
+        tags: {
+          Purpose: 'runtime',
+          Application: 'Tamanu',
+        },
+      }, { parent: subnet });
+      const natGateway = new NatGateway(
+        `${this.#name}-natgw-${index}`,
+        {
+          subnetId: subnet.id,
+          connectivityType: 'public',
+          allocationId: publicIP.allocationId,
+          tags: {
+            Purpose: 'runtime',
+            Application: 'Tamanu',
+          },
+        },
+        { parent: subnet },
+      );
+      const routeTable = new RouteTable(
+        `${this.#name}-subrt-${index}`,
+        {
+          vpcId: this.#vpc.id,
+          tags: {
+            Purpose: 'public',
+            Application: 'Tamanu',
+          },
+        },
+        { parent: subnet },
+      );
+      // new Route(`${this.#name}-subrt-${index}-out4`, {
+      //   routeTableId: this.#routeTable.id,
+      //   destinationCidrBlock: '0.0.0.0/0',
+      //   natGatewayId: natGateway.id,
+      // }, { parent: routeTable });
+      // new Route(`${this.#name}-subrt-${index}-out6`, {
+      //   routeTableId: this.#routeTable.id,
+      //   destinationIpv6CidrBlock: '::/0',
+      //   natGatewayId: natGateway.id,
+      // }, { parent: routeTable });
+      new RouteTableAssociation(
+        `${this.#name}-subnetrtassoc-${index}`,
+        {
+          routeTableId: routeTable.id,
+          subnetId: subnet.id,
+        },
+        { parent: subnet },
+      );
+    } else {
+      // default route table
+      new RouteTableAssociation(
+        `${this.#name}-subnetrtassoc-${index}`,
+        {
+          routeTableId: this.#routeTable.id,
+          subnetId: subnet.id,
+        },
+        { parent: subnet },
+      );
+    }
+
+    return subnet;
   }
 
   securityGroups() {
@@ -225,9 +310,14 @@ export class ClusterInfra extends ComponentResource {
         vpcId: this.#vpc.id,
         ingress: [ingressVpcPort('Postgres', 5432)],
         egress: [allEgress],
+        tags: {
+          Name: `${this.#name}-database`,
+          Purpose: 'database',
+          Application: 'Tamanu',
+        },
       },
       {
-        parent: this,
+        parent: this.#vpc,
       },
     );
 
@@ -241,9 +331,14 @@ export class ClusterInfra extends ComponentResource {
           ingressVpcPort('HTTP/3', 443, 'udp'),
         ],
         egress: [allEgress],
+        tags: {
+          Name: `${this.#name}-runtime`,
+          Purpose: 'runtime',
+          Application: 'Tamanu',
+        },
       },
       {
-        parent: this,
+        parent: this.#vpc,
       },
     );
 
@@ -302,7 +397,7 @@ export class ClusterInfra extends ComponentResource {
           },
         ],
       },
-      { parent: this },
+      { parent: this.#cluster },
     );
 
     const code = new FileArchive('../../glue/provisioner/target/lambda/provisioner.zip');
@@ -325,12 +420,12 @@ export class ClusterInfra extends ComponentResource {
           subnetIds: this.#subnets.rt.map((subnet) => subnet.id),
           securityGroupIds: [rtSecGroup.id],
         },
+        tags: {
+          Application: 'Tamanu',
+        },
       },
       {
-        parent: this,
-        // this is so that the lambda is recreated when the db provisioner zip
-        // changes (as its versionid goes in the description)
-        // replaceOnChanges: ['description'],
+        parent: this.#cluster,
       },
     );
   }
