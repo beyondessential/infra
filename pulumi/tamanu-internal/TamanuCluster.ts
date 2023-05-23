@@ -53,7 +53,7 @@ export class TamanuCluster extends ComponentResource {
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
     this.#db = this.setupRds();
-    const provisionConfig = this.runDbProvisioner();
+    const { provisionConfig, provisioner } = this.runDbProvisioner();
 
     const central = new TamanuServer(
       'central',
@@ -67,7 +67,7 @@ export class TamanuCluster extends ComponentResource {
         dbEndpoint: this.#db.endpoint,
         dbCredentialArn: provisionConfig.find((c) => c.name === 'central')!.password_from_secret,
       },
-      { parent: this },
+      { parent: this, dependsOn: [provisioner] },
     );
 
     const facilities = Array.from({ length: this.#args.numberOfFacilities }).map(
@@ -86,7 +86,7 @@ export class TamanuCluster extends ComponentResource {
             dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!
               .password_from_secret,
           },
-          { parent: this },
+          { parent: this, dependsOn: [provisioner] },
         ),
     );
 
@@ -186,7 +186,7 @@ export class TamanuCluster extends ComponentResource {
       databases: provisionConfig,
     };
 
-    new aws.lambda.Invocation(
+    const provisioner = new aws.lambda.Invocation(
       `${this.#name}-provisioner`,
       {
         functionName: dbProvisioner,
@@ -195,7 +195,7 @@ export class TamanuCluster extends ComponentResource {
       { parent: this },
     );
 
-    return provisionConfig;
+    return { provisionConfig, provisioner };
   }
 }
 
