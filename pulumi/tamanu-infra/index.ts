@@ -23,7 +23,6 @@ const { outputs: internal } = new ClusterInfra('tamanu-internal', {
 });
 
 export const internalVpc = internal.vpc;
-export const internalEigw = internal.eigw;
 export const internalSubnetsDb = internal.subnets.db;
 export const internalSubnetsRt = internal.subnets.rt;
 export const internalDbSecGroup = internal.dbSecGroup;

@@ -10,7 +10,13 @@ import {
 } from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
-import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/aws/ec2';
+import {
+  Vpc,
+  EgressOnlyInternetGateway,
+  Subnet,
+  SecurityGroup,
+  InternetGateway,
+} from '@pulumi/aws/ec2';
 import { SubnetGroup } from '@pulumi/aws/rds';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
@@ -37,7 +43,6 @@ export interface ClusterInfraSubnetOutputs {
 
 export interface ClusterInfraOutputs {
   vpc: Output<string>;
-  eigw: Output<string>;
   subnets: Output<ClusterInfraSubnetOutputs>;
   dbSecGroup: Output<string>;
   rtSecGroup: Output<string>;
@@ -77,8 +82,19 @@ export class ClusterInfra extends ComponentResource {
       },
       { parent: this },
     );
-    const eigw = new EgressOnlyInternetGateway(
+
+    // free, but only IPv6
+    new EgressOnlyInternetGateway(
       `${name}-eigw`,
+      {
+        vpcId: this.#vpc.id,
+      },
+      { parent: this },
+    );
+
+    // paid, but required due to AWS APIs in our region not supporting IPv6
+    new InternetGateway(
+      `${name}-igw`,
       {
         vpcId: this.#vpc.id,
       },
@@ -128,7 +144,6 @@ export class ClusterInfra extends ComponentResource {
     this.registerOutputs(
       (this.outputs = {
         vpc: this.#vpc.id,
-        eigw: eigw.id,
         subnets: output({
           db: this.#subnets.db.map((subnet) => subnet.id),
           rt: this.#subnets.rt.map((subnet) => subnet.id),
