@@ -53,10 +53,10 @@ export class TamanuCluster extends ComponentResource {
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
     this.#db = this.setupRds();
-    this.runDbProvisioner();
+    const provisionConfig = this.runDbProvisioner();
 
     const central = new TamanuServer(
-      `${this.#name}-central`,
+      'central',
       {
         clusterName: this.#name,
         imageName: 'central',
@@ -64,17 +64,23 @@ export class TamanuCluster extends ComponentResource {
         cores: 2,
         memoryGB: 4,
         configTemplate: 'configTemplates/central.json',
+        dbEndpoint: this.#db.endpoint,
+        dbCredentialArn: provisionConfig.find((c) => c.name === 'central')!.passwordFromSecret,
       },
       { parent: this },
     );
+
     // const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) =>
-    //   new TamanuServer(`${this.#name}-central`, {
+    //   new TamanuServer(`facility-${i + 1}`, {
     //     clusterName: this.#name,
     //     imageName: 'facility',
     //     imageTag: this.#args.imageTag,
     //     cores: 2,
     //     memoryGB: 2,
     //     index: i + 1,
+    //     configTemplate: 'configTemplates/facility.json',
+    //     dbEndpoint: this.#db.endpoint,
+    //     dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!.passwordFromSecret,
     //   }, { parent: this })
     // );
 
@@ -124,7 +130,7 @@ export class TamanuCluster extends ComponentResource {
     );
   }
 
-  databaseProvisionConfig(kind: string, index?: number) {
+  databaseProvisionConfig(kind: string, index?: number): DbProvisionerDatabase {
     const name = [kind, index].filter(Boolean).join('-');
 
     // Make the secret deterministic from the db name and a per-stack salt,
@@ -153,7 +159,7 @@ export class TamanuCluster extends ComponentResource {
     );
 
     return {
-      database: name,
+      name,
       owner: name,
       passwordFromSecret: secretMeta.outputs.arn,
       extensions: ['uuid-ossp'],
@@ -163,18 +169,54 @@ export class TamanuCluster extends ComponentResource {
   runDbProvisioner() {
     const provisionConfig = [this.databaseProvisionConfig('central')];
     for (let i = 1; i <= this.#args.numberOfFacilities; i++) {
-      this.databaseProvisionConfig('facility', i);
+      provisionConfig.push(this.databaseProvisionConfig('facility', i));
     }
 
     const dbProvisioner = this.#infra.getOutput(`internalDbProvisioner`) as Output<string>;
+
+    const dbProvisionerInput: DbProvisionerInput = {
+      dbInstance: {
+        host: this.#db.endpoint,
+        database: 'postgres',
+        credentialFromSecret: this.#db.masterUserSecrets.apply(([secret]) => secret.secretArn),
+      },
+      databases: provisionConfig,
+    };
 
     new aws.lambda.Invocation(
       `${this.#name}-provisioner`,
       {
         functionName: dbProvisioner,
-        input: jsonStringify(provisionConfig),
+        input: jsonStringify(dbProvisionerInput),
       },
       { parent: this },
     );
+
+    return provisionConfig;
   }
+}
+
+interface DbProvisionerInput {
+  dbInstance: DbProvisionerDbInstance;
+  databases: DbProvisionerDatabase[];
+}
+
+// Admin access to the RDS instance
+interface DbProvisionerDbInstance {
+  host: Output<string>;
+  database: string;
+
+  // Secret ARN for the username+password
+  credentialFromSecret: Output<string>;
+}
+
+interface DbProvisionerDatabase {
+  name: string;
+  owner: string;
+
+  // Secret ARN for the password
+  passwordFromSecret: Output<string>;
+
+  // PostgreSQL extensions to install
+  extensions?: string[];
 }
