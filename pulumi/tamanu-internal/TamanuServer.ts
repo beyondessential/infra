@@ -122,6 +122,7 @@ export class TamanuServer extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
+            { name: 'RUST_LOG', value: 'info' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbEndpoint.apply((value) => ({ name: 'DB_HOST', value })),
             dbCredentialArn.apply((value) => ({ name: 'DB_CREDENTIALS_SECRET_ARN', value })),
