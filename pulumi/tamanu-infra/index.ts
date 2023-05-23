@@ -8,7 +8,7 @@ const ecrRepositories = Object.fromEntries(
     image,
     new Repository(`tamanu-${image}`, {
       repositoryName: `tamanu/${image}`,
-      imageTagMutability: RepositoryImageTagMutability.Immutable,
+      imageTagMutability: RepositoryImageTagMutability.Mutable,
     }),
   ]),
 );
