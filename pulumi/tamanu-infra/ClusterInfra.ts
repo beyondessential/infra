@@ -12,15 +12,17 @@ import { Cluster } from '@pulumi/aws/ecs';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
 import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/aws/ec2';
 import { SubnetGroup } from '@pulumi/aws/rds';
-import { Function } from '@pulumi/aws-native/lambda';
+// this form is required to import lambda as otherwise it creates a circular dependency error
+import * as aws from '@pulumi/aws';
 import { Role } from '@pulumi/aws-native/iam';
 import { BucketObject } from '@pulumi/aws/s3';
+import { Archive } from '@pulumi/pulumi/asset';
 
 export interface ClusterInfraArgs {
   ipv4Cidr: string;
   ipv4SubnetBlock?: number;
   ipv6SubnetBlock?: number;
-  dbProvisioner: BucketObject;
+  dbProvisioner: Archive;
 }
 
 export interface ClusterInfraSubnets {
@@ -136,7 +138,7 @@ export class ClusterInfra extends ComponentResource {
         dbSecGroup: dbSecGroup.id,
         rtSecGroup: rtSecGroup.id,
         dbSubnetGroup: dbSubnetGroup.name,
-        dbProvisioner: all([dbProvisioner.functionName, dbProvisioner.arn]).apply(
+        dbProvisioner: all([dbProvisioner.name, dbProvisioner.arn]).apply(
           ([name, arn]) => name ?? arn,
         ),
         ecsCluster: ecsCluster.arn,
@@ -277,15 +279,10 @@ export class ClusterInfra extends ComponentResource {
       { parent: this },
     );
 
-    return new Function(
+    return new aws.lambda.Function(
       `${this.#name}-db-provisioner`,
       {
-        code: all([this.#args.dbProvisioner.bucket, this.#args.dbProvisioner.key]).apply(
-          ([s3Bucket, s3Key]) => ({
-            s3Bucket,
-            s3Key,
-          }),
-        ),
+        code: this.#args.dbProvisioner,
         runtime: 'provided.al2',
         handler: 'bootstrap',
         architectures: ['arm64'],
