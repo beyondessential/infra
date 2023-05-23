@@ -293,6 +293,11 @@ export class ClusterInfra extends ComponentResource {
         description: this.#args.dbProvisioner.versionId.apply(
           (vid) => `Provision databases and users for an RDS instance {${vid}}`,
         ),
+        environment: {
+          variables: {
+            RUST_LOG: 'info',
+          },
+        },
         vpcConfig: {
           subnetIds: this.#subnets.rt.map((subnet) => subnet.id),
           securityGroupIds: [rtSecGroup.id],
