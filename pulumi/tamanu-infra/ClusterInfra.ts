@@ -14,13 +14,13 @@ import { Vpc, EgressOnlyInternetGateway, Subnet, SecurityGroup } from '@pulumi/a
 import { SubnetGroup } from '@pulumi/aws/rds';
 import { Function } from '@pulumi/aws-native/lambda';
 import { Role } from '@pulumi/aws-native/iam';
-import { lambda } from '@pulumi/aws-native/types/input';
+import { BucketObject } from '@pulumi/aws/s3';
 
 export interface ClusterInfraArgs {
   ipv4Cidr: string;
   ipv4SubnetBlock?: number;
   ipv6SubnetBlock?: number;
-  dbProvisionerLambda: lambda.FunctionCodeArgs;
+  dbProvisioner: BucketObject;
 }
 
 export interface ClusterInfraSubnets {
@@ -246,8 +246,12 @@ export class ClusterInfra extends ComponentResource {
                 {
                   Effect: 'Allow',
                   Action: [
-                    'logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents',
-                    'ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface',
+                    'logs:CreateLogGroup',
+                    'logs:CreateLogStream',
+                    'logs:PutLogEvents',
+                    'ec2:CreateNetworkInterface',
+                    'ec2:DescribeNetworkInterfaces',
+                    'ec2:DeleteNetworkInterface',
                   ],
                   Resource: '*',
                 },
@@ -276,18 +280,30 @@ export class ClusterInfra extends ComponentResource {
     return new Function(
       `${this.#name}-db-provisioner`,
       {
-        code: this.#args.dbProvisionerLambda,
+        code: all([this.#args.dbProvisioner.bucket, this.#args.dbProvisioner.key]).apply(
+          ([s3Bucket, s3Key]) => ({
+            s3Bucket,
+            s3Key,
+          }),
+        ),
         runtime: 'provided.al2',
         handler: 'bootstrap',
         architectures: ['arm64'],
         role: dbProvisionerRole.arn,
-        description: 'Provision databases and users for an RDS instance',
+        description: this.#args.dbProvisioner.versionId.apply(
+          (vid) => `Provision databases and users for an RDS instance {${vid}}`,
+        ),
         vpcConfig: {
           subnetIds: this.#subnets.rt.map((subnet) => subnet.id),
           securityGroupIds: [rtSecGroup.id],
         },
       },
-      { parent: this },
+      {
+        parent: this,
+        // this is so that the lambda is recreated when the db provisioner zip
+        // changes (as its versionid goes in the description)
+        replaceOnChanges: ['description'],
+      },
     );
   }
 }

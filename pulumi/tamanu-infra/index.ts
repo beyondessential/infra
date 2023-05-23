@@ -1,6 +1,8 @@
 import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr';
 import { Bucket } from '@pulumi/aws-native/s3';
 import { ClusterInfra } from './ClusterInfra';
+import * as aws from '@pulumi/aws';
+import { FileAsset } from '@pulumi/pulumi/asset';
 
 // Container repos for tamanu server and glue images
 const ecrRepositories = Object.fromEntries(
@@ -20,19 +22,23 @@ export const repoMeta = ecrRepositories.meta.repositoryUri;
 
 // Common runtime infrastructure for tamanu clusters
 export const lambdaBucket = 'tamanu-lambdas';
-new Bucket(lambdaBucket, {
+const bucket = new Bucket(lambdaBucket, {
   bucketName: lambdaBucket,
+  versioningConfiguration: {
+    status: 'Enabled',
+  }
 });
-// As the bucket creates here before you'll have a chance to upload the zip file,
-// the pulumi up will fail, but the bucket will then be alive, so go and upload
-// to it, then run pulumi up again and it will succeed.
+
+const source = new FileAsset('../../glue/provisioner/target/lambda/provisioner.zip');
+const dbProvisioner = new aws.s3.BucketObject('db-provisioner', {
+  bucket: lambdaBucket,
+  key: 'db-provisioner.zip',
+  source,
+}, { dependsOn: [bucket] });
 
 const { outputs: internal } = new ClusterInfra('tamanu-internal', {
   ipv4Cidr: '10.32.0.0/16',
-  dbProvisionerLambda: {
-    s3Bucket: lambdaBucket,
-    s3Key: 'db-provisioner.zip',
-  },
+  dbProvisioner,
 });
 
 export const internalVpc = internal.vpc;
