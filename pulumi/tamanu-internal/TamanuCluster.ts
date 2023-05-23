@@ -8,7 +8,7 @@ import {
   jsonStringify,
 } from '@pulumi/pulumi';
 import { Instance as DBInstance } from '@pulumi/aws/rds';
-import { Secret, SecretVersion } from '@pulumi/aws/secretsmanager';
+import { Secret } from './Secret';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
 import { TamanuServer, TamanuServerOutputs } from './TamanuServer';
@@ -123,16 +123,6 @@ export class TamanuCluster extends ComponentResource {
 
   databaseProvisionConfig(kind: string, index?: number) {
     const name = [kind, index].filter(Boolean).join('-');
-    const secretMeta = new Secret(
-      name,
-      {
-        namePrefix: `tamanu-internal-db-${this.#name}-`,
-        description: `PostgresSQL credentials for Tamanu Internal deployment ${
-          this.#name
-        }, ${kind} server ${index ?? ''}`,
-      },
-      { parent: this },
-    );
 
     // Make the secret deterministic from the db name and a per-stack salt,
     // so it doesn't change on every invocation but is still reasonable secure.
@@ -143,25 +133,26 @@ export class TamanuCluster extends ComponentResource {
       createHash('sha256').update(salt).update(name).digest('hex'),
     );
 
-    new SecretVersion(
+    const secretMeta = new Secret(
       name,
       {
-        secretId: secretMeta.id,
-        secretString: jsonStringify({
+        secretValue: {
           database: name,
           username: name,
           password,
-        }),
       },
-      {
-        parent: secretMeta,
+        namePrefix: `tamanu-internal-db-${this.#name}-`,
+        description: `PostgresSQL credentials for Tamanu Internal deployment ${
+          this.#name
+        }, ${kind} server ${index ?? ''}`,
       },
+      { parent: this },
     );
 
     return {
       database: name,
       owner: name,
-      passwordFromSecret: secretMeta.arn,
+      passwordFromSecret: secretMeta.outputs.arn,
       extensions: ['uuid-ossp'],
     };
   }
