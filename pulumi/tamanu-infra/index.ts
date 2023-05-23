@@ -2,9 +2,9 @@ import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr
 import { Bucket } from '@pulumi/aws-native/s3';
 import { ClusterInfra } from './ClusterInfra';
 
-// Container repos for tamanu server images
+// Container repos for tamanu server and glue images
 const ecrRepositories = Object.fromEntries(
-  ['central', 'facility', 'meta'].map((image) => [
+  ['central', 'configurator', 'facility', 'meta'].map((image) => [
     image,
     new Repository(`tamanu-${image}`, {
       repositoryName: `tamanu/${image}`,
@@ -14,6 +14,7 @@ const ecrRepositories = Object.fromEntries(
 );
 
 export const repoCentral = ecrRepositories.central.repositoryUri;
+export const repoConfigurator = ecrRepositories.configurator.repositoryUri;
 export const repoFacility = ecrRepositories.facility.repositoryUri;
 export const repoMeta = ecrRepositories.meta.repositoryUri;
 
