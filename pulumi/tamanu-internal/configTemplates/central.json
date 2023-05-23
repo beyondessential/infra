@@ -1,0 +1,46 @@
+{
+  "db": {
+    "migrateOnStartup": true
+  },
+  "auth": {
+    "secret": "REDACTED",
+    "refreshSecret": "REDACTED",
+    "allowDummyToken": true
+  },
+  "honeycomb": {
+    "apiKey": "REDACTED",
+    "enabled": true
+  },
+  "localisation": {
+    "data": {
+      "features": {
+        "enablePatientDeaths": true
+      },
+      "imagingTypes": {
+        "ctScanImagingArea": {
+          "label": "CT Scan"
+        }
+      }
+    }
+  },
+  "integrations": {
+    "vdsNc": {
+      "enabled": true
+    },
+    "signer": {
+      "enabled": true,
+      "keySecret": "REDACTED"
+    },
+    "fhir": {
+      "enabled": true
+    },
+    "mSupply": {
+      "enabled": true
+    }
+  },
+  "schedules": {
+    "fhirMaterialiser": {
+      "limit": 1000
+    }
+  }
+}

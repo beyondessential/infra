@@ -58,15 +58,18 @@ export class TamanuCluster extends ComponentResource {
     const central = new TamanuServer(
       `${this.#name}-central`,
       {
+        clusterName: this.#name,
         imageName: 'central',
         imageTag: this.#args.imageTag,
         cores: 2,
         memoryGB: 4,
+        configTemplate: 'configTemplates/central.json',
       },
       { parent: this },
     );
     // const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) =>
     //   new TamanuServer(`${this.#name}-central`, {
+    //     clusterName: this.#name,
     //     imageName: 'facility',
     //     imageTag: this.#args.imageTag,
     //     cores: 2,
@@ -140,7 +143,7 @@ export class TamanuCluster extends ComponentResource {
           database: name,
           username: name,
           password,
-      },
+        },
         namePrefix: `tamanu-internal-db-${this.#name}-`,
         description: `PostgresSQL credentials for Tamanu Internal deployment ${
           this.#name

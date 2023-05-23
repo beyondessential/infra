@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -6,8 +7,10 @@ import {
   jsonStringify,
 } from '@pulumi/pulumi';
 import { FargateService } from '@pulumi/awsx/ecs';
+import { Parameter } from '@pulumi/aws/ssm';
 
 export interface TamanuServerArgs {
+  clusterName: string;
   imageName: string;
   imageTag: string;
   /** @default null */
@@ -20,6 +23,8 @@ export interface TamanuServerArgs {
   httpScale?: number;
   /** @default false */
   database?: string | false;
+  /** @default false */
+  configTemplate?: string | false;
 }
 
 export interface TamanuServerOutputs {
@@ -32,6 +37,8 @@ export class TamanuServer extends ComponentResource {
   #args: Required<TamanuServerArgs>;
   #infra: StackReference;
 
+  #config: Parameter | false;
+
   outputs: TamanuServerOutputs;
 
   constructor(name: string, args: TamanuServerArgs, opts: ComponentResourceOptions = {}) {
@@ -42,10 +49,27 @@ export class TamanuServer extends ComponentResource {
       cores: 1,
       memoryGB: 1,
       httpScale: 1,
+      configTemplate: false,
       database: [args.imageName, args.index].filter(Boolean).join('-'),
       ...args,
     };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
+
+    this.#config =
+      this.#args.configTemplate === false
+        ? false
+        : new Parameter(
+            `${this.#name}-config`,
+            {
+              type: 'SecureString',
+              description: `JSON config for Tamanu Internal deployment ${this.#args.clusterName}, ${
+                this.#args.imageName
+              } server ${this.#args.index ?? ''}`,
+              value: readFileSync(this.#args.configTemplate, 'utf8'),
+              overwrite: false,
+            },
+            { parent: this },
+          );
 
     const http = this.service('http', ['serve']);
     const tasks = this.service('tasks', ['tasks']);
@@ -79,9 +103,37 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
+          mountPoints: [
+            {
+              containerPath: '/config',
+              sourceVolume: 'config',
+              readOnly: true,
+            },
+          ],
         },
-        // TODO: sidecar container that reads secrets and writes a config
+        configurator: {
+          image: `alpine`,
+          command: [],
+          memory: 512,
+          cpu: 256,
+          essential: false,
+          linuxParameters: {
+            initProcessEnabled: true,
+          },
+          environment: [
+            { name: '', value: '' },
+            { name: '', value: '' },
+          ],
+          mountPoints: [
+            {
+              containerPath: '/config',
+              sourceVolume: 'config',
+              readOnly: false,
+            },
+          ],
+        },
       },
+      volumes: [{ name: 'config' }],
       executionRole: {
         args: {
           inlinePolicies: [
@@ -100,8 +152,14 @@ export class TamanuServer extends ComponentResource {
                     Effect: 'Allow',
                     Action: ['secretsmanager:GetSecretValue'],
                     Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:tamanu-${
-                      this.#name
+                      this.#args.clusterName
                     }-app-*`,
+                  },
+                  // read parameter for this server's config
+                  this.#config && {
+                    Effect: 'Allow',
+                    Action: ['ssm:GetParameter'],
+                    Resource: this.#config.arn,
                   },
                 ].filter(Boolean),
               }),
@@ -116,6 +174,7 @@ export class TamanuServer extends ComponentResource {
       {
         cluster,
         taskDefinitionArgs: task,
+        continueBeforeSteadyState: true, // for now
         desiredCount: httpScale,
         propagateTags: 'SERVICE',
         networkConfiguration: {
