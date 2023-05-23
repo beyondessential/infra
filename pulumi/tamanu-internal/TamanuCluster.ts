@@ -70,19 +70,25 @@ export class TamanuCluster extends ComponentResource {
       { parent: this },
     );
 
-    // const facilities = Array.from({ length: this.#args.numberOfFacilities }).map((_, i) =>
-    //   new TamanuServer(`facility-${i + 1}`, {
-    //     clusterName: this.#name,
-    //     imageName: 'facility',
-    //     imageTag: this.#args.imageTag,
-    //     cores: 2,
-    //     memoryGB: 2,
-    //     index: i + 1,
-    //     configTemplate: 'configTemplates/facility.json',
-    //     dbEndpoint: this.#db.endpoint,
-    //     dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!.password_from_secret,
-    //   }, { parent: this })
-    // );
+    const facilities = Array.from({ length: this.#args.numberOfFacilities }).map(
+      (_, i) =>
+        new TamanuServer(
+          `facility-${i + 1}`,
+          {
+            clusterName: this.#name,
+            imageName: 'facility',
+            imageTag: this.#args.imageTag,
+            cores: 2,
+            memoryGB: 2,
+            index: i + 1,
+            configTemplate: 'configTemplates/facility.json',
+            dbEndpoint: this.#db.endpoint,
+            dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!
+              .password_from_secret,
+          },
+          { parent: this },
+        ),
+    );
 
     this.registerOutputs(
       (this.outputs = {
@@ -90,13 +96,10 @@ export class TamanuCluster extends ComponentResource {
         databaseEndpoint: this.#db.endpoint,
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          // meta: meta.service.id,
           centralServer: central.outputs,
-          // ...Object.fromEntries(
-          //   facilities.map((facility, i) =>
-          //     [`facility${i + 1}`, facility.outputs]
-          //   ),
-          // ),
+          ...Object.fromEntries(
+            facilities.map((facility, i) => [`facility${i + 1}`, facility.outputs]),
+          ),
         },
       }),
     );
