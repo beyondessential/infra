@@ -63,6 +63,7 @@ export class ClusterInfra extends ComponentResource {
 
   #vpc: Vpc;
   #subnets: ClusterInfraSubnets;
+  #v4gw: InternetGateway;
   #v6gw: EgressOnlyInternetGateway;
   #routeTable: RouteTable;
   #cluster: Cluster;
@@ -92,7 +93,17 @@ export class ClusterInfra extends ComponentResource {
       { parent: this },
     );
 
-    // free, but only IPv6
+    this.#v4gw = new InternetGateway(
+      `${this.#name}-igw`,
+      {
+        vpcId: this.#vpc.id,
+        tags: {
+          Application: 'Tamanu',
+        },
+      },
+      { parent: this.#vpc },
+    );
+
     this.#v6gw = new EgressOnlyInternetGateway(
       `${name}-eigw`,
       {
@@ -114,11 +125,15 @@ export class ClusterInfra extends ComponentResource {
       },
       { parent: this.#vpc },
     );
-    new Route(`${this.#name}-rt-out6`, {
-      routeTableId: this.#routeTable.id,
-      destinationIpv6CidrBlock: '::/0',
-      egressOnlyGatewayId: this.#v6gw.id,
-    }, { parent: this.#routeTable });
+    new Route(
+      `${this.#name}-rt-out6`,
+      {
+        routeTableId: this.#routeTable.id,
+        destinationIpv6CidrBlock: '::/0',
+        egressOnlyGatewayId: this.#v6gw.id,
+      },
+      { parent: this.#routeTable },
+    );
 
     // up to 16 /20 subnets
     this.#subnets = {
@@ -224,12 +239,16 @@ export class ClusterInfra extends ComponentResource {
 
     if (purpose === 'runtime') {
       // public route table
-      const publicIP = new Eip(`${this.#name}-pubip-${index}`, {
-        tags: {
-          Purpose: 'runtime',
-          Application: 'Tamanu',
+      const publicIP = new Eip(
+        `${this.#name}-pubip-${index}`,
+        {
+          tags: {
+            Purpose: 'runtime',
+            Application: 'Tamanu',
+          },
         },
-      }, { parent: subnet });
+        { parent: subnet },
+      );
       const natGateway = new NatGateway(
         `${this.#name}-natgw-${index}`,
         {
@@ -241,7 +260,7 @@ export class ClusterInfra extends ComponentResource {
             Application: 'Tamanu',
           },
         },
-        { parent: subnet },
+        { parent: subnet, dependsOn: [this.#v4gw] },
       );
       const routeTable = new RouteTable(
         `${this.#name}-subrt-${index}`,
@@ -252,18 +271,26 @@ export class ClusterInfra extends ComponentResource {
             Application: 'Tamanu',
           },
         },
-        { parent: subnet },
+        { parent: subnet, dependsOn: [this.#v4gw] },
       );
-      // new Route(`${this.#name}-subrt-${index}-out4`, {
-      //   routeTableId: this.#routeTable.id,
-      //   destinationCidrBlock: '0.0.0.0/0',
-      //   natGatewayId: natGateway.id,
-      // }, { parent: routeTable });
-      // new Route(`${this.#name}-subrt-${index}-out6`, {
-      //   routeTableId: this.#routeTable.id,
-      //   destinationIpv6CidrBlock: '::/0',
-      //   natGatewayId: natGateway.id,
-      // }, { parent: routeTable });
+      new Route(
+        `${this.#name}-subrt-${index}-out4`,
+        {
+          routeTableId: this.#routeTable.id,
+          destinationCidrBlock: '0.0.0.0/0',
+          natGatewayId: natGateway.id,
+        },
+        { parent: routeTable },
+      );
+      new Route(
+        `${this.#name}-subrt-${index}-out6`,
+        {
+          routeTableId: this.#routeTable.id,
+          destinationIpv6CidrBlock: '::/0',
+          natGatewayId: natGateway.id,
+        },
+        { parent: routeTable },
+      );
       new RouteTableAssociation(
         `${this.#name}-subnetrtassoc-${index}`,
         {

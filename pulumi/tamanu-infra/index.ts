@@ -19,7 +19,7 @@ export const repoMeta = ecrRepositories.meta.repositoryUri;
 
 // Common runtime infrastructure for tamanu clusters
 const { outputs: internal } = new ClusterInfra('tamanu-internal', {
-  ipv4Cidr: '10.32.0.0/16',
+  ipv4Cidr: '10.10.0.0/16',
 });
 
 export const internalVpc = internal.vpc;
