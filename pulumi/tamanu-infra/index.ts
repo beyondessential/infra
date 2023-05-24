@@ -1,33 +1,28 @@
 import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr';
 import { ClusterInfra } from './ClusterInfra';
+import { Network } from './Network';
 
-// Container repos for tamanu server and glue images
-const ecrRepositories = Object.fromEntries(
+export const repos = Object.fromEntries(
   ['central', 'configurator', 'facility', 'meta'].map((image) => [
     image,
     new Repository(`tamanu-${image}`, {
       repositoryName: `tamanu/${image}`,
       imageTagMutability: RepositoryImageTagMutability.Mutable,
-    }),
+    }).repositoryUri,
   ]),
 );
 
-export const repoCentral = ecrRepositories.central.repositoryUri;
-export const repoConfigurator = ecrRepositories.configurator.repositoryUri;
-export const repoFacility = ecrRepositories.facility.repositoryUri;
-export const repoMeta = ecrRepositories.meta.repositoryUri;
-
-// Common runtime infrastructure for tamanu clusters
-const { outputs: internal } = new ClusterInfra('tamanu-internal', {
-  ipv4Cidr: '10.10.0.0/16',
+export const { outputs: network } = new Network('internal', {
+  ipv4Cidr: '10.0.0.0/16',
+  tags: {
+    Application: 'Tamanu',
+    Cluster: 'internal',
+  },
 });
 
-export const internalVpc = internal.vpc;
-export const internalSubnetsDb = internal.subnets.db;
-export const internalSubnetsRt = internal.subnets.rt;
-export const internalDbSecGroup = internal.dbSecGroup;
-export const internalRtSecGroup = internal.rtSecGroup;
-export const internalDbSubnetGroup = internal.dbSubnetGroup;
-export const internalDbProvisioner = internal.dbProvisioner;
-export const internalEcsCluster = internal.ecsCluster;
-export const internalCloudmapNamespace = internal.cloudmapNamespace;
+export const { outputs: cluster } = new ClusterInfra('internal', {
+  network,
+  tags: {
+    Application: 'Tamanu',
+  },
+});

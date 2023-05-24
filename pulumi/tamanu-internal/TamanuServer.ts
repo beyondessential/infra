@@ -81,13 +81,11 @@ export class TamanuServer extends ComponentResource {
   service(name: string, command: string[]): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, index, dbEndpoint, dbCredentialArn, httpScale } =
       this.#args;
-    const cluster = this.#infra.getOutput('internalEcsCluster') as Output<string>;
-    const subnets = this.#infra.getOutput('internalSubnetsRt') as Output<string[]>;
+    const cluster = this.#infra.getOutput('cluster').apply(cluster => cluster.containers.ecs as string);
+    const subnets = this.#infra.getOutput('network').apply(network => network.workloadSubnetIds as string[]);
 
-    const serverImage = this.#infra.getOutput(
-      `repo${imageName[0].toUpperCase() + imageName.slice(1)}`,
-    );
-    const configuratorImage = this.#infra.getOutput('repoConfigurator');
+    const serverImage = this.#infra.getOutput('repos').apply(repos => repos[imageName] as string);
+    const configuratorImage = this.#infra.getOutput('repos').apply(repos => repos.configurator as string);
 
     const task: awsx.ecs.FargateTaskDefinitionArgs = {
       runtimePlatform: {

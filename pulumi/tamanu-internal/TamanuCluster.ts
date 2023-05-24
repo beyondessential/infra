@@ -7,7 +7,7 @@ import {
   StackReference,
   jsonStringify,
 } from '@pulumi/pulumi';
-import { Instance as DBInstance } from '@pulumi/aws/rds';
+import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds';
 import { Secret } from './Secret';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
@@ -21,8 +21,6 @@ export interface TamanuClusterArgs {
 }
 
 export interface TamanuClusterOutputs {
-  database: Output<string>;
-  databaseEndpoint: Output<string>;
   facilityCount: number;
   services: {
     [name: string]: TamanuServerOutputs;
@@ -44,7 +42,7 @@ export class TamanuCluster extends ComponentResource {
 
   outputs: TamanuClusterOutputs;
 
-  #db: DBInstance;
+  #db: Output<GetInstanceResult>;
 
   constructor(name: string, args: TamanuClusterArgs, opts: ComponentResourceOptions = {}) {
     super('pkg:index:TamanuCluster', name, {}, opts);
@@ -52,7 +50,12 @@ export class TamanuCluster extends ComponentResource {
     this.#args = { numberOfFacilities: 2, ...args };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
-    this.#db = this.setupRds();
+    this.#db = this.#infra.getOutput('cluster').apply((cluster) =>
+      getDatabase({
+        dbInstanceIdentifier: cluster.database as string,
+      }),
+    );
+
     const { provisionConfig, provisioner } = this.runDbProvisioner();
 
     const central = new TamanuServer(
@@ -65,7 +68,8 @@ export class TamanuCluster extends ComponentResource {
         memoryGB: 4,
         configTemplate: 'configTemplates/central.json',
         dbEndpoint: this.#db.endpoint,
-        dbCredentialArn: provisionConfig.find((c) => c.name === 'central')!.password_from_secret,
+        dbCredentialArn: provisionConfig.find((c) => c.name === `${name}-central`)!
+          .password_from_secret,
       },
       { parent: this, dependsOn: [provisioner] },
     );
@@ -83,7 +87,7 @@ export class TamanuCluster extends ComponentResource {
             index: i + 1,
             configTemplate: 'configTemplates/facility.json',
             dbEndpoint: this.#db.endpoint,
-            dbCredentialArn: provisionConfig.find((c) => c.name === `facility-${i + 1}`)!
+            dbCredentialArn: provisionConfig.find((c) => c.name === `${name}-facility-${i + 1}`)!
               .password_from_secret,
           },
           { parent: this, dependsOn: [provisioner] },
@@ -92,8 +96,6 @@ export class TamanuCluster extends ComponentResource {
 
     this.registerOutputs(
       (this.outputs = {
-        database: this.#db.arn,
-        databaseEndpoint: this.#db.endpoint,
         facilityCount: this.#args.numberOfFacilities,
         services: {
           centralServer: central.outputs,
@@ -105,36 +107,8 @@ export class TamanuCluster extends ComponentResource {
     );
   }
 
-  setupRds() {
-    const dbSubnetGroup = this.#infra.getOutput('internalDbSubnetGroup') as Output<string>;
-    const dbSecGroup = this.#infra.getOutput('internalDbSecGroup') as Output<string>;
-
-    return new DBInstance(
-      `tamanu-${this.#name}`,
-      {
-        allocatedStorage: 20,
-        autoMinorVersionUpgrade: true,
-        dbSubnetGroupName: dbSubnetGroup,
-        engine: 'postgres',
-        engineVersion: '14.6',
-        instanceClass: 'db.t4g.medium', // ARM64
-        manageMasterUserPassword: true,
-        networkType: 'DUAL',
-        performanceInsightsEnabled: false, // adds two minutes to the boot/create time
-        publiclyAccessible: false,
-        skipFinalSnapshot: true, // tamanu-internal DBs should never contain important data
-        storageType: 'gp3',
-        username: 'postgres',
-        vpcSecurityGroupIds: [dbSecGroup],
-      },
-      {
-        parent: this,
-      },
-    );
-  }
-
   databaseProvisionConfig(kind: string, index?: number): DbProvisionerDatabase {
-    const name = [kind, index].filter(Boolean).join('-');
+    const name = [this.#name, kind, index].filter(Boolean).join('-');
 
     // Make the secret deterministic from the db name and a per-stack salt,
     // so it doesn't change on every invocation but is still reasonable secure.
@@ -153,7 +127,7 @@ export class TamanuCluster extends ComponentResource {
           username: name,
           password,
         },
-        namePrefix: `tamanu-internal-db-${this.#name}-`,
+        namePrefix: `internal-db-${this.#name}-`,
         description: `PostgresSQL credentials for Tamanu Internal deployment ${
           this.#name
         }, ${kind} server ${index ?? ''}`,
@@ -175,13 +149,16 @@ export class TamanuCluster extends ComponentResource {
       provisionConfig.push(this.databaseProvisionConfig('facility', i));
     }
 
-    const dbProvisioner = this.#infra.getOutput(`internalDbProvisioner`) as Output<string>;
-
+    const dbProvisioner = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.provisioner as string);
     const dbProvisionerInput: DbProvisionerInput = {
       db_instance: {
         host: this.#db.endpoint,
         database: 'postgres',
-        credential_from_secret: this.#db.masterUserSecrets.apply(([secret]) => secret.secretArn),
+        credential_from_secret: this.#db.masterUserSecrets.apply(
+          (secrets: { secretArn: string }[]) => secrets[0].secretArn,
+        ),
       },
       databases: provisionConfig,
     };
