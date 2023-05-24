@@ -126,7 +126,7 @@ export class TamanuCluster extends ComponentResource {
             // this structure makes this a rotatable secret
             engine: 'postgres',
             host,
-            port,
+            port: +port,
             dbname: name,
             username: name,
             password,
