@@ -13,7 +13,7 @@ export interface RustLambdaArgs {
   zip: string;
   description?: string;
   timeoutSec?: number;
-  environment?: { [key: string]: Input<string> };
+  environment?: Input<{ [key: string]: Input<string> }>;
   network?: NetworkConfig;
   policies?: InlinePolicy[];
   tags?: { [key: string]: string };

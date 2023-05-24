@@ -1,4 +1,4 @@
-import { ComponentResource, ComponentResourceOptions, Output } from '@pulumi/pulumi';
+import { ComponentResource, ComponentResourceOptions, Output, all } from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
 import { SecurityGroup } from '@pulumi/aws/ec2';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
@@ -203,11 +203,15 @@ export class ClusterInfra extends ComponentResource {
         zip: '../../glue/provisioner/target/lambda/provisioner.zip',
         description: 'Provision databases and users for an RDS instance',
         timeoutSec: 300,
-        environment: {
-          RUST_LOG: 'debug',
-          DB_HOST: this.#database.endpoint,
-          DB_SECRET: this.#database.masterUserSecrets.apply(secrets => secrets[0].secretArn),
-        },
+        environment: all([this.#database.endpoint, this.#database.masterUserSecrets]).apply(
+          ([endpoint, secrets]) => ({
+            PGHOST: endpoint.split(':')[0],
+            PGPORT: endpoint.split(':')[1] ?? '5432',
+            DB_SECRET: secrets[0].secretArn,
+            RUST_LOG: 'trace',
+            LOG_SENSITIVE_BODIES: 'true',
+          }),
+        ),
         network: {
           subnetIds: this.#network.workloadSubnetIds,
           securityGroupIds: [this.#securityGroups.provisioner.id],
@@ -222,7 +226,9 @@ export class ClusterInfra extends ComponentResource {
                 {
                   Effect: 'Allow',
                   Action: ['secretsmanager:GetSecretValue'],
-                  Resource: this.#database.masterUserSecrets.apply(secrets => secrets.map(secret => secret.secretArn)),
+                  Resource: this.#database.masterUserSecrets.apply((secrets) =>
+                    secrets.map((secret) => secret.secretArn),
+                  ),
                 },
               ],
             },
@@ -240,7 +246,7 @@ export class ClusterInfra extends ComponentResource {
                 },
               ],
             },
-          }
+          },
         ],
         tags: { Purpose: 'provisioner', ...this.#args.tags },
       },
