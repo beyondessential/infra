@@ -56,7 +56,7 @@ export class TamanuCluster extends ComponentResource {
       }),
     );
 
-    const { provisionConfig, provisioner } = this.runDbProvisioner();
+    const { databases, provisioner } = this.runDbProvisioner();
 
     const central = new TamanuServer(
       'central',
@@ -67,8 +67,7 @@ export class TamanuCluster extends ComponentResource {
         cores: 2,
         memoryGB: 4,
         configTemplate: 'configTemplates/central.json',
-        dbCredentialArn: provisionConfig.find((c) => c.name === `${name}-central`)!
-          .password_from_secret,
+        dbCredentialArn: databases.find((c) => c.name === `${name}-central`)!.password_from_secret,
       },
       { parent: this, dependsOn: [provisioner] },
     );
@@ -85,7 +84,7 @@ export class TamanuCluster extends ComponentResource {
             memoryGB: 2,
             index: i + 1,
             configTemplate: 'configTemplates/facility.json',
-            dbCredentialArn: provisionConfig.find((c) => c.name === `${name}-facility-${i + 1}`)!
+            dbCredentialArn: databases.find((c) => c.name === `${name}-facility-${i + 1}`)!
               .password_from_secret,
           },
           { parent: this, dependsOn: [provisioner] },
@@ -105,7 +104,7 @@ export class TamanuCluster extends ComponentResource {
     );
   }
 
-  databaseProvisionConfig(kind: string, index?: number): DbProvisionerDatabase {
+  databaseProvisionConfig(kind: string, index?: number): [Secret, DbProvisionerDatabase] {
     const name = [this.#name, kind, index].filter(Boolean).join('-');
 
     // Make the secret deterministic from the db name and a per-stack salt,
@@ -117,7 +116,7 @@ export class TamanuCluster extends ComponentResource {
       createHash('sha256').update(salt).update(name).digest('hex'),
     );
 
-    const secretMeta = new Secret(
+    const secret = new Secret(
       name,
       {
         secretValue: this.#db.endpoint.apply((endpoint) => {
@@ -140,18 +139,25 @@ export class TamanuCluster extends ComponentResource {
       { parent: this },
     );
 
-    return {
-      name,
-      owner: name,
-      password_from_secret: secretMeta.outputs.arn,
-      extensions: ['uuid-ossp'],
-    };
+    return [
+      secret,
+      {
+        name,
+        owner: name,
+        password_from_secret: secret.outputs.arn,
+        extensions: ['uuid-ossp'],
+      },
+    ];
   }
 
   runDbProvisioner() {
-    const provisionConfig = [this.databaseProvisionConfig('central')];
+    const [secret, provisionConfig] = this.databaseProvisionConfig('central');
+    const databases = [provisionConfig];
+    const secrets = [secret];
     for (let i = 1; i <= this.#args.numberOfFacilities; i++) {
-      provisionConfig.push(this.databaseProvisionConfig('facility', i));
+      const [secret, provisionConfig] = this.databaseProvisionConfig('facility', i);
+      databases.push(provisionConfig);
+      secrets.push(secret);
     }
 
     const dbProvisioner = this.#infra
@@ -165,7 +171,7 @@ export class TamanuCluster extends ComponentResource {
           (secrets: { secretArn: string }[]) => secrets[0].secretArn,
         ),
       },
-      databases: provisionConfig,
+      databases,
     };
 
     const provisioner = new aws.lambda.Invocation(
@@ -174,10 +180,10 @@ export class TamanuCluster extends ComponentResource {
         functionName: dbProvisioner,
         input: jsonStringify(dbProvisionerInput),
       },
-      { parent: this },
+      { parent: this, dependsOn: secrets },
     );
 
-    return { provisionConfig, provisioner };
+    return { databases, provisioner };
   }
 }
 
