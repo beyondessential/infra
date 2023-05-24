@@ -8,6 +8,7 @@ import {
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import { Parameter } from '@pulumi/aws/ssm';
+import { Policy, PolicyAttachment, Role } from '@pulumi/aws/iam';
 
 export interface TamanuServerArgs {
   clusterName: string;
@@ -78,13 +79,70 @@ export class TamanuServer extends ComponentResource {
   }
 
   service(name: string, command: string[]): awsx.ecs.FargateService {
-    const { imageName, memoryGB, cores, index, dbSecret, httpScale } =
-      this.#args;
-    const cluster = this.#infra.getOutput('cluster').apply(cluster => cluster.containers.ecs as string);
-    const subnets = this.#infra.getOutput('network').apply(network => network.workloadSubnetIds as string[]);
+    const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
+    const cluster = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.containers.ecs as string);
+    const subnets = this.#infra
+      .getOutput('network')
+      .apply((network) => network.workloadSubnetIds as string[]);
 
-    const serverImage = this.#infra.getOutput('repos').apply(repos => repos[imageName] as string);
-    const configuratorImage = this.#infra.getOutput('repos').apply(repos => repos.configurator as string);
+    const serverImage = this.#infra
+      .getOutput('repos')
+      .apply((repos) => `${repos[imageName]}:${this.#args.imageTag}`);
+    const configuratorImage = this.#infra
+      .getOutput('repos')
+      .apply((repos) => repos.configurator as string);
+
+    const taskRole = new Role(
+      `${this.#name}-${name}-task`,
+      {
+        assumeRolePolicy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: {
+                Service: 'ecs-tasks.amazonaws.com',
+              },
+              Action: 'sts:AssumeRole',
+            },
+          ],
+        },
+      },
+      { parent: this },
+    );
+    const configuratorPolicy = new Policy(
+      `${this.#name}-${name}-configurator`,
+      {
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            // read credentials for this Tamanu cluster's database
+            {
+              Effect: 'Allow',
+              Action: ['secretsmanager:GetSecretValue'],
+              Resource: dbSecret,
+            },
+            // read parameter for this server's config
+            {
+              Effect: 'Allow',
+              Action: ['ssm:GetParameter'],
+              Resource: this.#config!.arn,
+            },
+          ],
+        },
+      },
+      { parent: taskRole },
+    );
+    new PolicyAttachment(
+      `${this.#name}-${name}-configurator`,
+      {
+        roles: [taskRole],
+        policyArn: configuratorPolicy.arn,
+      },
+      { parent: taskRole },
+    );
 
     const task: awsx.ecs.FargateTaskDefinitionArgs = {
       runtimePlatform: {
@@ -93,7 +151,7 @@ export class TamanuServer extends ComponentResource {
       },
       containers: {
         main: {
-          image: `${serverImage}:${this.#args.imageTag}`,
+          image: serverImage,
           command,
           memory: memoryGB * 1024,
           cpu: cores * 1024,
@@ -101,6 +159,9 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
+          environment: [
+            { name: 'NODE_CONFIG_DIR', value: './config:/config' },
+          ],
           mountPoints: [
             {
               containerPath: '/config',
@@ -134,30 +195,8 @@ export class TamanuServer extends ComponentResource {
         },
       },
       volumes: [{ name: 'config' }],
-      executionRole: {
-        args: {
-          inlinePolicies: [
-            {
-              policy: jsonStringify({
-                Version: '2012-10-17',
-                Statement: [
-                  // read credentials for this Tamanu cluster's database
-                  {
-                    Effect: 'Allow',
-                    Action: ['secretsmanager:GetSecretValue'],
-                    Resource: dbSecret,
-                  },
-                  // read parameter for this server's config
-                  {
-                    Effect: 'Allow',
-                    Action: ['ssm:GetParameter'],
-                    Resource: this.#config!.arn,
-                  },
-                ].filter(Boolean),
-              }),
-            },
-          ],
-        },
+      taskRole: {
+        roleArn: taskRole.arn,
       },
     };
 
