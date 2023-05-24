@@ -208,8 +208,6 @@ export class ClusterInfra extends ComponentResource {
             PGHOST: endpoint.split(':')[0],
             PGPORT: endpoint.split(':')[1] ?? '5432',
             DB_SECRET: secrets[0].secretArn,
-            RUST_LOG: 'trace',
-            LOG_SENSITIVE_BODIES: 'true',
           }),
         ),
         network: {
