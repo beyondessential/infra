@@ -213,7 +213,21 @@ export class ClusterInfra extends ComponentResource {
         },
         policies: [
           {
-            // policy to allow reading db secrets for this cluster
+            // policy to allow reading the db-managed "master" secret(s)
+            name: 'getdbmastersecret',
+            policy: {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: ['secretsmanager:GetSecretValue'],
+                  Resource: this.#database.masterUserSecrets.apply(secrets => secrets.map(secret => secret.secretArn)),
+                },
+              ],
+            },
+          },
+          {
+            // policy to allow reading provisioned db secrets for this cluster
             name: 'getdbsecrets',
             policy: {
               Version: '2012-10-17',
