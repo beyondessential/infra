@@ -14,7 +14,6 @@ export interface TamanuServerArgs {
   imageName: string;
   imageTag: string;
   configTemplate: string;
-  dbEndpoint: Output<string>;
   dbCredentialArn: Output<string>;
 
   /** @default 1 */
@@ -79,7 +78,7 @@ export class TamanuServer extends ComponentResource {
   }
 
   service(name: string, command: string[]): awsx.ecs.FargateService {
-    const { imageName, memoryGB, cores, index, dbEndpoint, dbCredentialArn, httpScale } =
+    const { imageName, memoryGB, cores, index, dbCredentialArn, httpScale } =
       this.#args;
     const cluster = this.#infra.getOutput('cluster').apply(cluster => cluster.containers.ecs as string);
     const subnets = this.#infra.getOutput('network').apply(network => network.workloadSubnetIds as string[]);
@@ -122,7 +121,6 @@ export class TamanuServer extends ComponentResource {
           environment: [
             { name: 'RUST_LOG', value: 'info' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
-            dbEndpoint.apply((value) => ({ name: 'DB_HOST', value })),
             dbCredentialArn.apply((value) => ({ name: 'DB_CREDENTIALS_SECRET_ARN', value })),
             { name: 'TARGET_FILE', value: '/config/local.json' },
           ],

@@ -67,7 +67,6 @@ export class TamanuCluster extends ComponentResource {
         cores: 2,
         memoryGB: 4,
         configTemplate: 'configTemplates/central.json',
-        dbEndpoint: this.#db.endpoint,
         dbCredentialArn: provisionConfig.find((c) => c.name === `${name}-central`)!
           .password_from_secret,
       },
@@ -86,7 +85,6 @@ export class TamanuCluster extends ComponentResource {
             memoryGB: 2,
             index: i + 1,
             configTemplate: 'configTemplates/facility.json',
-            dbEndpoint: this.#db.endpoint,
             dbCredentialArn: provisionConfig.find((c) => c.name === `${name}-facility-${i + 1}`)!
               .password_from_secret,
           },
@@ -123,7 +121,10 @@ export class TamanuCluster extends ComponentResource {
       name,
       {
         secretValue: {
-          database: name,
+          // this structure makes this a rotatable secret
+          engine: 'postgres',
+          host: this.#db.endpoint,
+          dbname: name,
           username: name,
           password,
         },
