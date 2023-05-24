@@ -78,6 +78,7 @@ export class ClusterInfra extends ComponentResource {
       this.#name,
       {
         allocatedStorage: 20,
+        maxAllocatedStorage: 100,
         autoMinorVersionUpgrade: true,
         dbSubnetGroupName: dbSubnetGroup.name,
         engine: 'postgres',
@@ -85,7 +86,7 @@ export class ClusterInfra extends ComponentResource {
         instanceClass: 'db.t4g.medium', // ARM64
         manageMasterUserPassword: true,
         networkType: 'IPV4', // FIXME: DUAL
-        performanceInsightsEnabled: false, // DISABLE WHEN DEVING: adds two minutes to the boot/create time
+        performanceInsightsEnabled: true, // DISABLE WHEN DEVING: adds two minutes to the boot/create time
         publiclyAccessible: false,
         skipFinalSnapshot: true, // FIXME: configure final snapshot
         storageType: 'gp3',
