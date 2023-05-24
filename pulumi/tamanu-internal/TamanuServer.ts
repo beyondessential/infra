@@ -261,7 +261,6 @@ export class TamanuServer extends ComponentResource {
       {
         cluster,
         taskDefinitionArgs: task,
-        continueBeforeSteadyState: true, // for now
         desiredCount: httpScale,
         enableExecuteCommand: true,
         propagateTags: 'SERVICE',
