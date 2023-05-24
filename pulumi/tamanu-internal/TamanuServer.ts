@@ -62,13 +62,13 @@ export class TamanuServer extends ComponentResource {
           this.#args.imageName
         } server ${this.#args.index ?? ''}`,
         value: readFileSync(this.#args.configTemplate, 'utf8'),
-        overwrite: false,
+        overwrite: true,
       },
       { parent: this },
     );
 
     const http = this.service('http', ['serve']);
-    const tasks = this.service('tasks', ['tasks']);
+    const tasks = this.service('tasks', ['tasks'], true);
 
     this.registerOutputs(
       (this.outputs = {
@@ -78,7 +78,11 @@ export class TamanuServer extends ComponentResource {
     );
   }
 
-  service(name: string, command: string[]): awsx.ecs.FargateService {
+  service(
+    name: string,
+    command: string[],
+    withMigrations: boolean = false,
+  ): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
     const cluster = this.#infra
       .getOutput('cluster')
@@ -144,13 +148,10 @@ export class TamanuServer extends ComponentResource {
       { parent: taskRole },
     );
 
-    const task: awsx.ecs.FargateTaskDefinitionArgs = {
-      runtimePlatform: {
-        operatingSystemFamily: 'LINUX',
-        cpuArchitecture: 'X86_64',
-      },
-      containers: {
-        main: {
+    const containers = [
+      [
+        'main',
+        {
           image: serverImage,
           command,
           memory: memoryGB * 1024,
@@ -159,9 +160,7 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
-          environment: [
-            { name: 'NODE_CONFIG_DIR', value: './config:/config' },
-          ],
+          environment: [{ name: 'NODE_CONFIG_DIR', value: './config:/config' }],
           mountPoints: [
             {
               containerPath: '/config',
@@ -172,9 +171,14 @@ export class TamanuServer extends ComponentResource {
           dependsOn: [
             // start after the configurator is done
             { containerName: 'configurator', condition: 'COMPLETE' },
+            // start after migrations are applied
+            ...(withMigrations ? [{ containerName: 'migrator', condition: 'COMPLETE' }] : []),
           ],
         },
-        configurator: {
+      ],
+      [
+        'configurator',
+        {
           image: configuratorImage,
           command: [],
           memory: 512,
@@ -197,7 +201,43 @@ export class TamanuServer extends ComponentResource {
             },
           ],
         },
+      ],
+    ];
+
+    if (withMigrations) {
+      containers.push([
+        'migrator',
+        {
+          image: serverImage,
+          command: ['migrate'],
+          memory: 1024,
+          cpu: 1024,
+          essential: false,
+          linuxParameters: {
+            initProcessEnabled: true,
+          },
+          environment: [{ name: 'NODE_CONFIG_DIR', value: './config:/config' }],
+          mountPoints: [
+            {
+              containerPath: '/config',
+              sourceVolume: 'config',
+              readOnly: true,
+            },
+          ],
+          dependsOn: [
+            // start after the configurator is done
+            { containerName: 'configurator', condition: 'COMPLETE' },
+          ],
+        },
+      ]);
+    }
+
+    const task: awsx.ecs.FargateTaskDefinitionArgs = {
+      runtimePlatform: {
+        operatingSystemFamily: 'LINUX',
+        cpuArchitecture: 'X86_64',
       },
+      containers: Object.fromEntries(containers),
       volumes: [{ name: 'config' }],
       taskRole: {
         roleArn: taskRole.arn,
@@ -216,7 +256,7 @@ export class TamanuServer extends ComponentResource {
           subnets,
         },
       },
-      { parent: this },
+      { parent: this, dependsOn: [this.#config] },
     );
   }
 }

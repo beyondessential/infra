@@ -1,6 +1,6 @@
 {
   "db": {
-    "migrateOnStartup": true
+    "migrateOnStartup": false
   },
   "auth": {
     "secret": "REDACTED",
