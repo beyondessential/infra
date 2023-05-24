@@ -67,7 +67,7 @@ export class TamanuCluster extends ComponentResource {
         cores: 2,
         memoryGB: 4,
         configTemplate: 'configTemplates/central.json',
-        dbCredentialArn: databases.find((c) => c.name === `${name}-central`)!.password_from_secret,
+        dbSecret: databases.find((c) => c.name === `${name}-central`)!.secret,
       },
       { parent: this, dependsOn: [provisioner] },
     );
@@ -84,8 +84,8 @@ export class TamanuCluster extends ComponentResource {
             memoryGB: 2,
             index: i + 1,
             configTemplate: 'configTemplates/facility.json',
-            dbCredentialArn: databases.find((c) => c.name === `${name}-facility-${i + 1}`)!
-              .password_from_secret,
+            dbSecret: databases.find((c) => c.name === `${name}-facility-${i + 1}`)!
+              .secret,
           },
           { parent: this, dependsOn: [provisioner] },
         ),
@@ -144,7 +144,7 @@ export class TamanuCluster extends ComponentResource {
       {
         name,
         owner: name,
-        password_from_secret: secret.outputs.arn,
+        secret: secret.outputs.arn,
         extensions: ['uuid-ossp'],
       },
     ];
@@ -163,17 +163,7 @@ export class TamanuCluster extends ComponentResource {
     const dbProvisioner = this.#infra
       .getOutput('cluster')
       .apply((cluster) => cluster.provisioner as string);
-    const dbProvisionerInput: DbProvisionerInput = {
-      db_instance: {
-        host: this.#db.endpoint,
-        database: 'postgres',
-        credential_from_secret: this.#db.masterUserSecrets.apply(
-          (secrets: { secretArn: string }[]) => secrets[0].secretArn,
-        ),
-      },
-      databases,
-    };
-
+    const dbProvisionerInput: DbProvisionerInput = { databases };
     const provisioner = new aws.lambda.Invocation(
       `${this.#name}-provisioner`,
       {
@@ -188,17 +178,7 @@ export class TamanuCluster extends ComponentResource {
 }
 
 interface DbProvisionerInput {
-  db_instance: DbProvisionerDbInstance;
   databases: DbProvisionerDatabase[];
-}
-
-// Admin access to the RDS instance
-interface DbProvisionerDbInstance {
-  host: Output<string>;
-  database: string;
-
-  // Secret ARN for the username+password
-  credential_from_secret: Output<string>;
 }
 
 interface DbProvisionerDatabase {
@@ -206,7 +186,7 @@ interface DbProvisionerDatabase {
   owner: string;
 
   // Secret ARN for the password
-  password_from_secret: Output<string>;
+  secret: Output<string>;
 
   // PostgreSQL extensions to install
   extensions?: string[];

@@ -205,7 +205,8 @@ export class ClusterInfra extends ComponentResource {
         timeoutSec: 300,
         environment: {
           RUST_LOG: 'debug',
-          // TODO: pass database endpoint etc here instead of as inputs
+          DB_HOST: this.#database.endpoint,
+          DB_SECRET: this.#database.masterUserSecrets.apply(secrets => secrets[0].secretArn),
         },
         network: {
           subnetIds: this.#network.workloadSubnetIds,

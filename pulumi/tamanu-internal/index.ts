@@ -4,4 +4,4 @@ import { TamanuCluster } from './TamanuCluster';
 const cfg = new Config();
 const imageTag = cfg.require('imageTag');
 const { outputs: cluster } = new TamanuCluster(getStack(), { imageTag, numberOfFacilities: 0 });
-export const { database, databaseEndpoint, facilityCount, services } = cluster;
+export const { facilityCount, services } = cluster;
