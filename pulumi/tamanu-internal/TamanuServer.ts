@@ -199,7 +199,7 @@ export class TamanuServer extends ComponentResource {
             { name: 'RUST_LOG', value: 'info' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
-            { name: 'TARGET_FILE', value: '/config/local.json' },
+            { name: 'TARGET_FILE', value: '/config/production.json' },
           ],
           mountPoints: [
             {
