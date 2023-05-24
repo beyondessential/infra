@@ -65,7 +65,7 @@ export class TamanuCluster extends ComponentResource {
         imageName: 'central',
         imageTag: this.#args.imageTag,
         cores: 2,
-        memoryGB: 4,
+        memoryGB: 2,
         configTemplate: 'configTemplates/central.json',
         dbSecret: databases.find((c) => c.name === `${name}-central`)!.secret,
       },
