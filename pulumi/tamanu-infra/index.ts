@@ -1,6 +1,7 @@
 import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr';
 import { ClusterInfra } from './ClusterInfra';
 import { Network } from './Network';
+import { Policy } from '@pulumi/aws/iam';
 
 export const repos = Object.fromEntries(
   ['central', 'configurator', 'facility', 'meta'].map((image) => [
@@ -24,5 +25,25 @@ export const { outputs: cluster } = new ClusterInfra('internal', {
   network,
   tags: {
     Application: 'Tamanu',
+  },
+});
+
+// ECS Exec support
+// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html#ecs-exec-enabling-and-using
+export const { arn: ssmExecPolicy } = new Policy('ECSTaskPolicyForSSMExec', {
+  policy: {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: [
+          'ssmmessages:CreateControlChannel',
+          'ssmmessages:CreateDataChannel',
+          'ssmmessages:OpenControlChannel',
+          'ssmmessages:OpenDataChannel',
+        ],
+        Resource: '*',
+      },
+    ],
   },
 });

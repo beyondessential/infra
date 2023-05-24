@@ -147,6 +147,14 @@ export class TamanuServer extends ComponentResource {
       },
       { parent: taskRole },
     );
+    new PolicyAttachment(
+      `${this.#name}-${name}-ssmexec`,
+      {
+        roles: [taskRole],
+        policyArn: this.#infra.getOutput('ssmExecPolicy'),
+      },
+      { parent: taskRole },
+    );
 
     const containers = [
       [
@@ -188,8 +196,7 @@ export class TamanuServer extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'RUST_LOG', value: 'trace' },
-            { name: 'LOG_SENSITIVE_BODIES', value: 'true' },
+            { name: 'RUST_LOG', value: 'info' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
             { name: 'TARGET_FILE', value: '/config/local.json' },
@@ -252,6 +259,7 @@ export class TamanuServer extends ComponentResource {
         taskDefinitionArgs: task,
         continueBeforeSteadyState: true, // for now
         desiredCount: httpScale,
+        enableExecuteCommand: true,
         propagateTags: 'SERVICE',
         networkConfiguration: {
           subnets,
