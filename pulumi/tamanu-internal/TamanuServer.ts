@@ -67,8 +67,8 @@ export class TamanuServer extends ComponentResource {
       { parent: this },
     );
 
-    const http = this.service('http', ['serve']);
-    const tasks = this.service('tasks', ['tasks'], true);
+    const tasks = this.service('tasks', ['tasks'], { withMigrations: true });
+    const http = this.service('http', ['serve'], { dependsOn: [tasks] });
 
     this.registerOutputs(
       (this.outputs = {
@@ -81,7 +81,7 @@ export class TamanuServer extends ComponentResource {
   service(
     name: string,
     command: string[],
-    withMigrations: boolean = false,
+    { withMigrations = false, dependsOn = [] }: ServiceOptions = {},
   ): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
     const cluster = this.#infra
@@ -188,7 +188,8 @@ export class TamanuServer extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'RUST_LOG', value: 'info' },
+            { name: 'RUST_LOG', value: 'trace' },
+            { name: 'LOG_SENSITIVE_BODIES', value: 'true' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
             { name: 'TARGET_FILE', value: '/config/local.json' },
@@ -256,7 +257,12 @@ export class TamanuServer extends ComponentResource {
           subnets,
         },
       },
-      { parent: this, dependsOn: [this.#config] },
+      { parent: this, dependsOn: [this.#config, ...dependsOn] },
     );
   }
+}
+
+interface ServiceOptions {
+  withMigrations?: boolean;
+  dependsOn?: ComponentResource[];
 }
