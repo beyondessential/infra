@@ -15,6 +15,7 @@ export const repos = Object.fromEntries(
 
 export const { outputs: network } = new Network('internal', {
   ipv4Cidr: '10.0.0.0/16',
+  zones: ['a', 'b'],
   tags: {
     Application: 'Tamanu',
     Cluster: 'internal',
