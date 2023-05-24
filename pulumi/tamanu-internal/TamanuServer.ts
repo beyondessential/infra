@@ -169,6 +169,10 @@ export class TamanuServer extends ComponentResource {
               readOnly: true,
             },
           ],
+          dependsOn: [
+            // start after the configurator is done
+            { containerName: 'configurator', condition: 'COMPLETE' },
+          ],
         },
         configurator: {
           image: configuratorImage,
