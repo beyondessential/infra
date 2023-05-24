@@ -168,7 +168,9 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
-          environment: [{ name: 'NODE_CONFIG_DIR', value: './config:/config' }],
+          environment: [
+            { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
+          ],
           mountPoints: [
             {
               containerPath: '/config',
@@ -224,7 +226,9 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
-          environment: [{ name: 'NODE_CONFIG_DIR', value: './config:/config' }],
+          environment: [
+            { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
+          ],
           mountPoints: [
             {
               containerPath: '/config',
