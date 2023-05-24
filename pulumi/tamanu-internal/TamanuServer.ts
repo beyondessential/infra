@@ -170,9 +170,9 @@ export class TamanuServer extends ComponentResource {
           ],
           dependsOn: [
             // start after the configurator is done
-            { containerName: 'configurator', condition: 'COMPLETE' },
+            { containerName: 'configurator', condition: 'SUCCESS' },
             // start after migrations are applied
-            ...(withMigrations ? [{ containerName: 'migrator', condition: 'COMPLETE' }] : []),
+            ...(withMigrations ? [{ containerName: 'migrator', condition: 'SUCCESS' }] : []),
           ],
         },
       ],
@@ -227,7 +227,7 @@ export class TamanuServer extends ComponentResource {
           ],
           dependsOn: [
             // start after the configurator is done
-            { containerName: 'configurator', condition: 'COMPLETE' },
+            { containerName: 'configurator', condition: 'SUCCESS' },
           ],
         },
       ]);
