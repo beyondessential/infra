@@ -120,14 +120,18 @@ export class TamanuCluster extends ComponentResource {
     const secretMeta = new Secret(
       name,
       {
-        secretValue: {
-          // this structure makes this a rotatable secret
-          engine: 'postgres',
-          host: this.#db.endpoint,
-          dbname: name,
-          username: name,
-          password,
-        },
+        secretValue: this.#db.endpoint.apply((endpoint) => {
+          const [host, port] = endpoint.split(':');
+          return {
+            // this structure makes this a rotatable secret
+            engine: 'postgres',
+            host,
+            port,
+            dbname: name,
+            username: name,
+            password,
+          };
+        }),
         namePrefix: `internal-db-${this.#name}-`,
         description: `PostgresSQL credentials for Tamanu Internal deployment ${
           this.#name
