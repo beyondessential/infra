@@ -54,6 +54,16 @@ ln -s /usr/bin/doas /usr/local/bin/s
 # do this very simply. root has /bin/ash, and all others have /sbin/nologin.
 sed -i 's|/bin/sh|/usr/bin/fish|' /etc/passwd
 
+# Add alpine environment variables to fish
+cat <<EOF > /etc/fish/conf.d/alpine.fish
+set -gx CHARSET UTF-8
+set -gx LANG C.UTF-8
+set -gx LC_COLLATE C
+set -gx PATH /bin /usr/bin /usr/local/sbin /usr/local/bin /usr/sbin /sbin
+set -gx PAGER less
+umask 022
+EOF
+
 
 ## PostgreSQL client so one can access the database from the jumpbox if wanted
 apk add postgresql-client
