@@ -33,6 +33,7 @@ tailscale up --hostname %TAILSCALE_NAME% --ssh --auth-key %TAILSCALE_AUTH_KEY%
 apk add \
   bash \
   curl \
+  dog \
   fish \
   git \
   jq \
