@@ -95,7 +95,7 @@ export class TamanuCluster extends ComponentResource {
       (this.outputs = {
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          centralServer: central.outputs,
+          central: central.outputs,
           ...Object.fromEntries(
             facilities.map((facility, i) => [`facility${i + 1}`, facility.outputs]),
           ),

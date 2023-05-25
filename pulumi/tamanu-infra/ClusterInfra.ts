@@ -16,6 +16,7 @@ export interface ClusterInfraOutputs {
   containers: {
     securityGroup: Output<string>;
     ecs: Output<string>;
+    discovery: Output<string>;
   };
 }
 
@@ -25,6 +26,7 @@ export class ClusterInfra extends ComponentResource {
   #args: Omit<Required<ClusterInfraArgs>, 'network'>;
 
   #cluster: Cluster;
+  #cloudmap: PrivateDnsNamespace;
   #database: DBInstance;
   #securityGroups: { [key: string]: SecurityGroup };
 
@@ -47,17 +49,24 @@ export class ClusterInfra extends ComponentResource {
     // Security groups
     this.#securityGroups = this.securityGroups();
 
-    // Subnet group for database
-    const dbSubnetGroup = new SubnetGroup(
-      name,
+    // ECS cluster
+    this.#cluster = new Cluster(
+      this.#name,
       {
-        subnetIds: this.#network.workloadSubnetIds,
-        tags: {
-          Name: `${name}-database`,
-          Purpose: 'database',
-          ...this.#args.tags,
+        tags: this.#args.tags,
         },
+      { parent: this },
+    );
+
+    this.#cloudmap = new PrivateDnsNamespace(
+      this.#name,
+      {
+        name: `${this.#name}.tamanu.bes.au`,
+        vpc: this.#network.vpc,
+        tags: this.#args.tags,
       },
+      { parent: this.#cluster },
+    );
       {
         parent: this,
       },
@@ -105,6 +114,7 @@ export class ClusterInfra extends ComponentResource {
         containers: {
           securityGroup: this.#securityGroups.containers.id,
           ecs: this.#cluster.arn,
+          discovery: this.#cloudmap.id,
         },
       }),
     );

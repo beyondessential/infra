@@ -56,8 +56,10 @@ export class Network extends ComponentResource {
     this.#vpc = new Vpc(
       name,
       {
+        // both required for service discovery
         enableDnsSupport: true,
         enableDnsHostnames: true,
+
         cidrBlock: args.ipv4Cidr,
         tags: {
           Name: name,

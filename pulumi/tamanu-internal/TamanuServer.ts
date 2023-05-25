@@ -7,6 +7,7 @@ import {
   jsonStringify,
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
+import { Service } from '@pulumi/aws/servicediscovery';
 import { Parameter } from '@pulumi/aws/ssm';
 import { Policy, PolicyAttachment, Role } from '@pulumi/aws/iam';
 
@@ -67,8 +68,31 @@ export class TamanuServer extends ComponentResource {
       { parent: this },
     );
 
+    const namespace = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.containers.discovery as string);
+
+    const discovery = new Service(
+      `${this.#args.clusterName}-${this.#name}`,
+      {
+        dnsConfig: {
+          namespaceId: namespace,
+          dnsRecords: [
+            { ttl: 10, type: 'A' },
+            { ttl: 10, type: 'SRV' },
+          ],
+        },
+        healthCheckCustomConfig: {
+          failureThreshold: 3,
+        },
+      },
+      {
+        parent: this,
+      },
+    );
+
     const tasks = this.service('tasks', ['tasks'], { withMigrations: true });
-    const http = this.service('http', ['serve'], { dependsOn: [tasks] });
+    const http = this.service('http', ['serve'], { discovery, dependsOn: [tasks] });
 
     this.registerOutputs(
       (this.outputs = {
@@ -81,7 +105,7 @@ export class TamanuServer extends ComponentResource {
   service(
     name: string,
     command: string[],
-    { withMigrations = false, dependsOn = [] }: ServiceOptions = {},
+    { withMigrations = false, discovery, dependsOn = [] }: ServiceOptions = {},
   ): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
     const cluster = this.#infra
@@ -156,7 +180,7 @@ export class TamanuServer extends ComponentResource {
       { parent: taskRole },
     );
 
-    const containers = [
+    const containers: [string, awsx.types.input.ecs.TaskDefinitionContainerDefinitionArgs][] = [
       [
         'main',
         {
@@ -168,9 +192,8 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
-          environment: [
-            { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
-          ],
+          environment: [{ name: 'NODE_CONFIG_STRICT_MODE', value: 'true' }],
+          portMappings: discovery && [{ containerPort: 3000, protocol: 'HTTP' }],
           mountPoints: [
             {
               containerPath: '/config',
@@ -226,9 +249,7 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
-          environment: [
-            { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
-          ],
+          environment: [{ name: 'NODE_CONFIG_STRICT_MODE', value: 'true' }],
           mountPoints: [
             {
               containerPath: '/config',
@@ -264,6 +285,10 @@ export class TamanuServer extends ComponentResource {
         desiredCount: httpScale,
         enableExecuteCommand: true,
         propagateTags: 'SERVICE',
+        serviceRegistries: discovery && {
+          port: 3000,
+          registryArn: discovery.arn,
+        },
         networkConfiguration: {
           subnets,
         },
@@ -275,5 +300,6 @@ export class TamanuServer extends ComponentResource {
 
 interface ServiceOptions {
   withMigrations?: boolean;
+  discovery?: Service;
   dependsOn?: ComponentResource[];
 }
