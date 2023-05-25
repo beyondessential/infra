@@ -1,11 +1,14 @@
-import { ComponentResource, ComponentResourceOptions, Output, all } from '@pulumi/pulumi';
+import { ComponentResource, ComponentResourceOptions, Output, all, secret } from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
-import { SecurityGroup } from '@pulumi/aws/ec2';
+import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
 import { Network, NetworkOutputs } from './Network';
 import { RustLambda } from './RustLambda';
-import { LoadBalancer, TargetGroup } from '@pulumi/aws/lb';
+import { LoadBalancer } from '@pulumi/aws/lb';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
+import { readFileSync } from 'fs';
+import { DeviceKey, DeviceTags, TailnetKey } from '@pulumi/tailscale';
+import { getDeviceOutput } from '@pulumi/tailscale/getDevice';
 
 export interface ClusterInfraArgs {
   network: Network | NetworkOutputs;
@@ -14,8 +17,7 @@ export interface ClusterInfraArgs {
 
 export interface ClusterInfraOutputs {
   endpoints: {
-    alb: Output<string>;
-    elb: Output<string>;
+    lb: Output<string>;
   };
   database: Output<string>;
   provisioner: Output<string>;
@@ -34,8 +36,7 @@ export class ClusterInfra extends ComponentResource {
   #cluster: Cluster;
   #cloudmap: PrivateDnsNamespace;
   #database: DBInstance;
-  #alb: LoadBalancer;
-  #elb: LoadBalancer;
+  #lb: LoadBalancer;
   #securityGroups: { [key: string]: SecurityGroup };
 
   outputs: ClusterInfraOutputs;
@@ -77,37 +78,17 @@ export class ClusterInfra extends ComponentResource {
     );
 
     // Application LB across zones for API and Web public access to containers.
-    this.#alb = new LoadBalancer(
+    this.#lb = new LoadBalancer(
       // Workaround for LB names being forbidden from starting with internal-
       `${this.#name.startsWith('internal') ? `tamanu-${this.#name}` : this.#name}-http`,
       {
         internal: false,
         loadBalancerType: 'application',
-        subnets: this.#network.workloadSubnetIds,
+        subnets: this.#network.natSubnetIds,
         ipAddressType: 'ipv4',
         tags: {
           Purpose: 'containers',
-          ...this.#args.tags
-        },
-      },
-      { parent: this },
-    );
-
-    // Network LB across zones for TCP public access. This is used for direct/psql
-    // access to the database instance (for testers), as well as other uses for
-    // manual debugging. In fine this should probably be replaced by a VPN host
-    // inside the subnets to avoid exposing any of this to the internet.
-    this.#elb = new LoadBalancer(
-      // Workaround for LB names being forbidden from starting with internal-
-      `${this.#name.startsWith('internal') ? `tamanu-${this.#name}` : this.#name}-net`,
-      {
-        internal: false,
-        loadBalancerType: 'network',
-        subnets: this.#network.workloadSubnetIds,
-        ipAddressType: 'ipv4',
-        tags: {
-          Purpose: 'database',
-          ...this.#args.tags
+          ...this.#args.tags,
         },
       },
       { parent: this },
@@ -117,6 +98,10 @@ export class ClusterInfra extends ComponentResource {
     // Obviously this would be bad for production but for internal use it's good:
     // cheaper in aggregate, and tons faster to boot a new cluster.
     this.#database = this.database();
+
+    // Tailscale-only jumpbox for within-VPC access for ops,
+    // and for external access to the database for devs/testers.
+    this.jumpBox();
 
     this.registerOutputs(
       (this.outputs = {
@@ -128,8 +113,7 @@ export class ClusterInfra extends ComponentResource {
           discovery: this.#cloudmap.id,
         },
         endpoints: {
-          alb: this.#alb.dnsName,
-          elb: this.#elb.dnsName,
+          lb: this.#lb.dnsName,
         },
       }),
     );
@@ -185,7 +169,6 @@ export class ClusterInfra extends ComponentResource {
         vpcId: this.#network.vpc,
         ingress: [
           allICMPv4,
-          openPort('SSH', 22), // FIXME: testing
           openPort('HTTP', 80),
           openPort('HTTPS', 443),
           openPort('HTTP/3', 443, 'udp'),
@@ -219,7 +202,24 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    return { databases, containers, provisioner };
+    const jumpbox = new SecurityGroup(
+      `${this.#name}-jumpbox`,
+      {
+        vpcId: this.#network.vpc,
+        ingress: [],
+        egress: [all],
+        tags: {
+          Name: `${this.#name}-jumpbox`,
+          Purpose: 'jumpbox',
+          ...this.#args.tags,
+        },
+      },
+      {
+        parent: this,
+      },
+    );
+
+    return { databases, containers, provisioner, jumpbox };
   }
 
   database() {
@@ -261,16 +261,6 @@ export class ClusterInfra extends ComponentResource {
         parent: this,
       },
     );
-
-    // const lbTarget = new TargetGroup(
-    //   `${this.#name}-database`,
-    //   {
-    //     targetType: ''
-    //     port: rds.port,
-    //     protocol: 'TCP',
-    //   },
-    //   {parent: rds}
-    // );
 
     return rds;
   }
@@ -329,5 +319,91 @@ export class ClusterInfra extends ComponentResource {
       },
       { parent: this },
     );
+  }
+
+  jumpBox() {
+    const alpine = getAmiOutput({
+      mostRecent: true,
+      filters: [
+        {
+          name: 'name',
+          values: ['alpine-3.*-aarch64-uefi-tiny-r0'],
+          // tiny = https://gitlab.alpinelinux.org/alpine/cloud/tiny-cloud
+        },
+        {
+          name: 'virtualization-type',
+          values: ['hvm'],
+        },
+      ],
+      owners: ['538276064493'], // official Alpine images
+    });
+
+    const name = `${this.#name}-jumpbox`;
+
+    const authKey = new TailnetKey(
+      name,
+      {
+        ephemeral: false,
+        expiry: 300,
+        preauthorized: true,
+        reusable: false, // single-use
+      },
+      { parent: this },
+    );
+
+    const box = new Instance(
+      name,
+      {
+        ami: alpine.id,
+        instanceType: 't4g.nano',
+        rootBlockDevice: {
+          volumeSize: 1,
+        },
+        subnetId: this.#network.workloadSubnetIds[0],
+        vpcSecurityGroupIds: [this.#securityGroups.jumpbox.id],
+        userData: all([this.#database.endpoint, authKey.key]).apply(([endpoint, key]) =>
+          secret(
+            readFileSync('jumpbox-init.sh', 'utf-8')
+              .replace('%DB_ENDPOINT%', endpoint)
+              .replace('%TAILSCALE_AUTH_KEY%', key)
+              .replace('%TAILSCALE_NAME%', name),
+          ),
+        ),
+        userDataReplaceOnChange: true,
+        tags: {
+          Name: name,
+          Purpose: 'jumpbox',
+          ...this.#args.tags,
+        },
+      },
+      { parent: authKey },
+    );
+
+    const tailscaleDevice = getDeviceOutput({
+      name,
+      waitFor: '3m',
+    });
+
+    // Disable key expiry
+    new DeviceKey(
+      name,
+      {
+        deviceId: tailscaleDevice.id,
+        keyExpiryDisabled: true,
+      },
+      { parent: authKey },
+    );
+
+    // Configure Tailscale tags
+    new DeviceTags(
+      name,
+      {
+        deviceId: tailscaleDevice.id,
+        tags: ['tag:infra', 'tag:infra-dbproxy'],
+      },
+      { parent: authKey },
+    );
+
+    return box;
   }
 }

@@ -13,6 +13,7 @@
     "@pulumi/aws-native": "^0.8.0",
     "@pulumi/awsx": "^1.0.2",
     "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/tailscale": "^0.12.1",
     "@types/netmask": "^2.0.0",
     "lodash": "^4.17.21",
     "netmask": "^2.0.2"
