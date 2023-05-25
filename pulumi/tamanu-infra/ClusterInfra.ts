@@ -353,9 +353,7 @@ export class ClusterInfra extends ComponentResource {
     const authKey = new TailnetKey(
       name,
       {
-        // recreate if the script changes
-        // this is a quick way to force a redeploy
-        ephemeral: output(readFileSync('jumpbox-init.sh', 'utf-8')).apply((_) => false),
+        ephemeral: false,
 
         // we'll wait 3 minutes for it to be ready
         // plus 2 minutes for the box to launch
@@ -371,9 +369,8 @@ export class ClusterInfra extends ComponentResource {
     );
 
     // If you need to recreate the jumpbox without destroying the rest of the stack,
-    // *and the jumpbox's tailnet device was not created*, you'll need to manually
-    // terminate the jumpbox EC2 instance and delete the TailnetKey (and dependent)
-    // from the pulumi state.
+    // you'll need to manually terminate the jumpbox EC2 instance, remove the device
+    // from Tailscale, and delete the TailnetKey (and dependents) from the Pulumi state.
 
     const box = new Instance(
       name,
@@ -386,6 +383,10 @@ export class ClusterInfra extends ComponentResource {
         },
         subnetId: this.#network.workloadSubnetIds[0],
         vpcSecurityGroupIds: [this.#securityGroups.jumpbox.id],
+
+        // Changes to the script or to the db endpoint will _not_ cause the box to be replaced,
+        // and will _not_ cause the script to be re-run. If you need to, either manually delete
+        // as explained above, or make the changes yourself via SSH.
         userData: all([this.#database.endpoint, authKey.key]).apply(([endpoint, key]) =>
           secret(
             readFileSync('jumpbox-init.sh', 'utf-8')
@@ -394,7 +395,6 @@ export class ClusterInfra extends ComponentResource {
               .replace(/%TAILSCALE_NAME%/g, tailscaleName),
           ),
         ),
-        userDataReplaceOnChange: true,
         tags: {
           Name: name,
           Purpose: 'jumpbox',
