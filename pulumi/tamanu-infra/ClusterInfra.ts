@@ -31,7 +31,8 @@ export interface ClusterInfraOutputs {
   containers: {
     securityGroup: Output<string>;
     ecs: Output<string>;
-    discovery: Output<string>;
+    namespaceId: Output<string>;
+    namespaceName: Output<string>;
   };
 }
 
@@ -117,7 +118,8 @@ export class ClusterInfra extends ComponentResource {
         containers: {
           securityGroup: this.#securityGroups.containers.id,
           ecs: this.#cluster.arn,
-          discovery: this.#cloudmap.id,
+          namespaceId: this.#cloudmap.id,
+          namespaceName: this.#cloudmap.name,
         },
         endpoints: {
           lb: this.#lb.dnsName,

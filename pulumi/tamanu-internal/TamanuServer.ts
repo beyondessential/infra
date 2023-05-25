@@ -4,12 +4,15 @@ import {
   ComponentResourceOptions,
   Output,
   StackReference,
+  all,
   jsonStringify,
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import { Service } from '@pulumi/aws/servicediscovery';
 import { Parameter } from '@pulumi/aws/ssm';
 import { Policy, PolicyAttachment, Role } from '@pulumi/aws/iam';
+
+const DEFAULT_PORT = 3000;
 
 export interface TamanuServerArgs {
   clusterName: string;
@@ -24,14 +27,15 @@ export interface TamanuServerArgs {
   memoryGB?: number;
   /** @default 1 */
   httpScale?: number;
+  /** @default 3000 */
+  port?: number;
 
   // for facilities
   index?: null | number;
 }
 
 export interface TamanuServerOutputs {
-  http: Output<string>;
-  tasks: Output<string>;
+  internalEndpoint: Output<string>;
 }
 
 export class TamanuServer extends ComponentResource {
@@ -51,6 +55,7 @@ export class TamanuServer extends ComponentResource {
       cores: 1,
       memoryGB: 1,
       httpScale: 1,
+      port: DEFAULT_PORT,
       ...args,
     };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
@@ -70,13 +75,16 @@ export class TamanuServer extends ComponentResource {
 
     const namespace = this.#infra
       .getOutput('cluster')
-      .apply((cluster) => cluster.containers.discovery as string);
+      .apply((cluster) => cluster.containers.namespaceName as string);
+    const namespaceId = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.containers.namespaceId as string);
 
     const discovery = new Service(
       `${this.#args.clusterName}-${this.#name}`,
       {
         dnsConfig: {
-          namespaceId: namespace,
+          namespaceId,
           dnsRecords: [
             { ttl: 10, type: 'A' },
             { ttl: 10, type: 'SRV' },
@@ -92,12 +100,13 @@ export class TamanuServer extends ComponentResource {
     );
 
     const tasks = this.service('tasks', ['tasks'], { withMigrations: true });
-    const http = this.service('http', ['serve'], { discovery, dependsOn: [tasks] });
+    this.service('http', ['serve'], { discovery, dependsOn: [tasks] });
 
     this.registerOutputs(
       (this.outputs = {
-        http: http.service.id,
-        tasks: tasks.service.id,
+        internalEndpoint: all([discovery.name, namespace]).apply(
+          ([name, namespace]) => `${name}.${namespace}:${this.#args.port}`,
+        ),
       }),
     );
   }
@@ -192,8 +201,13 @@ export class TamanuServer extends ComponentResource {
           linuxParameters: {
             initProcessEnabled: true,
           },
-          environment: [{ name: 'NODE_CONFIG_STRICT_MODE', value: 'true' }],
-          portMappings: discovery && [{ containerPort: 3000, protocol: 'HTTP' }],
+          environment: [
+            { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
+            ...(discovery && this.#args.port !== DEFAULT_PORT
+              ? [{ name: 'NODE_CONFIG', value: jsonStringify({ port: this.#args.port }) }]
+              : []),
+          ],
+          portMappings: discovery && [{ containerPort: this.#args.port, protocol: 'HTTP' }],
           healthCheck: {
             command: ['CMD', '/entrypoint', 'healthcheck', ...command],
             startPeriod: 30,
@@ -290,7 +304,7 @@ export class TamanuServer extends ComponentResource {
         enableExecuteCommand: true,
         propagateTags: 'SERVICE',
         serviceRegistries: discovery && {
-          port: 3000,
+          port: this.#args.port,
           registryArn: discovery.arn,
         },
         networkConfiguration: {
