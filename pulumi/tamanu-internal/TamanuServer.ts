@@ -195,8 +195,8 @@ export class TamanuServer extends ComponentResource {
           environment: [{ name: 'NODE_CONFIG_STRICT_MODE', value: 'true' }],
           portMappings: discovery && [{ containerPort: 3000, protocol: 'HTTP' }],
           healthCheck: {
-            command: ['CMD', 'healthcheck', ...command],
-            startPeriod: 10,
+            command: ['CMD', '/entrypoint', 'healthcheck', ...command],
+            startPeriod: 30,
           },
           mountPoints: [
             {
