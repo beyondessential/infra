@@ -1,4 +1,11 @@
-import { ComponentResource, ComponentResourceOptions, Output, all, secret } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  ComponentResourceOptions,
+  Output,
+  all,
+  output,
+  secret,
+} from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
 import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
@@ -7,7 +14,7 @@ import { RustLambda } from './RustLambda';
 import { LoadBalancer } from '@pulumi/aws/lb';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
 import { readFileSync } from 'fs';
-import { DeviceKey, DeviceTags, TailnetKey } from '@pulumi/tailscale';
+import { DeviceKey, TailnetKey } from '@pulumi/tailscale';
 import { getDeviceOutput } from '@pulumi/tailscale/getDevice';
 
 export interface ClusterInfraArgs {
@@ -339,21 +346,37 @@ export class ClusterInfra extends ComponentResource {
     });
 
     const name = `${this.#name}-jumpbox`;
+    const tailscaleName = `tamanu-${this.#name}-jumpbox`;
 
     const authKey = new TailnetKey(
       name,
       {
-        ephemeral: false,
+        // recreate if the script changes
+        // this is a quick way to force a redeploy
+        ephemeral: output(readFileSync('jumpbox-init.sh', 'utf-8')).apply((_) => false),
+
+        // we'll wait 3 minutes for it to be ready
+        // plus 2 minutes for the box to launch
         expiry: 300,
-        preauthorized: true,
+
         reusable: false, // single-use
+        preauthorized: true, // no need to approve manually
+
+        // apply those on the device on creation
+        tags: ['tag:infra', 'tag:infra-dbproxy'],
       },
       { parent: this },
     );
 
+    // If you need to recreate the jumpbox without destroying the rest of the stack,
+    // *and the jumpbox's tailnet device was not created*, you'll need to manually
+    // terminate the jumpbox EC2 instance and delete the TailnetKey (and dependent)
+    // from the pulumi state.
+
     const box = new Instance(
       name,
       {
+        keyName: 'test',
         ami: alpine.id,
         instanceType: 't4g.nano',
         rootBlockDevice: {
@@ -364,9 +387,9 @@ export class ClusterInfra extends ComponentResource {
         userData: all([this.#database.endpoint, authKey.key]).apply(([endpoint, key]) =>
           secret(
             readFileSync('jumpbox-init.sh', 'utf-8')
-              .replace('%DB_ENDPOINT%', endpoint)
-              .replace('%TAILSCALE_AUTH_KEY%', key)
-              .replace('%TAILSCALE_NAME%', name),
+              .replace(/%DB_ENDPOINT%/g, endpoint)
+              .replace(/%TAILSCALE_AUTH_KEY%/g, key)
+              .replace(/%TAILSCALE_NAME%/g, tailscaleName),
           ),
         ),
         userDataReplaceOnChange: true,
@@ -380,26 +403,19 @@ export class ClusterInfra extends ComponentResource {
     );
 
     const tailscaleDevice = getDeviceOutput({
-      name,
+      // bind to the box, even if we don't use any of the outputs
+      // the suffix here is the MagicDNS domain for our tailnet
+      name: box.arn.apply((_) => `${tailscaleName}.tail22b03.ts.net`),
       waitFor: '3m',
     });
 
-    // Disable key expiry
+    // Disable device key expiry so we don't have to attend to the box.
+    // this is different from the TailnetKey expiry, which must be kept short
     new DeviceKey(
       name,
       {
         deviceId: tailscaleDevice.id,
         keyExpiryDisabled: true,
-      },
-      { parent: authKey },
-    );
-
-    // Configure Tailscale tags
-    new DeviceTags(
-      name,
-      {
-        deviceId: tailscaleDevice.id,
-        tags: ['tag:infra', 'tag:infra-dbproxy'],
       },
       { parent: authKey },
     );
