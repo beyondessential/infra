@@ -11,6 +11,10 @@ import * as awsx from '@pulumi/awsx';
 import { Service } from '@pulumi/aws/servicediscovery';
 import { Parameter } from '@pulumi/aws/ssm';
 import { Policy, PolicyAttachment, Role } from '@pulumi/aws/iam';
+import { ListenerCertificate, ListenerRule } from '@pulumi/aws/lb';
+import { TargetGroup } from '@pulumi/aws/lb';
+import { ValidCertificate } from '../ValidCertificate';
+import { Record } from '@pulumi/aws/route53';
 
 const DEFAULT_PORT = 3000;
 
@@ -35,6 +39,7 @@ export interface TamanuServerArgs {
 }
 
 export interface TamanuServerOutputs {
+  externalEndpoint: Output<string>;
   internalEndpoint: Output<string>;
 }
 
@@ -99,11 +104,89 @@ export class TamanuServer extends ComponentResource {
       },
     );
 
+    const vpcId = this.#infra.getOutput('network').apply((network) => network.vpc as string);
+    const targetGroup = new TargetGroup(
+      `${this.#args.clusterName}-${this.#name}`,
+      {
+        targetType: 'ip',
+        ipAddressType: 'ipv4',
+        port: this.#args.port,
+        protocol: 'HTTP',
+        protocolVersion: 'HTTP1',
+        vpcId,
+      },
+      { parent: this },
+    );
+
     const tasks = this.service('tasks', ['tasks'], { withMigrations: true });
-    this.service('http', ['serve'], { discovery, dependsOn: [tasks] });
+    this.service('http', ['serve'], { discovery, targetGroup, dependsOn: [tasks] });
+
+    const listenerArn = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.lb.listener as string);
+    const lbEndpoint = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.lb.dnsName as string);
+
+    const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
+    const zoneName = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.zone.name as string);
+
+    const endpoint = new Record(
+      `${this.#args.clusterName}-${this.#name}`,
+      {
+        zoneId,
+        name: zoneName.apply((zone) => `${this.#name}.${this.#args.clusterName}.${zone}`),
+        type: 'CNAME',
+        ttl: 300,
+        records: [lbEndpoint],
+      },
+      { parent: this },
+    );
+
+    const { certificateArn } = new ValidCertificate(
+      `${this.#args.clusterName}-${this.#name}`,
+      {
+        domainName: endpoint.fqdn,
+        zoneId,
+      },
+      { parent: endpoint },
+    );
+
+    new ListenerCertificate(
+      `${this.#args.clusterName}-${this.#name}`,
+      {
+        listenerArn,
+        certificateArn,
+      },
+      { parent: endpoint },
+    );
+
+    new ListenerRule(
+      `${this.#args.clusterName}-${this.#name}`,
+      {
+        listenerArn,
+        actions: [
+          {
+            type: 'forward',
+            targetGroupArn: targetGroup.arn,
+          },
+        ],
+        conditions: [
+          {
+            hostHeader: {
+              values: [endpoint.fqdn],
+            },
+          },
+        ],
+      },
+      { parent: endpoint },
+    );
 
     this.registerOutputs(
       (this.outputs = {
+        externalEndpoint: endpoint.fqdn,
         internalEndpoint: all([discovery.name, namespace]).apply(
           ([name, namespace]) => `${name}.${namespace}:${this.#args.port}`,
         ),
@@ -114,7 +197,7 @@ export class TamanuServer extends ComponentResource {
   service(
     name: string,
     command: string[],
-    { withMigrations = false, discovery, dependsOn = [] }: ServiceOptions = {},
+    { withMigrations = false, discovery, targetGroup, dependsOn = [] }: ServiceOptions = {},
   ): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
     const cluster = this.#infra
@@ -199,7 +282,13 @@ export class TamanuServer extends ComponentResource {
               ? [{ name: 'NODE_CONFIG', value: jsonStringify({ port: this.#args.port }) }]
               : []),
           ],
-          portMappings: discovery && [{ containerPort: this.#args.port, protocol: 'HTTP' }],
+          portMappings: discovery && [
+            {
+              protocol: 'HTTP',
+              containerPort: this.#args.port,
+              targetGroup,
+            },
+          ],
           healthCheck: {
             command: ['CMD', '/entrypoint', 'healthcheck', ...command],
             startPeriod: 30,
@@ -311,5 +400,6 @@ export class TamanuServer extends ComponentResource {
 interface ServiceOptions {
   withMigrations?: boolean;
   discovery?: Service;
+  targetGroup?: TargetGroup;
   dependsOn?: ComponentResource[];
 }
