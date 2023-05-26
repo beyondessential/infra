@@ -78,7 +78,7 @@ export class ClusterInfra extends ComponentResource {
     this.#cloudmap = new PrivateDnsNamespace(
       this.#name,
       {
-        name: `${this.#name}.tamanu.bes.au`,
+        name: `${this.#name}.tamanu.bes`,
         vpc: this.#network.vpc,
         tags: this.#args.tags,
       },
