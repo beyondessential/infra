@@ -180,14 +180,6 @@ export class TamanuServer extends ComponentResource {
       },
       { parent: taskRole },
     );
-    new PolicyAttachment(
-      `${this.#name}-${name}-ssmexec`,
-      {
-        roles: [taskRole],
-        policyArn: this.#infra.getOutput('ssmExecPolicy'),
-      },
-      { parent: taskRole },
-    );
 
     const containers: [string, awsx.types.input.ecs.TaskDefinitionContainerDefinitionArgs][] = [
       [
