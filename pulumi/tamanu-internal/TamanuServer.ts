@@ -61,16 +61,16 @@ export class TamanuServer extends ComponentResource {
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
 
     this.#config = new Parameter(
-      `${this.#name}-config`,
+      `${this.#args.clusterName}-${this.#name}-config`,
       {
         type: 'SecureString',
         description: `JSON config for Tamanu Internal deployment ${this.#args.clusterName}, ${
           this.#args.imageName
         } server ${this.#args.index ?? ''}`,
         value: readFileSync(this.#args.configTemplate, 'utf8'),
-        overwrite: true,
+        overwrite: true, // this + ignoreChanges = overwrite an existing config on create only
       },
-      { parent: this },
+      { parent: this, ignoreChanges: ['value'] },
     );
 
     const namespace = this.#infra
