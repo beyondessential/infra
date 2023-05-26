@@ -23,6 +23,7 @@ export const { outputs: network } = new Network('internal', {
 
 export const { outputs: cluster } = new ClusterInfra('internal', {
   network,
+  zone: 'Z0565335834ZM6R45IL3',
   tags: {
     Application: 'Tamanu',
   },

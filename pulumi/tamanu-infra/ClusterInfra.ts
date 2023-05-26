@@ -11,21 +11,25 @@ import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
 import { Network, NetworkOutputs } from './Network';
 import { RustLambda } from './RustLambda';
-import { LoadBalancer } from '@pulumi/aws/lb';
+import { Listener, LoadBalancer } from '@pulumi/aws/lb';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
 import { readFileSync } from 'fs';
 import { DeviceKey, TailnetKey } from '@pulumi/tailscale';
 import { getDeviceOutput } from '@pulumi/tailscale/getDevice';
+import { Record, getZone } from '@pulumi/aws/route53';
+import { ValidCertificate } from '../ValidCertificate';
 
 export interface ClusterInfraArgs {
   network: Network | NetworkOutputs;
+
+  /** ID or Name of the public hosted zone for this cluster. */
+  zone: string;
+
+  /** Any extra tags to add to all resources. */
   tags?: { [key: string]: string };
 }
 
 export interface ClusterInfraOutputs {
-  endpoints: {
-    lb: Output<string>;
-  };
   database: Output<string>;
   provisioner: Output<string>;
   containers: {
@@ -33,6 +37,16 @@ export interface ClusterInfraOutputs {
     ecs: Output<string>;
     namespaceId: Output<string>;
     namespaceName: Output<string>;
+    loadbalancer: Output<string>;
+  };
+  lb: {
+    arn: Output<string>;
+    dnsName: Output<string>;
+    listener: Output<string>;
+  };
+  zone: {
+    id: Output<string>;
+    name: Output<string>;
   };
 }
 
@@ -44,6 +58,7 @@ export class ClusterInfra extends ComponentResource {
   #cluster: Cluster;
   #cloudmap: PrivateDnsNamespace;
   #database: DBInstance;
+  #zone: Output<{ id: string; name: string }>;
   #lb: LoadBalancer;
   #securityGroups: { [key: string]: SecurityGroup };
 
@@ -85,22 +100,24 @@ export class ClusterInfra extends ComponentResource {
       { parent: this.#cluster },
     );
 
+    this.#zone = all([
+      getZone({
+        zoneId: this.#args.zone,
+      }).catch((idErr: Error) =>
+        getZone({
+          name: this.#args.zone,
+        }).catch((nameErr: Error) => {
+          throw new Error(`Could not find zone by ID or name:\n${idErr}\n${nameErr}`);
+        }),
+      ),
+    ]).apply(([zone]) => ({
+      id: zone.zoneId,
+      name: zone.name,
+    }));
+
     // Application LB across zones for API and Web public access to containers.
-    this.#lb = new LoadBalancer(
-      // Workaround for LB names being forbidden from starting with internal-
-      `${this.#name.startsWith('internal') ? `tamanu-${this.#name}` : this.#name}-http`,
-      {
-        internal: false,
-        loadBalancerType: 'application',
-        subnets: this.#network.natSubnetIds,
-        ipAddressType: 'ipv4',
-        tags: {
-          Purpose: 'containers',
-          ...this.#args.tags,
-        },
-      },
-      { parent: this },
-    );
+    const { lb, https } = this.loadBalancer();
+    this.#lb = lb;
 
     // Single common database for all Tamanu clusters
     // Obviously this would be bad for production but for internal use it's good:
@@ -120,10 +137,14 @@ export class ClusterInfra extends ComponentResource {
           ecs: this.#cluster.arn,
           namespaceId: this.#cloudmap.id,
           namespaceName: this.#cloudmap.name,
+          loadbalancer: this.#lb.arn,
         },
-        endpoints: {
-          lb: this.#lb.dnsName,
+        lb: {
+          arn: this.#lb.arn,
+          dnsName: this.#lb.dnsName,
+          listener: https.arn,
         },
+        zone: this.#zone,
       }),
     );
   }
@@ -328,6 +349,97 @@ export class ClusterInfra extends ComponentResource {
       },
       { parent: this },
     );
+  }
+
+  loadBalancer() {
+    const name = `${this.#name.startsWith('internal') ? `tamanu-${this.#name}` : this.#name}-http`;
+    const lb = new LoadBalancer(
+      // Workaround for LB names being forbidden from starting with internal-
+      name,
+      {
+        internal: false,
+        loadBalancerType: 'application',
+        subnets: this.#network.natSubnetIds,
+        ipAddressType: 'ipv4',
+        tags: {
+          Purpose: 'containers',
+          ...this.#args.tags,
+        },
+      },
+      { parent: this },
+    );
+
+    // http->https redirect
+    new Listener(
+      `${name}-httpredirect`,
+      {
+        loadBalancerArn: lb.arn,
+        port: 80,
+        protocol: 'HTTP',
+        defaultActions: [
+          {
+            type: 'redirect',
+            redirect: {
+              port: '443',
+              protocol: 'HTTPS',
+              statusCode: 'HTTP_301',
+            },
+          },
+        ],
+      },
+      { parent: lb },
+    );
+
+    const certificate = new ValidCertificate(
+      `${name}-default`,
+      {
+        domainName: this.#zone.name,
+        zoneId: this.#zone.id,
+      },
+      { parent: lb },
+    );
+
+    // https termination
+    const https = new Listener(
+      `${name}-https`,
+      {
+        loadBalancerArn: lb.arn,
+        port: 443,
+        protocol: 'HTTPS',
+        certificateArn: certificate.certificateArn,
+        sslPolicy: 'ELBSecurityPolicy-TLS13-1-2-2021-06',
+        defaultActions: [
+          {
+            type: 'fixed-response',
+            fixedResponse: {
+              contentType: 'text/plain',
+              messageBody: `Tamanu ${this.#name}`,
+              statusCode: '200',
+            },
+          },
+        ],
+      },
+      { parent: lb },
+    );
+
+    new Record(
+      `${name}-default`,
+      {
+        zoneId: this.#zone.id,
+        name: this.#zone.name,
+        type: 'A',
+        aliases: [
+          {
+            name: lb.dnsName,
+            zoneId: lb.zoneId,
+            evaluateTargetHealth: true,
+          },
+        ],
+      },
+      { parent: lb },
+    );
+
+    return { lb, https };
   }
 
   jumpBox() {
