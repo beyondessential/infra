@@ -119,7 +119,12 @@ export class TamanuServer extends ComponentResource {
     );
 
     const tasks = this.service('tasks', ['tasks'], { withMigrations: true });
-    this.service('http', ['serve'], { discovery, targetGroup, dependsOn: [tasks] });
+    this.service('http', ['serve'], {
+      discovery,
+      targetGroup,
+      dependsOn: [tasks],
+      waitUntilStable: false,
+    });
 
     const listenerArn = this.#infra
       .getOutput('cluster')
@@ -197,7 +202,13 @@ export class TamanuServer extends ComponentResource {
   service(
     name: string,
     command: string[],
-    { withMigrations = false, discovery, targetGroup, dependsOn = [] }: ServiceOptions = {},
+    {
+      withMigrations = false,
+      discovery,
+      targetGroup,
+      dependsOn = [],
+      waitUntilStable = true,
+    }: ServiceOptions = {},
   ): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
     const cluster = this.#infra
@@ -382,6 +393,7 @@ export class TamanuServer extends ComponentResource {
         cluster,
         taskDefinitionArgs: task,
         desiredCount: httpScale,
+        continueBeforeSteadyState: !waitUntilStable,
         enableExecuteCommand: true,
         propagateTags: 'SERVICE',
         serviceRegistries: discovery && {
@@ -402,4 +414,5 @@ interface ServiceOptions {
   discovery?: Service;
   targetGroup?: TargetGroup;
   dependsOn?: ComponentResource[];
+  waitUntilStable?: boolean;
 }
