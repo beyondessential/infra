@@ -46,7 +46,7 @@ export class Server extends ComponentResource {
   index: null | number;
 
   constructor(name: string, args: ServerArgs, opts: ComponentResourceOptions = {}) {
-    super('pkg:index:Server', name, {}, opts);
+    super('pkg:index:TamanuServer', name, {}, opts);
     this.#name = name;
     this.#args = {
       index: null,

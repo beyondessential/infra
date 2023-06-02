@@ -35,7 +35,7 @@ export class Endpoint extends ComponentResource {
     { clusterName, infra, port = DEFAULT_PORT }: EndpointArgs,
     opts: ComponentResourceOptions = {},
   ) {
-    super('pkg:index:Endpoint', name, {}, opts);
+    super('pkg:index:TamanuEndpoint', name, {}, opts);
     this.#name = name;
     this.#infra = infra;
     this.port = port;
