@@ -103,10 +103,14 @@ const buildRole = new Role(
             },
             StringLike: {
               [`${url}:sub`]: [
+                // Tamanu builds
                 'repo:beyondessential/tamanu:pull_request',
                 'repo:beyondessential/tamanu:ref:refs/heads/main',
                 'repo:beyondessential/tamanu:ref:refs/heads/dev',
                 'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+
+                // Configurator glue container
+                'repo:beyondessential/ops:ref:refs/heads/main',
               ],
             },
           })),
