@@ -161,6 +161,12 @@ export class Server extends ComponentResource {
               Action: ['ssm:GetParameter'],
               Resource: this.#config!.arn,
             },
+            // fetch reference data
+            {
+              Effect: 'Allow',
+              Action: ['s3:GetObject'],
+              Resource: '*',
+            },
           ],
         },
       },
