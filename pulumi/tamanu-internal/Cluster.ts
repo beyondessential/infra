@@ -85,7 +85,7 @@ export class Cluster extends ComponentResource {
     const facilityCredentials = facilityEnumerator.map((index) => ({
       index,
       secret: new Secret(
-        name,
+        `facility-${index}`,
         {
           secretValue: centralEndpoint.internal.apply((endpoint) => {
             return {
