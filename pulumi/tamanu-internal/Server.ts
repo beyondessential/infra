@@ -16,6 +16,7 @@ import { DEFAULT_PORT, Endpoint } from './Endpoint';
 
 export interface ServerArgs {
   endpoint: Endpoint;
+  infra: StackReference;
 
   clusterName: string;
   imageName: string;
@@ -55,8 +56,8 @@ export class Server extends ComponentResource {
       configuratorEnv: [],
       ...args,
     };
-    this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
-    this.index = args.index ?? null;
+    this.#infra = args.infra;
+    this.index = this.#args.index;
 
     this.#config = new Parameter(
       `${this.#args.clusterName}-${this.#name}-config`,

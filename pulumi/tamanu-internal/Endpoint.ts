@@ -15,6 +15,7 @@ export const DEFAULT_PORT = 3000;
 
 export interface EndpointArgs {
   clusterName: string;
+  infra: StackReference;
   port?: number;
 }
 
@@ -31,12 +32,12 @@ export class Endpoint extends ComponentResource {
 
   constructor(
     name: string,
-    { clusterName, port = DEFAULT_PORT }: EndpointArgs,
+    { clusterName, infra, port = DEFAULT_PORT }: EndpointArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('pkg:index:Endpoint', name, {}, opts);
     this.#name = name;
-    this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
+    this.#infra = infra;
     this.port = port;
 
     const namespace = this.#infra

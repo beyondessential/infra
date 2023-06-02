@@ -73,6 +73,7 @@ export class Cluster extends ComponentResource {
       'central',
       {
         clusterName: this.#name,
+        infra: this.#infra,
       },
       { parent: this },
     );
@@ -107,6 +108,7 @@ export class Cluster extends ComponentResource {
       'central',
       {
         endpoint: centralEndpoint,
+        infra: this.#infra,
         clusterName: this.#name,
         imageName: 'central',
         imageTag: this.#args.imageTag,
@@ -133,6 +135,7 @@ export class Cluster extends ComponentResource {
         `facility-${index}`,
         {
           clusterName: this.#name,
+          infra: this.#infra,
         },
         { parent: this },
       );
@@ -141,6 +144,7 @@ export class Cluster extends ComponentResource {
         `facility-${index}`,
         {
           endpoint,
+          infra: this.#infra,
           clusterName: this.#name,
           imageName: 'facility',
           imageTag: this.#args.imageTag,
