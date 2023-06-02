@@ -52,6 +52,7 @@ export class TamanuServer extends ComponentResource {
 
   #config: Parameter;
 
+  index: null | number;
   outputs: TamanuServerOutputs;
 
   constructor(name: string, args: TamanuServerArgs, opts: ComponentResourceOptions = {}) {
@@ -67,6 +68,7 @@ export class TamanuServer extends ComponentResource {
       ...args,
     };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
+    this.index = args.index ?? null;
 
     this.#config = new Parameter(
       `${this.#args.clusterName}-${this.#name}-config`,
@@ -345,7 +347,7 @@ export class TamanuServer extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'RUST_LOG', value: 'info' },
+            { name: 'RUST_LOG', value: 'trace' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
             { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },

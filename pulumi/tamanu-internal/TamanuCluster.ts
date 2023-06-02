@@ -15,6 +15,10 @@ import { TamanuServer, TamanuServerOutputs } from './TamanuServer';
 
 export interface TamanuClusterArgs {
   imageTag: string;
+  referenceData: {
+    bucket: string;
+    files: string[];
+  };
 
   /** @default 2 */
   numberOfFacilities?: number;
@@ -34,6 +38,9 @@ export interface TamanuClusterServiceArgs {
   scale?: number;
   database?: string | false;
 }
+
+const TARGET_PROVISIONING_FILE = '/config/provisioning/central.json';
+const REFERENCE_DATA_PATH = '/config/provisioning/refdata/';
 
 export class TamanuCluster extends ComponentResource {
   #name: string;
@@ -56,6 +63,10 @@ export class TamanuCluster extends ComponentResource {
       }),
     );
 
+    const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
+      (_, i) => i + 1,
+    );
+
     const { databases, provisioner } = this.runDbProvisioner();
 
     const central = new TamanuServer(
@@ -68,24 +79,30 @@ export class TamanuCluster extends ComponentResource {
         memoryGB: 2,
         configTemplate: 'configTemplates/central.json',
         dbSecret: databases.find((c) => c.name === `${name}-central`)!.secret,
+        configuratorEnv: [
+          { name: 'FACILITY_SECRETS', value: jsonStringify([]) },
+          { name: 'REFERENCE_DATA_PATH', value: REFERENCE_DATA_PATH },
+          { name: 'REFERENCE_DATA_BUCKET', value: this.#args.referenceData.bucket },
+          { name: 'REFERENCE_DATA_KEYS', value: jsonStringify(this.#args.referenceData.files) },
+          { name: 'TARGET_PROVISIONING_FILE', value: TARGET_PROVISIONING_FILE },
+        ],
       },
       { parent: this, dependsOn: [provisioner] },
     );
 
-    const facilities = Array.from({ length: this.#args.numberOfFacilities }).map(
-      (_, i) =>
+    const facilities = facilityEnumerator.map(
+      (index) =>
         new TamanuServer(
-          `facility-${i + 1}`,
+          `facility-${index}`,
           {
             clusterName: this.#name,
             imageName: 'facility',
             imageTag: this.#args.imageTag,
             cores: 2,
             memoryGB: 2,
-            index: i + 1,
+            index,
             configTemplate: 'configTemplates/facility.json',
-            dbSecret: databases.find((c) => c.name === `${name}-facility-${i + 1}`)!
-              .secret,
+            dbSecret: databases.find((c) => c.name === `${name}-facility-${index}`)!.secret,
           },
           { parent: this, dependsOn: [provisioner] },
         ),
@@ -97,7 +114,7 @@ export class TamanuCluster extends ComponentResource {
         services: {
           central: central.outputs,
           ...Object.fromEntries(
-            facilities.map((facility, i) => [`facility${i + 1}`, facility.outputs]),
+            facilities.map((facility) => [`facility${facility.index}`, facility.outputs]),
           ),
         },
       }),
