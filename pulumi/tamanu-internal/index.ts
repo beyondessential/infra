@@ -7,7 +7,7 @@ const imageTag = cfg.require('imageTag');
 const { outputs: cluster } = new Cluster(getStack(), {
   imageTag,
   referenceData: {
-    bucket: 'bes-tamanu-dev-reference-data',
+    bucket: 'bes-tamanu-dev-referencedata',
     files: ['REFERENCE DATA IMPORT GOOD AS OF MAY 2023.xlsx'],
   },
 });
