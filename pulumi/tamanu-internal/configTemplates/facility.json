@@ -1,0 +1,12 @@
+{
+  "db": {
+    "migrateOnStartup": false
+  },
+  "honeycomb": {
+    "apiKey": "REDACTED",
+    "enabled": false
+  },
+  "sync": {
+    "enabled": true
+  }
+}
