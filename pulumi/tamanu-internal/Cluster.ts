@@ -129,6 +129,7 @@ export class Cluster extends ComponentResource {
         memoryGB: 2,
         configTemplate: 'configTemplates/central.json',
         dbSecret: central.dbSecret.outputs.arn,
+        syncSecrets: facilityCredentials.map(({ syncSecret }) => syncSecret.outputs.arn),
         configuratorEnv: [
           {
             name: 'FACILITY_SECRETS',
@@ -168,6 +169,7 @@ export class Cluster extends ComponentResource {
           index,
           configTemplate: 'configTemplates/facility.json',
           dbSecret: dbSecret.outputs.arn,
+          syncSecrets: [syncSecret.outputs.arn],
           configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
         },
         { parent: endpoint, dependsOn: [dbProvisioner, centralServer] },

@@ -24,6 +24,7 @@ export interface ServerArgs {
   configTemplate: string;
   configuratorEnv?: { name: string; value: string | Input<string> }[];
   dbSecret: Output<string>;
+  syncSecrets: Output<string>[];
 
   /** @default 1 */
   cores?: number;
@@ -103,7 +104,7 @@ export class Server extends ComponentResource {
       waitUntilStable = true,
     }: ServiceOptions = {},
   ): awsx.ecs.FargateService {
-    const { imageName, memoryGB, cores, index, dbSecret, httpScale } = this.#args;
+    const { imageName, memoryGB, cores, syncSecrets, dbSecret, httpScale } = this.#args;
     const cluster = this.#infra
       .getOutput('cluster')
       .apply((cluster) => cluster.containers.ecs as string);
@@ -142,11 +143,17 @@ export class Server extends ComponentResource {
         policy: {
           Version: '2012-10-17',
           Statement: [
-            // read credentials for this Tamanu cluster's database
+            // read credentials for...
             {
               Effect: 'Allow',
               Action: ['secretsmanager:GetSecretValue'],
-              Resource: dbSecret,
+              Resource: [
+                // ...the database
+                dbSecret,
+
+                // ...the sync auth
+                ...syncSecrets,
+              ],
             },
             // read parameter for this server's config
             {
@@ -225,7 +232,7 @@ export class Server extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'RUST_LOG', value: 'trace' },
+            { name: 'RUST_LOG', value: 'debug' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
             { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },
