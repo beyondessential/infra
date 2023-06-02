@@ -339,7 +339,7 @@ export class ClusterInfra extends ComponentResource {
                 {
                   Effect: 'Allow',
                   Action: ['secretsmanager:GetSecretValue'],
-                  Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:${this.#name}-db-*`,
+                  Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:${this.#name}-*-db-*`,
                 },
               ],
             },

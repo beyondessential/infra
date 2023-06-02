@@ -102,7 +102,7 @@ export class Cluster extends ComponentResource {
                 password,
               };
             }),
-            namePrefix: `internal-${this.#name}-`,
+            namePrefix: `internal-${this.#name}`,
             description: `Sync credentials for Tamanu Internal deployment ${
               this.#name
             }, facility ${index}`,
@@ -194,7 +194,7 @@ export class Cluster extends ComponentResource {
   }
 
   secretName(serverKind: string, secretKind: string, index?: number) {
-    return [serverKind, secretKind, index].filter(Boolean).join('-');
+    return [secretKind, serverKind, index].filter(Boolean).join('-');
   }
 
   databaseProvisionConfig(
