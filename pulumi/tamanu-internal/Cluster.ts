@@ -201,6 +201,7 @@ export class Cluster extends ComponentResource {
     kind: string,
     index?: number,
   ): { dbSecret: Secret; dbConfig: DbProvisionerDatabase } {
+    const dbname = [kind, index].filter(Boolean).join('-');
     const name = this.secretName(kind, 'db', index);
     const password = this.makePassword(name);
 
@@ -214,8 +215,8 @@ export class Cluster extends ComponentResource {
             engine: 'postgres',
             host,
             port: +port,
-            dbname: name,
-            username: name,
+            dbname,
+            username: dbname,
             password,
           };
         }),
