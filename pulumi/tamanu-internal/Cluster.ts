@@ -67,16 +67,18 @@ export class Cluster extends ComponentResource {
         dbInstanceIdentifier: cluster.database as string,
       }),
     );
-    const { databases, provisioner } = this.runDbProvisioner();
 
-    const centralEndpoint = new Endpoint(
-      'central',
-      {
-        clusterName: this.#name,
-        infra: this.#infra,
-      },
-      { parent: this },
-    );
+    const central = {
+      endpoint: new Endpoint(
+        'central',
+        {
+          clusterName: this.#name,
+          infra: this.#infra,
+        },
+        { parent: this },
+      ),
+      ...this.databaseProvisionConfig('central'),
+    };
 
     const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
       (_, i) => i + 1,
@@ -88,10 +90,11 @@ export class Cluster extends ComponentResource {
 
       return {
         index,
-        secret: new Secret(
+        ...this.databaseProvisionConfig('facility', index),
+        syncSecret: new Secret(
           name,
           {
-            secretValue: centralEndpoint.internal.apply((endpoint) => {
+            secretValue: central.endpoint.internal.apply((endpoint) => {
               return {
                 centralUrl: `https://${endpoint}`,
                 facilityId: `facility-${index}`,
@@ -99,7 +102,7 @@ export class Cluster extends ComponentResource {
                 password,
               };
             }),
-            namePrefix: 'internal-',
+            namePrefix: `internal-${this.#name}-`,
             description: `Sync credentials for Tamanu Internal deployment ${
               this.#name
             }, facility ${index}`,
@@ -109,10 +112,15 @@ export class Cluster extends ComponentResource {
       };
     });
 
+    const dbProvisioner = this.runDbProvisioner([
+      { dbSecret: central.dbSecret, dbConfig: central.dbConfig },
+      ...facilityCredentials.map(({ dbSecret, dbConfig }) => ({ dbSecret, dbConfig })),
+    ]);
+
     new Server(
       'central',
       {
-        endpoint: centralEndpoint,
+        endpoint: central.endpoint,
         infra: this.#infra,
         clusterName: this.#name,
         imageName: 'central',
@@ -120,11 +128,13 @@ export class Cluster extends ComponentResource {
         cores: 2,
         memoryGB: 2,
         configTemplate: 'configTemplates/central.json',
-        dbSecret: databases.find((c) => c.name === `${name}-central`)!.secret,
+        dbSecret: central.dbSecret.outputs.arn,
         configuratorEnv: [
           {
             name: 'FACILITY_SECRETS',
-            value: jsonStringify(facilityCredentials.map(({ secret }) => secret.outputs.arn)),
+            value: jsonStringify(
+              facilityCredentials.map(({ syncSecret }) => syncSecret.outputs.arn),
+            ),
           },
           { name: 'REFERENCE_DATA_PATH', value: REFERENCE_DATA_PATH },
           { name: 'REFERENCE_DATA_BUCKET', value: this.#args.referenceData.bucket },
@@ -132,10 +142,10 @@ export class Cluster extends ComponentResource {
           { name: 'TARGET_PROVISIONING_FILE', value: TARGET_PROVISIONING_FILE },
         ],
       },
-      { parent: centralEndpoint, dependsOn: [provisioner] },
+      { parent: central.endpoint, dependsOn: [dbProvisioner] },
     );
 
-    const facilities = facilityCredentials.map(({ index, secret }) => {
+    const facilities = facilityCredentials.map(({ index, dbSecret, syncSecret }) => {
       const endpoint = new Endpoint(
         `facility-${index}`,
         {
@@ -157,11 +167,10 @@ export class Cluster extends ComponentResource {
           memoryGB: 2,
           index,
           configTemplate: 'configTemplates/facility.json',
-          dbSecret: databases.find((c) => c.name === this.secretName('facility', 'db', index))!
-            .secret,
-          configuratorEnv: [{ name: 'FACILITY_SECRET', value: secret.outputs.arn }],
+          dbSecret: dbSecret.outputs.arn,
+          configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
         },
-        { parent: endpoint, dependsOn: [provisioner] },
+        { parent: endpoint, dependsOn: [dbProvisioner] },
       );
 
       return [`facility${index}`, endpointOutput(endpoint)];
@@ -171,7 +180,7 @@ export class Cluster extends ComponentResource {
       (this.outputs = {
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          central: endpointOutput(centralEndpoint),
+          central: endpointOutput(central.endpoint),
           ...Object.fromEntries(facilities),
         },
       }),
@@ -185,10 +194,13 @@ export class Cluster extends ComponentResource {
   }
 
   secretName(serverKind: string, secretKind: string, index?: number) {
-    return [this.#name, serverKind, secretKind, index].filter(Boolean).join('-');
+    return [serverKind, secretKind, index].filter(Boolean).join('-');
   }
 
-  databaseProvisionConfig(kind: string, index?: number): [Secret, DbProvisionerDatabase] {
+  databaseProvisionConfig(
+    kind: string,
+    index?: number,
+  ): { dbSecret: Secret; dbConfig: DbProvisionerDatabase } {
     const name = this.secretName(kind, 'db', index);
     const password = this.makePassword(name);
 
@@ -207,7 +219,7 @@ export class Cluster extends ComponentResource {
             password,
           };
         }),
-        namePrefix: 'internal-',
+        namePrefix: `internal-${this.#name}`,
         description: `PostgresSQL credentials for Tamanu Internal deployment ${
           this.#name
         }, ${kind} server ${index ?? ''}`,
@@ -215,41 +227,33 @@ export class Cluster extends ComponentResource {
       { parent: this },
     );
 
-    return [
-      secret,
-      {
+    return {
+      dbSecret: secret,
+      dbConfig: {
         name,
         owner: name,
         secret: secret.outputs.arn,
         extensions: ['uuid-ossp'],
       },
-    ];
+    };
   }
 
-  runDbProvisioner() {
-    const [secret, provisionConfig] = this.databaseProvisionConfig('central');
-    const databases = [provisionConfig];
-    const secrets = [secret];
-    for (let i = 1; i <= this.#args.numberOfFacilities; i++) {
-      const [secret, provisionConfig] = this.databaseProvisionConfig('facility', i);
-      databases.push(provisionConfig);
-      secrets.push(secret);
-    }
-
+  runDbProvisioner(databases: { dbSecret: Secret; dbConfig: DbProvisionerDatabase }[]) {
     const dbProvisioner = this.#infra
       .getOutput('cluster')
       .apply((cluster) => cluster.provisioner as string);
-    const dbProvisionerInput: DbProvisionerInput = { databases };
-    const provisioner = new aws.lambda.Invocation(
+    const dbProvisionerInput: DbProvisionerInput = {
+      databases: databases.map(({ dbConfig }) => dbConfig),
+    };
+
+    return new aws.lambda.Invocation(
       `${this.#name}-provisioner`,
       {
         functionName: dbProvisioner,
         input: jsonStringify(dbProvisionerInput),
       },
-      { parent: this, dependsOn: secrets },
+      { parent: this, dependsOn: databases.map(({ dbSecret }) => dbSecret) },
     );
-
-    return { databases, provisioner };
   }
 }
 
