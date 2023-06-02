@@ -96,7 +96,7 @@ export class Cluster extends ComponentResource {
           {
             secretValue: central.endpoint.internal.apply((endpoint) => {
               return {
-                centralUrl: `https://${endpoint}`,
+                centralUrl: `http://${endpoint}`,
                 facilityId: `facility-${index}`,
                 email: `facility-${index}@tamanu.io`,
                 password,
