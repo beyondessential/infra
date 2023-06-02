@@ -82,27 +82,32 @@ export class Cluster extends ComponentResource {
       (_, i) => i + 1,
     );
 
-    const facilityCredentials = facilityEnumerator.map((index) => ({
-      index,
-      secret: new Secret(
-        `facility-${index}`,
-        {
-          secretValue: centralEndpoint.internal.apply((endpoint) => {
-            return {
-              centralUrl: `https://${endpoint}`,
-              facilityId: `facility-${index}`,
-              email: `facility-${index}@tamanu.io`,
-              password: this.makePassword(`facility-${index}`),
-            };
-          }),
-          namePrefix: `internal-facility-${this.#name}-`,
-          description: `Sync credentials for Tamanu Internal deployment ${
-            this.#name
-          }, facility ${index}`,
-        },
-        { parent: this },
-      ),
-    }));
+    const facilityCredentials = facilityEnumerator.map((index) => {
+      const name = this.secretName('facility', 'sync', index);
+      const password = this.makePassword(name);
+
+      return {
+        index,
+        secret: new Secret(
+          name,
+          {
+            secretValue: centralEndpoint.internal.apply((endpoint) => {
+              return {
+                centralUrl: `https://${endpoint}`,
+                facilityId: `facility-${index}`,
+                email: `facility-${index}@tamanu.io`,
+                password,
+              };
+            }),
+            namePrefix: 'internal-',
+            description: `Sync credentials for Tamanu Internal deployment ${
+              this.#name
+            }, facility ${index}`,
+          },
+          { parent: this },
+        ),
+      };
+    });
 
     new Server(
       'central',
@@ -152,7 +157,8 @@ export class Cluster extends ComponentResource {
           memoryGB: 2,
           index,
           configTemplate: 'configTemplates/facility.json',
-          dbSecret: databases.find((c) => c.name === `${name}-facility-${index}`)!.secret,
+          dbSecret: databases.find((c) => c.name === this.secretName('facility', 'db', index))!
+            .secret,
           configuratorEnv: [{ name: 'FACILITY_SECRET', value: secret.outputs.arn }],
         },
         { parent: endpoint, dependsOn: [provisioner] },
@@ -178,9 +184,12 @@ export class Cluster extends ComponentResource {
     return this.#salt.apply((salt) => createHash('sha256').update(salt).update(seed).digest('hex'));
   }
 
-  databaseProvisionConfig(kind: string, index?: number): [Secret, DbProvisionerDatabase] {
-    const name = [this.#name, kind, index].filter(Boolean).join('-');
+  secretName(serverKind: string, secretKind: string, index?: number) {
+    return [this.#name, serverKind, secretKind, index].filter(Boolean).join('-');
+  }
 
+  databaseProvisionConfig(kind: string, index?: number): [Secret, DbProvisionerDatabase] {
+    const name = this.secretName(kind, 'db', index);
     const password = this.makePassword(name);
 
     const secret = new Secret(
@@ -198,7 +207,7 @@ export class Cluster extends ComponentResource {
             password,
           };
         }),
-        namePrefix: `internal-db-${this.#name}-`,
+        namePrefix: 'internal-',
         description: `PostgresSQL credentials for Tamanu Internal deployment ${
           this.#name
         }, ${kind} server ${index ?? ''}`,
