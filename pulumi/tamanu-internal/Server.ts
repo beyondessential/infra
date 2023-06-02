@@ -169,7 +169,12 @@ export class Server extends ComponentResource {
               ? ([
                   {
                     Effect: 'Allow',
-                    Action: ['s3:GetObject', 's3:GetObjectAcl'],
+                    Action: [
+                      's3:GetObject',
+                      's3:GetObjectAcl',
+                      // required to get accurate errors
+                      's3:ListBucket',
+                    ],
                     Resource: `arn:aws:s3:::${referenceDataBucket}/*`,
                   },
                 ] as PolicyStatement[])
