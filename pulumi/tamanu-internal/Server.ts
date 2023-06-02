@@ -10,7 +10,7 @@ import {
 import * as awsx from '@pulumi/awsx';
 import { Service } from '@pulumi/aws/servicediscovery';
 import { Parameter } from '@pulumi/aws/ssm';
-import { Policy, PolicyAttachment, Role } from '@pulumi/aws/iam';
+import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam';
 import { TargetGroup } from '@pulumi/aws/lb';
 import { DEFAULT_PORT, Endpoint } from './Endpoint';
 
@@ -25,6 +25,7 @@ export interface ServerArgs {
   configuratorEnv?: { name: string; value: string | Input<string> }[];
   dbSecret: Output<string>;
   syncSecrets: Output<string>[];
+  referenceDataBucket?: null | string;
 
   /** @default 1 */
   cores?: number;
@@ -55,6 +56,7 @@ export class Server extends ComponentResource {
       memoryGB: 1,
       httpScale: 1,
       configuratorEnv: [],
+      referenceDataBucket: null,
       ...args,
     };
     this.#infra = args.infra;
@@ -104,7 +106,8 @@ export class Server extends ComponentResource {
       waitUntilStable = true,
     }: ServiceOptions = {},
   ): awsx.ecs.FargateService {
-    const { imageName, memoryGB, cores, syncSecrets, dbSecret, httpScale } = this.#args;
+    const { imageName, memoryGB, cores, syncSecrets, dbSecret, referenceDataBucket, httpScale } =
+      this.#args;
     const cluster = this.#infra
       .getOutput('cluster')
       .apply((cluster) => cluster.containers.ecs as string);
@@ -161,12 +164,16 @@ export class Server extends ComponentResource {
               Action: ['ssm:GetParameter'],
               Resource: this.#config!.arn,
             },
-            // fetch reference data
-            {
-              Effect: 'Allow',
-              Action: ['s3:GetObject'],
-              Resource: '*',
-            },
+            // fetch reference data (if required)
+            ...(referenceDataBucket
+              ? ([
+                  {
+                    Effect: 'Allow',
+                    Action: ['s3:GetObject', 's3:GetObjectAcl'],
+                    Resource: `arn:aws:s3:::${referenceDataBucket}/*`,
+                  },
+                ] as PolicyStatement[])
+              : []),
           ],
         },
       },

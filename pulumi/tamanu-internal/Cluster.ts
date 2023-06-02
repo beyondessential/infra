@@ -130,6 +130,7 @@ export class Cluster extends ComponentResource {
         configTemplate: 'configTemplates/central.json',
         dbSecret: central.dbSecret.outputs.arn,
         syncSecrets: facilityCredentials.map(({ syncSecret }) => syncSecret.outputs.arn),
+        referenceDataBucket: this.#args.referenceData.bucket,
         configuratorEnv: [
           {
             name: 'FACILITY_SECRETS',
