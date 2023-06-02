@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import {
   ComponentResource,
   ComponentResourceOptions,
+  Input,
   Output,
   StackReference,
   all,
@@ -13,8 +14,8 @@ import { Parameter } from '@pulumi/aws/ssm';
 import { Policy, PolicyAttachment, Role } from '@pulumi/aws/iam';
 import { ListenerCertificate, ListenerRule } from '@pulumi/aws/lb';
 import { TargetGroup } from '@pulumi/aws/lb';
-import { ValidCertificate } from '../ValidCertificate';
 import { Record } from '@pulumi/aws/route53';
+import { ValidCertificate } from '../ValidCertificate';
 
 const DEFAULT_PORT = 3000;
 
@@ -23,6 +24,7 @@ export interface TamanuServerArgs {
   imageName: string;
   imageTag: string;
   configTemplate: string;
+  configuratorEnv?: { name: string; value: string | Input<string> }[];
   dbSecret: Output<string>;
 
   /** @default 1 */
@@ -61,6 +63,7 @@ export class TamanuServer extends ComponentResource {
       memoryGB: 1,
       httpScale: 1,
       port: DEFAULT_PORT,
+      configuratorEnv: [],
       ...args,
     };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
@@ -118,7 +121,17 @@ export class TamanuServer extends ComponentResource {
       { parent: this },
     );
 
-    const tasks = this.service('tasks', ['tasks'], { withMigrations: true });
+    const provisioningFile = args.configuratorEnv?.find(
+      ({ name }) => name === 'TARGET_PROVISIONING_FILE',
+    )?.value;
+    const tasks = this.service(
+      'tasks',
+      ['tasks', ...(provisioningFile ? ['--provisioning', provisioningFile] : [])],
+      {
+        configuratorEnv: args.configuratorEnv,
+        withMigrations: true,
+      },
+    );
     this.service('http', ['serve'], {
       discovery,
       targetGroup,
@@ -201,8 +214,9 @@ export class TamanuServer extends ComponentResource {
 
   service(
     name: string,
-    command: string[],
+    command: (string | Input<string>)[],
     {
+      configuratorEnv = [],
       withMigrations = false,
       discovery,
       targetGroup,
@@ -334,7 +348,8 @@ export class TamanuServer extends ComponentResource {
             { name: 'RUST_LOG', value: 'info' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
-            { name: 'TARGET_FILE', value: '/config/production.json' },
+            { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },
+            ...configuratorEnv,
           ],
           mountPoints: [
             {
@@ -410,6 +425,7 @@ export class TamanuServer extends ComponentResource {
 }
 
 interface ServiceOptions {
+  configuratorEnv?: { name: string; value: string | Input<string> }[];
   withMigrations?: boolean;
   discovery?: Service;
   targetGroup?: TargetGroup;
