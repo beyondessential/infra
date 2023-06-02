@@ -282,7 +282,7 @@ export class Server extends ComponentResource {
     };
 
     return new awsx.ecs.FargateService(
-      [this.#name, index, name].filter(Boolean).join('-'),
+      [this.#name, name].filter(Boolean).join('-'),
       {
         cluster,
         taskDefinitionArgs: task,
