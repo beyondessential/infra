@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -8,12 +9,15 @@ import {
   jsonStringify,
 } from '@pulumi/pulumi';
 import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds';
-import { Secret } from './Secret';
+
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
-import { TamanuServer, TamanuServerOutputs } from './TamanuServer';
 
-export interface TamanuClusterArgs {
+import { Secret } from './Secret';
+import { Endpoint } from './Endpoint';
+import { Server } from './Server';
+
+export interface ClusterArgs {
   imageTag: string;
   referenceData: {
     bucket: string;
@@ -24,14 +28,14 @@ export interface TamanuClusterArgs {
   numberOfFacilities?: number;
 }
 
-export interface TamanuClusterOutputs {
+export interface ClusterOutputs {
   facilityCount: number;
   services: {
-    [name: string]: TamanuServerOutputs;
+    [name: string]: ServiceEndpoints;
   };
 }
 
-export interface TamanuClusterServiceArgs {
+export interface ClusterServiceArgs {
   index?: number;
   cores?: number;
   memoryGB?: number;
@@ -42,17 +46,18 @@ export interface TamanuClusterServiceArgs {
 const TARGET_PROVISIONING_FILE = '/config/provisioning/central.json';
 const REFERENCE_DATA_PATH = '/config/provisioning/refdata/';
 
-export class TamanuCluster extends ComponentResource {
+export class Cluster extends ComponentResource {
   #name: string;
-  #args: Required<TamanuClusterArgs>;
+  #args: Required<ClusterArgs>;
   #infra: StackReference;
 
-  outputs: TamanuClusterOutputs;
+  outputs: ClusterOutputs;
 
+  #salt: Output<string> = new Config().requireSecret('salt');
   #db: Output<GetInstanceResult>;
 
-  constructor(name: string, args: TamanuClusterArgs, opts: ComponentResourceOptions = {}) {
-    super('pkg:index:TamanuCluster', name, {}, opts);
+  constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
+    super('pkg:index:Cluster', name, {}, opts);
     this.#name = name;
     this.#args = { numberOfFacilities: 2, ...args };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
@@ -62,16 +67,46 @@ export class TamanuCluster extends ComponentResource {
         dbInstanceIdentifier: cluster.database as string,
       }),
     );
+    const { databases, provisioner } = this.runDbProvisioner();
+
+    const centralEndpoint = new Endpoint(
+      'central',
+      {
+        clusterName: this.#name,
+      },
+      { parent: this },
+    );
 
     const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
       (_, i) => i + 1,
     );
 
-    const { databases, provisioner } = this.runDbProvisioner();
+    const facilityCredentials = facilityEnumerator.map((index) => ({
+      index,
+      secret: new Secret(
+        name,
+        {
+          secretValue: centralEndpoint.internal.apply((endpoint) => {
+            return {
+              centralUrl: `https://${endpoint}`,
+              facilityId: `facility-${index}`,
+              email: `facility-${index}@tamanu.io`,
+              password: this.makePassword(`facility-${index}`),
+            };
+          }),
+          namePrefix: `internal-facility-${this.#name}-`,
+          description: `Sync credentials for Tamanu Internal deployment ${
+            this.#name
+          }, facility ${index}`,
+        },
+        { parent: this },
+      ),
+    }));
 
-    const central = new TamanuServer(
+    new Server(
       'central',
       {
+        endpoint: centralEndpoint,
         clusterName: this.#name,
         imageName: 'central',
         imageTag: this.#args.imageTag,
@@ -80,58 +115,69 @@ export class TamanuCluster extends ComponentResource {
         configTemplate: 'configTemplates/central.json',
         dbSecret: databases.find((c) => c.name === `${name}-central`)!.secret,
         configuratorEnv: [
-          { name: 'FACILITY_SECRETS', value: jsonStringify([]) },
+          {
+            name: 'FACILITY_SECRETS',
+            value: jsonStringify(facilityCredentials.map(({ secret }) => secret.outputs.arn)),
+          },
           { name: 'REFERENCE_DATA_PATH', value: REFERENCE_DATA_PATH },
           { name: 'REFERENCE_DATA_BUCKET', value: this.#args.referenceData.bucket },
           { name: 'REFERENCE_DATA_KEYS', value: jsonStringify(this.#args.referenceData.files) },
           { name: 'TARGET_PROVISIONING_FILE', value: TARGET_PROVISIONING_FILE },
         ],
       },
-      { parent: this, dependsOn: [provisioner] },
+      { parent: centralEndpoint, dependsOn: [provisioner] },
     );
 
-    const facilities = facilityEnumerator.map(
-      (index) =>
-        new TamanuServer(
-          `facility-${index}`,
-          {
-            clusterName: this.#name,
-            imageName: 'facility',
-            imageTag: this.#args.imageTag,
-            cores: 2,
-            memoryGB: 2,
-            index,
-            configTemplate: 'configTemplates/facility.json',
-            dbSecret: databases.find((c) => c.name === `${name}-facility-${index}`)!.secret,
-          },
-          { parent: this, dependsOn: [provisioner] },
-        ),
-    );
+    const facilities = facilityCredentials.map(({ index, secret }) => {
+      const endpoint = new Endpoint(
+        `facility-${index}`,
+        {
+          clusterName: this.#name,
+        },
+        { parent: this },
+      );
+
+      new Server(
+        `facility-${index}`,
+        {
+          endpoint,
+          clusterName: this.#name,
+          imageName: 'facility',
+          imageTag: this.#args.imageTag,
+          cores: 2,
+          memoryGB: 2,
+          index,
+          configTemplate: 'configTemplates/facility.json',
+          dbSecret: databases.find((c) => c.name === `${name}-facility-${index}`)!.secret,
+          configuratorEnv: [{ name: 'FACILITY_SECRET', value: secret.outputs.arn }],
+        },
+        { parent: endpoint, dependsOn: [provisioner] },
+      );
+
+      return [`facility${index}`, endpointOutput(endpoint)];
+    });
 
     this.registerOutputs(
       (this.outputs = {
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          central: central.outputs,
-          ...Object.fromEntries(
-            facilities.map((facility) => [`facility${facility.index}`, facility.outputs]),
-          ),
+          central: endpointOutput(centralEndpoint),
+          ...Object.fromEntries(facilities),
         },
       }),
     );
   }
 
+  // Make secrets deterministic so they don't change on every invocation
+  // but are still reasonable secure.
+  makePassword(seed: string) {
+    return this.#salt.apply((salt) => createHash('sha256').update(salt).update(seed).digest('hex'));
+  }
+
   databaseProvisionConfig(kind: string, index?: number): [Secret, DbProvisionerDatabase] {
     const name = [this.#name, kind, index].filter(Boolean).join('-');
 
-    // Make the secret deterministic from the db name and a per-stack salt,
-    // so it doesn't change on every invocation but is still reasonable secure.
-    // !! For production setups, this should be redone with e.g. Bitwarden. !!
-    const cfg = new Config();
-    const salt = cfg.requireSecret('salt');
-    const password = salt.apply((salt) =>
-      createHash('sha256').update(salt).update(name).digest('hex'),
-    );
+    const password = this.makePassword(name);
 
     const secret = new Secret(
       name,
@@ -207,4 +253,16 @@ interface DbProvisionerDatabase {
 
   // PostgreSQL extensions to install
   extensions?: string[];
+}
+
+interface ServiceEndpoints {
+  internal: Output<string>;
+  external: Output<string>;
+}
+
+function endpointOutput(endpoint: Endpoint): ServiceEndpoints {
+  return {
+    internal: endpoint.internal,
+    external: endpoint.external,
+  };
 }
