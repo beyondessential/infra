@@ -117,7 +117,7 @@ export class Cluster extends ComponentResource {
       ...facilityCredentials.map(({ dbSecret, dbConfig }) => ({ dbSecret, dbConfig })),
     ]);
 
-    new Server(
+    const centralServer = new Server(
       'central',
       {
         endpoint: central.endpoint,
@@ -170,7 +170,7 @@ export class Cluster extends ComponentResource {
           dbSecret: dbSecret.outputs.arn,
           configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
         },
-        { parent: endpoint, dependsOn: [dbProvisioner] },
+        { parent: endpoint, dependsOn: [dbProvisioner, centralServer] },
       );
 
       return [`facility${index}`, endpointOutput(endpoint)];
