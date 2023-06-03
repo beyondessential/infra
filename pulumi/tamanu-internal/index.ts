@@ -4,8 +4,6 @@ import { Cluster } from './Cluster';
 const cfg = new Config();
 const imageTag = cfg.require('imageTag');
 
-// FYI Putting spaces in refdata filenames is a bad idea, because it makes
-// the files harder (unreasonably unpossible) to access from the container.
 const { outputs: cluster } = new Cluster(getStack(), {
   imageTag,
   referenceData: {
