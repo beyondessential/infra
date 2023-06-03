@@ -211,7 +211,6 @@ export class Server extends ComponentResource {
             ...(discovery && this.#args.endpoint.port !== DEFAULT_PORT
               ? [{ name: 'NODE_CONFIG', value: jsonStringify({ port: this.#args.endpoint.port }) }]
               : []),
-            // TODO: OTEL_CONTEXT_OPS_COMMIT with git commit hash of ops repo
           ],
           portMappings: discovery && [
             {
@@ -251,8 +250,7 @@ export class Server extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'RUST_LOG', value: 'trace' },
-            { name: 'LOG_SENSITIVE_BODIES', value: '1' },
+            { name: 'RUST_LOG', value: 'info' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
             { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },
