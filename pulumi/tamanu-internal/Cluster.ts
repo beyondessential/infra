@@ -142,6 +142,16 @@ export class Cluster extends ComponentResource {
           { name: 'REFERENCE_DATA_BUCKET', value: this.#args.referenceData.bucket },
           { name: 'REFERENCE_DATA_KEYS', value: jsonStringify(this.#args.referenceData.files) },
           { name: 'TARGET_PROVISIONING_FILE', value: TARGET_PROVISIONING_FILE },
+          {
+            name: 'USER_DEFINITIONS',
+            value: jsonStringify({
+              'admin@tamanu.io': {
+                displayName: 'Initial Admin',
+                password: 'admin',
+                role: 'admin',
+              },
+            }),
+          },
         ],
       },
       { parent: central.endpoint, dependsOn: [dbProvisioner] },
