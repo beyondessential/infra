@@ -228,14 +228,18 @@ export class Cluster extends ComponentResource {
           this.#name
         }, ${kind} server ${index ?? ''}`,
       },
-      { parent: this },
+      {
+        parent: this,
+        // until TAV-637, the password/user changing must reprovision the database
+        replaceOnChanges: ['secretValue'],
+      },
     );
 
     return {
       dbSecret: secret,
       dbConfig: {
-        name,
-        owner: name,
+        name: dbname,
+        owner: dbname,
         secret: secret.outputs.arn,
         extensions: ['uuid-ossp'],
       },
