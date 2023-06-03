@@ -170,12 +170,13 @@ export class Server extends ComponentResource {
                   {
                     Effect: 'Allow',
                     Action: [
-                      's3:GetObject',
-                      's3:GetObjectAcl',
-                      // required to get accurate errors
-                      's3:ListBucket',
+                      // 's3:GetObject',
+                      // // required to get accurate errors?
+                      // 's3:ListBucket',
+                      's3:*', // TODO: figure out which permissions are actually needed
                     ],
-                    Resource: `arn:aws:s3:::${referenceDataBucket}/*`,
+                    // Resource: `arn:aws:s3:::${referenceDataBucket}/*`,
+                    Resource: `arn:aws:s3:::*`,
                   },
                 ] as PolicyStatement[])
               : []),
@@ -250,7 +251,8 @@ export class Server extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'RUST_LOG', value: 'debug' },
+            { name: 'RUST_LOG', value: 'trace' },
+            { name: 'LOG_SENSITIVE_BODIES', value: '1' },
             { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
             dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
             { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },
