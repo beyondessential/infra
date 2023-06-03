@@ -89,6 +89,7 @@ export class Server extends ComponentResource {
     this.service('http', ['serve'], {
       discovery: this.#args.endpoint.discovery,
       targetGroup: this.#args.endpoint.targetGroup,
+      configuratorEnv: args.configuratorEnv,
       dependsOn: [tasks],
       waitUntilStable: false,
     });
