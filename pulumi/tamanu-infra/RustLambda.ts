@@ -8,9 +8,11 @@ import {
 import { FileArchive } from '@pulumi/pulumi/asset';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
+import { local } from '@pulumi/command';
+import { basename } from 'path';
 
 export interface RustLambdaArgs {
-  zip: string;
+  source: string;
   description?: string;
   timeoutSec?: number;
   environment?: Input<{ [key: string]: Input<string> }>;
@@ -91,12 +93,20 @@ export class RustLambda extends ComponentResource {
       { parent: this },
     );
 
-    const code = new FileArchive(args.zip);
+    const build = local.runOutput(
+      {
+        dir: args.source,
+        command: 'cargo lambda build --release --arm64',
+        archivePaths: [`target/lambda/${basename(args.source)}/bootstrap`],
+      },
+      { parent: this },
+    );
+
     const lambda = new aws.lambda.Function(
       name,
       {
         description: args.description,
-        code,
+        code: build.archive,
         runtime: 'provided.al2',
         handler: 'bootstrap',
         architectures: ['arm64'],

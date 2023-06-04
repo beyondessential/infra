@@ -3,7 +3,6 @@ import {
   ComponentResourceOptions,
   Output,
   all,
-  output,
   secret,
 } from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
@@ -299,7 +298,7 @@ export class ClusterInfra extends ComponentResource {
     return new RustLambda(
       `${this.#name}-provisioner`,
       {
-        zip: '../../glue/provisioner/target/lambda/provisioner.zip',
+        source: '../../glue/provisioner',
         description: 'Provision databases and users for an RDS instance',
         timeoutSec: 300,
         environment: all([this.#database.endpoint, this.#database.masterUserSecrets]).apply(
