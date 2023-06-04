@@ -64,7 +64,7 @@ export class Cluster extends ComponentResource {
 
     this.#db = this.#infra.getOutput('cluster').apply((cluster) =>
       getDatabase({
-        dbInstanceIdentifier: cluster.database as string,
+        dbInstanceIdentifier: cluster.database.instance as string,
       }),
     );
 
@@ -77,7 +77,7 @@ export class Cluster extends ComponentResource {
         },
         { parent: this },
       ),
-      ...this.databaseProvisionConfig('central'),
+      ...this.databaseManagementConfig('central'),
     };
 
     const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
@@ -90,7 +90,7 @@ export class Cluster extends ComponentResource {
 
       return {
         index,
-        ...this.databaseProvisionConfig('facility', index),
+        ...this.databaseManagementConfig('facility', index),
         syncSecret: new Secret(
           name,
           {
@@ -112,7 +112,7 @@ export class Cluster extends ComponentResource {
       };
     });
 
-    const dbProvisioner = this.runDbProvisioner([
+    const dbManager = this.runDbManager([
       { dbSecret: central.dbSecret, dbConfig: central.dbConfig },
       ...facilityCredentials.map(({ dbSecret, dbConfig }) => ({ dbSecret, dbConfig })),
     ]);
@@ -154,7 +154,7 @@ export class Cluster extends ComponentResource {
           },
         ],
       },
-      { parent: central.endpoint, dependsOn: [dbProvisioner] },
+      { parent: central.endpoint, dependsOn: [dbManager] },
     );
 
     const facilities = facilityCredentials.map(({ index, dbSecret, syncSecret }) => {
@@ -183,7 +183,7 @@ export class Cluster extends ComponentResource {
           syncSecrets: [syncSecret.outputs.arn],
           configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
         },
-        { parent: endpoint, dependsOn: [dbProvisioner, centralServer] },
+        { parent: endpoint, dependsOn: [dbManager, centralServer] },
       );
 
       return [`facility${index}`, endpointOutput(endpoint)];
@@ -210,10 +210,10 @@ export class Cluster extends ComponentResource {
     return [secretKind, serverKind, index].filter(Boolean).join('-');
   }
 
-  databaseProvisionConfig(
+  databaseManagementConfig(
     kind: string,
     index?: number,
-  ): { dbSecret: Secret; dbConfig: DbProvisionerDatabase } {
+  ): { dbSecret: Secret; dbConfig: DbManagerDatabase } {
     const dbname = [this.#name, kind, index].filter(Boolean).join('-');
     const name = this.secretName(kind, 'db', index);
     const password = this.makePassword(name);
@@ -256,30 +256,30 @@ export class Cluster extends ComponentResource {
     };
   }
 
-  runDbProvisioner(databases: { dbSecret: Secret; dbConfig: DbProvisionerDatabase }[]) {
-    const dbProvisioner = this.#infra
+  runDbManager(databases: { dbSecret: Secret; dbConfig: DbManagerDatabase }[]) {
+    const dbManager = this.#infra
       .getOutput('cluster')
-      .apply((cluster) => cluster.provisioner as string);
-    const dbProvisionerInput: DbProvisionerInput = {
+      .apply((cluster) => cluster.database.manager as string);
+    const dbManagerInput: DbManagerInput = {
       databases: databases.map(({ dbConfig }) => dbConfig),
     };
 
     return new aws.lambda.Invocation(
-      `${this.#name}-provisioner`,
+      `${this.#name}-db-manager`,
       {
-        functionName: dbProvisioner,
-        input: jsonStringify(dbProvisionerInput),
+        functionName: dbManager,
+        input: jsonStringify(dbManagerInput),
       },
       { parent: this, dependsOn: databases.map(({ dbSecret }) => dbSecret) },
     );
   }
 }
 
-interface DbProvisionerInput {
-  databases: DbProvisionerDatabase[];
+interface DbManagerInput {
+  databases: DbManagerDatabase[];
 }
 
-interface DbProvisionerDatabase {
+interface DbManagerDatabase {
   name: string;
   owner: string;
 

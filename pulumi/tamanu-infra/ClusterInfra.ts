@@ -1,21 +1,17 @@
-import {
-  ComponentResource,
-  ComponentResourceOptions,
-  Output,
-  all,
-  secret,
-} from '@pulumi/pulumi';
+import { readFileSync } from 'fs';
+
+import { ComponentResource, ComponentResourceOptions, Output, all, secret } from '@pulumi/pulumi';
 import { Cluster } from '@pulumi/aws/ecs';
 import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
-import { Network, NetworkOutputs } from './Network';
-import { RustLambda } from './RustLambda';
 import { Listener, LoadBalancer } from '@pulumi/aws/lb';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
-import { readFileSync } from 'fs';
 import { DeviceKey, TailnetKey } from '@pulumi/tailscale';
 import { getDeviceOutput } from '@pulumi/tailscale/getDevice';
 import { Record, getZone } from '@pulumi/aws/route53';
+
+import { Network, NetworkOutputs } from './Network';
+import { RustLambda } from './RustLambda';
 import { ValidCertificate } from '../ValidCertificate';
 
 export interface ClusterInfraArgs {
@@ -29,8 +25,11 @@ export interface ClusterInfraArgs {
 }
 
 export interface ClusterInfraOutputs {
-  database: Output<string>;
-  provisioner: Output<string>;
+  database: {
+    instance: Output<string>;
+    manager: Output<string>;
+    endpoint: Output<string>;
+  };
   containers: {
     securityGroup: Output<string>;
     ecs: Output<string>;
@@ -129,8 +128,11 @@ export class ClusterInfra extends ComponentResource {
 
     this.registerOutputs(
       (this.outputs = {
-        database: this.#database.arn,
-        provisioner: this.dbProvisioner().name.apply((name) => name!),
+        database: {
+          instance: this.#database.arn,
+          manager: this.dbManager().name.apply((name) => name!),
+          endpoint: this.#database.endpoint,
+        },
         containers: {
           securityGroup: this.#securityGroups.containers.id,
           ecs: this.#cluster.arn,
@@ -214,15 +216,15 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    const provisioner = new SecurityGroup(
-      `${this.#name}-provisioner`,
+    const dbManager = new SecurityGroup(
+      `${this.#name}-db-manager`,
       {
         vpcId: this.#network.vpc,
         ingress: [],
         egress: [all],
         tags: {
-          Name: `${this.#name}-provisioner`,
-          Purpose: 'provisioner',
+          Name: `${this.#name}-manager`,
+          Purpose: 'db-manager',
           ...this.#args.tags,
         },
       },
@@ -248,7 +250,7 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    return { databases, containers, provisioner, jumpbox };
+    return { databases, containers, dbManager, jumpbox };
   }
 
   database() {
@@ -294,12 +296,12 @@ export class ClusterInfra extends ComponentResource {
     return rds;
   }
 
-  dbProvisioner() {
+  dbManager() {
     return new RustLambda(
-      `${this.#name}-provisioner`,
+      `${this.#name}-db-manager`,
       {
-        source: '../../glue/provisioner',
-        description: 'Provision databases and users for an RDS instance',
+        source: '../../glue/db-manager',
+        description: 'Manage databases and users for an RDS instance',
         timeoutSec: 300,
         environment: all([this.#database.endpoint, this.#database.masterUserSecrets]).apply(
           ([endpoint, secrets]) => ({
@@ -310,11 +312,11 @@ export class ClusterInfra extends ComponentResource {
         ),
         network: {
           subnetIds: this.#network.workloadSubnetIds,
-          securityGroupIds: [this.#securityGroups.provisioner.id],
+          securityGroupIds: [this.#securityGroups.dbManager.id],
         },
         policies: [
           {
-            // policy to allow reading the db-managed "master" secret(s)
+            // policy to allow reading the db "master" secret(s)
             name: 'getdbmastersecret',
             policy: {
               Version: '2012-10-17',
@@ -330,7 +332,7 @@ export class ClusterInfra extends ComponentResource {
             },
           },
           {
-            // policy to allow reading provisioned db secrets for this cluster
+            // policy to allow reading managed db secrets for this cluster
             name: 'getdbsecrets',
             policy: {
               Version: '2012-10-17',
@@ -344,7 +346,7 @@ export class ClusterInfra extends ComponentResource {
             },
           },
         ],
-        tags: { Purpose: 'provisioner', ...this.#args.tags },
+        tags: { Purpose: 'db-manager', ...this.#args.tags },
       },
       { parent: this },
     );
