@@ -4,6 +4,7 @@ import {
   Output,
   StackReference,
   all,
+  getStack,
 } from '@pulumi/pulumi';
 import { Service } from '@pulumi/aws/servicediscovery';
 import { ListenerCertificate, ListenerRule } from '@pulumi/aws/lb';
@@ -67,9 +68,12 @@ export class Endpoint extends ComponentResource {
     );
 
     const vpcId = this.#infra.getOutput('network').apply((network) => network.vpc as string);
+    let targetGroupName = `${getStack()}-${this.#name}`;
+    targetGroupName = `${clusterName.substring(0, 31-targetGroupName.length)}-${targetGroupName}`;
     this.targetGroup = new TargetGroup(
-      `${clusterName.substring(0, 32-7-this.#name.length)}-${this.#name}`,
+      `${clusterName}-${this.#name}`,
       {
+        name: targetGroupName,
         targetType: 'ip',
         ipAddressType: 'ipv4',
         port,
