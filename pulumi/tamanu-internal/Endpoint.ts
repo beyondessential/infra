@@ -4,13 +4,13 @@ import {
   Output,
   StackReference,
   all,
-  getStack,
 } from '@pulumi/pulumi';
 import { Service } from '@pulumi/aws/servicediscovery';
 import { ListenerCertificate, ListenerRule } from '@pulumi/aws/lb';
 import { TargetGroup } from '@pulumi/aws/lb';
 import { Record } from '@pulumi/aws/route53';
 import { ValidCertificate } from '../ValidCertificate';
+import { createHash } from 'crypto';
 
 export const DEFAULT_PORT = 3000;
 
@@ -68,12 +68,12 @@ export class Endpoint extends ComponentResource {
     );
 
     const vpcId = this.#infra.getOutput('network').apply((network) => network.vpc as string);
-    let targetGroupName = `${getStack()}-${this.#name}`;
-    targetGroupName = `${clusterName.substring(0, 31-targetGroupName.length)}-${targetGroupName}`;
     this.targetGroup = new TargetGroup(
-      `${clusterName}-${this.#name}`,
+      `${createHash('sha256')
+        .update(clusterName)
+        .digest('base64url')
+        .substring(0, 31 - 7 - this.#name.length)}-${this.#name}`,
       {
-        name: targetGroupName,
         targetType: 'ip',
         ipAddressType: 'ipv4',
         port,
