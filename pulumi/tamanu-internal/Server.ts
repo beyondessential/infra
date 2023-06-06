@@ -324,6 +324,9 @@ export class Server extends ComponentResource {
         networkConfiguration: {
           subnets,
         },
+        tags: {
+          Name: [this.#args.clusterName, this.#name, name].filter(Boolean).join('-'),
+        },
       },
       { parent: this, dependsOn: [this.#config, ...dependsOn] },
     );
