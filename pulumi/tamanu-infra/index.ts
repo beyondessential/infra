@@ -106,8 +106,14 @@ const buildRole = new Role(
                 // Tamanu builds
                 'repo:beyondessential/tamanu:pull_request',
                 'repo:beyondessential/tamanu:ref:refs/heads/main',
-                'repo:beyondessential/tamanu:ref:refs/heads/dev',
+                'repo:beyondessential/tamanu:ref:refs/heads/release/*',
                 'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+
+                // Tamanu builds (testbed)
+                'repo:beyondessential/tamanu-new-branching:pull_request',
+                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/main',
+                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/release/*',
+                'repo:beyondessential/tamanu-new-branching:ref:refs/tags/v*.*.*',
 
                 // Configurator glue container
                 'repo:beyondessential/ops:ref:refs/heads/main',
@@ -145,4 +151,79 @@ new PolicyAttachment(
   { parent: buildRole },
 );
 
-export const cdRoles = { build: buildRole.arn };
+const deployRole = new Role(
+  'github-actions-deploy',
+  {
+    name: 'gha-deploy',
+    assumeRolePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'sts:AssumeRoleWithWebIdentity',
+          Principal: {
+            Federated: oidcProvider.arn,
+          },
+          Condition: oidcProvider.url.apply((url) => ({
+            StringEquals: {
+              [`${url}:aud`]: 'sts.amazonaws.com',
+            },
+            StringLike: {
+              [`${url}:sub`]: [
+                // Tamanu builds
+                'repo:beyondessential/tamanu:pull_request',
+                'repo:beyondessential/tamanu:ref:refs/heads/main',
+                'repo:beyondessential/tamanu:ref:refs/heads/release/*',
+                'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+
+                // Tamanu builds (testbed)
+                'repo:beyondessential/tamanu-new-branching:pull_request',
+                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/main',
+                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/release/*',
+                'repo:beyondessential/tamanu-new-branching:ref:refs/tags/v*.*.*',
+              ],
+            },
+          })),
+        },
+      ],
+    },
+    inlinePolicies: [
+      {
+        name: 'TamanuDeploy',
+        policy: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: [
+                // TODO: tighten this up
+                'ecs:*',
+                'logs:*',
+                'secretsmanager:*',
+                'elasticloadbalancing:*',
+                'acm:*',
+                'ssm:*',
+                'route53:*',
+                'lambda:*',
+                'servicediscovery:*',
+
+                'iam:AttachRolePolicy',
+                'iam:*Policy',
+                'iam:*PolicyVersion',
+                'iam:*Role',
+                'iam:*RolePolicy',
+                'iam:List*Policies',
+
+                'rds:DescribeDBInstances',
+              ],
+              Resource: '*',
+            },
+          ],
+        }),
+      },
+    ],
+  },
+  { parent: oidcProvider },
+);
+
+export const cdRoles = { build: buildRole.arn, deploy: deployRole.arn };

@@ -68,7 +68,7 @@ export class Endpoint extends ComponentResource {
 
     const vpcId = this.#infra.getOutput('network').apply((network) => network.vpc as string);
     this.targetGroup = new TargetGroup(
-      `${clusterName}-${this.#name}`,
+      `${clusterName.substring(0, 32-7-this.#name.length)}-${this.#name}`,
       {
         targetType: 'ip',
         ipAddressType: 'ipv4',
