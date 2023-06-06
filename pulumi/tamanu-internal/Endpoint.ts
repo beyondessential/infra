@@ -72,7 +72,7 @@ export class Endpoint extends ComponentResource {
       `${createHash('sha256')
         .update(clusterName)
         .digest('base64url')
-        .substring(0, 31 - 7 - this.#name.length)}-${this.#name}`,
+        .substring(0, 31 - 8 - this.#name.length)}-${this.#name}`,
       {
         targetType: 'ip',
         ipAddressType: 'ipv4',
