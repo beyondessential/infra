@@ -72,6 +72,7 @@ export class Endpoint extends ComponentResource {
       `${createHash('sha256')
         .update(clusterName)
         .digest('base64url')
+        .replace(/[^a-zA-Z0-9]+/g, '')
         .substring(0, 31 - 8 - this.#name.length)}-${this.#name}`,
       {
         targetType: 'ip',
