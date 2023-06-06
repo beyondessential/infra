@@ -206,6 +206,7 @@ const deployRole = new Role(
                 'route53:*',
                 'lambda:*',
                 'servicediscovery:*',
+                'rds:*',
 
                 'iam:AttachRolePolicy',
                 'iam:*Policy',
@@ -213,8 +214,6 @@ const deployRole = new Role(
                 'iam:*Role',
                 'iam:*RolePolicy',
                 'iam:List*Policies',
-
-                'rds:DescribeDBInstances',
               ],
               Resource: '*',
             },
