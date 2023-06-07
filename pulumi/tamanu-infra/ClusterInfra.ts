@@ -455,9 +455,9 @@ export class ClusterInfra extends ComponentResource {
       {
         ephemeral: false,
 
-        // we'll wait 3 minutes for it to be ready
-        // plus 2 minutes for the box to launch
-        expiry: 300,
+        // 5 minutes is fine when starting from where the VPC is up, but
+        // if we're starting from scratch, we want more like 10 to 15.
+        expiry: 15 * 60,
 
         reusable: false, // single-use
         preauthorized: true, // no need to approve manually
