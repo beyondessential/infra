@@ -56,26 +56,6 @@ export const { outputs: cluster } = new ClusterInfra('internal', {
   },
 });
 
-// ECS Exec support
-// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html#ecs-exec-enabling-and-using
-export const { arn: ssmExecPolicy } = new Policy('ECSTaskPolicyForSSMExec', {
-  policy: {
-    Version: '2012-10-17',
-    Statement: [
-      {
-        Effect: 'Allow',
-        Action: [
-          'ssmmessages:CreateControlChannel',
-          'ssmmessages:CreateDataChannel',
-          'ssmmessages:OpenControlChannel',
-          'ssmmessages:OpenDataChannel',
-        ],
-        Resource: '*',
-      },
-    ],
-  },
-});
-
 // Github Actions OIDC roles for CD
 // https://github.com/aws-actions/configure-aws-credentials#sample-iam-oidc-cloudformation-template
 const oidcProvider = new OpenIdConnectProvider('github-actions', {
