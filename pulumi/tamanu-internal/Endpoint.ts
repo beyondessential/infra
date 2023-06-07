@@ -18,6 +18,9 @@ export interface EndpointArgs {
   clusterName: string;
   infra: StackReference;
   port?: number;
+
+  /** Any extra tags to add to all resources. */
+  tags?: { [key: string]: string };
 }
 
 export class Endpoint extends ComponentResource {
@@ -33,7 +36,7 @@ export class Endpoint extends ComponentResource {
 
   constructor(
     name: string,
-    { clusterName, infra, port = DEFAULT_PORT }: EndpointArgs,
+    { clusterName, infra, port = DEFAULT_PORT, tags = {} }: EndpointArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('pkg:index:TamanuEndpoint', name, {}, opts);
@@ -61,6 +64,7 @@ export class Endpoint extends ComponentResource {
         healthCheckCustomConfig: {
           failureThreshold: 3,
         },
+        tags,
       },
       {
         parent: this,
@@ -81,6 +85,7 @@ export class Endpoint extends ComponentResource {
         protocol: 'HTTP',
         protocolVersion: 'HTTP1',
         vpcId,
+        tags,
       },
       { parent: this },
     );
@@ -114,6 +119,7 @@ export class Endpoint extends ComponentResource {
       {
         domainName: endpoint.fqdn,
         zoneId,
+        tags,
       },
       { parent: endpoint },
     );
@@ -144,6 +150,7 @@ export class Endpoint extends ComponentResource {
             },
           },
         ],
+        tags,
       },
       { parent: endpoint },
     );

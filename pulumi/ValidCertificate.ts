@@ -1,11 +1,4 @@
-import {
-  ComponentResource,
-  ComponentResourceOptions,
-  Input,
-  Output,
-  all,
-  output,
-} from '@pulumi/pulumi';
+import { ComponentResource, ComponentResourceOptions, Input, Output, all } from '@pulumi/pulumi';
 import { Certificate, CertificateValidation } from '@pulumi/aws/acm';
 import { Record } from '@pulumi/aws/route53';
 
@@ -13,6 +6,9 @@ export interface ValidCertificateArgs {
   domainName: Input<string>;
   zoneId: Input<string>;
   keyAlgorithm?: Input<string>;
+
+  /** Any extra tags to add to all resources. */
+  tags?: { [key: string]: string };
 }
 
 export interface ValidCertificateOutputs {
@@ -27,7 +23,7 @@ export class ValidCertificate extends ComponentResource {
 
   constructor(
     name: string,
-    { domainName, keyAlgorithm, zoneId }: ValidCertificateArgs,
+    { domainName, keyAlgorithm, zoneId, tags = {} }: ValidCertificateArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('pkg:index:ValidCertificate', name, {}, opts);
@@ -38,6 +34,7 @@ export class ValidCertificate extends ComponentResource {
         domainName,
         validationMethod: 'DNS',
         keyAlgorithm: keyAlgorithm ?? 'EC_prime256v1',
+        tags,
       },
       { parent: this },
     );

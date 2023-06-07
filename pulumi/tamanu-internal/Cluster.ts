@@ -27,6 +27,9 @@ export interface ClusterArgs {
 
   /** @default 2 */
   numberOfFacilities?: number;
+
+  /** Any extra tags to add to all resources. */
+  tags?: { [key: string]: string };
 }
 
 export interface ClusterOutputs {
@@ -60,8 +63,11 @@ export class Cluster extends ComponentResource {
   constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
     super('pkg:index:TamanuCluster', name, {}, opts);
     this.#name = name;
-    this.#args = { numberOfFacilities: 2, ...args };
+    this.#args = { numberOfFacilities: 2, tags: {}, ...args };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
+    this.#args.tags.Application = 'Tamanu';
+    this.#args.tags.Cluster = name;
+    this.#args.tags.Infra = 'internal';
 
     this.#db = this.#infra.getOutput('cluster').apply((cluster) =>
       getDatabase({
@@ -70,8 +76,9 @@ export class Cluster extends ComponentResource {
     );
 
     const ecs = new ECSCluster(
-      this.#name,
+      `internal-${this.#name}`,
       {
+        tags: this.#args.tags,
       },
       { parent: this },
     );
@@ -82,6 +89,7 @@ export class Cluster extends ComponentResource {
         {
           clusterName: this.#name,
           infra: this.#infra,
+          tags: this.#args.tags,
         },
         { parent: this },
       ),
@@ -114,6 +122,10 @@ export class Cluster extends ComponentResource {
             description: `Sync credentials for Tamanu Internal deployment ${
               this.#name
             }, facility ${index}`,
+            tags: {
+              Purpose: 'sync',
+              ...this.#args.tags,
+            },
           },
           { parent: this },
         ),
@@ -162,6 +174,10 @@ export class Cluster extends ComponentResource {
             }),
           },
         ],
+        tags: {
+          Service: 'central',
+          ...this.#args.tags,
+        },
       },
       { parent: central.endpoint, dependsOn: [dbManager] },
     );
@@ -192,6 +208,10 @@ export class Cluster extends ComponentResource {
           dbSecret: dbSecret.outputs.arn,
           syncSecrets: [syncSecret.outputs.arn],
           configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
+          tags: {
+            Service: 'facility',
+            ...this.#args.tags,
+          },
         },
         { parent: endpoint, dependsOn: [dbManager, centralServer] },
       );
@@ -247,6 +267,10 @@ export class Cluster extends ComponentResource {
         description: `PostgresSQL credentials for Tamanu Internal deployment ${
           this.#name
         }, ${kind} server ${index ?? ''}`,
+        tags: {
+          Purpose: 'database',
+          ...this.#args.tags,
+        },
       },
       {
         parent: this,

@@ -38,6 +38,9 @@ export interface ServerArgs {
 
   // for facilities
   index?: null | number;
+
+  /** Any extra tags to add to all resources. */
+  tags?: { [key: string]: string };
 }
 
 export class Server extends ComponentResource {
@@ -59,6 +62,7 @@ export class Server extends ComponentResource {
       httpScale: 1,
       configuratorEnv: [],
       referenceDataBucket: null,
+      tags: {},
       ...args,
     };
     this.#infra = args.infra;
@@ -73,6 +77,7 @@ export class Server extends ComponentResource {
         } server ${this.#args.index ?? ''}`,
         value: readFileSync(this.#args.configTemplate, 'utf8'),
         overwrite: true, // this + ignoreChanges = overwrite an existing config on create only
+        tags: this.#args.tags,
       },
       { parent: this, ignoreChanges: ['value'] },
     );
@@ -137,6 +142,7 @@ export class Server extends ComponentResource {
             },
           ],
         },
+        tags: this.#args.tags,
       },
       { parent: this },
     );
@@ -182,6 +188,7 @@ export class Server extends ComponentResource {
               : []),
           ],
         },
+        tags: this.#args.tags,
       },
       { parent: taskRole },
     );
@@ -305,6 +312,7 @@ export class Server extends ComponentResource {
       taskRole: {
         roleArn: taskRole.arn,
       },
+      tags: this.#args.tags,
     };
 
     return new awsx.ecs.FargateService(
@@ -323,6 +331,7 @@ export class Server extends ComponentResource {
         networkConfiguration: {
           subnets,
         },
+        tags: this.#args.tags,
       },
       { parent: this, dependsOn: [this.#config, ...dependsOn] },
     );

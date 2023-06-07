@@ -71,7 +71,7 @@ export class ClusterInfra extends ComponentResource {
       tags: {},
       ...args,
     };
-    this.#args.tags.Cluster = name;
+    this.#args.tags.Infra = name;
 
     // Security groups
     this.#securityGroups = this.securityGroups();
