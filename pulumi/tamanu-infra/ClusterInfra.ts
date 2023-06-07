@@ -64,7 +64,7 @@ export class ClusterInfra extends ComponentResource {
     { network, ...args }: ClusterInfraArgs,
     opts: ComponentResourceOptions = {},
   ) {
-    super('pkg:index:ClusterInfra', name, {}, opts);
+    super('bes:tamanu:ClusterInfra', name, {}, opts);
     this.#name = name;
     this.#network = network instanceof Network ? network.outputs : network;
     this.#args = {

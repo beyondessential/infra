@@ -26,7 +26,7 @@ export class ValidCertificate extends ComponentResource {
     { domainName, keyAlgorithm, zoneId, tags = {} }: ValidCertificateArgs,
     opts: ComponentResourceOptions = {},
   ) {
-    super('pkg:index:ValidCertificate', name, {}, opts);
+    super('bes:common:ValidCertificate', name, {}, opts);
 
     const certificate = new Certificate(
       name,

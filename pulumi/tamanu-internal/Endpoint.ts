@@ -39,7 +39,7 @@ export class Endpoint extends ComponentResource {
     { clusterName, infra, port = DEFAULT_PORT, tags = {} }: EndpointArgs,
     opts: ComponentResourceOptions = {},
   ) {
-    super('pkg:index:TamanuEndpoint', name, {}, opts);
+    super('bes:tamanu:Endpoint', name, {}, opts);
     this.#name = name;
     this.#infra = infra;
     this.port = port;

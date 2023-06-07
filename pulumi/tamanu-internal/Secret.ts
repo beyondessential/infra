@@ -20,7 +20,7 @@ export class Secret extends ComponentResource {
   outputs: SecretOutputs;
 
   constructor(name: string, args: SecretArgs, opts: ComponentResourceOptions = {}) {
-    super('pkg:index:AwsSecret', name, {}, opts);
+    super('bes:common:AwsSecret', name, {}, opts);
     const { secretValue, namePrefix, ...metaArgs } = args;
 
     const secretMeta = new aws.secretsmanager.Secret(name, {

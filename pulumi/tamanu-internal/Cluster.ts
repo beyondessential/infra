@@ -61,7 +61,7 @@ export class Cluster extends ComponentResource {
   #db: Output<GetInstanceResult>;
 
   constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
-    super('pkg:index:TamanuCluster', name, {}, opts);
+    super('bes:tamanu:Cluster', name, {}, opts);
     this.#name = name;
     this.#args = { numberOfFacilities: 2, tags: {}, ...args };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });

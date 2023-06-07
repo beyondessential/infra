@@ -45,7 +45,7 @@ export class RustLambda extends ComponentResource {
     { tags = {}, ...args }: RustLambdaArgs,
     opts: ComponentResourceOptions = {},
   ) {
-    super('pkg:index:RustLambda', name, {}, opts);
+    super('bes:common:RustLambda', name, {}, opts);
 
     const role = new aws.iam.Role(
       name,

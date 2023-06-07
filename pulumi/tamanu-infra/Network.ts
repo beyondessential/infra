@@ -44,7 +44,7 @@ export class Network extends ComponentResource {
   outputs: NetworkOutputs;
 
   constructor(name: string, args: NetworkArgs, opts: ComponentResourceOptions = {}) {
-    super('pkg:index:Network', name, {}, opts);
+    super('bes:common:Network', name, {}, opts);
     this.#name = name;
     this.#args = {
       zones: ['a', 'b', 'c'],
