@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 
 import { ComponentResource, ComponentResourceOptions, Output, all, secret } from '@pulumi/pulumi';
-import { Cluster } from '@pulumi/aws/ecs';
 import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
 import { Listener, LoadBalancer } from '@pulumi/aws/lb';
@@ -32,7 +31,6 @@ export interface ClusterInfraOutputs {
   };
   containers: {
     securityGroup: Output<string>;
-    ecs: Output<string>;
     namespaceId: Output<string>;
     namespaceName: Output<string>;
     loadbalancer: Output<string>;
@@ -53,7 +51,6 @@ export class ClusterInfra extends ComponentResource {
   #network: NetworkOutputs;
   #args: Omit<Required<ClusterInfraArgs>, 'network'>;
 
-  #cluster: Cluster;
   #cloudmap: PrivateDnsNamespace;
   #database: DBInstance;
   #zone: Output<{ id: string; name: string }>;
@@ -79,15 +76,6 @@ export class ClusterInfra extends ComponentResource {
     // Security groups
     this.#securityGroups = this.securityGroups();
 
-    // ECS cluster
-    this.#cluster = new Cluster(
-      this.#name,
-      {
-        tags: this.#args.tags,
-      },
-      { parent: this },
-    );
-
     this.#cloudmap = new PrivateDnsNamespace(
       this.#name,
       {
@@ -95,7 +83,7 @@ export class ClusterInfra extends ComponentResource {
         vpc: this.#network.vpc,
         tags: this.#args.tags,
       },
-      { parent: this.#cluster },
+      { parent: this },
     );
 
     this.#zone = all([
@@ -135,7 +123,6 @@ export class ClusterInfra extends ComponentResource {
         },
         containers: {
           securityGroup: this.#securityGroups.containers.id,
-          ecs: this.#cluster.arn,
           namespaceId: this.#cloudmap.id,
           namespaceName: this.#cloudmap.name,
           loadbalancer: this.#lb.arn,

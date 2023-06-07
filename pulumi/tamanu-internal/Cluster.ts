@@ -8,6 +8,7 @@ import {
   StackReference,
   jsonStringify,
 } from '@pulumi/pulumi';
+import { Cluster as ECSCluster } from '@pulumi/aws/ecs';
 import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds';
 
 // this form is required to import lambda as otherwise it creates a circular dependency error
@@ -68,6 +69,13 @@ export class Cluster extends ComponentResource {
       }),
     );
 
+    const ecs = new ECSCluster(
+      this.#name,
+      {
+      },
+      { parent: this },
+    );
+
     const central = {
       endpoint: new Endpoint(
         'central',
@@ -120,6 +128,7 @@ export class Cluster extends ComponentResource {
     const centralServer = new Server(
       'central',
       {
+        ecs,
         endpoint: central.endpoint,
         infra: this.#infra,
         clusterName: this.#name,
@@ -170,6 +179,7 @@ export class Cluster extends ComponentResource {
       new Server(
         `facility-${index}`,
         {
+          ecs,
           endpoint,
           infra: this.#infra,
           clusterName: this.#name,

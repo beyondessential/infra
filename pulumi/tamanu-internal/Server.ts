@@ -8,6 +8,7 @@ import {
   jsonStringify,
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
+import { Cluster as ECSCluster } from '@pulumi/aws/ecs';
 import { Service } from '@pulumi/aws/servicediscovery';
 import { Parameter } from '@pulumi/aws/ssm';
 import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam';
@@ -15,6 +16,7 @@ import { TargetGroup } from '@pulumi/aws/lb';
 import { DEFAULT_PORT, Endpoint } from './Endpoint';
 
 export interface ServerArgs {
+  ecs: ECSCluster;
   endpoint: Endpoint;
   infra: StackReference;
 
@@ -109,9 +111,6 @@ export class Server extends ComponentResource {
   ): awsx.ecs.FargateService {
     const { imageName, memoryGB, cores, syncSecrets, dbSecret, referenceDataBucket, httpScale } =
       this.#args;
-    const cluster = this.#infra
-      .getOutput('cluster')
-      .apply((cluster) => cluster.containers.ecs as string);
     const subnets = this.#infra
       .getOutput('network')
       .apply((network) => network.workloadSubnetIds as string[]);
@@ -311,7 +310,7 @@ export class Server extends ComponentResource {
     return new awsx.ecs.FargateService(
       [this.#name, name].filter(Boolean).join('-'),
       {
-        cluster,
+        cluster: this.#args.ecs.arn,
         taskDefinitionArgs: task,
         desiredCount: httpScale,
         continueBeforeSteadyState: !waitUntilStable,
@@ -323,9 +322,6 @@ export class Server extends ComponentResource {
         },
         networkConfiguration: {
           subnets,
-        },
-        tags: {
-          Name: [this.#args.clusterName, this.#name, name].filter(Boolean).join('-'),
         },
       },
       { parent: this, dependsOn: [this.#config, ...dependsOn] },
