@@ -237,7 +237,24 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    return { databases, containers, dbManager, jumpbox };
+    const lb = new SecurityGroup(
+      `${this.#name}-lb`,
+      {
+        vpcId: this.#network.vpc,
+        ingress: [allICMPv4, openPort('HTTP', 80, 'tcp'), openPort('HTTPS', 443, 'tcp')],
+        egress: [all],
+        tags: {
+          Name: `${this.#name}-lb`,
+          Purpose: 'lb',
+          ...this.#args.tags,
+        },
+      },
+      {
+        parent: this,
+      },
+    );
+
+    return { databases, containers, dbManager, jumpbox, lb };
   }
 
   database() {
@@ -349,6 +366,7 @@ export class ClusterInfra extends ComponentResource {
         loadBalancerType: 'application',
         subnets: this.#network.natSubnetIds,
         ipAddressType: 'ipv4',
+        securityGroups: [this.#securityGroups.lb.id],
         tags: {
           Purpose: 'containers',
           ...this.#args.tags,
