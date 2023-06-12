@@ -187,7 +187,9 @@ export class ClusterInfra extends ComponentResource {
         vpcId: this.#network.vpc,
         ingress: [
           allICMPv4,
+          openPort('SSH', 22),
           openPort('HTTP', 80),
+          openPort('Internal HTTP', 3000),
           openPort('HTTPS', 443),
           openPort('HTTP/3', 443, 'udp'),
         ],
@@ -241,7 +243,7 @@ export class ClusterInfra extends ComponentResource {
       `${this.#name}-lb`,
       {
         vpcId: this.#network.vpc,
-        ingress: [allICMPv4, openPort('HTTP', 80, 'tcp'), openPort('HTTPS', 443, 'tcp')],
+        ingress: [allICMPv4, openPort('HTTP', 80), openPort('HTTPS', 443)],
         egress: [all],
         tags: {
           Name: `${this.#name}-lb`,

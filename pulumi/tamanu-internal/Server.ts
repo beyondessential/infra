@@ -126,6 +126,9 @@ export class Server extends ComponentResource {
     const configuratorImage = this.#infra
       .getOutput('repos')
       .apply((repos) => repos.configurator as string);
+    const securityGroup = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.containers.securityGroup as string);
 
     const taskRole = new Role(
       `${this.#name}-${name}-task`,
@@ -330,6 +333,7 @@ export class Server extends ComponentResource {
         },
         networkConfiguration: {
           subnets,
+          securityGroups: [securityGroup],
         },
         tags: this.#args.tags,
       },
