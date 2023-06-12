@@ -39,9 +39,6 @@ const buildRole = new Role(
 
                 // Tamanu builds (testbed)
                 'repo:beyondessential/tamanu-new-branching:pull_request',
-                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/main',
-                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/release/*',
-                'repo:beyondessential/tamanu-new-branching:ref:refs/tags/v*.*.*',
 
                 // Configurator glue container
                 'repo:beyondessential/ops:ref:refs/heads/main',
