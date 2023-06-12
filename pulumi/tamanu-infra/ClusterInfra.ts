@@ -381,7 +381,7 @@ export class ClusterInfra extends ComponentResource {
     const certificate = new ValidCertificate(
       `${name}-default`,
       {
-        domainName: this.#zone.name,
+        domainNames: [this.#zone.name],
         zoneId: this.#zone.id,
       },
       { parent: lb },

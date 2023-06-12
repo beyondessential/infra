@@ -3,7 +3,7 @@ import { Certificate, CertificateValidation } from '@pulumi/aws/acm';
 import { Record } from '@pulumi/aws/route53';
 
 export interface ValidCertificateArgs {
-  domainName: Input<string>;
+  domainNames: Input<string>[];
   zoneId: Input<string>;
   keyAlgorithm?: Input<string>;
 
@@ -12,26 +12,32 @@ export interface ValidCertificateArgs {
 }
 
 export interface ValidCertificateOutputs {
-  domainName: Output<string>;
+  domainNames: Output<string[]>;
   certificateArn: Output<string>;
 }
 
 export class ValidCertificate extends ComponentResource {
-  domainName: Output<string>;
+  domainNames: Output<string[]>;
   certificateArn: Output<string>;
   outputs: ValidCertificateOutputs;
 
+  #name: string;
+
   constructor(
     name: string,
-    { domainName, keyAlgorithm, zoneId, tags = {} }: ValidCertificateArgs,
+    { domainNames, keyAlgorithm, zoneId, tags = {} }: ValidCertificateArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:common:ValidCertificate', name, {}, opts);
+    this.#name = name;
+
+    const [domainName, ...subjectAlternativeNames] = domainNames;
 
     const certificate = new Certificate(
       name,
       {
         domainName,
+        subjectAlternativeNames,
         validationMethod: 'DNS',
         keyAlgorithm: keyAlgorithm ?? 'EC_prime256v1',
         tags,
@@ -39,37 +45,44 @@ export class ValidCertificate extends ComponentResource {
       { parent: this },
     );
 
-    const validationRecord = new Record(
-      `${name}-validation`,
-      {
-        name: certificate.domainValidationOptions[0].resourceRecordName,
-        records: [certificate.domainValidationOptions[0].resourceRecordValue],
-        ttl: 60,
-        type: certificate.domainValidationOptions[0].resourceRecordType,
-        zoneId,
-      },
-      { parent: certificate, deleteBeforeReplace: true },
+    const validationRecords = certificate.domainValidationOptions.apply((validations) =>
+      validations.map(
+        ({ resourceRecordName: name, resourceRecordValue: value, resourceRecordType: type }) =>
+          new Record(
+            `${this.#name}-validation-${name}`,
+            {
+              name,
+              records: [value],
+              ttl: 60,
+              type,
+              zoneId,
+            },
+            { parent: certificate, deleteBeforeReplace: true },
+          ),
+      ),
     );
 
     const certificateValidation = new CertificateValidation(
       name,
       {
         certificateArn: certificate.arn,
-        validationRecordFqdns: [validationRecord.fqdn],
+        validationRecordFqdns: validationRecords.apply((records) =>
+          records.map((record) => record.fqdn),
+        ),
       },
       { parent: certificate },
     );
 
     // bind to the validation
-    this.domainName = all([domainName, certificateValidation.certificateArn]).apply(
-      ([name]) => name,
+    this.domainNames = all([domainNames, certificateValidation.certificateArn]).apply(
+      ([names]) => names,
     );
     this.certificateArn = certificateValidation.certificateArn;
 
     this.registerOutputs(
       (this.outputs = {
-        domainName: this.domainName,
-        certificateArn: certificateValidation.certificateArn,
+        domainNames: this.domainNames,
+        certificateArn: this.certificateArn,
       }),
     );
   }

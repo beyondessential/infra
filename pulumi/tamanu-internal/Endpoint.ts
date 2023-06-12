@@ -117,7 +117,7 @@ export class Endpoint extends ComponentResource {
     const { certificateArn } = new ValidCertificate(
       `${clusterName}-${this.#name}`,
       {
-        domainName: endpoint.fqdn,
+        domainNames: [endpoint.fqdn],
         zoneId,
         tags,
       },
