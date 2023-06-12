@@ -95,8 +95,9 @@ defaults
     retries                 3
     timeout queue           1m
     timeout connect         10s
-    timeout client          1m
-    timeout server          1m
+    timeout tunnel          5m
+    timeout client-fin      1m
+    timeout server-fin      1m
     timeout check           10s
     maxconn                 3000
 
