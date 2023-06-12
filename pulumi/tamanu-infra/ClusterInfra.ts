@@ -475,7 +475,7 @@ export class ClusterInfra extends ComponentResource {
     const box = new Instance(
       name,
       {
-        keyName: 'test',
+        keyName: 'ops',
         ami: alpine.id,
         instanceType: 't4g.nano',
         rootBlockDevice: {
