@@ -47,9 +47,14 @@ export class ValidCertificate extends ComponentResource {
 
     const validationRecords = certificate.domainValidationOptions.apply((validations) =>
       validations.map(
-        ({ resourceRecordName: name, resourceRecordValue: value, resourceRecordType: type }) =>
+        ({
+          domainName,
+          resourceRecordName: name,
+          resourceRecordValue: value,
+          resourceRecordType: type,
+        }) =>
           new Record(
-            `${this.#name}-validation-${name}`,
+            `${this.#name}-validation-${domainName}`,
             {
               name,
               records: [value],

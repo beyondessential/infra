@@ -9,7 +9,7 @@ export const repos = Object.fromEntries(
 );
 
 export const { outputs: network } = new Network('internal', {
-  ipv4Cidr: '10.0.0.0/16',
+  ipv4Cidr: '10.20.0.0/16',
   tags: {
     Application: 'Tamanu',
     Infra: 'internal',
