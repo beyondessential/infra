@@ -507,8 +507,8 @@ export class ClusterInfra extends ComponentResource {
     const tailscaleDevice = getDeviceOutput({
       // bind to the box, even if we don't use any of the outputs
       // the suffix here is the MagicDNS domain for our tailnet
-      name: box.arn.apply((_) => `${tailscaleName}.tail22b03.ts.net`),
-      waitFor: '3m',
+      name: box.arn.apply((_) => `${tailscaleName}.tail53aef.ts.net`),
+      waitFor: '15m',
     });
 
     // Disable device key expiry so we don't have to attend to the box.
