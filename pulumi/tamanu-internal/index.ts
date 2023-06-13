@@ -4,7 +4,7 @@ import { Cluster } from './Cluster';
 const cfg = new Config();
 const imageTag = cfg.require('imageTag');
 
-const { outputs: cluster } = new Cluster(getStack(), {
+const { outputs: cluster } = new Cluster(getStack().substring(0, 40), {
   imageTag,
   referenceData: {
     bucket: 'bes-tamanu-dev-referencedata',
