@@ -14,6 +14,7 @@ import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
 
+import { ValidCertificate } from '../ValidCertificate';
 import { Secret } from './Secret';
 import { Endpoint } from './Endpoint';
 import { Server } from './Server';
@@ -83,12 +84,27 @@ export class Cluster extends ComponentResource {
       { parent: this },
     );
 
+    const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
+    const zoneName = this.#infra
+      .getOutput('cluster')
+      .apply((cluster) => cluster.zone.name as string);
+    const { certificateArn } = new ValidCertificate(
+      this.#name,
+      {
+        domainNames: [`*.${this.#name}.${zoneName}`],
+        zoneId,
+        tags: this.#args.tags,
+      },
+      { parent: ecs },
+    );
+
     const central = {
       endpoint: new Endpoint(
         'central',
         {
           clusterName: this.#name,
           infra: this.#infra,
+          certificateArn,
           tags: this.#args.tags,
         },
         { parent: this },
@@ -188,6 +204,7 @@ export class Cluster extends ComponentResource {
         {
           clusterName: this.#name,
           infra: this.#infra,
+          certificateArn,
         },
         { parent: this },
       );

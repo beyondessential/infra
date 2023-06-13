@@ -1,6 +1,7 @@
 import {
   ComponentResource,
   ComponentResourceOptions,
+  Input,
   Output,
   StackReference,
   all,
@@ -18,6 +19,7 @@ export interface EndpointArgs {
   clusterName: string;
   infra: StackReference;
   port?: number;
+  certificateArn?: Input<string>;
 
   /** Any extra tags to add to all resources. */
   tags?: { [key: string]: string };
@@ -36,7 +38,7 @@ export class Endpoint extends ComponentResource {
 
   constructor(
     name: string,
-    { clusterName, infra, port = DEFAULT_PORT, tags = {} }: EndpointArgs,
+    { clusterName, certificateArn, infra, port = DEFAULT_PORT, tags = {} }: EndpointArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:tamanu:Endpoint', name, {}, opts);
@@ -114,15 +116,17 @@ export class Endpoint extends ComponentResource {
       { parent: this },
     );
 
-    const { certificateArn } = new ValidCertificate(
-      `${clusterName}-${this.#name}`,
-      {
-        domainNames: [endpoint.fqdn],
-        zoneId,
-        tags,
-      },
-      { parent: endpoint },
-    );
+    if (!certificateArn) {
+      ({ certificateArn } = new ValidCertificate(
+        `${clusterName}-${this.#name}`,
+        {
+          domainNames: [endpoint.fqdn],
+          zoneId,
+          tags,
+        },
+        { parent: endpoint },
+      ));
+    }
 
     new ListenerCertificate(
       `${clusterName}-${this.#name}`,
