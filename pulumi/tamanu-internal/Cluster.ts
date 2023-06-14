@@ -91,14 +91,15 @@ export class Cluster extends ComponentResource {
     const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
     const zoneName = this.#infra
       .getOutput('cluster')
-      .apply((cluster) => cluster.zone.name.replace(/\.$/, '') as string);
+      .apply((cluster) => cluster.zone.name as string);
     const { certificateArn } = new ValidCertificate(
       this.#name,
       {
-        domainNames: [
-          'central',
-          ...facilityEnumerator.map((index) => `facility-${index}`),
-        ].map((name) => `${name}.${this.#name}.${zoneName}`),
+        domainNames: zoneName.apply((zoneName) =>
+          ['central', ...facilityEnumerator.map((index) => `facility-${index}`)].map(
+            (name) => `${name}.${this.#name}.${zoneName}`,
+          ),
+        ),
         zoneId,
         tags: this.#args.tags,
       },

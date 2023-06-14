@@ -1,9 +1,16 @@
-import { ComponentResource, ComponentResourceOptions, Input, Output, all } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  ComponentResourceOptions,
+  Input,
+  Output,
+  all,
+  output,
+} from '@pulumi/pulumi';
 import { Certificate, CertificateValidation } from '@pulumi/aws/acm';
 import { Record } from '@pulumi/aws/route53';
 
 export interface ValidCertificateArgs {
-  domainNames: Input<string>[];
+  domainNames: Input<Input<string>[]>;
   zoneId: Input<string>;
   keyAlgorithm?: Input<string>;
 
@@ -31,13 +38,11 @@ export class ValidCertificate extends ComponentResource {
     super('bes:common:ValidCertificate', name, {}, opts);
     this.#name = name;
 
-    const [domainName, ...subjectAlternativeNames] = domainNames;
-
     const certificate = new Certificate(
       name,
       {
-        domainName,
-        subjectAlternativeNames,
+        domainName: output(domainNames).apply(([name]) => name),
+        subjectAlternativeNames: output(domainNames).apply(([first, ...names]) => names),
         validationMethod: 'DNS',
         keyAlgorithm: keyAlgorithm ?? 'EC_prime256v1',
         tags,
