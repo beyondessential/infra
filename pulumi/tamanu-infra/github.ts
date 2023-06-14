@@ -139,6 +139,7 @@ new Role(
                 'iam:*Role',
                 'iam:*RolePolicy',
                 'iam:List*Policies',
+                'iam:ListPolicyVersions',
               ],
               Resource: '*',
             },
