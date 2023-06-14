@@ -84,14 +84,21 @@ export class Cluster extends ComponentResource {
       { parent: this },
     );
 
+    const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
+      (_, i) => i + 1,
+    );
+
     const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
     const zoneName = this.#infra
       .getOutput('cluster')
-      .apply((cluster) => cluster.zone.name.replace(/.$/, '') as string);
+      .apply((cluster) => cluster.zone.name.replace(/\.$/, '') as string);
     const { certificateArn } = new ValidCertificate(
       this.#name,
       {
-        domainNames: [`*.${this.#name}.${zoneName}`],
+        domainNames: [
+          'central',
+          ...facilityEnumerator.map((index) => `facility-${index}`),
+        ].map((name) => `${name}.${this.#name}.${zoneName}`),
         zoneId,
         tags: this.#args.tags,
       },
@@ -111,10 +118,6 @@ export class Cluster extends ComponentResource {
       ),
       ...this.databaseManagementConfig('central'),
     };
-
-    const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
-      (_, i) => i + 1,
-    );
 
     const facilityCredentials = facilityEnumerator.map((index) => {
       const name = this.secretName('facility', 'sync', index);
