@@ -87,7 +87,7 @@ export class Cluster extends ComponentResource {
     const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
     const zoneName = this.#infra
       .getOutput('cluster')
-      .apply((cluster) => cluster.zone.name as string);
+      .apply((cluster) => cluster.zone.name.replace(/.$/, '') as string);
     const { certificateArn } = new ValidCertificate(
       this.#name,
       {
