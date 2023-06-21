@@ -5,22 +5,98 @@
   "auth": {
     "secret": "REDACTED",
     "refreshSecret": "REDACTED",
-    "allowDummyToken": true
+    "reportNoUserError": true,
+    "useHardcodedPermissions": false
   },
   "honeycomb": {
     "apiKey": "REDACTED",
     "enabled": true
   },
+  "countryTimeZone": "Pacific\/Auckland",
   "localisation": {
     "data": {
-      "features": {
-        "enablePatientDeaths": true
+      "country": {
+        "alpha-2": "UT",
+        "alpha-3": "UTO",
+        "name": "Utopia"
       },
+      "features": {
+        "patientPlannedMove": true,
+        "enablePatientDeaths": true,
+        "enableInvoicing": true,
+        "editDisplayId": true,
+        "enableCovidClearanceCertificate": true
+      },
+      "timeZone": "Pacific\/Auckland",
+      "disabledReports": [
+        "aefi",
+        "india-assistive-technology-device-line-list",
+        "iraq-assistive-technology-device-line-list"
+      ],
       "imagingTypes": {
-        "ctScanImagingArea": {
+        "fluroscopy": {
+          "label": "Fluroscopy"
+        },
+        "xRay": {
+          "label": "X-Ray"
+        },
+        "mri": {
+          "label": "MRI"
+        },
+        "echocardiogram": {
+          "label": "Echocardiogram"
+        },
+        "ctScan": {
           "label": "CT Scan"
+        },
+        "ecg": {
+          "label": "Electrocardiogram (ECG)"
+        },
+        "endoscopy": {
+          "label": "Endoscopy"
+        },
+        "mammogram": {
+          "label": "Mammogram"
+        },
+        "holterMonitor": {
+          "label": "Holter Monitor"
+        },
+        "angiogram": {
+          "label": "Angiogram"
+        },
+        "colonoscopy": {
+          "label": "Colonoscopy"
+        },
+        "ultrasound": {
+          "label": "Ultrasound"
         }
       }
+    }
+  },
+  "tupaiaApiClient": {
+    "environment": "dev",
+    "auth": {
+      "password": "REDACTED",
+      "username": "tamanu-server@tupaia.org"
+    }
+  },
+  "mailgun": {
+    "apiKey": "REDACTED",
+    "domain": "tupaia.org",
+    "from": "tamanu@tupaia.org"
+  },
+  "updateUrls": {
+    "mobile": "https:\/\/install.appcenter.ms\/orgs\/beyond-essential\/apps\/tamanu-mobile-only\/distribution_groups\/staging"
+  },
+  "disk": {
+    "diskPath": "\/",
+    "freeSpaceRequired": {
+      "gigabytesForUploadingDocuments": 0.1
+    }
+  },
+  "schedules": {
+    "fhirMaterialiser": {
+      "limit": 1000
     }
   },
   "integrations": {
@@ -38,9 +114,12 @@
       "enabled": true
     }
   },
-  "schedules": {
-    "fhirMaterialiser": {
-      "limit": 1000
+  "notifications": {
+    "certificates": {
+      "labTestCategoryIds": [
+        "labTestCategory-COVID",
+        "labTestCategory-COVIDRAT"
+      ]
     }
   }
 }

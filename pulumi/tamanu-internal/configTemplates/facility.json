@@ -8,5 +8,15 @@
   },
   "sync": {
     "enabled": true
+  },
+  "countryTimeZone": "America\/Auckland",
+  "auth": {
+    "useHardcodedPermissions": false
+  },
+  "survey": {
+    "defaultCodes": {
+      "location": "WaitingArea",
+      "department": "Emergency"
+    }
   }
 }
