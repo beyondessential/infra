@@ -25,6 +25,14 @@ export interface ClusterArgs {
     files: string[];
   };
 
+  initialUsers?: {
+    [email: string]: {
+      email: string;
+      password: string;
+      role: string;
+    };
+  };
+
   /** @default 2 */
   numberOfFacilities?: number;
 
@@ -63,7 +71,7 @@ export class Cluster extends ComponentResource {
   constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
     super('bes:tamanu:Cluster', name, {}, opts);
     this.#name = name;
-    this.#args = { numberOfFacilities: 2, tags: {}, ...args };
+    this.#args = { numberOfFacilities: 2, tags: {}, initialUsers: {}, ...args };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
     this.#args.tags.Application = 'Tamanu';
     this.#args.tags.Cluster = name;
@@ -185,6 +193,7 @@ export class Cluster extends ComponentResource {
                 password: 'admin',
                 role: 'admin',
               },
+              ...this.#args.initialUsers,
             }),
           },
         ],
