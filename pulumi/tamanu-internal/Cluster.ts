@@ -6,13 +6,12 @@ import {
   Config,
   Output,
   StackReference,
+  all,
   jsonStringify,
 } from '@pulumi/pulumi';
 import { Cluster as ECSCluster } from '@pulumi/aws/ecs';
 import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds';
-
-// this form is required to import lambda as otherwise it creates a circular dependency error
-import * as aws from '@pulumi/aws';
+import { Database, Extension, GrantRole, Role } from '@pulumi/postgresql';
 
 import { ValidCertificate } from '../ValidCertificate';
 import { Secret } from './Secret';
@@ -36,7 +35,7 @@ export interface ClusterArgs {
 export interface ClusterOutputs {
   facilityCount: number;
   services: {
-    [name: string]: ServiceEndpoints;
+    [name: string]: { database: Output<string>; url: Output<string> };
   };
 }
 
@@ -117,7 +116,7 @@ export class Cluster extends ComponentResource {
         },
         { parent: this },
       ),
-      ...this.databaseManagementConfig('central'),
+      ...this.database('central'),
     };
 
     const facilityCredentials = facilityEnumerator.map((index) => {
@@ -126,7 +125,7 @@ export class Cluster extends ComponentResource {
 
       return {
         index,
-        ...this.databaseManagementConfig('facility', index),
+        ...this.database('facility', index),
         syncSecret: new Secret(
           name,
           {
@@ -151,11 +150,6 @@ export class Cluster extends ComponentResource {
         ),
       };
     });
-
-    const dbManager = this.runDbManager([
-      { dbSecret: central.dbSecret, dbConfig: central.dbConfig },
-      ...facilityCredentials.map(({ dbSecret, dbConfig }) => ({ dbSecret, dbConfig })),
-    ]);
 
     const centralServer = new Server(
       'central',
@@ -199,10 +193,10 @@ export class Cluster extends ComponentResource {
           ...this.#args.tags,
         },
       },
-      { parent: central.endpoint, dependsOn: [dbManager] },
+      { parent: central.endpoint },
     );
 
-    const facilities = facilityCredentials.map(({ index, dbSecret, syncSecret }) => {
+    const facilities = facilityCredentials.map(({ index, dbSecret, dbName, syncSecret }) => {
       const endpoint = new Endpoint(
         `facility-${index}`,
         {
@@ -234,17 +228,26 @@ export class Cluster extends ComponentResource {
             ...this.#args.tags,
           },
         },
-        { parent: endpoint, dependsOn: [dbManager, centralServer] },
+        { parent: endpoint, dependsOn: [centralServer] },
       );
 
-      return [`facility${index}`, endpointOutput(endpoint)];
+      return [
+        `facility${index}`,
+        {
+          url: endpoint.external.apply((external) => `https://${external}`),
+          database: dbName,
+        },
+      ];
     });
 
     this.registerOutputs(
       (this.outputs = {
         facilityCount: this.#args.numberOfFacilities,
         services: {
-          central: endpointOutput(central.endpoint),
+          central: {
+            url: central.endpoint.external.apply((external) => `https://${external}`),
+            database: central.dbName,
+          },
           ...Object.fromEntries(facilities),
         },
       }),
@@ -261,26 +264,65 @@ export class Cluster extends ComponentResource {
     return [secretKind, serverKind, index].filter(Boolean).join('-');
   }
 
-  databaseManagementConfig(
-    kind: string,
-    index?: number,
-  ): { dbSecret: Secret; dbConfig: DbManagerDatabase } {
-    const dbname = [this.#name, kind, index].filter(Boolean).join('-');
-    const name = this.secretName(kind, 'db', index);
-    const password = this.makePassword(name);
+  database(kind: string, index?: number): { dbSecret: Secret; dbName: Output<string> } {
+    const name = [this.#name, kind, index].filter(Boolean).join('-');
+    const secretName = this.secretName(kind, 'db', index);
+    const password = this.makePassword(secretName);
 
-    const secret = new Secret(
+    const role = new Role(
       name,
       {
-        secretValue: this.#db.endpoint.apply((endpoint) => {
+        login: true,
+        password,
+      },
+      { parent: this },
+    );
+
+    // Needed for the postgres user to be able to access the database
+    const grant = new GrantRole(
+      `#${name}-postgres-grant`,
+      {
+        role: 'postgres',
+        grantRole: role.name,
+      },
+      { parent: role },
+    );
+
+    const db = new Database(
+      name,
+      {
+        owner: role.name,
+      },
+      {
+        parent: role,
+        // so that the grant is not dropped before the database (which would cause an error)
+        dependsOn: [grant],
+      },
+    );
+
+    new Extension(
+      `${name}-uuid-ossp`,
+      {
+        database: db.name,
+        name: 'uuid-ossp',
+        dropCascade: true,
+      },
+      { parent: db },
+    );
+
+    const secret = new Secret(
+      secretName,
+      {
+        secretValue: all([this.#db.endpoint, db]).apply(([endpoint, db]) => {
           const [host, port] = endpoint.split(':');
           return {
             // this structure makes this a rotatable secret
+            // (though we don't actually rotate it yet)
             engine: 'postgres',
             host,
             port: +port,
-            dbname,
-            username: dbname,
+            dbname: db.name,
+            username: role.name,
             password,
           };
         }),
@@ -294,65 +336,13 @@ export class Cluster extends ComponentResource {
         },
       },
       {
-        parent: this,
-        // until TAV-637, the password/user changing must reprovision the database
-        replaceOnChanges: ['secretValue'],
+        parent: role,
       },
     );
 
     return {
       dbSecret: secret,
-      dbConfig: {
-        name: dbname,
-        owner: dbname,
-        secret: secret.outputs.arn,
-        extensions: ['uuid-ossp'],
-      },
+      dbName: db.name,
     };
   }
-
-  runDbManager(databases: { dbSecret: Secret; dbConfig: DbManagerDatabase }[]) {
-    const dbManager = this.#infra
-      .getOutput('cluster')
-      .apply((cluster) => cluster.database.manager as string);
-    const dbManagerInput: DbManagerInput = {
-      databases: databases.map(({ dbConfig }) => dbConfig),
-    };
-
-    return new aws.lambda.Invocation(
-      `${this.#name}-db-manager`,
-      {
-        functionName: dbManager,
-        input: jsonStringify(dbManagerInput),
-      },
-      { parent: this, dependsOn: databases.map(({ dbSecret }) => dbSecret) },
-    );
-  }
-}
-
-interface DbManagerInput {
-  databases: DbManagerDatabase[];
-}
-
-interface DbManagerDatabase {
-  name: string;
-  owner: string;
-
-  // Secret ARN for the password
-  secret: Output<string>;
-
-  // PostgreSQL extensions to install
-  extensions?: string[];
-}
-
-interface ServiceEndpoints {
-  internal: Output<string>;
-  external: Output<string>;
-}
-
-function endpointOutput(endpoint: Endpoint): ServiceEndpoints {
-  return {
-    internal: endpoint.internal,
-    external: endpoint.external,
-  };
 }
