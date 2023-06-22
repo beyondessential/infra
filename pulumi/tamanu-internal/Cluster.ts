@@ -289,7 +289,7 @@ export class Cluster extends ComponentResource {
 
     // Needed for the postgres user to be able to access the database
     const grant = new GrantRole(
-      `#${name}-postgres-grant`,
+      `${name}-postgres-grant`,
       {
         role: 'postgres',
         grantRole: role.name,
