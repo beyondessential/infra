@@ -201,6 +201,8 @@ new Role(
               Resource: [
                 'arn:aws:s3:::bes-tamanu-dev-desktop-clients',
                 'arn:aws:s3:::bes-tamanu-dev-desktop-clients/*',
+                'arn:aws:s3:::bes-tamanu-release-clients',
+                'arn:aws:s3:::bes-tamanu-release-clients/*',
               ],
             },
           ],
