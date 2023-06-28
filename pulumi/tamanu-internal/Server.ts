@@ -306,6 +306,7 @@ export class Server extends ComponentResource {
     }
 
     const task: awsx.ecs.FargateTaskDefinitionArgs = {
+      family: `${this.#args.clusterName}-${this.#name}-${name}`,
       runtimePlatform: {
         operatingSystemFamily: 'LINUX',
         cpuArchitecture: 'X86_64',
@@ -314,6 +315,11 @@ export class Server extends ComponentResource {
       volumes: [{ name: 'config' }],
       taskRole: {
         roleArn: taskRole.arn,
+      },
+      logGroup: {
+        args: {
+          namePrefix: `${this.#args.clusterName}-${this.#name}-${name}`,
+        },
       },
       tags: this.#args.tags,
     };
