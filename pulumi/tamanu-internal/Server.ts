@@ -318,7 +318,7 @@ export class Server extends ComponentResource {
       },
       logGroup: {
         args: {
-          namePrefix: `${this.#args.clusterName}-${this.#name}-${name}`,
+          namePrefix: `${this.#args.clusterName}-${this.#name}-${name}-`,
         },
       },
       tags: this.#args.tags,
