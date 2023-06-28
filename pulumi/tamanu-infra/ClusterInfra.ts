@@ -521,7 +521,11 @@ export class ClusterInfra extends ComponentResource {
           ...this.#args.tags,
         },
       },
-      { parent: authKey },
+      {
+        parent: authKey,
+        // don't redeploy when Alpine's AMI updates
+        ignoreChanges: ['ami'],
+      },
     );
 
     const tailscaleDevice = getDeviceOutput({
