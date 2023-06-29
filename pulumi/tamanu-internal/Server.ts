@@ -217,6 +217,8 @@ export class Server extends ComponentResource {
       { parent: taskRole },
     );
 
+    // Reserve 64MB for non-Node long-running processes (e.g. supervisor, SSH)
+    const RESERVED_MEMORY = 64;
     const containers: [string, awsx.types.input.ecs.TaskDefinitionContainerDefinitionArgs][] = [
       [
         'main',
@@ -228,6 +230,7 @@ export class Server extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
+            { name: 'NODE_OPTIONS', value: `--max-old-space-size=${memoryGB * 1024 - RESERVED_MEMORY}` },
             { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
             ...(discovery && this.#args.endpoint.port !== DEFAULT_PORT
               ? [{ name: 'NODE_CONFIG', value: jsonStringify({ port: this.#args.endpoint.port }) }]
