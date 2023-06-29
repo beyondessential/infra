@@ -10,7 +10,6 @@ import { getDeviceOutput } from '@pulumi/tailscale/getDevice';
 import { Record, getZone } from '@pulumi/aws/route53';
 
 import { Network, NetworkOutputs } from './Network';
-import { RustLambda } from './RustLambda';
 import { ValidCertificate } from '../ValidCertificate';
 
 export interface ClusterInfraArgs {
@@ -26,7 +25,6 @@ export interface ClusterInfraArgs {
 export interface ClusterInfraOutputs {
   database: {
     instance: Output<string>;
-    manager: Output<string>;
     endpoint: Output<string>;
   };
   containers: {
@@ -118,7 +116,6 @@ export class ClusterInfra extends ComponentResource {
       (this.outputs = {
         database: {
           instance: this.#database.arn,
-          manager: this.dbManager().name.apply((name) => name!),
           endpoint: this.#database.endpoint,
         },
         containers: {
@@ -300,62 +297,6 @@ export class ClusterInfra extends ComponentResource {
     );
 
     return rds;
-  }
-
-  dbManager() {
-    return new RustLambda(
-      `${this.#name}-db-manager`,
-      {
-        source: '../../glue/db-manager',
-        description: 'Manage databases and users for an RDS instance',
-        timeoutSec: 300,
-        environment: all([this.#database.endpoint, this.#database.masterUserSecrets]).apply(
-          ([endpoint, secrets]) => ({
-            PGHOST: endpoint.split(':')[0],
-            PGPORT: endpoint.split(':')[1] ?? '5432',
-            DB_SECRET: secrets[0].secretArn,
-          }),
-        ),
-        network: {
-          subnetIds: this.#network.workloadSubnetIds,
-          securityGroupIds: [this.#securityGroups.dbManager.id],
-        },
-        policies: [
-          {
-            // policy to allow reading the db "master" secret(s)
-            name: 'getdbmastersecret',
-            policy: {
-              Version: '2012-10-17',
-              Statement: [
-                {
-                  Effect: 'Allow',
-                  Action: ['secretsmanager:GetSecretValue'],
-                  Resource: this.#database.masterUserSecrets.apply((secrets) =>
-                    secrets.map((secret) => secret.secretArn),
-                  ),
-                },
-              ],
-            },
-          },
-          {
-            // policy to allow reading managed db secrets for this cluster
-            name: 'getdbsecrets',
-            policy: {
-              Version: '2012-10-17',
-              Statement: [
-                {
-                  Effect: 'Allow',
-                  Action: ['secretsmanager:GetSecretValue'],
-                  Resource: `arn:aws:secretsmanager:ap-southeast-2:*:secret:${this.#name}-*-db-*`,
-                },
-              ],
-            },
-          },
-        ],
-        tags: { Purpose: 'db-manager', ...this.#args.tags },
-      },
-      { parent: this },
-    );
   }
 
   loadBalancer() {
