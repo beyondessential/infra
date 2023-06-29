@@ -29,11 +29,24 @@ export interface ServerArgs {
   syncSecrets: Output<string>[];
   referenceDataBucket?: null | string;
 
-  /** @default 1 */
+  /**
+   * Has to be in sync with memory and within supported Fargate sizings.
+   * https://aws.amazon.com/fargate/pricing/
+   *
+   * @default 1
+   */
   cores?: number;
-  /** @default 1 */
+  /**
+   * Has to be in sync with cores and within supported Fargate sizings.
+   *
+   * @default 2
+   */
   memoryGB?: number;
-  /** @default 1 */
+  /**
+   * Number of tasks to start for the HTTP service.
+   *
+   * @default 1
+   */
   httpScale?: number;
 
   // for facilities
@@ -58,7 +71,7 @@ export class Server extends ComponentResource {
     this.#args = {
       index: null,
       cores: 1,
-      memoryGB: 1,
+      memoryGB: 2,
       httpScale: 1,
       configuratorEnv: [],
       referenceDataBucket: null,
@@ -210,8 +223,6 @@ export class Server extends ComponentResource {
         {
           image: serverImage,
           command,
-          memory: memoryGB * 1024,
-          cpu: cores * 1024,
           essential: true,
           linuxParameters: {
             initProcessEnabled: true,
@@ -253,8 +264,6 @@ export class Server extends ComponentResource {
         {
           image: configuratorImage,
           command: [],
-          memory: 512,
-          cpu: 256,
           essential: false,
           linuxParameters: {
             initProcessEnabled: true,
@@ -283,8 +292,6 @@ export class Server extends ComponentResource {
         {
           image: serverImage,
           command: ['migrate'],
-          memory: 1024,
-          cpu: 1024,
           essential: false,
           linuxParameters: {
             initProcessEnabled: true,
@@ -307,6 +314,8 @@ export class Server extends ComponentResource {
 
     const task: awsx.ecs.FargateTaskDefinitionArgs = {
       family: `${this.#args.clusterName}-${this.#name}-${name}`,
+      memory: (memoryGB * 1024).toString(),
+      cpu: (cores * 1024).toString(),
       runtimePlatform: {
         operatingSystemFamily: 'LINUX',
         cpuArchitecture: 'X86_64',
