@@ -64,6 +64,7 @@ export class Server extends ComponentResource {
   #config: Parameter;
 
   index: null | number;
+  #isFacility: boolean;
 
   constructor(name: string, args: ServerArgs, opts: ComponentResourceOptions = {}) {
     super('bes:tamanu:Server', name, {}, opts);
@@ -80,6 +81,7 @@ export class Server extends ComponentResource {
     };
     this.#infra = args.infra;
     this.index = this.#args.index;
+    this.#isFacility = this.index !== null;
 
     this.#config = new Parameter(
       `${this.#args.clusterName}-${this.#name}-config`,
@@ -95,24 +97,34 @@ export class Server extends ComponentResource {
       { parent: this, ignoreChanges: ['value'] },
     );
 
-    const provisioningFile = args.configuratorEnv?.find(
-      ({ name }) => name === 'TARGET_PROVISIONING_FILE',
-    )?.value;
-    const tasks = this.service(
-      'tasks',
-      ['tasks', ...(provisioningFile ? ['--provisioning', provisioningFile] : [])],
-      {
+    if (this.#isFacility) {
+      this.service('http', [], {
+        discovery: this.#args.endpoint.discovery,
+        targetGroup: this.#args.endpoint.targetGroup,
         configuratorEnv: args.configuratorEnv,
         withMigrations: true,
-      },
-    );
-    this.service('http', ['serve'], {
-      discovery: this.#args.endpoint.discovery,
-      targetGroup: this.#args.endpoint.targetGroup,
-      configuratorEnv: args.configuratorEnv,
-      dependsOn: [tasks],
-      waitUntilStable: false,
-    });
+        waitUntilStable: false,
+      });
+    } else {
+      const provisioningFile = args.configuratorEnv?.find(
+        ({ name }) => name === 'TARGET_PROVISIONING_FILE',
+      )?.value;
+      const tasks = this.service(
+        'tasks',
+        ['tasks', ...(provisioningFile ? ['--provisioning', provisioningFile] : [])],
+        {
+          configuratorEnv: args.configuratorEnv,
+          withMigrations: true,
+        },
+      );
+      this.service('http', ['serve'], {
+        discovery: this.#args.endpoint.discovery,
+        targetGroup: this.#args.endpoint.targetGroup,
+        configuratorEnv: args.configuratorEnv,
+        dependsOn: [tasks],
+        waitUntilStable: false,
+      });
+    }
   }
 
   service(
