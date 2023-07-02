@@ -17,7 +17,7 @@ const { outputs: cluster } = new Cluster(
     numberOfFacilities,
     referenceData: {
       bucket: 'bes-tamanu-dev-referencedata',
-      files: ['2023-05-01-demo-like.xlsx'],
+      files: ['2023-07-03-demo-like.xlsx'],
     },
     initialUsers,
   },
