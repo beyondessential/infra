@@ -74,12 +74,20 @@ export class Endpoint extends ComponentResource {
     );
 
     const vpcId = this.#infra.getOutput('network').apply((network) => network.vpc as string);
+
+    // Pulumi doesn't handle name length for us here, so we need to always generate unique names
+    // shorter than 32 characters, minus the 8 characters Pulumi adds to the end, minus some extra
+    // just in case. We use the names we have as input, but hash the lot to make a shorter uniquestr
+    // deterministically. Fortunately TargetGroups don't really need to have a recognisable name.
+    const hashedName = createHash('sha256')
+      .update(clusterName)
+      .update(this.#name)
+      .digest('base64url')
+      .replace(/[^a-zA-Z0-9]+/g, '')
+      .substring(0, 20);
+
     this.targetGroup = new TargetGroup(
-      `${createHash('sha256')
-        .update(clusterName)
-        .digest('base64url')
-        .replace(/[^a-zA-Z0-9]+/g, '')
-        .substring(0, 31 - 8 - this.#name.length)}-${this.#name}`,
+      hashedName,
       {
         targetType: 'ip',
         ipAddressType: 'ipv4',
