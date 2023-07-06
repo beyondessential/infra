@@ -19,9 +19,9 @@ import { Endpoint } from './Endpoint';
 import { Server } from './Server';
 
 export interface FacilityDef {
-  domain?: string;
   facilityId: string;
-  email: string;
+  domain?: string;
+  email?: string;
 }
 
 export interface ClusterArgs {

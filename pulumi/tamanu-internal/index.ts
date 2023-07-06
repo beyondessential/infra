@@ -12,7 +12,6 @@ if (!facilities) {
   const numberOfFacilities = cfg.getNumber('numberOfFacilities', { min: 0 }) ?? 2;
   facilities = [...Array(numberOfFacilities).keys()].map((index) => ({
     facilityId: `facility-${index + 1}`,
-    email: `facility-${index + 1}@tamanu.io`,
   }));
 }
 
