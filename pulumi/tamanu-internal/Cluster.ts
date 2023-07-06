@@ -18,6 +18,12 @@ import { Secret } from './Secret';
 import { Endpoint } from './Endpoint';
 import { Server } from './Server';
 
+export interface FacilityDef {
+  domain?: string;
+  facilityId: string;
+  email: string;
+}
+
 export interface ClusterArgs {
   imageTag: string;
   referenceData: {
@@ -33,15 +39,13 @@ export interface ClusterArgs {
     };
   };
 
-  /** @default 2 */
-  numberOfFacilities?: number;
+  facilities: FacilityDef[];
 
   /** Any extra tags to add to all resources. */
   tags?: { [key: string]: string };
 }
 
 export interface ClusterOutputs {
-  facilityCount: number;
   services: {
     [name: string]: { database: Output<string>; url: Output<string> };
   };
@@ -71,7 +75,7 @@ export class Cluster extends ComponentResource {
   constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
     super('bes:tamanu:Cluster', name, {}, opts);
     this.#name = name;
-    this.#args = { numberOfFacilities: 2, tags: {}, initialUsers: {}, ...args };
+    this.#args = { tags: {}, initialUsers: {}, ...args };
     this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
     this.#args.tags.Application = 'Tamanu';
     this.#args.tags.Cluster = name;
@@ -91,10 +95,6 @@ export class Cluster extends ComponentResource {
       { parent: this },
     );
 
-    const facilityEnumerator = Array.from({ length: this.#args.numberOfFacilities }).map(
-      (_, i) => i + 1,
-    );
-
     const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
     const zoneName = this.#infra
       .getOutput('cluster')
@@ -103,7 +103,7 @@ export class Cluster extends ComponentResource {
       this.#name,
       {
         domainNames: zoneName.apply((zoneName) =>
-          ['central', ...facilityEnumerator.map((index) => `facility-${index}`)].map(
+          ['central', ...this.#args.facilities.map((f) => f.domain ?? f.facilityId)].map(
             (name) => `${name}.${this.#name}.${zoneName}`,
           ),
         ),
@@ -127,28 +127,28 @@ export class Cluster extends ComponentResource {
       ...this.database('central'),
     };
 
-    const facilityCredentials = facilityEnumerator.map((index) => {
-      const name = this.secretName('facility', 'sync', index);
+    const facilityCredentials = this.#args.facilities.map((f) => {
+      const name = `sync-${f.facilityId}`;
       const password = this.makePassword(name);
 
       return {
-        index,
-        ...this.database('facility', index),
+        ...f,
+        ...this.database('facility', f.facilityId),
         syncSecret: new Secret(
           name,
           {
             secretValue: central.endpoint.internal.apply((endpoint) => {
               return {
                 centralUrl: `http://${endpoint}`,
-                facilityId: `facility-${index}`,
-                email: `facility-${index}@tamanu.io`,
+                facilityId: f.facilityId,
+                email: f.email ?? `${f.facilityId}@tamanu.io`,
                 password,
               };
             }),
             namePrefix: `internal-${this.#name}`,
-            description: `Sync credentials for Tamanu Internal deployment ${
-              this.#name
-            }, facility ${index}`,
+            description: `Sync credentials for Tamanu Internal deployment ${this.#name}, ${
+              f.domain ?? f.facilityId
+            }`,
             tags: {
               Purpose: 'sync',
               ...this.#args.tags,
@@ -205,9 +205,9 @@ export class Cluster extends ComponentResource {
       { parent: central.endpoint },
     );
 
-    const facilities = facilityCredentials.map(({ index, dbSecret, dbName, syncSecret }) => {
+    const facilities = facilityCredentials.map(({ facilityId, dbSecret, dbName, syncSecret }) => {
       const endpoint = new Endpoint(
-        `facility-${index}`,
+        facilityId,
         {
           clusterName: this.#name,
           infra: this.#infra,
@@ -217,7 +217,7 @@ export class Cluster extends ComponentResource {
       );
 
       new Server(
-        `facility-${index}`,
+        facilityId,
         {
           ecs,
           endpoint,
@@ -227,7 +227,7 @@ export class Cluster extends ComponentResource {
           imageTag: this.#args.imageTag,
           cores: 1,
           memoryGB: 2,
-          index,
+          facilityId,
           configTemplate: 'configTemplates/facility.json',
           dbSecret: dbSecret.outputs.arn,
           syncSecrets: [syncSecret.outputs.arn],
@@ -241,7 +241,7 @@ export class Cluster extends ComponentResource {
       );
 
       return [
-        `facility${index}`,
+        facilityId,
         {
           url: endpoint.external.apply((external) => `https://${external}`),
           database: dbName,
@@ -251,7 +251,6 @@ export class Cluster extends ComponentResource {
 
     this.registerOutputs(
       (this.outputs = {
-        facilityCount: this.#args.numberOfFacilities,
         services: {
           central: {
             url: central.endpoint.external.apply((external) => `https://${external}`),
@@ -269,14 +268,10 @@ export class Cluster extends ComponentResource {
     return this.#salt.apply((salt) => createHash('sha256').update(salt).update(seed).digest('hex'));
   }
 
-  secretName(serverKind: string, secretKind: string, index?: number) {
-    return [secretKind, serverKind, index].filter(Boolean).join('-');
-  }
-
-  database(kind: string, index?: number): { dbSecret: Secret; dbName: Output<string> } {
-    const name = [this.#name, kind, index].filter(Boolean).join('-');
-    const secretName = this.secretName(kind, 'db', index);
-    const password = this.makePassword(secretName);
+  database(kind: string, facilityId?: string): { dbSecret: Secret; dbName: Output<string> } {
+    const name = facilityId ? `${this.#name}-${facilityId}` : `${this.#name}-central`;
+    const dbSecretName = facilityId ? `db-${facilityId}` : 'db-central';
+    const password = this.makePassword(dbSecretName);
 
     const role = new Role(
       name,
@@ -320,7 +315,7 @@ export class Cluster extends ComponentResource {
     );
 
     const secret = new Secret(
-      secretName,
+      dbSecretName,
       {
         secretValue: all([this.#db.endpoint, db]).apply(([endpoint, db]) => {
           const [host, port] = endpoint.split(':');
@@ -336,9 +331,9 @@ export class Cluster extends ComponentResource {
           };
         }),
         namePrefix: `internal-${this.#name}`,
-        description: `PostgresSQL credentials for Tamanu Internal deployment ${
-          this.#name
-        }, ${kind} server ${index ?? ''}`,
+        description: `PostgresSQL credentials for Tamanu Internal deployment ${this.#name}, ${
+          facilityId ?? 'central'
+        } server`,
         tags: {
           Purpose: 'database',
           ...this.#args.tags,

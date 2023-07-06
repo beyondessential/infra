@@ -50,7 +50,7 @@ export interface ServerArgs {
   httpScale?: number;
 
   // for facilities
-  index?: null | number;
+  facilityId?: null | string;
 
   /** Any extra tags to add to all resources. */
   tags?: { [key: string]: string };
@@ -63,14 +63,13 @@ export class Server extends ComponentResource {
 
   #config: Parameter;
 
-  index: null | number;
   #isFacility: boolean;
 
   constructor(name: string, args: ServerArgs, opts: ComponentResourceOptions = {}) {
     super('bes:tamanu:Server', name, {}, opts);
     this.#name = name;
     this.#args = {
-      index: null,
+      facilityId: null,
       cores: 1,
       memoryGB: 2,
       httpScale: 1,
@@ -80,8 +79,7 @@ export class Server extends ComponentResource {
       ...args,
     };
     this.#infra = args.infra;
-    this.index = this.#args.index;
-    this.#isFacility = this.index !== null;
+    this.#isFacility = this.#args.facilityId !== null;
 
     this.#config = new Parameter(
       `${this.#args.clusterName}-${this.#name}-config`,
@@ -89,7 +87,7 @@ export class Server extends ComponentResource {
         type: 'SecureString',
         description: `JSON config for Tamanu Internal deployment ${this.#args.clusterName}, ${
           this.#args.imageName
-        } server ${this.#args.index ?? ''}`,
+        } server ${this.#args.facilityId ?? ''}`,
         value: readFileSync(this.#args.configTemplate, 'utf8'),
         overwrite: true, // this + ignoreChanges = overwrite an existing config on create only
         tags: this.#args.tags,
@@ -242,7 +240,10 @@ export class Server extends ComponentResource {
             initProcessEnabled: true,
           },
           environment: [
-            { name: 'NODE_OPTIONS', value: `--max-old-space-size=${memoryGB * 1024 - RESERVED_MEMORY}` },
+            {
+              name: 'NODE_OPTIONS',
+              value: `--max-old-space-size=${memoryGB * 1024 - RESERVED_MEMORY}`,
+            },
             { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
             ...(discovery && this.#args.endpoint.port !== DEFAULT_PORT
               ? [{ name: 'NODE_CONFIG', value: jsonStringify({ port: this.#args.endpoint.port }) }]
