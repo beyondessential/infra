@@ -25,7 +25,8 @@
         "enablePatientDeaths": true,
         "enableInvoicing": true,
         "editDisplayId": true,
-        "enableCovidClearanceCertificate": true
+        "enableCovidClearanceCertificate": true,
+        "quickPatientGenerator": true
       },
       "timeZone": "Pacific\/Auckland",
       "disabledReports": [
