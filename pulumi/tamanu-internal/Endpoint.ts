@@ -18,6 +18,7 @@ export const DEFAULT_PORT = 3000;
 export interface EndpointArgs {
   clusterName: string;
   infra: StackReference;
+  domain?: string;
   port?: number;
   certificateArn?: Input<string>;
 
@@ -38,7 +39,7 @@ export class Endpoint extends ComponentResource {
 
   constructor(
     name: string,
-    { clusterName, certificateArn, infra, port = DEFAULT_PORT, tags = {} }: EndpointArgs,
+    { clusterName, certificateArn, infra, domain, port = DEFAULT_PORT, tags = {} }: EndpointArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:tamanu:Endpoint', name, {}, opts);
@@ -116,7 +117,7 @@ export class Endpoint extends ComponentResource {
       `${clusterName}-${this.#name}`,
       {
         zoneId,
-        name: zoneName.apply((zone) => `${this.#name}.${clusterName}.${zone}`),
+        name: zoneName.apply((zone) => `${domain ?? this.#name}.${clusterName}.${zone}`),
         type: 'CNAME',
         ttl: 300,
         records: [lbEndpoint],

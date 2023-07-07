@@ -72,6 +72,8 @@ export class Cluster extends ComponentResource {
   #salt: Output<string> = new Config().requireSecret('salt');
   #db: Output<GetInstanceResult>;
 
+  #facilities: Required<FacilityDef>[];
+
   constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
     super('bes:tamanu:Cluster', name, {}, opts);
     this.#name = name;
@@ -80,6 +82,11 @@ export class Cluster extends ComponentResource {
     this.#args.tags.Application = 'Tamanu';
     this.#args.tags.Cluster = name;
     this.#args.tags.Infra = 'internal';
+    this.#facilities = this.#args.facilities.map((f) => ({
+      ...f,
+      domain: f.domain ?? f.facilityId,
+      email: `${f.facilityId}@tamanu.io`,
+    }));
 
     this.#db = this.#infra.getOutput('cluster').apply((cluster) =>
       getDatabase({
@@ -103,7 +110,7 @@ export class Cluster extends ComponentResource {
       this.#name,
       {
         domainNames: zoneName.apply((zoneName) =>
-          ['central', ...this.#args.facilities.map((f) => f.domain ?? f.facilityId)].map(
+          ['central', ...this.#facilities.map((f) => f.domain)].map(
             (name) => `${name}.${this.#name}.${zoneName}`,
           ),
         ),
@@ -127,7 +134,7 @@ export class Cluster extends ComponentResource {
       ...this.database('central'),
     };
 
-    const facilityCredentials = this.#args.facilities.map((f) => {
+    const facilityCredentials = this.#facilities.map((f) => {
       const name = `sync-${f.facilityId}`;
       const password = this.makePassword(name);
 
@@ -141,13 +148,13 @@ export class Cluster extends ComponentResource {
               return {
                 centralUrl: `http://${endpoint}`,
                 facilityId: f.facilityId,
-                email: f.email ?? `${f.facilityId}@tamanu.io`,
+                email: f.email,
                 password,
               };
             }),
             namePrefix: `internal-${this.#name}`,
             description: `Sync credentials for Tamanu Internal deployment ${this.#name}, ${
-              f.domain ?? f.facilityId
+              f.domain
             }`,
             tags: {
               Purpose: 'sync',
@@ -205,49 +212,52 @@ export class Cluster extends ComponentResource {
       { parent: central.endpoint },
     );
 
-    const facilities = facilityCredentials.map(({ facilityId, dbSecret, dbName, syncSecret }) => {
-      const endpoint = new Endpoint(
-        facilityId,
-        {
-          clusterName: this.#name,
-          infra: this.#infra,
-          certificateArn,
-        },
-        { parent: this },
-      );
-
-      new Server(
-        facilityId,
-        {
-          ecs,
-          endpoint,
-          infra: this.#infra,
-          clusterName: this.#name,
-          imageName: 'facility',
-          imageTag: this.#args.imageTag,
-          cores: 1,
-          memoryGB: 2,
+    const facilities = facilityCredentials.map(
+      ({ facilityId, domain, dbSecret, dbName, syncSecret }) => {
+        const endpoint = new Endpoint(
           facilityId,
-          configTemplate: 'configTemplates/facility.json',
-          dbSecret: dbSecret.outputs.arn,
-          syncSecrets: [syncSecret.outputs.arn],
-          configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
-          tags: {
-            Service: 'facility',
-            ...this.#args.tags,
+          {
+            domain,
+            clusterName: this.#name,
+            infra: this.#infra,
+            certificateArn,
           },
-        },
-        { parent: endpoint, dependsOn: [centralServer] },
-      );
+          { parent: this },
+        );
 
-      return [
-        facilityId,
-        {
-          url: endpoint.external.apply((external) => `https://${external}`),
-          database: dbName,
-        },
-      ];
-    });
+        new Server(
+          facilityId,
+          {
+            ecs,
+            endpoint,
+            infra: this.#infra,
+            clusterName: this.#name,
+            imageName: 'facility',
+            imageTag: this.#args.imageTag,
+            cores: 1,
+            memoryGB: 2,
+            facilityId,
+            configTemplate: 'configTemplates/facility.json',
+            dbSecret: dbSecret.outputs.arn,
+            syncSecrets: [syncSecret.outputs.arn],
+            configuratorEnv: [{ name: 'FACILITY_SECRET', value: syncSecret.outputs.arn }],
+            tags: {
+              Service: 'facility',
+              ...this.#args.tags,
+            },
+          },
+          { parent: endpoint, dependsOn: [centralServer] },
+        );
+
+        return [
+          facilityId,
+          {
+            url: endpoint.external.apply((external) => `https://${external}`),
+            database: dbName,
+          },
+        ];
+      },
+    );
 
     this.registerOutputs(
       (this.outputs = {
