@@ -182,6 +182,7 @@ export class Cluster extends ComponentResource {
         syncSecrets: facilityCredentials.map(({ syncSecret }) => syncSecret.outputs.arn),
         referenceDataBucket: this.#args.referenceData.bucket,
         configuratorEnv: [
+          { name: 'CANONICAL_HOSTNAME', value: central.endpoint.external },
           {
             name: 'FACILITY_SECRETS',
             value: jsonStringify(
