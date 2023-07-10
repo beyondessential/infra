@@ -356,7 +356,6 @@ export class Server extends ComponentResource {
         taskDefinitionArgs: task,
         desiredCount: httpScale,
         continueBeforeSteadyState: !waitUntilStable,
-        enableExecuteCommand: true,
         propagateTags: 'SERVICE',
         serviceRegistries: discovery && {
           port: this.#args.endpoint.port,
@@ -367,6 +366,14 @@ export class Server extends ComponentResource {
           securityGroups: [securityGroup],
         },
         tags: this.#args.tags,
+
+        // Destroy-then-create instead of rolling updates, as Tamanu doesn't deal well with multiple
+        // versions existing at once at the moment.
+        deploymentMaximumPercent: 100,
+        deploymentMinimumHealthyPercent: 0,
+
+        // TODO: may not be needed? ECSexec?
+        enableExecuteCommand: true,
       },
       { parent: this, dependsOn: [this.#config, ...dependsOn] },
     );
