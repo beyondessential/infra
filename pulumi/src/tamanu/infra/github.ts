@@ -1,22 +1,113 @@
-import { OpenIdConnectProvider, Role } from '@pulumi/aws/iam';
-import { PolicyAttachment } from '@pulumi/aws/iam';
 import { jsonStringify } from '@pulumi/pulumi';
+import { OpenIdConnectProvider, Role, PolicyAttachment } from '@pulumi/aws/iam/index.js';
 
-import { pushToRepoPolicy } from './repos';
+import { pushToRepoPolicy, pullFromRepoPolicy } from './repos.js';
+import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../../constants/external.js';
 
 // Github Actions OIDC roles for CD
 // https://github.com/aws-actions/configure-aws-credentials#sample-iam-oidc-cloudformation-template
-// https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/
 const oidcProvider = new OpenIdConnectProvider('github-actions', {
-  clientIdLists: ['sts.amazonaws.com'],
-  url: 'https://token.actions.githubusercontent.com',
-  thumbprintLists: [
-    '1c58a3a8518e8759bf075b76b750d4f2df264fcd',
-    '6938fd4d98bab03faadb97b34396831e3780aea1',
-  ],
+  clientIdLists: [AWS_STS],
+  url: GITHUB_OIDC_URL,
+  thumbprintLists: GITHUB_OIDC_THUMBPRINTS,
 });
 
-const buildRole = new Role(
+const imagePushRole = new Role(
+  'github-actions-image-push',
+  {
+    name: 'gha-image-push',
+    assumeRolePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'sts:AssumeRoleWithWebIdentity',
+          Principal: {
+            Federated: oidcProvider.arn,
+          },
+          Condition: oidcProvider.url.apply((url) => ({
+            StringEquals: {
+              [`${url}:aud`]: AWS_STS,
+            },
+            StringLike: {
+              [`${url}:sub`]: [
+                // Tamanu builds
+                'repo:beyondessential/tamanu:pull_request',
+                'repo:beyondessential/tamanu:ref:refs/heads/main',
+                'repo:beyondessential/tamanu:ref:refs/heads/release/*',
+                'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+
+                // Tamanu builds (testbed)
+                'repo:beyondessential/tamanu-new-branching:*',
+
+                // Configurator glue container
+                'repo:beyondessential/ops:ref:refs/heads/main',
+              ],
+            },
+          })),
+        },
+      ],
+    },
+  },
+  { parent: oidcProvider },
+);
+
+new PolicyAttachment(
+  'github-actions-image-push-ecr-push',
+  {
+    policyArn: pushToRepoPolicy.arn,
+    roles: [imagePushRole],
+  },
+  { parent: imagePushRole },
+);
+
+const imagePullRole = new Role(
+  'github-actions-image-pull',
+  {
+    name: 'gha-image-pull',
+    assumeRolePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'sts:AssumeRoleWithWebIdentity',
+          Principal: {
+            Federated: oidcProvider.arn,
+          },
+          Condition: oidcProvider.url.apply((url) => ({
+            StringEquals: {
+              [`${url}:aud`]: AWS_STS,
+            },
+            StringLike: {
+              [`${url}:sub`]: [
+                // Tamanu builds
+                'repo:beyondessential/tamanu:pull_request',
+                'repo:beyondessential/tamanu:ref:refs/heads/main',
+                'repo:beyondessential/tamanu:ref:refs/heads/release/*',
+                'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+
+                // Tamanu builds (testbed)
+                'repo:beyondessential/tamanu-new-branching:*',
+              ],
+            },
+          })),
+        },
+      ],
+    },
+  },
+  { parent: oidcProvider },
+);
+
+new PolicyAttachment(
+  'github-actions-image-pull-ecr-pull',
+  {
+    policyArn: pullFromRepoPolicy.arn,
+    roles: [imagePullRole],
+  },
+  { parent: imagePullRole },
+);
+
+const oldBuildRole = new Role(
   'github-actions-build',
   {
     name: 'gha-build',
@@ -31,7 +122,7 @@ const buildRole = new Role(
           },
           Condition: oidcProvider.url.apply((url) => ({
             StringEquals: {
-              [`${url}:aud`]: 'sts.amazonaws.com',
+              [`${url}:aud`]: AWS_STS,
             },
             StringLike: {
               [`${url}:sub`]: [
@@ -39,34 +130,12 @@ const buildRole = new Role(
                 'repo:beyondessential/tamanu:pull_request',
                 'repo:beyondessential/tamanu:ref:refs/heads/main',
                 'repo:beyondessential/tamanu:ref:refs/heads/release/*',
-                'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
-
-                // Tamanu builds (testbed)
-                'repo:beyondessential/tamanu-new-branching:pull_request',
-
-                // Configurator glue container
-                'repo:beyondessential/ops:ref:refs/heads/main',
               ],
             },
           })),
         },
       ],
     },
-    inlinePolicies: [
-      {
-        name: 'DockerLogin',
-        policy: jsonStringify({
-          Version: '2012-10-17',
-          Statement: [
-            {
-              Effect: 'Allow',
-              Action: ['ecr:GetAuthorizationToken'],
-              Resource: '*',
-            },
-          ],
-        }),
-      },
-    ],
   },
   { parent: oidcProvider },
 );
@@ -75,9 +144,9 @@ new PolicyAttachment(
   'github-actions-build-ecr-push',
   {
     policyArn: pushToRepoPolicy.arn,
-    roles: [buildRole],
+    roles: [oldBuildRole],
   },
-  { parent: buildRole },
+  { parent: oldBuildRole },
 );
 
 new Role(
@@ -95,7 +164,7 @@ new Role(
           },
           Condition: oidcProvider.url.apply((url) => ({
             StringEquals: {
-              [`${url}:aud`]: 'sts.amazonaws.com',
+              [`${url}:aud`]: AWS_STS,
             },
             StringLike: {
               [`${url}:sub`]: [
@@ -106,10 +175,7 @@ new Role(
                 'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
                 // Tamanu builds (testbed)
-                'repo:beyondessential/tamanu-new-branching:pull_request',
-                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/main',
-                'repo:beyondessential/tamanu-new-branching:ref:refs/heads/release/*',
-                'repo:beyondessential/tamanu-new-branching:ref:refs/tags/v*.*.*',
+                'repo:beyondessential/tamanu-new-branching:*',
               ],
             },
           })),
@@ -170,7 +236,7 @@ new Role(
           },
           Condition: oidcProvider.url.apply((url) => ({
             StringEquals: {
-              [`${url}:aud`]: 'sts.amazonaws.com',
+              [`${url}:aud`]: AWS_STS,
             },
             StringLike: {
               [`${url}:sub`]: [
@@ -181,7 +247,7 @@ new Role(
                 'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
                 // Tamanu builds (testbed)
-                'repo:beyondessential/tamanu-new-branching:pull_request',
+                'repo:beyondessential/tamanu-new-branching:*',
               ],
             },
           })),
@@ -207,6 +273,63 @@ new Role(
                 'arn:aws:s3:::bes-tamanu-dev-desktop-clients/*',
                 'arn:aws:s3:::bes-tamanu-release-clients',
                 'arn:aws:s3:::bes-tamanu-release-clients/*',
+              ],
+            },
+          ],
+        }),
+      },
+    ],
+  },
+  { parent: oidcProvider },
+);
+
+new Role(
+  'github-actions-server-s3',
+  {
+    name: 'gha-server-s3',
+    assumeRolePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'sts:AssumeRoleWithWebIdentity',
+          Principal: {
+            Federated: oidcProvider.arn,
+          },
+          Condition: oidcProvider.url.apply((url) => ({
+            StringEquals: {
+              [`${url}:aud`]: AWS_STS,
+            },
+            StringLike: {
+              [`${url}:sub`]: [
+                // Tamanu builds
+                'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+
+                // Tamanu builds (testbed)
+                'repo:beyondessential/tamanu-new-branching:*',
+              ],
+            },
+          })),
+        },
+      ],
+    },
+    inlinePolicies: [
+      {
+        name: 'TamanuServerBuildsS3',
+        policy: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: [
+                's3:GetObject',
+                's3:GetBucketLocation',
+                's3:ListBucket',
+                's3:PutObject',
+              ],
+              Resource: [
+                'arn:aws:s3:::bes-tamanu-release-servers',
+                'arn:aws:s3:::bes-tamanu-release-servers/*',
               ],
             },
           ],

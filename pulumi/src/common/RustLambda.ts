@@ -5,7 +5,7 @@ import {
   Output,
   jsonStringify,
 } from '@pulumi/pulumi';
-import { FileArchive } from '@pulumi/pulumi/asset';
+import { FileArchive } from '@pulumi/pulumi/asset/index.js';
 // this form is required to import lambda as otherwise it creates a circular dependency error
 import * as aws from '@pulumi/aws';
 import { local } from '@pulumi/command';

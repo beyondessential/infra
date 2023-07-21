@@ -9,14 +9,17 @@ import {
   all,
   jsonStringify,
 } from '@pulumi/pulumi';
-import { Cluster as ECSCluster } from '@pulumi/aws/ecs';
-import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds';
+import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
+import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds/index.js';
 import { Database, Extension, GrantRole, Role } from '@pulumi/postgresql';
 
-import { ValidCertificate } from '../ValidCertificate';
-import { Secret } from './Secret';
-import { Endpoint } from './Endpoint';
-import { Server } from './Server';
+import { ValidCertificate } from '../../common/ValidCertificate.js';
+import * as securityGroupRules from '../../common/securityGroupRules.js';
+import { Secret } from '../../common/Secret.js';
+import { Endpoint } from './Endpoint.js';
+import { Server } from './Server.js';
+import { SecurityGroup } from '@pulumi/aws/ec2/index.js';
+import { LoadBalancer } from '../../common/LoadBalancer.js';
 
 export interface FacilityDef {
   facilityId: string;
@@ -24,12 +27,18 @@ export interface FacilityDef {
   email?: string;
 }
 
+export interface ReferenceDataDef {
+  bucket: string;
+  files: string[];
+}
+
 export interface ClusterArgs {
+  infraStack: string;
   imageTag: string;
-  referenceData: {
-    bucket: string;
-    files: string[];
-  };
+  superdomain: string;
+  ownLoadBalancer?: boolean;
+
+  referenceData?: ReferenceDataDef | null;
 
   initialUsers?: {
     [email: string]: {
@@ -61,11 +70,13 @@ export interface ClusterServiceArgs {
 
 const TARGET_PROVISIONING_FILE = '/config/provisioning/central.json';
 const REFERENCE_DATA_PATH = '/config/provisioning/refdata/';
+const REPOS_STACK = 'bes/tamanu-infra/main';
 
 export class Cluster extends ComponentResource {
   #name: string;
   #args: Required<ClusterArgs>;
   #infra: StackReference;
+  #repos: StackReference;
 
   outputs: ClusterOutputs;
 
@@ -77,18 +88,34 @@ export class Cluster extends ComponentResource {
   constructor(name: string, args: ClusterArgs, opts: ComponentResourceOptions = {}) {
     super('bes:tamanu:Cluster', name, {}, opts);
     this.#name = name;
-    this.#args = { tags: {}, initialUsers: {}, ...args };
-    this.#infra = new StackReference('bes/tamanu-infra/main', {}, { parent: this });
+    this.#args = {
+      tags: {},
+      initialUsers: {},
+      referenceData: null,
+      ownLoadBalancer: false,
+      ...args,
+    };
+
+    this.#infra = new StackReference(this.#args.infraStack, {}, { parent: this });
+    this.#repos =
+      this.#args.infraStack === REPOS_STACK
+        ? this.#infra
+        : new StackReference(REPOS_STACK, {}, { parent: this });
+
     this.#args.tags.Application = 'Tamanu';
     this.#args.tags.Cluster = name;
     this.#args.tags.Infra = 'internal';
+
     this.#facilities = this.#args.facilities.map((f) => ({
       ...f,
       domain: f.domain ?? f.facilityId,
       email: `${f.facilityId}@tamanu.io`,
     }));
 
-    this.#db = this.#infra.getOutput('cluster').apply((cluster) =>
+    const $cluster = this.#infra.getOutput('cluster');
+    const $network = this.#infra.getOutput('network');
+
+    this.#db = $cluster.apply((cluster) =>
       getDatabase({
         dbInstanceIdentifier: cluster.database.instance as string,
       }),
@@ -102,36 +129,74 @@ export class Cluster extends ComponentResource {
       { parent: this },
     );
 
-    const zoneId = this.#infra.getOutput('cluster').apply((cluster) => cluster.zone.id as string);
-    const zoneName = this.#infra
-      .getOutput('cluster')
-      .apply((cluster) => cluster.zone.name as string);
+    const zoneId = $cluster.apply((cluster) => cluster.zone.id as string);
+    const zoneName = $cluster.apply((cluster) => cluster.zone.name as string);
+    const domainNames = zoneName.apply((zoneName) =>
+      ['', 'central.', ...this.#facilities.map((f) => `${f.domain}.`)].map(
+        (name) => `${name}${this.#args.superdomain}.${zoneName}`,
+      ),
+    );
     const { certificateArn } = new ValidCertificate(
       this.#name,
       {
-        domainNames: zoneName.apply((zoneName) =>
-          ['central', ...this.#facilities.map((f) => f.domain)].map(
-            (name) => `${name}.${this.#name}.${zoneName}`,
-          ),
-        ),
+        domainNames,
         zoneId,
         tags: this.#args.tags,
       },
       { parent: ecs },
     );
 
+    const ownLb = this.#args.ownLoadBalancer
+      ? new LoadBalancer(
+          `${name}-lb`,
+          {
+            subnetIds: $network.apply((network) => network.natSubnetIds as string[]),
+            securityGroupIds: [
+              new SecurityGroup(
+                `${name}-lb`,
+                {
+                  vpcId: $network.apply((network) => network.vpc as string),
+                  description: `[LB] Custom Rules for ${this.#name}`,
+                  ingress: [securityGroupRules.allICMPv4],
+                  egress: [securityGroupRules.all],
+                  tags: {
+                    Name: `${this.#name}-lb`,
+                    Purpose: 'lb',
+                    ...this.#args.tags,
+                  },
+                },
+                {
+                  parent: this,
+                  ignoreChanges: ['ingress', 'egress'],
+                },
+              ).id,
+            ],
+            defaultDnsName: domainNames.apply(([root]) => root),
+            zoneId,
+            certificateArn,
+            tags: {
+              Purpose: 'containers',
+              ...this.#args.tags,
+            },
+          },
+          { parent: this },
+        )
+      : null;
+
     const central = {
       endpoint: new Endpoint(
         'central',
         {
           clusterName: this.#name,
+          superdomain: this.#args.superdomain,
           infra: this.#infra,
           certificateArn,
+          lb: ownLb?.outputs,
           tags: this.#args.tags,
         },
         { parent: this },
       ),
-      ...this.database('central'),
+      ...this.database(),
     };
 
     const facilityCredentials = this.#facilities.map((f) => {
@@ -140,7 +205,7 @@ export class Cluster extends ComponentResource {
 
       return {
         ...f,
-        ...this.database('facility', f.facilityId),
+        ...this.database(f.facilityId),
         syncSecret: new Secret(
           name,
           {
@@ -172,6 +237,7 @@ export class Cluster extends ComponentResource {
         ecs,
         endpoint: central.endpoint,
         infra: this.#infra,
+        repos: this.#repos,
         clusterName: this.#name,
         imageName: 'central',
         imageTag: this.#args.imageTag,
@@ -180,7 +246,7 @@ export class Cluster extends ComponentResource {
         configTemplate: 'configTemplates/central.json',
         dbSecret: central.dbSecret.outputs.arn,
         syncSecrets: facilityCredentials.map(({ syncSecret }) => syncSecret.outputs.arn),
-        referenceDataBucket: this.#args.referenceData.bucket,
+        referenceDataBucket: this.#args.referenceData?.bucket,
         configuratorEnv: [
           {
             name: 'CANONICAL_HOSTNAME',
@@ -192,9 +258,16 @@ export class Cluster extends ComponentResource {
               facilityCredentials.map(({ syncSecret }) => syncSecret.outputs.arn),
             ),
           },
-          { name: 'REFERENCE_DATA_PATH', value: REFERENCE_DATA_PATH },
-          { name: 'REFERENCE_DATA_BUCKET', value: this.#args.referenceData.bucket },
-          { name: 'REFERENCE_DATA_KEYS', value: jsonStringify(this.#args.referenceData.files) },
+          ...(this.#args.referenceData
+            ? [
+                { name: 'REFERENCE_DATA_PATH', value: REFERENCE_DATA_PATH },
+                { name: 'REFERENCE_DATA_BUCKET', value: this.#args.referenceData.bucket },
+                {
+                  name: 'REFERENCE_DATA_KEYS',
+                  value: jsonStringify(this.#args.referenceData.files),
+                },
+              ]
+            : []),
           { name: 'TARGET_PROVISIONING_FILE', value: TARGET_PROVISIONING_FILE },
           {
             name: 'USER_DEFINITIONS',
@@ -223,8 +296,10 @@ export class Cluster extends ComponentResource {
           {
             domain,
             clusterName: this.#name,
+            superdomain: this.#args.superdomain,
             infra: this.#infra,
             certificateArn,
+            lb: ownLb?.outputs,
           },
           { parent: this },
         );
@@ -235,6 +310,7 @@ export class Cluster extends ComponentResource {
             ecs,
             endpoint,
             infra: this.#infra,
+            repos: this.#repos,
             clusterName: this.#name,
             imageName: 'facility',
             imageTag: this.#args.imageTag,
@@ -282,7 +358,7 @@ export class Cluster extends ComponentResource {
     return this.#salt.apply((salt) => createHash('sha256').update(salt).update(seed).digest('hex'));
   }
 
-  database(kind: string, facilityId?: string): { dbSecret: Secret; dbName: Output<string> } {
+  database(facilityId?: string): { dbSecret: Secret; dbName: Output<string> } {
     const name = facilityId ? `${this.#name}-${facilityId}` : `${this.#name}-central`;
     const dbSecretName = facilityId ? `db-${facilityId}` : 'db-central';
     const password = this.makePassword(dbSecretName);

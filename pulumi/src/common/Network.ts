@@ -9,7 +9,7 @@ import {
   RouteTableAssociation,
   Subnet,
   Vpc,
-} from '@pulumi/aws/ec2';
+} from '@pulumi/aws/ec2/index.js';
 
 export interface NetworkArgs {
   ipv4Cidr: string;

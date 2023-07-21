@@ -8,17 +8,18 @@ import {
   jsonStringify,
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
-import { Cluster as ECSCluster } from '@pulumi/aws/ecs';
-import { Service } from '@pulumi/aws/servicediscovery';
-import { Parameter } from '@pulumi/aws/ssm';
-import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam';
-import { TargetGroup } from '@pulumi/aws/lb';
-import { DEFAULT_PORT, Endpoint } from './Endpoint';
+import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
+import { Service } from '@pulumi/aws/servicediscovery/index.js';
+import { Parameter } from '@pulumi/aws/ssm/index.js';
+import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam/index.js';
+import { TargetGroup } from '@pulumi/aws/lb/index.js';
+import { DEFAULT_PORT, Endpoint } from './Endpoint.js';
 
 export interface ServerArgs {
   ecs: ECSCluster;
   endpoint: Endpoint;
   infra: StackReference;
+  repos: StackReference;
 
   clusterName: string;
   imageName: string;
@@ -60,6 +61,7 @@ export class Server extends ComponentResource {
   #name: string;
   #args: Required<ServerArgs>;
   #infra: StackReference;
+  #repos: StackReference;
 
   #config: Parameter;
 
@@ -79,6 +81,7 @@ export class Server extends ComponentResource {
       ...args,
     };
     this.#infra = args.infra;
+    this.#repos = args.repos;
     this.#isFacility = this.#args.facilityId !== null;
 
     this.#config = new Parameter(
@@ -142,16 +145,14 @@ export class Server extends ComponentResource {
     const subnets = this.#infra
       .getOutput('network')
       .apply((network) => network.workloadSubnetIds as string[]);
-
-    const serverImage = this.#infra
-      .getOutput('repos')
-      .apply((repos) => `${repos[imageName]}:${this.#args.imageTag}`);
-    const configuratorImage = this.#infra
-      .getOutput('repos')
-      .apply((repos) => repos.configurator as string);
     const securityGroup = this.#infra
       .getOutput('cluster')
       .apply((cluster) => cluster.containers.securityGroup as string);
+
+    const images = this.#repos.getOutput('repos').apply((repos) => ({
+      server: `${repos[imageName]}:${this.#args.imageTag}`,
+      configurator: repos.configurator as string,
+    }));
 
     const taskRole = new Role(
       `${this.#name}-${name}-task`,
@@ -233,7 +234,7 @@ export class Server extends ComponentResource {
       [
         'main',
         {
-          image: serverImage,
+          image: images.server,
           command,
           essential: true,
           linuxParameters: {
@@ -278,7 +279,7 @@ export class Server extends ComponentResource {
       [
         'configurator',
         {
-          image: configuratorImage,
+          image: images.configurator,
           command: [],
           essential: false,
           linuxParameters: {
@@ -306,7 +307,7 @@ export class Server extends ComponentResource {
       containers.push([
         'migrator',
         {
-          image: serverImage,
+          image: images.server,
           command: ['migrate'],
           essential: false,
           linuxParameters: {

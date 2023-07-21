@@ -1,0 +1,5 @@
+{
+  "name": "@tamanu/infra",
+  "type": "module",
+  "main": "../../../build/tamanu/infra/index.js"
+}

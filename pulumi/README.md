@@ -1,4 +1,4 @@
-# Pulumi infra
+# Pulumi
 
 ## Setup
 
@@ -15,29 +15,40 @@ Install pulumi CLI: https://www.pulumi.com/docs/get-started/install/
 
 Login to pulumi: `pulumi login`.
 
-Use credential in Bitwarden (Engineering / Common infrastructure / Pulumi common account).
+Use credential in Bitwarden (Engineering / Common infrastructure / Pulumi common account)
+or your own account if you have one.
 
 ### AWS
 
-You should have AWS credentials in `~/.aws/credentials` (or in `~/.aws/config`).
-Make sure you have a working `default` profile.
+You should use `aws-sso`.
 
 ## Usage
 
-Each Pulumi project is its own directory below this one. Pulumi projects are
-roughly mapped to different approaches and thematics around deploying an or a
-set of applications. For example, `tamanu-internal` is about the test and demo
-environments for Tamanu, in BES's own AWS accounts, while `tamanu-aws-prod` is a
-managed production environment in country-specific AWS accounts, and
-`tamanu-on-prem` is the AWS-based support infrastructure for Tamanu on premise.
+Each Pulumi project is its own set of directories.
+
+- The `src` directory contains the TypeScript source code for all projects.
+- The `build` directory is generated from `src` by SWC.
+- The `stacks` directory contains the Pulumi stack configuration for each
+  project, along with any other files needed to deploy, like templates, scripts,
+  default configs, etc.
+
+Each of these three top-level directories contain a similar structure. Currently
+we have:
+
+- `tamanu/` for grouping Tamanu-related projects
+  - `tamanu/infra/` for common infrastructure
+  - `tamanu/on-ecs/` for the "Auto Deploys" on ECS
 
 ### Setup
 
-Each project is completely separate code-wise, but shares organisation and
-conventions.
+1. Change into the `pulumi` directory: `cd pulumi`
+2. Install dependencies: `npm install`
+3. Open a terminal tab/pane and run `npm run watch` to auto-compile source
 
-- change into the project directory: `cd tamanu-internal`
-- install dependencies: `npm i`
+### Deploy
+
+1. Change into the desired project directory: `cd stacks/tamanu/on-ecs`
+2. Run your desired Pulumi command, e.g. `pulumi up`
 
 ### Stacks
 

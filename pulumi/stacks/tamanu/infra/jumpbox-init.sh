@@ -4,6 +4,19 @@
 # https://gitlab.alpinelinux.org/alpine/cloud/tiny-cloud
 
 set -eux
+whoami # for debug
+
+# Wait for the network to be up
+for i in $(seq 1 100); do
+  # Pinging the CDN would be better,
+  # but it's on Fastly and they don't respond properly
+  if ping -c 1 alpinelinux.org; then
+    break
+  fi
+  sleep 1
+done
+# no exit condition: if we still don't have network, we'll crash anyway.
+
 apk update
 
 

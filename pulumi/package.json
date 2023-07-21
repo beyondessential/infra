@@ -1,10 +1,13 @@
 {
   "name": "pulumi-bes",
-  "main": "index.ts",
+  "type": "module",
   "devDependencies": {
     "@beyondessential/eslint-config-js": "^1.1.1",
+    "@swc/cli": "^0.1.62",
+    "@swc/core": "^1.3.68",
     "@types/lodash": "^4.14.194",
     "@types/node": "^16",
+    "chokidar": "^3.5.3",
     "eslint-plugin-prettier": "^4.2.1"
   },
   "dependencies": {
@@ -19,5 +22,9 @@
     "@types/netmask": "^2.0.0",
     "lodash": "^4.17.21",
     "netmask": "^2.0.2"
+  },
+  "scripts": {
+    "build": "swc ./src --out-dir ./build --source-maps",
+    "watch": "npm run build -- --watch"
   }
 }

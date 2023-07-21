@@ -6,8 +6,8 @@ import {
   all,
   output,
 } from '@pulumi/pulumi';
-import { Certificate, CertificateValidation } from '@pulumi/aws/acm';
-import { Record } from '@pulumi/aws/route53';
+import { Certificate, CertificateValidation } from '@pulumi/aws/acm/index.js';
+import { Record } from '@pulumi/aws/route53/index.js';
 
 export interface ValidCertificateArgs {
   domainNames: Input<Input<string>[]>;

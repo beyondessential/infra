@@ -1,16 +1,16 @@
 import { readFileSync } from 'fs';
 
 import { ComponentResource, ComponentResourceOptions, Output, all, secret } from '@pulumi/pulumi';
-import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2';
-import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds';
-import { Listener, LoadBalancer } from '@pulumi/aws/lb';
-import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery';
-import { DeviceKey, TailnetKey } from '@pulumi/tailscale';
-import { getDeviceOutput } from '@pulumi/tailscale/getDevice';
-import { Record, getZone } from '@pulumi/aws/route53';
+import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
 
-import { Network, NetworkOutputs } from './Network';
-import { ValidCertificate } from '../ValidCertificate';
+import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2/index.js';
+import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds/index.js';
+import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery/index.js';
+import { getZone } from '@pulumi/aws/route53/index.js';
+
+import { Network, NetworkOutputs } from '../../common/Network.js';
+import { LoadBalancer } from '../../common/LoadBalancer.js';
+import * as securityGroupRules from '../../common/securityGroupRules.js';
 
 export interface ClusterInfraArgs {
   network: Network | NetworkOutputs;
@@ -20,6 +20,12 @@ export interface ClusterInfraArgs {
 
   /** Any extra tags to add to all resources. */
   tags?: { [key: string]: string };
+}
+
+export interface LbOutputs {
+  arn: Output<string>;
+  dnsName: Output<string>;
+  listener: Output<string>;
 }
 
 export interface ClusterInfraOutputs {
@@ -33,10 +39,10 @@ export interface ClusterInfraOutputs {
     namespaceName: Output<string>;
     loadbalancer: Output<string>;
   };
-  lb: {
-    arn: Output<string>;
-    dnsName: Output<string>;
-    listener: Output<string>;
+  lb: LbOutputs;
+  network: {
+    vpcId: Output<string>;
+    natSubnetIds: Output<string[]>;
   };
   zone: {
     id: Output<string>;
@@ -52,7 +58,6 @@ export class ClusterInfra extends ComponentResource {
   #cloudmap: PrivateDnsNamespace;
   #database: DBInstance;
   #zone: Output<{ id: string; name: string }>;
-  #lb: LoadBalancer;
   #securityGroups: { [key: string]: SecurityGroup };
 
   outputs: ClusterInfraOutputs;
@@ -100,8 +105,21 @@ export class ClusterInfra extends ComponentResource {
     }));
 
     // Application LB across zones for API and Web public access to containers.
-    const { lb, https } = this.loadBalancer();
-    this.#lb = lb;
+    const { lb, listener } = new LoadBalancer(
+      // Workaround for LB names being forbidden from starting with internal-
+      `${this.#name.startsWith('internal') ? `tamanu-${this.#name}` : this.#name}-http`,
+      {
+        subnetIds: this.#network.natSubnetIds,
+        securityGroupIds: [this.#securityGroups.lb.id],
+        defaultDnsName: this.#zone.name,
+        zoneId: this.#zone.id,
+        tags: {
+          Purpose: 'containers',
+          ...this.#args.tags,
+        },
+      },
+      { parent: this },
+    );
 
     // Single common database for all Tamanu clusters
     // Obviously this would be bad for production but for internal use it's good:
@@ -122,12 +140,16 @@ export class ClusterInfra extends ComponentResource {
           securityGroup: this.#securityGroups.containers.id,
           namespaceId: this.#cloudmap.id,
           namespaceName: this.#cloudmap.name,
-          loadbalancer: this.#lb.arn,
+          loadbalancer: lb.arn,
         },
         lb: {
-          arn: this.#lb.arn,
-          dnsName: this.#lb.dnsName,
-          listener: https.arn,
+          arn: lb.arn,
+          dnsName: lb.dnsName,
+          listener: listener.arn,
+        },
+        network: {
+          vpcId: this.#network.vpc,
+          natSubnetIds: this.#network.natSubnetIds,
         },
         zone: this.#zone,
       }),
@@ -135,28 +157,8 @@ export class ClusterInfra extends ComponentResource {
   }
 
   securityGroups() {
-    const all = {
-      fromPort: 0,
-      toPort: 0,
-      protocol: '-1',
-      cidrBlocks: ['0.0.0.0/0'],
-    };
-    const allICMPv4 = {
-      fromPort: -1,
-      toPort: -1,
-      cidrBlocks: ['0.0.0.0/0'],
-      description: 'ICMPv4',
-      protocol: '1',
-    };
-    const openPort = (description: string, port: number, protocol: string = 'tcp') => ({
-      description,
-      fromPort: port,
-      toPort: port,
-      protocol,
-      cidrBlocks: ['0.0.0.0/0'],
-    });
     const openVpcPort = (description: string, port: number, protocol: string = 'tcp') => ({
-      ...openPort(description, port, protocol),
+      ...securityGroupRules.openPort(description, port, protocol),
       description: `${description} from VPC`,
       cidrBlocks: [this.#network.v4Cidr],
     });
@@ -166,7 +168,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#network.vpc,
         ingress: [openVpcPort('Postgres', 5432)],
-        egress: [all],
+        egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-databases`,
           Purpose: 'database',
@@ -183,14 +185,14 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#network.vpc,
         ingress: [
-          allICMPv4,
-          openPort('SSH', 22),
-          openPort('HTTP', 80),
-          openPort('Internal HTTP', 3000),
-          openPort('HTTPS', 443),
-          openPort('HTTP/3', 443, 'udp'),
+          securityGroupRules.allICMPv4,
+          openVpcPort('SSH', 22),
+          openVpcPort('HTTP', 80),
+          openVpcPort('Internal HTTP', 3000),
+          openVpcPort('HTTPS', 443),
+          openVpcPort('HTTP/3', 443, 'udp'),
         ],
-        egress: [all],
+        egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-containers`,
           Purpose: 'containers',
@@ -207,7 +209,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#network.vpc,
         ingress: [],
-        egress: [all],
+        egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-manager`,
           Purpose: 'db-manager',
@@ -224,7 +226,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#network.vpc,
         ingress: [],
-        egress: [all],
+        egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-jumpbox`,
           Purpose: 'jumpbox',
@@ -240,8 +242,12 @@ export class ClusterInfra extends ComponentResource {
       `${this.#name}-lb`,
       {
         vpcId: this.#network.vpc,
-        ingress: [allICMPv4, openPort('HTTP', 80), openPort('HTTPS', 443)],
-        egress: [all],
+        ingress: [
+          securityGroupRules.allICMPv4,
+          securityGroupRules.openPort('HTTP', 80),
+          securityGroupRules.openPort('HTTPS', 443),
+        ],
+        egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-lb`,
           Purpose: 'lb',
@@ -280,7 +286,7 @@ export class ClusterInfra extends ComponentResource {
         autoMinorVersionUpgrade: true,
         dbSubnetGroupName: subnetGroup.name,
         engine: 'postgres',
-        engineVersion: '14.6',
+        engineVersion: '14.7',
         instanceClass: 'db.t4g.medium', // ARM64
         manageMasterUserPassword: true,
         networkType: 'IPV4', // FIXME: DUAL
@@ -293,102 +299,11 @@ export class ClusterInfra extends ComponentResource {
       },
       {
         parent: this,
+        ignoreChanges: ['engineVersion'], // minor auto-updates are fine
       },
     );
 
     return rds;
-  }
-
-  loadBalancer() {
-    const name = `${this.#name.startsWith('internal') ? `tamanu-${this.#name}` : this.#name}-http`;
-    const lb = new LoadBalancer(
-      // Workaround for LB names being forbidden from starting with internal-
-      name,
-      {
-        internal: false,
-        loadBalancerType: 'application',
-        subnets: this.#network.natSubnetIds,
-        ipAddressType: 'ipv4',
-        securityGroups: [this.#securityGroups.lb.id],
-        tags: {
-          Purpose: 'containers',
-          ...this.#args.tags,
-        },
-      },
-      { parent: this },
-    );
-
-    // http->https redirect
-    new Listener(
-      `${name}-httpredirect`,
-      {
-        loadBalancerArn: lb.arn,
-        port: 80,
-        protocol: 'HTTP',
-        defaultActions: [
-          {
-            type: 'redirect',
-            redirect: {
-              port: '443',
-              protocol: 'HTTPS',
-              statusCode: 'HTTP_301',
-            },
-          },
-        ],
-      },
-      { parent: lb },
-    );
-
-    const certificate = new ValidCertificate(
-      `${name}-default`,
-      {
-        domainNames: [this.#zone.name],
-        zoneId: this.#zone.id,
-      },
-      { parent: lb },
-    );
-
-    // https termination
-    const https = new Listener(
-      `${name}-https`,
-      {
-        loadBalancerArn: lb.arn,
-        port: 443,
-        protocol: 'HTTPS',
-        certificateArn: certificate.certificateArn,
-        sslPolicy: 'ELBSecurityPolicy-TLS13-1-2-2021-06',
-        defaultActions: [
-          {
-            type: 'fixed-response',
-            fixedResponse: {
-              contentType: 'text/plain',
-              messageBody: `Tamanu ${this.#name}`,
-              statusCode: '200',
-            },
-          },
-        ],
-      },
-      { parent: lb },
-    );
-
-    new Record(
-      `${name}-default`,
-      {
-        zoneId: this.#zone.id,
-        name: this.#zone.name,
-        type: 'A',
-        aliases: [
-          {
-            name: lb.dnsName,
-            zoneId: lb.zoneId,
-            evaluateTargetHealth: true,
-          },
-        ],
-      },
-      { parent: lb },
-    );
-
-    return { lb, https };
   }
 
   jumpBox() {
@@ -457,7 +372,7 @@ export class ClusterInfra extends ComponentResource {
           ),
         ),
         tags: {
-          Name: name,
+          Name: '[Internal] Tailscale Jumpbox',
           Purpose: 'jumpbox',
           ...this.#args.tags,
         },
