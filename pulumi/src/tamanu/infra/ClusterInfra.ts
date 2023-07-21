@@ -40,10 +40,6 @@ export interface ClusterInfraOutputs {
     loadbalancer: Output<string>;
   };
   lb: LbOutputs;
-  network: {
-    vpcId: Output<string>;
-    natSubnetIds: Output<string[]>;
-  };
   zone: {
     id: Output<string>;
     name: Output<string>;
@@ -146,10 +142,6 @@ export class ClusterInfra extends ComponentResource {
           arn: lb.arn,
           dnsName: lb.dnsName,
           listener: listener.arn,
-        },
-        network: {
-          vpcId: this.#network.vpc,
-          natSubnetIds: this.#network.natSubnetIds,
         },
         zone: this.#zone,
       }),
