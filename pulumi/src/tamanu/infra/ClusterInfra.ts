@@ -11,6 +11,8 @@ import { getZone } from '@pulumi/aws/route53/index.js';
 import { Network, NetworkOutputs } from '../../common/Network.js';
 import { LoadBalancer } from '../../common/LoadBalancer.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
+import { alpineAmi } from '../../constants/external.js';
+import { TAILNET_DOMAIN } from '../../constants/internal.js';
 
 export interface ClusterInfraArgs {
   network: Network | NetworkOutputs;
@@ -149,11 +151,7 @@ export class ClusterInfra extends ComponentResource {
   }
 
   securityGroups() {
-    const openVpcPort = (description: string, port: number, protocol: string = 'tcp') => ({
-      ...securityGroupRules.openPort(description, port, protocol),
-      description: `${description} from VPC`,
-      cidrBlocks: [this.#network.v4Cidr],
-    });
+    const { openVpcPort } = securityGroupRules.withNetwork(this.#network);
 
     const databases = new SecurityGroup(
       `${this.#name}-databases`,
@@ -299,21 +297,7 @@ export class ClusterInfra extends ComponentResource {
   }
 
   jumpBox() {
-    const alpine = getAmiOutput({
-      mostRecent: true,
-      filters: [
-        {
-          name: 'name',
-          values: ['alpine-3.*-aarch64-uefi-tiny-r0'],
-          // tiny = https://gitlab.alpinelinux.org/alpine/cloud/tiny-cloud
-        },
-        {
-          name: 'virtualization-type',
-          values: ['hvm'],
-        },
-      ],
-      owners: ['538276064493'], // official Alpine images
-    });
+    const alpine = alpineAmi();
 
     const name = `${this.#name}-jumpbox`;
     const tailscaleName = `tamanu-${this.#name}-jumpbox`;

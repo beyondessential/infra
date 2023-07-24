@@ -1,3 +1,5 @@
+import { getAmiOutput } from '@pulumi/aws/ec2/index.js';
+
 export const AWS_STS = 'sts.amazonaws.com';
 
 export const GITHUB_OIDC_URL = 'https://token.actions.githubusercontent.com';
@@ -27,3 +29,25 @@ export const AWS_ECR_PUSH_ACTIONS = [
   'ecr:PutImage',
   'ecr:UploadLayerPart',
 ];
+
+export function alpineAmi(
+  version: string = '3.*',
+  arch: string = 'aarch64',
+  userdata: string = 'tiny',
+) {
+  return getAmiOutput({
+    mostRecent: true,
+    filters: [
+      {
+        name: 'name',
+        values: [`alpine-${version}-${arch}-uefi-${userdata}-r0`],
+        // tiny = https://gitlab.alpinelinux.org/alpine/cloud/tiny-cloud
+      },
+      {
+        name: 'virtualization-type',
+        values: ['hvm'],
+      },
+    ],
+    owners: ['538276064493'], // official Alpine images
+  });
+}
