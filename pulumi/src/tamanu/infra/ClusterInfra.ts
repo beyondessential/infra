@@ -27,6 +27,7 @@ export interface ClusterInfraArgs {
 export interface LbOutputs {
   arn: Output<string>;
   dnsName: Output<string>;
+  dnsCName: Output<string>;
   listener: Output<string>;
 }
 
@@ -143,6 +144,7 @@ export class ClusterInfra extends ComponentResource {
         lb: {
           arn: lb.arn,
           dnsName: lb.dnsName,
+          dnsCName: this.#zone.name,
           listener: listener.arn,
         },
         zone: this.#zone,
@@ -363,7 +365,7 @@ export class ClusterInfra extends ComponentResource {
     const tailscaleDevice = getDeviceOutput({
       // bind to the box, even if we don't use any of the outputs
       // the suffix here is the MagicDNS domain for our tailnet
-      name: box.arn.apply((_) => `${tailscaleName}.tail53aef.ts.net`),
+      name: box.arn.apply((_) => `${tailscaleName}.${TAILNET_DOMAIN}`),
       waitFor: '15m',
     });
 

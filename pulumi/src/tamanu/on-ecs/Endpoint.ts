@@ -21,6 +21,7 @@ export interface EndpointArgs {
   domain?: string;
   port?: number;
   certificateArn?: Input<string>;
+  target?: Input<string>;
 
   lb?:
     | {
@@ -54,6 +55,7 @@ export class Endpoint extends ComponentResource {
       superdomain,
       port = DEFAULT_PORT,
       lb,
+      target,
       tags = {},
     }: EndpointArgs,
     opts: ComponentResourceOptions = {},
@@ -123,6 +125,10 @@ export class Endpoint extends ComponentResource {
       };
     }
 
+    if (!target) {
+      target = lb.dnsName;
+    }
+
     const zoneId = $cluster.apply((cluster) => cluster.zone.id as string);
     const zoneName = $cluster.apply((cluster) => cluster.zone.name as string);
 
@@ -135,7 +141,7 @@ export class Endpoint extends ComponentResource {
         ),
         type: 'CNAME',
         ttl: 300,
-        records: [lb.dnsName],
+        records: [target],
       },
       { parent: this },
     );

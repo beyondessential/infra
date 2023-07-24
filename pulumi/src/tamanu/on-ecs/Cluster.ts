@@ -192,6 +192,9 @@ export class Cluster extends ComponentResource {
           infra: this.#infra,
           certificateArn,
           lb: ownLb?.outputs,
+          target: this.#args.ownLoadBalancer
+            ? undefined
+            : $cluster.apply((cluster) => cluster.lb.dnsCName as string),
           tags: this.#args.tags,
         },
         { parent: this },
@@ -300,6 +303,9 @@ export class Cluster extends ComponentResource {
             infra: this.#infra,
             certificateArn,
             lb: ownLb?.outputs,
+            target: this.#args.ownLoadBalancer
+              ? undefined
+              : $cluster.apply((cluster) => cluster.lb.dnsCName as string),
           },
           { parent: this },
         );
