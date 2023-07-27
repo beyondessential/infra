@@ -24,7 +24,7 @@
     "netmask": "^2.0.2"
   },
   "scripts": {
-    "build": "swc ./src --out-dir ./build --source-maps",
+    "build": "swc ./src --out-dir ./build --source-maps --copy-files",
     "watch": "npm run build -- --watch",
     "postinstall": "npm run build"
   }
