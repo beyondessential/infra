@@ -24,7 +24,7 @@
         "patientPlannedMove": true,
         "enablePatientDeaths": true,
         "enableInvoicing": true,
-        "editDisplayId": true,
+        "editPatientDisplayId": true,
         "enableCovidClearanceCertificate": true,
         "quickPatientGenerator": true
       },
