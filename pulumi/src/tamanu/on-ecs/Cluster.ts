@@ -20,6 +20,7 @@ import { Endpoint } from './Endpoint.js';
 import { Server } from './Server.js';
 import { SecurityGroup } from '@pulumi/aws/ec2/index.js';
 import { LoadBalancer } from '../../common/LoadBalancer.js';
+import { truncateDomainIfNeeded } from '../../common/dns.js';
 
 export interface FacilityDef {
   facilityId: string;
@@ -132,10 +133,13 @@ export class Cluster extends ComponentResource {
     const zoneId = $cluster.apply((cluster) => cluster.zone.id as string);
     const zoneName = $cluster.apply((cluster) => cluster.zone.name as string);
     const domainNames = zoneName.apply((zoneName) =>
-      ['', 'central.', ...this.#facilities.map((f) => `${f.domain}.`)].map(
-        (name) => `${name}${this.#args.superdomain}.${zoneName}`,
-      ),
+      [
+        truncateDomainIfNeeded(this.#args.superdomain, zoneName), // "root"
+        truncateDomainIfNeeded('central', `${this.#args.superdomain}.${zoneName}`),
+        ...this.#facilities.map((f) => truncateDomainIfNeeded(f.domain, `${this.#args.superdomain}.${zoneName}`)),
+      ]
     );
+
     const { certificateArn } = new ValidCertificate(
       this.#name,
       {
