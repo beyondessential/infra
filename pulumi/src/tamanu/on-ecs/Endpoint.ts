@@ -18,7 +18,7 @@ export const DEFAULT_PORT = 3000;
 export interface EndpointArgs {
   clusterName: string;
   infra: StackReference;
-  superdomain?: string;
+  superdomain?: Input<string>;
   domain?: string;
   port?: number;
   certificateArn?: Input<string>;
@@ -137,8 +137,8 @@ export class Endpoint extends ComponentResource {
       `${clusterName}-${this.#name}`,
       {
         zoneId,
-        name: zoneName.apply(
-          (zone) => truncateDomainIfNeeded(domain ?? this.#name, `${superdomain ?? clusterName}.${zone}`),
+        name: all([zoneName, superdomain]).apply(([zone, superdomain]) =>
+          truncateDomainIfNeeded(domain ?? this.#name, `${superdomain ?? clusterName}.${zone}`),
         ),
         type: 'CNAME',
         ttl: 300,

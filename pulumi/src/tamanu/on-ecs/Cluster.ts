@@ -135,6 +135,7 @@ export class Cluster extends ComponentResource {
     const domainRoot = zoneName.apply((zoneName) =>
       truncateDomainIfNeeded(this.#args.superdomain, zoneName, true),
     );
+    const truncatedSuperdomain = domainRoot.apply((root) => root.split('.')[0]);
     const domainNames = domainRoot.apply((root) => [
       root,
       truncateDomainIfNeeded('central', root),
@@ -193,7 +194,7 @@ export class Cluster extends ComponentResource {
         'central',
         {
           clusterName: this.#name,
-          superdomain: this.#args.superdomain,
+          superdomain: truncatedSuperdomain,
           infra: this.#infra,
           certificateArn,
           lb: ownLb?.outputs,
@@ -304,7 +305,7 @@ export class Cluster extends ComponentResource {
           {
             domain,
             clusterName: this.#name,
-            superdomain: this.#args.superdomain,
+            superdomain: truncatedSuperdomain,
             infra: this.#infra,
             certificateArn,
             lb: ownLb?.outputs,
