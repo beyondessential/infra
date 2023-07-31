@@ -1,6 +1,8 @@
-export function truncateDomainIfNeeded(domain: string, zone: string) {
-  if (domain.length >= 64) {
-    domain = domain.slice(0, 63);
+export function truncateDomainIfNeeded(domain: string, zone: string, wholeDomain: boolean = false) {
+  const max = wholeDomain ? 64 - zone.length : 64;
+
+  if (domain.length >= max) {
+    domain = domain.slice(0, max - 1);
   }
 
   if (domain.endsWith('-')) {

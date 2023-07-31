@@ -132,13 +132,14 @@ export class Cluster extends ComponentResource {
 
     const zoneId = $cluster.apply((cluster) => cluster.zone.id as string);
     const zoneName = $cluster.apply((cluster) => cluster.zone.name as string);
-    const domainNames = zoneName.apply((zoneName) =>
-      [
-        truncateDomainIfNeeded(this.#args.superdomain, zoneName), // "root"
-        truncateDomainIfNeeded('central', `${this.#args.superdomain}.${zoneName}`),
-        ...this.#facilities.map((f) => truncateDomainIfNeeded(f.domain, `${this.#args.superdomain}.${zoneName}`)),
-      ]
+    const domainRoot = zoneName.apply((zoneName) =>
+      truncateDomainIfNeeded(this.#args.superdomain, zoneName, true),
     );
+    const domainNames = domainRoot.apply((root) => [
+      root,
+      truncateDomainIfNeeded('central', root),
+      ...this.#facilities.map((f) => truncateDomainIfNeeded(f.domain, root)),
+    ]);
 
     const { certificateArn } = new ValidCertificate(
       this.#name,
