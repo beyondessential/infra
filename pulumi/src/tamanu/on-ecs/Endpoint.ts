@@ -11,6 +11,7 @@ import { Service } from '@pulumi/aws/servicediscovery/index.js';
 import { ListenerCertificate, ListenerRule, TargetGroup } from '@pulumi/aws/lb/index.js';
 import { Record } from '@pulumi/aws/route53/index.js';
 import { ValidCertificate } from '../../common/ValidCertificate.js';
+import { truncateDomainIfNeeded } from '../../common/dns.js';
 
 export const DEFAULT_PORT = 3000;
 
@@ -137,7 +138,7 @@ export class Endpoint extends ComponentResource {
       {
         zoneId,
         name: zoneName.apply(
-          (zone) => `${domain ?? this.#name}.${superdomain ?? clusterName}.${zone}`,
+          (zone) => truncateDomainIfNeeded(domain ?? this.#name, `${superdomain ?? clusterName}.${zone}`),
         ),
         type: 'CNAME',
         ttl: 300,
