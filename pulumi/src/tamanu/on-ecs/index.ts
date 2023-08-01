@@ -5,7 +5,7 @@ import { Cluster, FacilityDef } from './Cluster.js';
 const cfg = new Config();
 const infraStack = cfg.get('infraStack') ?? 'bes/tamanu-infra/main';
 const superdomain = cfg.get('superdomain') ?? getStack();
-const imageTag = cfg.require('imageTag');
+export const imageTag = cfg.require('imageTag');
 const initialUsers =
   cfg.getObject('initialUsers') ?? JSON.parse(readFileSync('initialUsers.json', 'utf-8'));
 
