@@ -28,7 +28,7 @@ const { outputs: cluster } = new Cluster(
     facilities,
     referenceData: {
       bucket: 'bes-tamanu-dev-referencedata',
-      files: cfg.getObject('initialReferenceData') ?? ['2023-07-03-demo-like.xlsx'],
+      files: cfg.getObject('initialReferenceData') ?? ['referencedata/default.xlsx'],
     },
     initialUsers,
     ownLoadBalancer: cfg.getBoolean('ownLoadBalancer') ?? false,
