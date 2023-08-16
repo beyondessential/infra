@@ -240,6 +240,9 @@ new Role(
             },
             StringLike: {
               [`${url}:sub`]: [
+                // Ops scripts
+                'repo:beyondessential/ops:ref:refs/heads/main',
+
                 // Tamanu builds
                 'repo:beyondessential/tamanu:pull_request',
                 'repo:beyondessential/tamanu:ref:refs/heads/main',
