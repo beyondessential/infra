@@ -6,13 +6,13 @@ import {
   all,
   output,
 } from '@pulumi/pulumi';
-import { Certificate, CertificateValidation } from '@pulumi/aws/acm/index.js';
-import { Record } from '@pulumi/aws/route53/index.js';
+import * as aws from '@pulumi/aws';
 
 export interface ValidCertificateArgs {
   domainNames: Input<Input<string>[]>;
   zoneId: Input<string>;
   keyAlgorithm?: Input<string>;
+  inUsEast1?: Input<boolean>;
 
   /** Any extra tags to add to all resources. */
   tags?: { [key: string]: string };
@@ -24,21 +24,31 @@ export interface ValidCertificateOutputs {
 }
 
 export class ValidCertificate extends ComponentResource {
-  domainNames: Output<string[]>;
-  certificateArn: Output<string>;
-  outputs: ValidCertificateOutputs;
+  readonly domainNames: Output<string[]>;
+  readonly certificateArn: Output<string>;
+  readonly outputs: ValidCertificateOutputs;
 
   #name: string;
 
   constructor(
     name: string,
-    { domainNames, keyAlgorithm, zoneId, tags = {} }: ValidCertificateArgs,
+    { domainNames, keyAlgorithm, zoneId, inUsEast1 = false, tags = {} }: ValidCertificateArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:common:ValidCertificate', name, {}, opts);
     this.#name = name;
 
-    const certificate = new Certificate(
+    const provider = inUsEast1
+      ? new aws.Provider(
+          'us-east-1',
+          {
+            region: 'us-east-1',
+          },
+          { parent: this },
+        )
+      : undefined;
+
+    const certificate = new aws.acm.Certificate(
       name,
       {
         domainName: output(domainNames).apply(([name]) => name),
@@ -47,7 +57,7 @@ export class ValidCertificate extends ComponentResource {
         keyAlgorithm: keyAlgorithm ?? 'EC_prime256v1',
         tags,
       },
-      { parent: this },
+      { provider, parent: this },
     );
 
     const validationRecords = certificate.domainValidationOptions.apply((validations) =>
@@ -58,7 +68,7 @@ export class ValidCertificate extends ComponentResource {
           resourceRecordValue: value,
           resourceRecordType: type,
         }) =>
-          new Record(
+          new aws.route53.Record(
             `${this.#name}-validation-${domainName}`,
             {
               name,
@@ -72,7 +82,7 @@ export class ValidCertificate extends ComponentResource {
       ),
     );
 
-    const certificateValidation = new CertificateValidation(
+    const certificateValidation = new aws.acm.CertificateValidation(
       name,
       {
         certificateArn: certificate.arn,
@@ -80,7 +90,7 @@ export class ValidCertificate extends ComponentResource {
           records.map((record) => record.fqdn),
         ),
       },
-      { parent: certificate },
+      { provider, parent: certificate },
     );
 
     // bind to the validation

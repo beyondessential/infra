@@ -1,0 +1,6 @@
+name: dbt-docs
+description: DBT docs deploys
+runtime:
+  name: nodejs
+  options:
+    typescript: false
