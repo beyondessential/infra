@@ -52,7 +52,7 @@ export class ValidCertificate extends ComponentResource {
       name,
       {
         domainName: output(domainNames).apply(([name]) => name),
-        subjectAlternativeNames: output(domainNames).apply(([first, ...names]) => names),
+        subjectAlternativeNames: domainNames,
         validationMethod: 'DNS',
         keyAlgorithm: keyAlgorithm ?? 'EC_prime256v1',
         tags,
