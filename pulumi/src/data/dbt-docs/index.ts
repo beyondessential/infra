@@ -2,14 +2,16 @@ import { readFileSync } from 'fs';
 import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { ValidCertificate } from '../../common/ValidCertificate.js';
+import { LOGS_BUCKETS } from '../../constants/internal.js';
 
-const DOMAIN = 'dbt.docs.tamanu.io';
-const ZONE_ID = 'Z09719953GXIDKGUL45A2';
+const DOMAIN = 'dbtdocs.data.bes.au';
+const ZONE_ID = 'Z0831938RFS8SDSX2K7H';
+const LOGS_BUCKET = LOGS_BUCKETS.TAMANU;
 
 const bucket = new aws.s3.BucketV2(
   'bucket',
   {
-    bucket: 'bes-tamanu-docs-dbt',
+    bucket: 'bes-tamanu-data-dbtdocs',
   },
   { protect: true },
 );
@@ -91,7 +93,7 @@ const distribution = new aws.cloudfront.Distribution(
     ],
     loggingConfig: {
       includeCookies: false,
-      bucket: 'bes-tamanu-logs.s3.amazonaws.com',
+      bucket: `${LOGS_BUCKET}.s3.amazonaws.com`,
       prefix: 'dbt-docs',
     },
     aliases: [DOMAIN],
