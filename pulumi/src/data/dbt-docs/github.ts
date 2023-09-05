@@ -37,7 +37,7 @@ new Role(
 
                 // Data Lake
                 'repo:beyondessential/tamanu-modules-dbt:pull_request',
-                'repo:beyondessential/tamanu-modules-dbt:ref:refs/heads/dev',
+                'repo:beyondessential/tamanu-modules-dbt:ref:refs/heads/main',
                 'repo:beyondessential/tamanu-modules-dbt:ref:refs/tags/v*.*.*',
 
                 // Testing
