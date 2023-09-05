@@ -32,7 +32,7 @@ new Role(
               [`${url}:sub`]: [
                 // Data Lake
                 'repo:beyondessential/data-lake:pull_request',
-                'repo:beyondessential/data-lake:ref:refs/heads/dev',
+                'repo:beyondessential/data-lake:ref:refs/heads/main',
                 'repo:beyondessential/data-lake:ref:refs/tags/v*.*.*',
 
                 // Data Lake
