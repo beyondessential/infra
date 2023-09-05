@@ -1,7 +1,7 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import { OpenIdConnectProvider, Role } from '@pulumi/aws/iam/index.js';
 import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../../constants/external.js';
-import { BUCKET } from './constants.js';
+import { BUCKET, DB_SECRET_ARN } from './constants.js';
 
 // Github Actions OIDC roles for CD
 // https://github.com/aws-actions/configure-aws-credentials#sample-iam-oidc-cloudformation-template
@@ -67,6 +67,13 @@ new Role(
                 `arn:aws:s3:::${BUCKET}`,
                 `arn:aws:s3:::${BUCKET}/*`,
               ],
+            },
+            {
+              Effect: 'Allow',
+              Action: [
+                'secretsmanager:GetSecretValue',
+              ],
+              Resource: [DB_SECRET_ARN],
             },
           ],
         }),
