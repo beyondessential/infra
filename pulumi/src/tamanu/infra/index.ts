@@ -19,6 +19,7 @@ export { repos };
 
 export const { outputs: network } = new Network(name, {
   ipv4Cidr: cfg.get('networkV4Cidr') ?? '10.20.0.0/16',
+  v6: true,
   tags: {
     Application: 'Tamanu',
     Infra: name,

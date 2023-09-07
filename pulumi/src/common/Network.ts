@@ -1,6 +1,7 @@
 import { Netmask } from 'netmask';
 import { ComponentResource, ComponentResourceOptions, Output, output } from '@pulumi/pulumi';
 import {
+  EgressOnlyInternetGateway,
   Eip,
   InternetGateway,
   NatGateway,
@@ -12,7 +13,8 @@ import {
 } from '@pulumi/aws/ec2/index.js';
 
 export interface NetworkArgs {
-  ipv4Cidr: string;
+  ipv4Cidr?: false | string;
+  v6?: boolean;
   zones?: string[];
   tags?: { [key: string]: string };
 }
@@ -20,16 +22,25 @@ export interface NetworkArgs {
 export interface SubnetOutput {
   id: Output<string>;
   zone: Output<string>;
-  v4Cidr: Output<string>;
+  v4Cidr: Output<undefined | string>;
+  v6Cidr: Output<undefined | string>;
 }
 
 export interface NetworkOutputs {
   vpc: Output<string>;
-  v4Cidr: Output<string>;
+  v4Cidr: Output<undefined | string>;
+  v6Cidr: Output<undefined | string>;
   natSubnets: SubnetOutput[];
   workloadSubnets: SubnetOutput[];
   natSubnetIds: Output<string[]>;
   workloadSubnetIds: Output<string[]>;
+}
+
+interface SubnetBlock {
+  zone: string;
+  subnet: Subnet;
+  routes: RouteTable;
+  nat?: NatGateway;
 }
 
 export class Network extends ComponentResource {
@@ -37,8 +48,9 @@ export class Network extends ComponentResource {
   #args: Required<NetworkArgs>;
 
   #vpc: Vpc;
-  #igw: InternetGateway;
-  #nats: NatSubnet[];
+  #v4igw?: InternetGateway;
+  #v6igw?: EgressOnlyInternetGateway;
+  #nats: SubnetBlock[];
   #workloads: SubnetBlock[];
 
   outputs: NetworkOutputs;
@@ -47,6 +59,8 @@ export class Network extends ComponentResource {
     super('bes:common:Network', name, {}, opts);
     this.#name = name;
     this.#args = {
+      ipv4Cidr: false,
+      v6: false,
       zones: ['a', 'b', 'c'],
       tags: {},
       ...args,
@@ -56,11 +70,16 @@ export class Network extends ComponentResource {
     this.#vpc = new Vpc(
       name,
       {
+        cidrBlock: args.ipv4Cidr || undefined,
+        assignGeneratedIpv6CidrBlock: args.v6,
+
         // both required for service discovery
         enableDnsSupport: true,
         enableDnsHostnames: true,
 
-        cidrBlock: args.ipv4Cidr,
+        // just always useful
+        enableNetworkAddressUsageMetrics: true,
+
         tags: {
           Name: name,
           ...this.#args.tags,
@@ -69,39 +88,66 @@ export class Network extends ComponentResource {
       { parent: this },
     );
 
-    // Internet Gateway sits outside the subnets, required for the NAT and such
-    // to be able to access the internet, but not used directly for workloads.
-    this.#igw = new InternetGateway(
-      name,
-      {
-        vpcId: this.#vpc.id,
-        tags: {
-          Name: `${this.#name}-ingw`,
-          ...this.#args.tags,
-        },
-      },
-      { parent: this.#vpc },
-    );
+    // V4 Internet Gateway sits outside the subnets, required for NAT and such
+    // to be able to access the V4 internet, but not used directly for workloads.
+    this.#v4igw = args.ipv4Cidr
+      ? new InternetGateway(
+          name,
+          {
+            vpcId: this.#vpc.id,
+            tags: {
+              Name: `${this.#name}-ingw4`,
+              ...this.#args.tags,
+            },
+          },
+          { parent: this.#vpc },
+        )
+      : undefined;
+
+    // V6 Internet Gateway sits outside the subnets, use by all subnets to
+    // access the V6 internet.
+    this.#v6igw = args.v6
+      ? new EgressOnlyInternetGateway(
+          name,
+          {
+            vpcId: this.#vpc.id,
+            tags: {
+              Name: `${this.#name}-ingw6`,
+              ...this.#args.tags,
+            },
+          },
+          { parent: this.#vpc },
+        )
+      : undefined;
 
     // We use the first /24 for network appliances (NAT). However we don't
     // define an actual subnet for this, instead we create small /28s for each
     // AZ, which leaves a bunch of space reserved for future expansion. In a
     // perfect world /30s would even be enough, but AWS doesn't support that.
-    const appliances = nthSubnetV4(this.#args.ipv4Cidr, 24, 0);
+    const appliancesV4 = this.#args.ipv4Cidr && nthSubnetV4(this.#args.ipv4Cidr, 24, 0);
     this.#nats = this.#args.zones.map((zone, i) =>
-      this.natSubnet(zone, nthSubnetV4(appliances, 28, i)),
+      this.natSubnet(zone, {
+        ipv4Block: appliancesV4 ? nthSubnetV4(appliancesV4, 28, i) : undefined,
+        ipv6Block: args.v6 ? nthSubnetV6(this.#vpc.ipv6CidrBlock, i) : undefined,
+      }),
     );
 
-    // Main workload subnets, covering all AZs with a /24 each. That gives us
-    // over 750 usable IPs, which is plenty for now.
+    // Main workload subnets, covering all AZs with a v4 /24 each, and a v6 /64.
+    // That gives us over 750 usable IPv4s, and basically infinite IPv6s.
     this.#workloads = this.#args.zones.map((zone, i) =>
-      this.workloadSubnet(zone, i + 1, nthSubnetV4(this.#args.ipv4Cidr, 24, i + 1)),
+      this.workloadSubnet(zone, i + 1, {
+        ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, i + 1) : undefined,
+        ipv6Block: args.v6
+          ? nthSubnetV6(this.#vpc.ipv6CidrBlock, this.#nats.length + i)
+          : undefined,
+      }),
     );
 
     this.registerOutputs(
       (this.outputs = {
         vpc: this.#vpc.id,
-        v4Cidr: this.#vpc.cidrBlock.apply((cidr) => cidr!),
+        v4Cidr: this.#vpc.cidrBlock.apply((cidr) => cidr),
+        v6Cidr: this.#vpc.ipv6CidrBlock.apply((cidr) => cidr),
         natSubnets: this.#nats.map(subnetToOutput),
         workloadSubnets: this.#workloads.map(subnetToOutput),
         natSubnetIds: output(this.#nats.map((subnet) => subnet.subnet.id)),
@@ -110,7 +156,10 @@ export class Network extends ComponentResource {
     );
   }
 
-  natSubnet(zone: string, ipv4Block: string): NatSubnet {
+  natSubnet(
+    zone: string,
+    { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
+  ): SubnetBlock {
     const name = `${this.#name}-nat-${zone}`;
     const tags = {
       Name: name,
@@ -118,32 +167,28 @@ export class Network extends ComponentResource {
       ...this.#args.tags,
     };
 
+    const ipv6Only = !!(!ipv4Block && ipv6Block);
+
     const subnet = new Subnet(
       name,
       {
         vpcId: this.#vpc.id,
         cidrBlock: ipv4Block,
+        ipv6CidrBlock: ipv6Block,
+        ipv6Native: ipv6Only,
         availabilityZone: `ap-southeast-2${zone}`,
         mapPublicIpOnLaunch: true,
-        privateDnsHostnameTypeOnLaunch: 'ip-name',
+        assignIpv6AddressOnCreation: !!ipv6Block,
+        enableDns64: ipv6Only,
+        // these are nice-to-have but can't be enabled when updating an existing
+        // enableResourceNameDnsARecordOnLaunch: !!ipv4Block,
+        // enableResourceNameDnsAaaaRecordOnLaunch: !!ipv6Block,
+        privateDnsHostnameTypeOnLaunch: ipv6Block ? 'resource-name' : 'ip-name',
         tags,
       },
       {
         parent: this.#vpc,
       },
-    );
-
-    const ip = new Eip(name, { tags }, { parent: subnet });
-
-    const nat = new NatGateway(
-      name,
-      {
-        subnetId: subnet.id,
-        connectivityType: 'public',
-        allocationId: ip.allocationId,
-        tags,
-      },
-      { parent: subnet, dependsOn: [this.#igw] },
     );
 
     const routes = new RouteTable(
@@ -154,17 +199,6 @@ export class Network extends ComponentResource {
       },
       { parent: subnet },
     );
-
-    new Route(
-      `${name}-out4`,
-      {
-        routeTableId: routes.id,
-        destinationCidrBlock: '0.0.0.0/0',
-        gatewayId: this.#igw.id,
-      },
-      { parent: routes },
-    );
-
     new RouteTableAssociation(
       name,
       {
@@ -173,6 +207,54 @@ export class Network extends ComponentResource {
       },
       { parent: routes },
     );
+
+    const ipv4 = !!ipv4Block && new Eip(name, { tags }, { parent: subnet });
+    const nat = ipv4
+      ? new NatGateway(
+          name,
+          {
+            subnetId: subnet.id,
+            connectivityType: 'public',
+            allocationId: ipv4.allocationId,
+            tags,
+          },
+          { parent: subnet, dependsOn: [this.#v4igw!] },
+        )
+      : undefined;
+
+    this.#v4igw &&
+      new Route(
+        `${name}-out4`,
+        {
+          routeTableId: routes.id,
+          destinationCidrBlock: '0.0.0.0/0',
+          gatewayId: this.#v4igw.id,
+        },
+        { parent: routes },
+      );
+
+    this.#v6igw &&
+      new Route(
+        `${name}-out6`,
+        {
+          routeTableId: routes.id,
+          destinationIpv6CidrBlock: '::/0',
+          egressOnlyGatewayId: this.#v6igw.id,
+        },
+        { parent: routes },
+      );
+
+    nat &&
+      this.#v6igw &&
+      new Route(
+        `${name}-out64`,
+        {
+          routeTableId: routes.id,
+          destinationIpv6CidrBlock: '64:ff9b::/96',
+          natGatewayId: nat.id,
+        },
+        { parent: routes },
+      );
 
     return {
       zone,
@@ -182,7 +264,11 @@ export class Network extends ComponentResource {
     };
   }
 
-  workloadSubnet(zone: string, index: number, ipv4Block: string): SubnetBlock {
+  workloadSubnet(
+    zone: string,
+    index: number,
+    { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
+  ): SubnetBlock {
     const name = `${this.#name}-workload${index}-${zone}`;
     const tags = {
       Name: name,
@@ -190,14 +276,23 @@ export class Network extends ComponentResource {
       ...this.#args.tags,
     };
 
+    const ipv6Only = !!(!ipv4Block && ipv6Block);
+
     const subnet = new Subnet(
       name,
       {
         vpcId: this.#vpc.id,
         cidrBlock: ipv4Block,
+        ipv6CidrBlock: ipv6Block,
+        ipv6Native: ipv6Only,
         availabilityZone: `ap-southeast-2${zone}`,
         mapPublicIpOnLaunch: false,
-        privateDnsHostnameTypeOnLaunch: 'ip-name',
+        assignIpv6AddressOnCreation: !!ipv6Block,
+        enableDns64: ipv6Only,
+        // these are nice-to-have but can't be enabled when updating an existing
+        // enableResourceNameDnsARecordOnLaunch: !!ipv4Block,
+        // enableResourceNameDnsAaaaRecordOnLaunch: !!ipv6Block,
+        privateDnsHostnameTypeOnLaunch: ipv6Block ? 'resource-name' : 'ip-name',
         tags,
       },
       {
@@ -213,17 +308,6 @@ export class Network extends ComponentResource {
       },
       { parent: subnet },
     );
-
-    new Route(
-      `${name}-out4`,
-      {
-        routeTableId: routes.id,
-        destinationCidrBlock: '0.0.0.0/0',
-        natGatewayId: this.#nats.find((nat) => nat.zone === zone)?.nat.id,
-      },
-      { parent: routes },
-    );
-
     new RouteTableAssociation(
       name,
       {
@@ -233,10 +317,47 @@ export class Network extends ComponentResource {
       { parent: routes },
     );
 
+    const nat = this.#nats.find((nat) => nat.zone === zone)?.nat;
+
+    nat &&
+      new Route(
+        `${name}-out4`,
+        {
+          routeTableId: routes.id,
+          destinationCidrBlock: '0.0.0.0/0',
+          natGatewayId: nat.id,
+        },
+        { parent: routes },
+      );
+
+    this.#v6igw &&
+      new Route(
+        `${name}-out6`,
+        {
+          routeTableId: routes.id,
+          destinationIpv6CidrBlock: '::/0',
+          egressOnlyGatewayId: this.#v6igw.id,
+        },
+        { parent: routes },
+      );
+
+    nat &&
+      this.#v6igw &&
+      new Route(
+        `${name}-out64`,
+        {
+          routeTableId: routes.id,
+          destinationIpv6CidrBlock: '64:ff9b::/96',
+          natGatewayId: nat.id,
+        },
+        { parent: routes },
+      );
+
     return {
       zone,
       subnet,
       routes,
+      nat,
     };
   }
 }
@@ -249,20 +370,27 @@ export function nthSubnetV4(base: string, size: number, nth: number): string {
   return ipv4BlockCalc.toString();
 }
 
+// no size because subnets are always /64s within a /56
+export function nthSubnetV6(base: Output<string>, nth: number): Output<string> {
+  return base.apply((base) => {
+    // base looks like 2406:da1c:4a9:6600::/56
+    //                 --- prefix -----^^   size
+    //                                 ||------- /64 subnet goes here
+
+    const parsed = base.match(/^(?<prefix>[0-9a-f:]+)00::\/56$/)?.groups;
+    if (!parsed) throw new Error(`Invalid IPv6 CIDR block: ${base}`);
+    const { prefix } = parsed!;
+
+    const subnetPostfix = nth.toString(16).padStart(2, '0');
+    return `${prefix}${subnetPostfix}::/64`;
+  });
+}
+
 function subnetToOutput(block: SubnetBlock): SubnetOutput {
   return {
     id: block.subnet.id,
     zone: output(block.zone),
-    v4Cidr: block.subnet.cidrBlock.apply((cidr) => cidr!),
+    v4Cidr: block.subnet.cidrBlock.apply((cidr) => cidr),
+    v6Cidr: block.subnet.ipv6CidrBlock.apply((cidr) => cidr),
   };
-}
-
-interface SubnetBlock {
-  zone: string;
-  subnet: Subnet;
-  routes: RouteTable;
-}
-
-interface NatSubnet extends SubnetBlock {
-  nat: NatGateway;
 }

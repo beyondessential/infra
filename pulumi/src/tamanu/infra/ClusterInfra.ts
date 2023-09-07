@@ -159,7 +159,7 @@ export class ClusterInfra extends ComponentResource {
       `${this.#name}-databases`,
       {
         vpcId: this.#network.vpc,
-        ingress: [openVpcPort('Postgres', 5432)],
+        ingress: [...securityGroupRules.allICMP, openVpcPort('Postgres', 5432)],
         egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-databases`,
@@ -177,7 +177,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#network.vpc,
         ingress: [
-          securityGroupRules.allICMPv4,
+          ...securityGroupRules.allICMP,
           openVpcPort('SSH', 22),
           openVpcPort('HTTP', 80),
           openVpcPort('Internal HTTP', 3000),
@@ -196,28 +196,11 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    const dbManager = new SecurityGroup(
-      `${this.#name}-db-manager`,
-      {
-        vpcId: this.#network.vpc,
-        ingress: [],
-        egress: [securityGroupRules.all],
-        tags: {
-          Name: `${this.#name}-manager`,
-          Purpose: 'db-manager',
-          ...this.#args.tags,
-        },
-      },
-      {
-        parent: this,
-      },
-    );
-
     const jumpbox = new SecurityGroup(
       `${this.#name}-jumpbox`,
       {
         vpcId: this.#network.vpc,
-        ingress: [],
+        ingress: [...securityGroupRules.allICMP],
         egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-jumpbox`,
@@ -235,7 +218,7 @@ export class ClusterInfra extends ComponentResource {
       {
         vpcId: this.#network.vpc,
         ingress: [
-          securityGroupRules.allICMPv4,
+          ...securityGroupRules.allICMP,
           securityGroupRules.openPort('HTTP', 80),
           securityGroupRules.openPort('HTTPS', 443),
         ],
@@ -251,7 +234,7 @@ export class ClusterInfra extends ComponentResource {
       },
     );
 
-    return { databases, containers, dbManager, jumpbox, lb };
+    return { databases, containers, jumpbox, lb };
   }
 
   database() {
@@ -281,13 +264,15 @@ export class ClusterInfra extends ComponentResource {
         engineVersion: '14.7',
         instanceClass: 'db.t4g.medium', // ARM64
         manageMasterUserPassword: true,
-        networkType: 'IPV4', // FIXME: DUAL
-        performanceInsightsEnabled: true, // DISABLE WHEN DEVING: adds two minutes to the boot/create time
+        networkType: 'DUAL',
+        performanceInsightsEnabled: true,
         publiclyAccessible: false,
         skipFinalSnapshot: true, // FIXME: configure final snapshot
         storageType: 'gp3',
         username: 'postgres',
         vpcSecurityGroupIds: [this.#securityGroups.databases.id],
+        backupRetentionPeriod: 7,
+        // caCertIdentifier: 'rds-ca-ecc384-g1', // TODO: test that tamanu is fine with this
       },
       {
         parent: this,

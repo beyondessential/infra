@@ -42,7 +42,7 @@ export class Netbox extends ComponentResource {
       this.#name,
       {
         vpcId: this.#network.vpc,
-        ingress: [securityGroupRules.allICMPv4],
+        ingress: [...securityGroupRules.allICMP],
         egress: [securityGroupRules.all],
         tags: {
           Name: '[Tools] Netbox',
@@ -90,7 +90,10 @@ export class Netbox extends ComponentResource {
       `${this.#name}-database`,
       {
         vpcId: this.#network.vpc,
-        ingress: [securityGroupRules.allICMPv4, openVpcPort('Postgres', 5432)],
+        ingress: [
+          ...securityGroupRules.allICMP,
+          openVpcPort('Postgres', 5432),
+        ],
         egress: [securityGroupRules.all],
         tags: {
           Name: `${this.#name}-database`,
@@ -126,15 +129,18 @@ export class Netbox extends ComponentResource {
         autoMinorVersionUpgrade: true,
         dbSubnetGroupName: subnetGroup.name,
         engine: 'postgres',
-        engineVersion: '15.3',
+        engineVersion: '15.4',
         instanceClass: 'db.t4g.small', // ARM64
         manageMasterUserPassword: true,
-        networkType: 'IPV4',
+        networkType: 'DUAL',
         performanceInsightsEnabled: true,
         publiclyAccessible: false,
         storageType: 'gp3',
         username: 'postgres',
         vpcSecurityGroupIds: [secGroup.id],
+        caCertIdentifier: 'rds-ca-ecc384-g1',
+        backupRetentionPeriod: 1,
+        deletionProtection: true,
       },
       {
         parent: this,
