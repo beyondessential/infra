@@ -13,6 +13,10 @@ export interface BucketWebsiteArgs {
   bucketItselfPublic?: boolean;
   importBucket?: string;
   notFoundPage?: string;
+  cacheBehaviour?: Omit<
+    Partial<awsClassic.types.input.cloudfront.DistributionDefaultCacheBehavior>,
+    'targetOriginId' | 'allowedMethods' | 'cachedMethods' | 'compress' | 'viewerProtocolPolicy'
+  >;
   requestFunctionSourceFile?: string;
   unprotectBucket?: boolean;
   tags?: { [key: string]: string };
@@ -33,6 +37,7 @@ export class BucketWebsite extends ComponentResource {
       bucketItselfPublic = false,
       importBucket,
       notFoundPage = DEFAULT_404,
+      cacheBehaviour = {},
       requestFunctionSourceFile,
       unprotectBucket = false,
       tags = {},
@@ -151,9 +156,6 @@ export class BucketWebsite extends ComponentResource {
         aliases: [domain],
         httpVersion: 'http2and3',
         defaultCacheBehavior: {
-          allowedMethods: ['GET', 'HEAD'],
-          cachedMethods: ['GET', 'HEAD'],
-          targetOriginId: originId,
           forwardedValues: {
             queryString: false,
             cookies: {
@@ -163,8 +165,12 @@ export class BucketWebsite extends ComponentResource {
           minTtl: 0,
           defaultTtl: 3600,
           maxTtl: 86400,
+          ...cacheBehaviour,
           compress: true,
           viewerProtocolPolicy: 'redirect-to-https',
+          allowedMethods: ['GET', 'HEAD'],
+          cachedMethods: ['GET', 'HEAD'],
+          targetOriginId: originId,
           functionAssociations: [
             {
               eventType: 'viewer-request',

@@ -9,6 +9,9 @@ new BucketWebsite('tools', {
   bucketName: 'bes-ops-tools',
   zoneId,
   logsBucket: LOGS_BUCKETS.TAMANU,
+  cacheBehaviour: {
+    defaultTtl: 60,
+  },
   tags: {
     Purpose: 'ops',
   },
