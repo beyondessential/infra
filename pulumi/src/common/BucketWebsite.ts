@@ -157,7 +157,7 @@ export class BucketWebsite extends ComponentResource {
         httpVersion: 'http2and3',
         defaultCacheBehavior: {
           forwardedValues: {
-            queryString: false,
+            queryString: true,
             cookies: {
               forward: 'none',
             },
