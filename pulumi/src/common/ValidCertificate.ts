@@ -23,6 +23,16 @@ export interface ValidCertificateOutputs {
   certificateArn: Output<string>;
 }
 
+let usEast1Provider: aws.Provider | undefined;
+function getUsEast1Provider(): aws.Provider {
+  if (!usEast1Provider) {
+    usEast1Provider = new aws.Provider('us-east-1', {
+      region: 'us-east-1',
+    });
+  }
+  return usEast1Provider;
+}
+
 export class ValidCertificate extends ComponentResource {
   readonly domainNames: Output<string[]>;
   readonly certificateArn: Output<string>;
@@ -38,15 +48,7 @@ export class ValidCertificate extends ComponentResource {
     super('bes:common:ValidCertificate', name, {}, opts);
     this.#name = name;
 
-    const provider = inUsEast1
-      ? new aws.Provider(
-          'us-east-1',
-          {
-            region: 'us-east-1',
-          },
-          { parent: this },
-        )
-      : undefined;
+    const provider = inUsEast1 ? getUsEast1Provider() : undefined;
 
     const certificate = new aws.acm.Certificate(
       name,
