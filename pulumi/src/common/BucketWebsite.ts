@@ -18,6 +18,7 @@ export interface BucketWebsiteArgs {
     'targetOriginId' | 'allowedMethods' | 'cachedMethods' | 'compress' | 'viewerProtocolPolicy'
   >;
   requestFunctionSourceFile?: string;
+  responseFunctionSourceFile?: string;
   unprotectBucket?: boolean;
   tags?: { [key: string]: string };
 }
@@ -39,6 +40,7 @@ export class BucketWebsite extends ComponentResource {
       notFoundPage = DEFAULT_404,
       cacheBehaviour = {},
       requestFunctionSourceFile,
+      responseFunctionSourceFile,
       unprotectBucket = false,
       tags = {},
     }: BucketWebsiteArgs,
@@ -113,11 +115,26 @@ export class BucketWebsite extends ComponentResource {
       `${name}-distribution-request-function`,
       {
         runtime: 'cloudfront-js-1.0',
-        comment: `Distribution Function for ${bucketName}`,
+        comment: `Distribution Request Function for ${bucketName}`,
         publish: true,
         code: readFileSync(
           requestFunctionSourceFile ??
             join(dirname(fileURLToPath(import.meta.url)), 'bucket-website-request-function.js'),
+          'utf-8',
+        ),
+      },
+      { parent: this },
+    );
+
+    const resFn = new awsClassic.cloudfront.Function(
+      `${name}-distribution-response-function`,
+      {
+        runtime: 'cloudfront-js-1.0',
+        comment: `Distribution Response Function for ${bucketName}`,
+        publish: true,
+        code: readFileSync(
+          responseFunctionSourceFile ??
+            join(dirname(fileURLToPath(import.meta.url)), 'bucket-website-response-function.js'),
           'utf-8',
         ),
       },
@@ -175,6 +192,10 @@ export class BucketWebsite extends ComponentResource {
             {
               eventType: 'viewer-request',
               functionArn: reqFn.arn,
+            },
+            {
+              eventType: 'viewer-response',
+              functionArn: resFn.arn,
             },
           ],
         },
