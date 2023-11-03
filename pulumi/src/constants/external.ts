@@ -1,5 +1,6 @@
 import { getAmiOutput } from '@pulumi/aws/ec2/index.js';
 
+export const AWS_EC2 = 'ec2.amazonaws.com';
 export const AWS_STS = 'sts.amazonaws.com';
 
 export const GITHUB_OIDC_URL = 'https://token.actions.githubusercontent.com';
@@ -29,6 +30,9 @@ export const AWS_ECR_PUSH_ACTIONS = [
   'ecr:PutImage',
   'ecr:UploadLayerPart',
 ];
+
+export const AWS_S3_READ_ACTIONS = ['s3:GetObject', 's3:GetBucketLocation', 's3:ListBucket'];
+export const AWS_S3_WRITE_ACTIONS = [...AWS_S3_READ_ACTIONS, 's3:PutObject'];
 
 export function alpineAmi(
   version: string = '3.*',

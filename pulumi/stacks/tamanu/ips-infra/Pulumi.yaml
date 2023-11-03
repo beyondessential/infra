@@ -1,0 +1,6 @@
+name: tamanu-ips-infra
+description: Common infrastructure for Tamanu International Patient Summary
+runtime:
+  name: nodejs
+  options:
+    typescript: false
