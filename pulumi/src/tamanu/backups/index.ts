@@ -1,0 +1,69 @@
+import { Config, getStack, jsonStringify } from '@pulumi/pulumi';
+import * as awsClassic from '@pulumi/aws';
+import { AWS_EC2, AWS_S3_WRITE_ACTIONS, AWS_STS } from '../../constants/external.js';
+import { AWS_TAMANU_INTERNAL_CERTBOT_POLICY, LOGS_BUCKETS } from "../../constants/internal.js";
+
+export const BUCKET_NAME = `bes-tamanu-${getStack()}-backups`;
+
+const tags = {
+  Purpose: 'backups',
+};
+
+const bucket = new awsClassic.s3.BucketV2(
+  'backups-bucket',
+  {
+    bucket: BUCKET_NAME,
+    tags,
+  },
+  { protect: true },
+);
+
+const policy = new awsClassic.iam.Policy('backups-policy', {
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: AWS_S3_WRITE_ACTIONS,
+        Resource: [BUCKET_NAME].flatMap((bucket) => [
+          `arn:aws:s3:::${bucket}`,
+          `arn:aws:s3:::${bucket}/*`,
+        ]),
+      },
+    ],
+  }),
+}, { dependsOn: [bucket] });
+
+const role = new awsClassic.iam.Role('backups-role', {
+  assumeRolePolicy: {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'sts:AssumeRole',
+        Principal: {
+          Service: AWS_EC2,
+        },
+      },
+    ],
+  },
+  managedPolicyArns: [policy.arn],
+});
+
+new awsClassic.iam.InstanceProfile('ec2-backups-instance', {
+  name: 'EC2InstanceProfileForTamanuBackupsPush',
+  role: role.name,
+});
+
+const config = new Config();
+if (config.getBoolean('externalAccessUser')) {
+  const user = new awsClassic.iam.User('backups-user', {
+    name: 'tamanu-backups',
+    tags,
+  });
+
+  new awsClassic.iam.UserPolicyAttachment('backups-user', {
+    user: user.name,
+    policyArn: policy.arn,
+  });
+}
