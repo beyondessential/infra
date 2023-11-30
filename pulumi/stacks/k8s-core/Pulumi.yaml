@@ -1,0 +1,6 @@
+name: k8s-core
+description: Setup a Kubernetes cluster in an AWS account
+runtime:
+  name: nodejs
+  options:
+    typescript: false

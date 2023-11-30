@@ -1,0 +1,5 @@
+{
+  "name": "@bes/core",
+  "type": "module",
+  "main": "../../build/core/index.js"
+}

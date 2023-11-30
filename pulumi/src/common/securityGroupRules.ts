@@ -1,5 +1,5 @@
-import { all as applyAll } from '@pulumi/pulumi';
 import { NetworkOutputs } from './Network';
+import { CrossStackNetwork } from './CrossStack';
 
 export const all = {
   fromPort: 0,
@@ -38,14 +38,14 @@ export function openPort(description: string, port: number, protocol: string = '
   };
 }
 
-export function withNetwork(network: NetworkOutputs) {
+export function withNetwork(network: NetworkOutputs | CrossStackNetwork) {
   return {
     openVpcPort(description: string, port: number, protocol: string = 'tcp') {
       return {
         ...openPort(description, port, protocol),
         description: `${description} from VPC`,
-        cidrBlocks: network.v4Cidr.apply((cidr) => cidr ? [cidr] : []),
-        ipv6CidrBlocks: network.v6Cidr.apply((cidr) => cidr ? [cidr] : []),
+        cidrBlocks: network.v4Cidr.apply((cidr) => (cidr ? [cidr] : [])),
+        ipv6CidrBlocks: network.v6Cidr.apply((cidr) => (cidr ? [cidr] : [])),
       };
     },
   };

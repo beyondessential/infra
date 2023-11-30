@@ -1,5 +1,11 @@
 import { Netmask } from 'netmask';
-import { ComponentResource, ComponentResourceOptions, Output, output } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  ComponentResourceOptions,
+  Output,
+  StackReference,
+  output,
+} from '@pulumi/pulumi';
 import {
   EgressOnlyInternetGateway,
   Eip,
@@ -16,6 +22,7 @@ export interface NetworkArgs {
   ipv4Cidr?: false | string;
   v6?: boolean;
   zones?: string[];
+  eksSubnetTags?: false | { [key: string]: string };
   tags?: { [key: string]: string };
 }
 
@@ -62,6 +69,7 @@ export class Network extends ComponentResource {
       ipv4Cidr: false,
       v6: false,
       zones: ['a', 'b', 'c'],
+      eksSubnetTags: false,
       tags: {},
       ...args,
     };
@@ -184,7 +192,15 @@ export class Network extends ComponentResource {
         // enableResourceNameDnsARecordOnLaunch: !!ipv4Block,
         // enableResourceNameDnsAaaaRecordOnLaunch: !!ipv6Block,
         privateDnsHostnameTypeOnLaunch: ipv6Block ? 'resource-name' : 'ip-name',
-        tags,
+        tags: {
+          ...tags,
+          ...(this.#args.eksSubnetTags
+            ? {
+                'kubernetes.io/role/elb': '1',
+                ...this.#args.eksSubnetTags,
+              }
+            : {}),
+        },
       },
       {
         parent: this.#vpc,
@@ -293,7 +309,15 @@ export class Network extends ComponentResource {
         // enableResourceNameDnsARecordOnLaunch: !!ipv4Block,
         // enableResourceNameDnsAaaaRecordOnLaunch: !!ipv6Block,
         privateDnsHostnameTypeOnLaunch: ipv6Block ? 'resource-name' : 'ip-name',
-        tags,
+        tags: {
+          ...tags,
+          ...(this.#args.eksSubnetTags
+            ? {
+                'kubernetes.io/role/internal-elb': '1',
+                ...this.#args.eksSubnetTags,
+              }
+            : {}),
+        },
       },
       {
         parent: this.#vpc,
@@ -392,5 +416,29 @@ function subnetToOutput(block: SubnetBlock): SubnetOutput {
     zone: output(block.zone),
     v4Cidr: block.subnet.cidrBlock.apply((cidr) => cidr),
     v6Cidr: block.subnet.ipv6CidrBlock.apply((cidr) => cidr),
+  };
+}
+
+// export interface NetworkOutputs {
+//   vpc: Output<string>;
+//   v4Cidr: Output<undefined | string>;
+//   v6Cidr: Output<undefined | string>;
+//   natSubnets: SubnetOutput[];
+//   workloadSubnets: SubnetOutput[];
+//   natSubnetIds: Output<string[]>;
+//   workloadSubnetIds: Output<string[]>;
+// }
+
+export function fromStackReference(
+  $stack: StackReference,
+  key: string = 'network',
+): Omit<NetworkOutputs, 'natSubnets' | 'workloadSubnets'> {
+  const network = $stack.getOutput(key);
+  return {
+    vpc: network.apply((n) => n.vpc as string),
+    v4Cidr: network.apply((n) => n.v4Cidr as string),
+    v6Cidr: network.apply((n) => n.v6Cidr as string),
+    natSubnetIds: network.apply((n) => n.natSubnetIds as string[]),
+    workloadSubnetIds: network.apply((n) => n.workloadSubnetIds as string[]),
   };
 }

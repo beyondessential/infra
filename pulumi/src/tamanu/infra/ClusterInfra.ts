@@ -3,19 +3,19 @@ import { readFileSync } from 'fs';
 import { ComponentResource, ComponentResourceOptions, Output, all, secret } from '@pulumi/pulumi';
 import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
 
-import { Instance, SecurityGroup, getAmiOutput } from '@pulumi/aws/ec2/index.js';
+import { Instance, SecurityGroup } from '@pulumi/aws/ec2/index.js';
 import { Instance as DBInstance, SubnetGroup } from '@pulumi/aws/rds/index.js';
 import { PrivateDnsNamespace } from '@pulumi/aws/servicediscovery/index.js';
 import { getZone } from '@pulumi/aws/route53/index.js';
 
-import { Network, NetworkOutputs } from '../../common/Network.js';
 import { LoadBalancer } from '../../common/LoadBalancer.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
 import { alpineAmi } from '../../constants/external.js';
 import { TAILNET_DOMAIN } from '../../constants/internal.js';
+import { CrossStackNetwork } from '../../common/CrossStack.js';
 
 export interface ClusterInfraArgs {
-  network: Network | NetworkOutputs;
+  network: CrossStackNetwork;
 
   /** ID or Name of the public hosted zone for this cluster. */
   zone: string;
@@ -51,7 +51,7 @@ export interface ClusterInfraOutputs {
 
 export class ClusterInfra extends ComponentResource {
   #name: string;
-  #network: NetworkOutputs;
+  #network: CrossStackNetwork;
   #args: Omit<Required<ClusterInfraArgs>, 'network'>;
 
   #cloudmap: PrivateDnsNamespace;
@@ -68,7 +68,7 @@ export class ClusterInfra extends ComponentResource {
   ) {
     super('bes:tamanu:ClusterInfra', name, {}, opts);
     this.#name = name;
-    this.#network = network instanceof Network ? network.outputs : network;
+    this.#network = network;
     this.#args = {
       tags: {},
       ...args,

@@ -1,5 +1,0 @@
-{
-  "name": "@bes/tools",
-  "type": "module",
-  "main": "../../build/tools/index.js"
-}

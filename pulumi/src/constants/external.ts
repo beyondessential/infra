@@ -2,6 +2,8 @@ import { getAmiOutput } from '@pulumi/aws/ec2/index.js';
 
 export const AWS_EC2 = 'ec2.amazonaws.com';
 export const AWS_STS = 'sts.amazonaws.com';
+export const AWS_EC2 = 'ec2.amazonaws.com';
+export const AWS_EKS = 'eks.amazonaws.com';
 
 export const GITHUB_OIDC_URL = 'https://token.actions.githubusercontent.com';
 

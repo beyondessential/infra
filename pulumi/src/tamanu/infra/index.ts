@@ -1,10 +1,8 @@
-import { Config, Output, getStack } from '@pulumi/pulumi';
-
+import { Output } from '@pulumi/pulumi';
+import { $network, cfg, stackName } from '../../common/coreRef.js';
 import { ClusterInfra } from './ClusterInfra.js';
-import { Network } from '../../common/Network.js';
 
-const cfg = new Config();
-const name = getStack() === 'main' ? 'internal' : getStack();
+const name = stackName === 'main' ? 'internal' : stackName;
 
 let repos: { [key: string]: Output<string> } = {};
 if (name === 'internal') {
@@ -17,17 +15,8 @@ if (name === 'internal') {
 }
 export { repos };
 
-export const { outputs: network } = new Network(name, {
-  ipv4Cidr: cfg.get('networkV4Cidr') ?? '10.20.0.0/16',
-  v6: true,
-  tags: {
-    Application: 'Tamanu',
-    Infra: name,
-  },
-});
-
 export const { outputs: cluster } = new ClusterInfra(name, {
-  network,
+  network: $network,
   zone: cfg.require('dnsZone'),
   tags: {
     Application: 'Tamanu',

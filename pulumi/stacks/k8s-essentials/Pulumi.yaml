@@ -1,0 +1,6 @@
+name: k8s-essentials
+description: Essential components for a functional Kubernetes cluster
+runtime:
+  name: nodejs
+  options:
+    typescript: false
