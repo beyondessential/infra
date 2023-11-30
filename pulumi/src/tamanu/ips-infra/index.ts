@@ -1,3 +1,5 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { BucketWebsite } from "../../common/BucketWebsite.js";
@@ -10,10 +12,10 @@ new BucketWebsite('ips', {
   bucketName: BUCKET_NAME,
   zoneId: ZONE_ID,
   logsBucket: LOGS_BUCKETS.TAMANU,
+  requestFunctionSourceFile: join(dirname(fileURLToPath(import.meta.url)), 'request-function.js'),
   tags: {
     Purpose: 'Tamanu-IPS',
   },
-  unprotectBucket: true,
 });
 
 new awsClassic.iam.Role('gha-ips-s3-viewer', {
