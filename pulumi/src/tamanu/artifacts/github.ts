@@ -22,8 +22,9 @@ new awsClassic.iam.Role('gha-ops-pglies-s3', {
           },
           StringLike: {
             [`${url}:sub`]: [
+              'repo:beyondessential/pg_lies:pull_request',
               'repo:beyondessential/pg_lies:ref:refs/heads/main',
-              'repo:beyondessential/pg_lies:ref:refs/heads/tav-889',
+              'repo:beyondessential/pg_lies:ref:refs/heads/tav-889', // temporary
             ],
           },
         })),
