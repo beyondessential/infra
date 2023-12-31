@@ -1,6 +1,7 @@
 {
   "db": {
-    "migrateOnStartup": false
+    "migrateOnStartup": false,
+    "ssl": true
   },
   "honeycomb": {
     "apiKey": "REDACTED",
