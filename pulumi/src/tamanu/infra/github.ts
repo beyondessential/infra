@@ -197,6 +197,7 @@ new Role('github-actions-deploy', {
   ],
 });
 
+// deprecated
 new Role('github-actions-desktop-s3', {
   name: 'gha-desktop-s3',
   assumeRolePolicy: {
@@ -224,7 +225,7 @@ new Role('github-actions-desktop-s3', {
               'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
               // Tamanu builds (testbed)
-              'repo:beyondessential/tamanu-new-branching:*',
+              // 'repo:beyondessential/tamanu-new-branching:*',
             ],
           },
         })),
@@ -271,10 +272,13 @@ new Role('github-actions-server-s3', {
           StringLike: {
             [`${url}:sub`]: [
               // Tamanu builds
+              'repo:beyondessential/tamanu:pull_request',
+              'repo:beyondessential/tamanu:ref:refs/heads/main',
+              'repo:beyondessential/tamanu:ref:refs/heads/release/*',
               'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
               // Tamanu builds (testbed)
-              'repo:beyondessential/tamanu-new-branching:*',
+              // 'repo:beyondessential/tamanu-new-branching:*',
             ],
           },
         })),
