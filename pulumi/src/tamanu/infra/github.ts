@@ -30,7 +30,8 @@ const imagePushRole = new Role('github-actions-image-push', {
               // Tamanu builds (testbed)
               'repo:beyondessential/tamanu-new-branching:*',
 
-              // Configurator glue container
+              // Configurator and ECS Router glue containers
+              'repo:beyondessential/ops:pull_request',
               'repo:beyondessential/ops:ref:refs/heads/main',
             ],
           },

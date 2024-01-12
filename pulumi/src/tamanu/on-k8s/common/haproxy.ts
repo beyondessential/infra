@@ -201,6 +201,7 @@ defaults
 resolvers systemdns
   parse-resolv-conf
   hold valid 10s
+  accepted_payload_size 8192
 
 backend http404
   mode http

@@ -12,10 +12,10 @@ import { LoadBalancer } from '../../common/LoadBalancer.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
 import { alpineAmi } from '../../constants/external.js';
 import { TAILNET_DOMAIN } from '../../constants/internal.js';
-import { CrossStackNetwork } from '../../common/CrossStack.js';
+import { NetworkOutputs } from '../../common/Network.js';
 
 export interface ClusterInfraArgs {
-  network: CrossStackNetwork;
+  network: NetworkOutputs;
 
   /** ID or Name of the public hosted zone for this cluster. */
   zone: string;
@@ -51,7 +51,7 @@ export interface ClusterInfraOutputs {
 
 export class ClusterInfra extends ComponentResource {
   #name: string;
-  #network: CrossStackNetwork;
+  #network: NetworkOutputs;
   #args: Omit<Required<ClusterInfraArgs>, 'network'>;
 
   #cloudmap: PrivateDnsNamespace;
@@ -261,10 +261,10 @@ export class ClusterInfra extends ComponentResource {
         autoMinorVersionUpgrade: true,
         dbSubnetGroupName: subnetGroup.name,
         engine: 'postgres',
-        engineVersion: '14.7',
-        instanceClass: 'db.t4g.medium', // ARM64
+        engineVersion: '15.5',
+        instanceClass: 'db.t4g.large', // ARM64
         manageMasterUserPassword: true,
-        networkType: 'DUAL',
+        networkType: this.#network.v6Cidr.apply(v6 => v6 ? 'DUAL' : 'IPV4'),
         performanceInsightsEnabled: true,
         publiclyAccessible: false,
         skipFinalSnapshot: true, // FIXME: configure final snapshot
@@ -334,6 +334,9 @@ export class ClusterInfra extends ComponentResource {
               .replace(/%TAILSCALE_NAME%/g, tailscaleName),
           ),
         ),
+        metadataOptions: {
+          httpProtocolIpv6: this.#network.v6Cidr.apply(v6 => v6 ? 'enabled' : 'disabled'),
+        },
         tags: {
           Name: '[Internal] Tailscale Jumpbox',
           Purpose: 'jumpbox',

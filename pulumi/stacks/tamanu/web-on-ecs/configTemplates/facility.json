@@ -1,0 +1,23 @@
+{
+  "db": {
+    "migrateOnStartup": false,
+    "ssl": true
+  },
+  "honeycomb": {
+    "apiKey": "REDACTED",
+    "enabled": false
+  },
+  "sync": {
+    "enabled": true
+  },
+  "countryTimeZone": "Pacific\/Auckland",
+  "auth": {
+    "useHardcodedPermissions": false
+  },
+  "survey": {
+    "defaultCodes": {
+      "location": "WaitingArea",
+      "department": "Emergency"
+    }
+  }
+}

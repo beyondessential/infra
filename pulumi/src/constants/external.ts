@@ -12,13 +12,15 @@ export const GITHUB_OIDC_THUMBPRINTS = [
   '6938fd4d98bab03faadb97b34396831e3780aea1',
 ];
 
+export const AWS_ECR_AUTH_ACTIONS = ['ecr:GetAuthorizationToken'];
+
 export const AWS_ECR_PULL_ACTIONS = [
+  ...AWS_ECR_AUTH_ACTIONS,
   'ecr:BatchCheckLayerAvailability',
   'ecr:BatchGetImage',
   'ecr:DescribeImageScanFindings',
   'ecr:DescribeImages',
   'ecr:DescribeRepositories',
-  'ecr:GetAuthorizationToken',
   'ecr:GetDownloadUrlForLayer',
   'ecr:GetRepositoryPolicy',
   'ecr:ListImages',
