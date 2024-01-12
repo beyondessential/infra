@@ -21,6 +21,8 @@ import { Server } from './Server.js';
 import { SecurityGroup } from '@pulumi/aws/ec2/index.js';
 import { LoadBalancer } from '../../common/LoadBalancer.js';
 import { truncateDomainIfNeeded } from '../../common/dns.js';
+import { Frontend } from './Frontend.js';
+import { Router } from './Router.js';
 
 export interface FacilityDef {
   facilityId: string;
@@ -189,6 +191,22 @@ export class Cluster extends ComponentResource {
         )
       : null;
 
+    const frontend = new Frontend(
+      {
+        ecs,
+        infra: this.#infra,
+        repos: this.#repos,
+        clusterName: this.#name,
+        imageName: 'frontend',
+        imageTag: this.#args.imageTag,
+        tags: {
+          Service: 'frontend',
+          ...this.#args.tags,
+        },
+      },
+      { parent: this },
+    );
+
     const central = {
       endpoint: new Endpoint(
         'central',
@@ -207,6 +225,23 @@ export class Cluster extends ComponentResource {
       ),
       ...this.database(),
     };
+
+    new Router(
+      'central',
+      {
+        ecs,
+        infra: this.#infra,
+        repos: this.#repos,
+        clusterName: this.#name,
+        endpoint: central.endpoint,
+        frontend,
+        tags: {
+          Service: 'central',
+          ...this.#args.tags,
+        },
+      },
+      { parent: this },
+    );
 
     const facilityCredentials = this.#facilities.map((f) => {
       const name = `sync-${f.facilityId}`;
@@ -316,6 +351,23 @@ export class Cluster extends ComponentResource {
           { parent: this },
         );
 
+        new Router(
+          facilityId,
+          {
+            ecs,
+            infra: this.#infra,
+            repos: this.#repos,
+            clusterName: this.#name,
+            endpoint,
+            frontend,
+            tags: {
+              Service: 'facility',
+              ...this.#args.tags,
+            },
+          },
+          { parent: this },
+        );
+
         new Server(
           facilityId,
           {
@@ -341,13 +393,12 @@ export class Cluster extends ComponentResource {
           { parent: endpoint, dependsOn: [centralServer] },
         );
 
-        return [
+        return {
           facilityId,
-          {
-            url: endpoint.external.apply((external) => `https://${external}`),
-            database: dbName,
-          },
-        ];
+          endpoint,
+          url: endpoint.external.apply((external) => `https://${external}`),
+          database: dbName,
+        };
       },
     );
 
@@ -358,7 +409,9 @@ export class Cluster extends ComponentResource {
             url: central.endpoint.external.apply((external) => `https://${external}`),
             database: central.dbName,
           },
-          ...Object.fromEntries(facilities),
+          ...Object.fromEntries(
+            facilities.map(({ facilityId, url, database }) => [facilityId, { url, database }]),
+          ),
         },
       }),
     );

@@ -12,8 +12,7 @@ import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
 import { Service } from '@pulumi/aws/servicediscovery/index.js';
 import { Parameter } from '@pulumi/aws/ssm/index.js';
 import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam/index.js';
-import { TargetGroup } from '@pulumi/aws/lb/index.js';
-import { DEFAULT_PORT, Endpoint } from './Endpoint.js';
+import { Endpoint } from './Endpoint.js';
 
 export interface ServerArgs {
   ecs: ECSCluster;
@@ -92,7 +91,6 @@ export class Server extends ComponentResource {
           this.#args.imageName
         } server ${this.#args.facilityId ?? ''}`,
         value: readFileSync(this.#args.configTemplate, 'utf8'),
-        overwrite: true, // this + ignoreChanges = overwrite an existing config on create only
         tags: this.#args.tags,
       },
       { parent: this, ignoreChanges: ['value'] },
@@ -101,7 +99,6 @@ export class Server extends ComponentResource {
     if (this.#isFacility) {
       this.service('http', [], {
         discovery: this.#args.endpoint.discovery,
-        targetGroup: this.#args.endpoint.targetGroup,
         configuratorEnv: args.configuratorEnv,
         withMigrations: true,
         waitUntilStable: false,
@@ -120,7 +117,6 @@ export class Server extends ComponentResource {
       );
       this.service('http', ['serve'], {
         discovery: this.#args.endpoint.discovery,
-        targetGroup: this.#args.endpoint.targetGroup,
         configuratorEnv: args.configuratorEnv,
         dependsOn: [tasks],
         waitUntilStable: false,
@@ -135,7 +131,6 @@ export class Server extends ComponentResource {
       configuratorEnv = [],
       withMigrations = false,
       discovery,
-      targetGroup,
       dependsOn = [],
       waitUntilStable = true,
     }: ServiceOptions = {},
@@ -230,103 +225,93 @@ export class Server extends ComponentResource {
 
     // Reserve 64MB for non-Node long-running processes (e.g. supervisor, SSH)
     const RESERVED_MEMORY = 64;
-    const containers: [string, awsx.types.input.ecs.TaskDefinitionContainerDefinitionArgs][] = [
-      [
-        'main',
-        {
-          image: images.server,
-          command,
-          essential: true,
-          linuxParameters: {
-            initProcessEnabled: true,
-          },
-          environment: [
-            {
-              name: 'NODE_OPTIONS',
-              value: `--max-old-space-size=${memoryGB * 1024 - RESERVED_MEMORY}`,
-            },
-            { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
-            ...(discovery && this.#args.endpoint.port !== DEFAULT_PORT
-              ? [{ name: 'NODE_CONFIG', value: jsonStringify({ port: this.#args.endpoint.port }) }]
-              : []),
-          ],
-          portMappings: discovery && [
-            {
-              protocol: 'HTTP',
-              containerPort: this.#args.endpoint.port,
-              targetGroup,
-            },
-          ],
-          healthCheck: {
-            command: ['CMD', '/entrypoint', 'healthcheck', ...command],
-            startPeriod: 30,
-          },
-          mountPoints: [
-            {
-              containerPath: '/config',
-              sourceVolume: 'config',
-              readOnly: true,
-            },
-          ],
-          dependsOn: [
-            // start after the configurator is done
-            { containerName: 'configurator', condition: 'SUCCESS' },
-            // start after migrations are applied
-            ...(withMigrations ? [{ containerName: 'migrator', condition: 'SUCCESS' }] : []),
-          ],
+    const containers: awsx.types.input.ecs.TaskDefinitionContainerDefinitionArgs[] = [
+      {
+        name: 'main',
+        image: images.server,
+        command,
+        essential: true,
+        linuxParameters: {
+          initProcessEnabled: true,
         },
-      ],
-      [
-        'configurator',
-        {
-          image: images.configurator,
-          command: [],
-          essential: false,
-          linuxParameters: {
-            initProcessEnabled: true,
+        environment: [
+          {
+            name: 'NODE_OPTIONS',
+            value: `--max-old-space-size=${memoryGB * 1024 - RESERVED_MEMORY}`,
           },
-          environment: [
-            { name: 'RUST_LOG', value: 'info' },
-            { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
-            dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
-            { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },
-            ...configuratorEnv,
-          ],
-          mountPoints: [
-            {
-              containerPath: '/config',
-              sourceVolume: 'config',
-              readOnly: false,
-            },
-          ],
+          { name: 'NODE_CONFIG_STRICT_MODE', value: 'true' },
+        ],
+        portMappings: discovery && [
+          {
+            protocol: 'HTTP',
+            containerPort: 3000,
+          },
+        ],
+        healthCheck: {
+          command: ['CMD', '/entrypoint', 'healthcheck', ...command],
+          startPeriod: 30,
         },
-      ],
+        mountPoints: [
+          {
+            containerPath: '/config',
+            sourceVolume: 'config',
+            readOnly: true,
+          },
+        ],
+        dependsOn: [
+          // start after the configurator is done
+          { containerName: 'configurator', condition: 'SUCCESS' },
+          // start after migrations are applied
+          ...(withMigrations ? [{ containerName: 'migrator', condition: 'SUCCESS' }] : []),
+        ],
+      },
+      {
+        name: 'configurator',
+        image: images.configurator,
+        command: [],
+        essential: false,
+        linuxParameters: {
+          initProcessEnabled: true,
+        },
+        environment: [
+          { name: 'RUST_LOG', value: 'info' },
+          { name: 'CONFIG_PARAMETER_NAME', value: this.#config.name },
+          dbSecret.apply((value) => ({ name: 'DB_SECRET', value })),
+          { name: 'TARGET_CONFIG_FILE', value: '/config/production.json' },
+          ...configuratorEnv,
+        ],
+        mountPoints: [
+          {
+            containerPath: '/config',
+            sourceVolume: 'config',
+            readOnly: false,
+          },
+        ],
+      },
     ];
 
     if (withMigrations) {
-      containers.push([
-        'migrator',
-        {
-          image: images.server,
-          command: ['migrate'],
-          essential: false,
-          linuxParameters: {
-            initProcessEnabled: true,
-          },
-          environment: [{ name: 'NODE_CONFIG_STRICT_MODE', value: 'true' }],
-          mountPoints: [
-            {
-              containerPath: '/config',
-              sourceVolume: 'config',
-              readOnly: true,
-            },
-          ],
-          dependsOn: [
-            // start after the configurator is done
-            { containerName: 'configurator', condition: 'SUCCESS' },
-          ],
+      containers.push({
+        name: 'migrator',
+        image: images.server,
+        command: ['migrate'],
+        essential: false,
+        linuxParameters: {
+          initProcessEnabled: true,
         },
-      ]);
+        environment: [{ name: 'NODE_CONFIG_STRICT_MODE', value: 'true' }],
+        mountPoints: [
+          {
+            containerPath: '/config',
+            sourceVolume: 'config',
+            readOnly: true,
+          },
+        ],
+        dependsOn: [
+          // start after the configurator is done
+          { containerName: 'configurator', condition: 'SUCCESS' },
+        ],
+      });
     }
 
     const task: awsx.ecs.FargateTaskDefinitionArgs = {
@@ -337,7 +322,7 @@ export class Server extends ComponentResource {
         operatingSystemFamily: 'LINUX',
         cpuArchitecture: 'X86_64',
       },
-      containers: Object.fromEntries(containers),
+      containers: Object.fromEntries(containers.map((container) => [container.name, container])),
       volumes: [{ name: 'config' }],
       taskRole: {
         roleArn: taskRole.arn,
@@ -359,7 +344,7 @@ export class Server extends ComponentResource {
         continueBeforeSteadyState: !waitUntilStable,
         propagateTags: 'SERVICE',
         serviceRegistries: discovery && {
-          port: this.#args.endpoint.port,
+          port: 3000,
           registryArn: discovery.arn,
         },
         networkConfiguration: {
@@ -385,7 +370,6 @@ interface ServiceOptions {
   configuratorEnv?: { name: string; value: string | Input<string> }[];
   withMigrations?: boolean;
   discovery?: Service;
-  targetGroup?: TargetGroup;
   dependsOn?: ComponentResource[];
   waitUntilStable?: boolean;
 }

@@ -13,14 +13,11 @@ import { Record } from '@pulumi/aws/route53/index.js';
 import { ValidCertificate } from '../../common/ValidCertificate.js';
 import { truncateDomainIfNeeded } from '../../common/dns.js';
 
-export const DEFAULT_PORT = 3000;
-
 export interface EndpointArgs {
   clusterName: string;
   infra: StackReference;
   superdomain?: Input<string>;
   domain?: string;
-  port?: number;
   certificateArn?: Input<string>;
   target?: Input<string>;
 
@@ -39,12 +36,12 @@ export class Endpoint extends ComponentResource {
   #name: string;
   #infra: StackReference;
 
-  port: number;
   discovery: Service;
   targetGroup: TargetGroup;
 
   external: Output<string>;
   internal: Output<string>;
+  discoveryDns: Output<string>;
 
   constructor(
     name: string,
@@ -54,7 +51,6 @@ export class Endpoint extends ComponentResource {
       infra,
       domain,
       superdomain,
-      port = DEFAULT_PORT,
       lb,
       target,
       tags = {},
@@ -64,7 +60,6 @@ export class Endpoint extends ComponentResource {
     super('bes:tamanu:Endpoint', name, {}, opts);
     this.#name = name;
     this.#infra = infra;
-    this.port = port;
 
     const $cluster = this.#infra.getOutput('cluster');
     const $network = this.#infra.getOutput('network');
@@ -110,7 +105,7 @@ export class Endpoint extends ComponentResource {
       {
         targetType: 'ip',
         ipAddressType: 'ipv4',
-        port,
+        port: 80,
         protocol: 'HTTP',
         protocolVersion: 'HTTP1',
         vpcId,
@@ -192,7 +187,10 @@ export class Endpoint extends ComponentResource {
 
     this.external = endpoint.fqdn;
     this.internal = all([this.discovery.name, namespace]).apply(
-      ([name, namespace]) => `${name}.${namespace}:${port}`,
+      ([name, namespace]) => `${name}.${namespace}:3000`,
+    );
+    this.discoveryDns = all([this.discovery.name, namespace]).apply(
+      ([name, namespace]) => `${name}.${namespace}`,
     );
     this.registerOutputs({
       external: this.external,
