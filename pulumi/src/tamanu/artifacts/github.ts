@@ -92,3 +92,46 @@ new awsClassic.iam.Role('gha-ops-scripts-s3', {
     },
   ],
 });
+
+new awsClassic.iam.Role('gha-tamanu-test-data-snapshots-s3', {
+  name: 'gha-tamanu-test-data-snapshots-s3',
+  assumeRolePolicy: {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'sts:AssumeRoleWithWebIdentity',
+        Principal: {
+          Federated: 'arn:aws:iam::143295493206:oidc-provider/token.actions.githubusercontent.com',
+        },
+        Condition: ghaOidc.url.apply((url) => ({
+          StringEquals: {
+            [`${url}:aud`]: AWS_STS,
+          },
+          StringLike: {
+            [`${url}:sub`]: [
+              'repo:beyondessential/tamanu:pull_request',
+              'repo:beyondessential/tamanu:ref:refs/heads/main',
+              'repo:beyondessential/tamanu:ref:refs/heads/release/*',
+            ],
+          },
+        })),
+      },
+    ],
+  },
+  inlinePolicies: [
+    {
+      name: 'TamanuTestDataReadWrite',
+      policy: jsonStringify({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: AWS_S3_WRITE_ACTIONS,
+            Resource: [`arn:aws:s3:::bes-tamanu-test-data-snapshots`, `arn:aws:s3:::bes-tamanu-test-data-snapshots/*`],
+          },
+        ],
+      }),
+    },
+  ],
+});

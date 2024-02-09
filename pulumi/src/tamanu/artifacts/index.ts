@@ -1,5 +1,6 @@
 import { BucketWebsite } from "../../common/BucketWebsite.js";
 import { LOGS_BUCKETS } from "../../constants/internal.js";
+import * as awsClassic from '@pulumi/aws';
 import './github.js';
 
 const zoneId = 'Z07118832KOZ96U06G6JA';
@@ -36,3 +37,11 @@ new BucketWebsite('clients', {
     Purpose: 'tamanu-clients',
   },
 });
+
+new awsClassic.s3.BucketV2(
+  'bes-tamanu-test-data-snapshots-bucket',
+  {
+    bucket: 'bes-tamanu-test-data-snapshots'
+  },
+  { parent: this, protect: false },
+);
