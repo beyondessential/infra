@@ -1,3 +1,5 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BucketWebsite } from "../../common/BucketWebsite.js";
 import { LOGS_BUCKETS } from "../../constants/internal.js";
 import * as awsClassic from '@pulumi/aws';
@@ -10,6 +12,7 @@ new BucketWebsite('tools', {
   bucketName: 'bes-ops-tools',
   zoneId,
   logsBucket: LOGS_BUCKETS.TAMANU,
+  requestFunctionSourceFile: join(dirname(fileURLToPath(import.meta.url)), 'bucket-tools-request-function.js'),
   tags: {
     Purpose: 'ops',
   },

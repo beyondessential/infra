@@ -66,6 +66,7 @@ new awsClassic.iam.Role('gha-ops-scripts-s3', {
           StringLike: {
             [`${url}:sub`]: [
               'repo:beyondessential/ops:ref:refs/heads/main',
+              'repo:beyondessential/bestool:ref:refs/tags/v*',
             ],
           },
         })),
