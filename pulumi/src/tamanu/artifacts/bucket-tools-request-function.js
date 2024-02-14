@@ -13,8 +13,6 @@ function handler(event) {
     return request;
   }
 
-
-
   // https://host/path -> redirect to https://host/path/
   if (!uri.includes('.') && !uri.includes('/bestool/') && !uri.includes('/caddy/')) {
     return {
