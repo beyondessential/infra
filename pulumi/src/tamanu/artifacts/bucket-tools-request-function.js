@@ -13,9 +13,10 @@ function handler(event) {
     return request;
   }
 
+
+
   // https://host/path -> redirect to https://host/path/
-  const DOTLESS = ['/bestool/', '/caddy/'];
-  if (!uri.includes('.') && !DOTLESS.some(path => uri.includes(path))) {
+  if (!uri.includes('.') && !uri.includes('/bestool/') && !uri.includes('/caddy/')) {
     return {
       statusCode: 307,
       statusDescription: 'Temporary Redirect',
