@@ -7,3 +7,4 @@ import './ingress.js';
 import './metrics/prometheus.js';
 import './metrics/grafana.js';
 import './postgres.js';
+import './tailscale.js';

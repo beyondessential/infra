@@ -15,7 +15,7 @@ new k8s.helm.v3.Release('nginx-ingress', {
   namespace: ns.metadata.name,
   values: {
     controller: {
-      replicaCount: 3,
+      replicaCount: 2,
       affinity: {
         nodeAffinity: {
           requiredDuringSchedulingIgnoredDuringExecution: {
