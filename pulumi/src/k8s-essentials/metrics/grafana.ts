@@ -39,9 +39,6 @@ new k8s.helm.v3.Release('grafana', {
       userKey: 'username',
       passwordKey: 'password',
     },
-    podAnnotations: {
-      // 'consul.hashicorp.com/connect-inject': 'false',
-    },
     affinity: {
       nodeAffinity: {
         requiredDuringSchedulingIgnoredDuringExecution: {
