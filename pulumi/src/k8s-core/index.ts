@@ -9,4 +9,5 @@ export const ca = cluster.certificateAuthorityData;
 import './nodes/groups.js';
 import './nodes/autoscaler.js';
 import './loadbalancer/ingress.js';
+import './externalDns.js';
 import './storage.js';
