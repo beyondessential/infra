@@ -40,61 +40,6 @@ const standardGroups: NodeGroup[] =
   cfg.getBoolean('standardNodeGroups') === false
     ? []
     : [
-      {
-        groupName: 'ingress-arm64-ondemand',
-        purpose: 'ingress',
-        schedule: 'ondemand',
-        arch: 'arm64',
-        instanceTypes: [],
-        min: 0,
-        max: 9,
-      },
-      {
-        groupName: 'system-arm64-ondemand',
-        purpose: 'system',
-        schedule: 'ondemand',
-        arch: 'arm64',
-        instanceTypes: [],
-        min: 3,
-        max: 10,
-      },
-      {
-        groupName: 'workload-arm64-ondemand',
-        purpose: 'workload',
-        schedule: 'ondemand',
-        arch: 'arm64',
-        instanceTypes: [],
-        min: 0,
-        max: 30,
-      },
-      {
-        groupName: 'workload-amd64-ondemand',
-        purpose: 'workload',
-        schedule: 'ondemand',
-        arch: 'amd64',
-        instanceTypes: [],
-        min: 0,
-        max: 30,
-      },
-      {
-        groupName: 'workload-arm64-spot',
-        purpose: 'workload',
-        schedule: 'spot',
-        arch: 'arm64',
-        instanceTypes: [],
-        min: 0,
-        max: 30,
-      },
-      {
-        groupName: 'workload-amd64-spot',
-        purpose: 'workload',
-        schedule: 'spot',
-        arch: 'amd64',
-        instanceTypes: [],
-        min: 0,
-        max: 30,
-      },
-
         {
           groupName: 'workload-arm-ondemand-small-v1',
           purpose: 'workload',
