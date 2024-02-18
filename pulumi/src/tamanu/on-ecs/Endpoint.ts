@@ -77,19 +77,19 @@ export class Endpoint extends ComponentResource {
             { ttl: 10, type: 'SRV' },
           ],
         },
-        healthCheckConfig: {
-          resourcePath: '/healthz',
-          type: 'HTTP',
-        },
-        healthCheckCustomConfig: {
-          failureThreshold: 3,
-        },
+        // healthCheckConfig: {
+        //   resourcePath: '/healthz',
+        //   type: 'HTTP',
+        // },
+        // healthCheckCustomConfig: {
+        //   failureThreshold: 3,
+        // },
         tags,
       },
       {
         parent: this,
         // this is flaky, causing re-ids, which require manual intervention to fix (syncHost)
-        ignoreChanges: ['healthCheckCustomConfig'],
+        // ignoreChanges: ['healthCheckCustomConfig'],
       },
     );
 
