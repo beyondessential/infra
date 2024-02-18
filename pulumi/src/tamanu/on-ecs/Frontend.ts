@@ -67,6 +67,7 @@ export class Frontend extends ComponentResource {
       },
       {
         parent: this,
+        ignoreChanges: ['healthCheckCustomConfig'],
       },
     );
     this.discoveryDns = all([this.discovery.name, namespace]).apply(

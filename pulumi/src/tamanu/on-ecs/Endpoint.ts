@@ -77,6 +77,9 @@ export class Endpoint extends ComponentResource {
             { ttl: 10, type: 'SRV' },
           ],
         },
+        healthCheckConfig: {
+          resourcePath: '/healthz',
+        },
         healthCheckCustomConfig: {
           failureThreshold: 3,
         },
