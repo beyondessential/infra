@@ -84,6 +84,8 @@ export class Endpoint extends ComponentResource {
       },
       {
         parent: this,
+        // this is flaky, causing re-ids, which require manual intervention to fix (syncHost)
+        ignoreChanges: ['healthCheckCustomConfig'],
       },
     );
 
