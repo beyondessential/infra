@@ -24,6 +24,7 @@ export interface CrossStackK8sCoreOutput {
   ca: Output<string>;
   endpoint: Output<string>;
   name: Output<string>;
+  coreStack: Output<string>;
   tags: Output<{ [key: string]: string }>;
   version: Output<string>;
 }
@@ -90,6 +91,7 @@ export class CrossStack {
       ca: this.get('ca'),
       endpoint: this.get('endpoint'),
       name: this.get('name'),
+      coreStack: this.get('coreStackName'),
       tags: this.get('tags'),
       version: this.get('version'),
     };
