@@ -117,8 +117,27 @@ const standardGroups: NodeGroup[] =
               100,
             ).map((i) => i.instance_type),
           ),
+          min: 2,
+          max: 10,
+        },
+        {
+          groupName: 'ingress-x86-spot-v1',
+          purpose: 'ingress',
+          schedule: 'spot',
+          arch: 'amd64',
+          instanceTypes: region.apply((region) =>
+          upToMonthly(
+            spotWithinOnDemandPrice(
+              nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
+              'linux',
+            ),
+            'linux',
+            'spot',
+            50,
+          ).map((i) => i.instance_type),
+          ),
           min: 0,
-          max: 9, // three per subnet/AZ
+          max: 2,
         },
         {
           groupName: 'system-arm-v1',
@@ -133,7 +152,7 @@ const standardGroups: NodeGroup[] =
               100,
             ).map((i) => i.instance_type),
           ),
-          min: 3, // for consul minimum
+          min: 2,
           max: 10,
         },
       ];
