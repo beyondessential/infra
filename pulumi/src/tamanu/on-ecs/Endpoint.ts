@@ -79,6 +79,7 @@ export class Endpoint extends ComponentResource {
         },
         healthCheckConfig: {
           resourcePath: '/healthz',
+          type: 'HTTP',
         },
         healthCheckCustomConfig: {
           failureThreshold: 3,
