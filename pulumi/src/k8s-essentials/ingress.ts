@@ -29,6 +29,7 @@ new k8s.helm.v3.Release('nginx-ingress', {
           },
         },
       },
+      publishService: { enabled: true },
       service: {
         annotations: {
           'service.beta.kubernetes.io/aws-load-balancer-type': 'external',
