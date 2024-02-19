@@ -3,19 +3,22 @@ import { CentralServer } from './central/CentralServer.js';
 import { FacilityServer } from './facility/FacilityServer.js';
 await failIfIncorrectCluster();
 
-// const superdomain = cfg.get('superdomain') ?? stackName;
-
 const central = new CentralServer('central-server', {
-  apiReplicas: 3,
+  apiReplicas: 2,
   dbReplicas: 2,
   dbStorage: '5Gi',
 });
 
-for (const n of Array(60).fill(0).keys()) {
-  new FacilityServer(n.toString(), {
-    centralApiService: central.apiService,
-    facilityId: 'test',
-    deviceId: `facility-${n}`,
-    dbStorage: '2Gi',
-  });
-}
+new FacilityServer('1', {
+  centralApiService: central.apiService,
+  facilityId: 'facility-1',
+  deviceId: 'facility-1',
+  dbStorage: '5Gi',
+});
+
+new FacilityServer('2', {
+  centralApiService: central.apiService,
+  facilityId: 'facility-2',
+  deviceId: 'facility-2',
+  dbStorage: '5Gi',
+});
