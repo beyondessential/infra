@@ -24,7 +24,8 @@
     "@pulumi/pulumi": "^3.86.0",
     "@pulumi/tailscale": "^0.13.1",
     "lodash-es": "^4.17.21",
-    "netmask": "^2.0.2"
+    "netmask": "^2.0.2",
+    "yaml": "^2.3.4"
   },
   "scripts": {
     "build": "swc ./src --out-dir ./build --source-maps --copy-files",

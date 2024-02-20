@@ -1,6 +1,7 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
+import YAML from 'yaml';
 import { pascalStackName } from '../../common/coreRef.js';
 import { eksServiceAccount } from '../../common/eksServiceAccount.js';
 import { provider } from '../kubeconfig.js';
@@ -240,6 +241,22 @@ const appLabels = {
   app: 'cluster-autoscaler',
 };
 
+// Relative priorities for node groups when they are otherwise equal
+const priorities = new k8s.core.v1.ConfigMap('autoscaler-priority-expander', {
+  metadata: {
+    namespace,
+    labels: appLabels,
+    name: 'cluster-autoscaler-priority-expander',
+  },
+  data: {
+    priorities: YAML.stringify({
+      50: ['.*-spot-.*'],
+      30: ['.*-arm64-.*'],
+      10: ['.*'],
+    }),
+  }
+}, { provider });
+
 new k8s.apps.v1.Deployment(
   'autoscaler',
   {
@@ -340,5 +357,5 @@ new k8s.apps.v1.Deployment(
       },
     },
   },
-  { provider },
+  { provider, dependsOn: [priorities] },
 );
