@@ -67,6 +67,44 @@ const standardGroups: NodeGroup[] =
           max: 30,
         },
         {
+          groupName: 'workload-arm-spot-small-v1',
+          purpose: 'workload',
+          schedule: 'spot',
+          arch: 'arm64',
+          instanceTypes: region.apply((region) =>
+            upToMonthly(
+              spotWithinOnDemandPrice(
+                nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+                'linux',
+              ),
+              'linux',
+              'spot',
+              50,
+            ).map((i) => i.instance_type),
+          ),
+          min: 0,
+          max: 30,
+        },
+        {
+          groupName: 'workload-x86-spot-small-v1',
+          purpose: 'workload',
+          schedule: 'spot',
+          arch: 'amd64',
+          instanceTypes: region.apply((region) =>
+            upToMonthly(
+              spotWithinOnDemandPrice(
+                nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
+                'linux',
+              ),
+              'linux',
+              'spot',
+              40,
+            ).map((i) => i.instance_type),
+          ),
+          min: 0,
+          max: 30,
+        },
+        {
           groupName: 'workload-arm-spot-large-v1',
           purpose: 'workload',
           schedule: 'spot',
