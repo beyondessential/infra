@@ -31,7 +31,7 @@ export interface NodeGroup {
   schedule: 'ondemand' | 'spot';
   arch: 'amd64' | 'arm64';
   instanceTypes: string[] | Output<string[]>;
-  minPerAz: number;
+  minPerAz?: number;
   maxPerAz: number;
   initial?: number;
 }
@@ -50,7 +50,6 @@ const standardGroups: NodeGroup[] =
               (i) => i.instance_type,
             ),
           ),
-          minPerAz: 0,
           maxPerAz: 30,
         },
         {
@@ -63,7 +62,6 @@ const standardGroups: NodeGroup[] =
               (i) => i.instance_type,
             ),
           ),
-          minPerAz: 0,
           maxPerAz: 30,
         },
         {
@@ -82,7 +80,6 @@ const standardGroups: NodeGroup[] =
               50,
             ).map((i) => i.instance_type),
           ),
-          minPerAz: 0,
           maxPerAz: 30,
         },
         {
@@ -101,7 +98,6 @@ const standardGroups: NodeGroup[] =
               40,
             ).map((i) => i.instance_type),
           ),
-          minPerAz: 0,
           maxPerAz: 30,
         },
         {
@@ -120,7 +116,6 @@ const standardGroups: NodeGroup[] =
               100,
             ).map((i) => i.instance_type),
           ),
-          minPerAz: 0,
           maxPerAz: 30,
         },
         {
@@ -139,23 +134,36 @@ const standardGroups: NodeGroup[] =
               75,
             ).map((i) => i.instance_type),
           ),
-          minPerAz: 0,
           maxPerAz: 30,
         },
         {
-          groupName: 'ingress-arm-v1',
+          groupName: 'ingress-arm-spot-v1',
+          purpose: 'ingress',
+          schedule: 'spot',
+          arch: 'arm64',
+          instanceTypes: region.apply((region) =>
+            upToMonthly(
+              spotWithinOnDemandPrice(
+                nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+                'linux',
+              ),
+              'linux',
+              'spot',
+              50,
+            ).map((i) => i.instance_type),
+          ),
+          maxPerAz: 10,
+        },
+        {
+          groupName: 'ingress-arm-ondemand-v2',
           purpose: 'ingress',
           schedule: 'ondemand',
           arch: 'arm64',
           instanceTypes: region.apply((region) =>
-            upToMonthly(
-              onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-              'linux',
-              'ondemand',
-              100,
-            ).map((i) => i.instance_type),
+            upToMonthly(instancesSizedAtLeast(region, 'arm64', 2, 8), 'linux', 'ondemand', 100).map(
+              (i) => i.instance_type,
+            ),
           ),
-          minPerAz: 1,
           maxPerAz: 10,
         },
         {
@@ -176,10 +184,16 @@ const standardGroups: NodeGroup[] =
         },
       ];
 
-for (const { groupName, purpose, instanceTypes, arch, schedule, minPerAz, maxPerAz, initial } of [
-  ...standardGroups,
-  ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? []),
-]) {
+for (const {
+  groupName,
+  purpose,
+  instanceTypes,
+  arch,
+  schedule,
+  minPerAz = 0,
+  maxPerAz,
+  initial,
+} of [...standardGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
   const subnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
   subnets.apply((subnets) =>
     subnets.forEach((subnet, az0) => {
