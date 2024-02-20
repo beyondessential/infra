@@ -3,6 +3,8 @@ import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from '../../../common/k8s/waitFor.js';
 import { namespace } from '../namespace.js';
+import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
+import { RUN_ON_SPOT } from '../../../common/k8s/affinities.js';
 
 export interface PostgresArgs {
   parent: ComponentResource;
@@ -10,20 +12,9 @@ export interface PostgresArgs {
   replicas: Input<number>;
   storage: Input<string>;
   timezone: Input<string>;
-  affinities?: PostgresAffinities;
 }
 
 export type PostgresReady = Output<void>;
-
-export interface PostgresAffinities {
-  nodeSelector?: Input<{
-    [key: string]: Input<string>;
-  }>;
-  tolerations?: Input<Input<k8s.types.input.core.v1.Toleration>[]>;
-  nodeAffinity?: Input<k8s.types.input.core.v1.NodeAffinity>;
-  additionalPodAffinity?: Input<k8s.types.input.core.v1.PodAffinity>;
-  additionalPodAntiAffinity?: Input<k8s.types.input.core.v1.PodAntiAffinity>;
-}
 
 export function runPostgres({
   parent,
@@ -31,7 +22,6 @@ export function runPostgres({
   replicas,
   storage,
   timezone,
-  affinities,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -65,10 +55,46 @@ export function runPostgres({
           },
         },
         affinity: {
-          ...affinities,
           nodeSelector: {
-            ...affinities?.nodeSelector,
+            // Because we colocate the databases with their servers, we stick
+            // to the same architecture, until we can build for arm64.
+            'bes.node.arch': 'amd64',
             'bes.node.purpose': 'workload',
+          },
+          additionalPodAntiAffinity: {
+            // Spread out the database pods across nodes by trying to avoid
+            // nodes that already have databases in this namespace.
+            preferredDuringSchedulingIgnoredDuringExecution: [
+              {
+                weight: 20,
+                podAffinityTerm: {
+                  topologyKey: 'kubernetes.io/hostname',
+                  labelSelector: {
+                    matchExpressions: [
+                      {
+                        key: 'namespace',
+                        operator: 'In',
+                        values: [namespace],
+                      },
+                      {
+                        key: 'app.kubernetes.io/component',
+                        operator: 'In',
+                        values: ['database'],
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+          tolerations: [CAN_RUN_ON_SPOT],
+          nodeAffinity: {
+            preferredDuringSchedulingIgnoredDuringExecution: [
+              {
+                weight: 1,
+                preference: RUN_ON_SPOT,
+              },
+            ],
           },
         },
       },

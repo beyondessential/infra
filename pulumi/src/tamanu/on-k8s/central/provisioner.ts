@@ -29,7 +29,7 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s
           spec: {
             ...podSpec(
               'provisioner',
-              ['provision', '--skip-if-not-needed', '/provisioning/provisioning.kdl'],
+              ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json5'],
               {
                 volumeMounts: [
                   {

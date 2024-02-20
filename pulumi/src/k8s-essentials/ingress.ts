@@ -13,6 +13,7 @@ new k8s.helm.v3.Release('nginx-ingress', {
     repo: 'https://kubernetes.github.io/ingress-nginx',
   },
   namespace: ns.metadata.name,
+  name: 'nginx-ingress',
   values: {
     controller: {
       replicaCount: 2,
@@ -42,4 +43,4 @@ new k8s.helm.v3.Release('nginx-ingress', {
       },
     },
   },
-});
+}, { deleteBeforeReplace: true });

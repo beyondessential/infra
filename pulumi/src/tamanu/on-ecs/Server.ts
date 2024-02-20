@@ -5,7 +5,6 @@ import {
   Input,
   Output,
   StackReference,
-  jsonStringify,
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';

@@ -28,6 +28,7 @@ export function runApi({
     {
       metadata: {
         namespace,
+        name: 'central-api',
       },
       spec: {
         ports: [
@@ -50,6 +51,7 @@ export function runApi({
     {
       metadata: {
         namespace,
+        name: 'central-api',
       },
       spec: {
         replicas,

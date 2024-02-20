@@ -18,7 +18,7 @@ new k8s.core.v1.ConfigMap('provisioning-basic', {
     },
   },
   data: {
-    'provisioning.kdl': readFileSync('provisioning.kdl', 'utf-8'),
+    'provisioning.json5': readFileSync('provisioning.json5', 'utf-8'),
   },
 });
 
@@ -31,7 +31,7 @@ new k8s.core.v1.ConfigMap('config-central-basic', {
     },
   },
   data: {
-    'production.json': readFileSync('central.json', 'utf-8'),
+    'production.json5': readFileSync('central.json5', 'utf-8'),
   },
 });
 
@@ -44,7 +44,7 @@ new k8s.core.v1.ConfigMap('config-facility-basic', {
     },
   },
   data: {
-    'production.json': readFileSync('facility.json', 'utf-8'),
+    'production.json5': readFileSync('facility.json5', 'utf-8'),
   },
 });
 

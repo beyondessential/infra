@@ -28,7 +28,7 @@ export interface PodSpecArgs {
   dbReady: PostgresReady;
   facilityId: string;
   deviceId: string;
-  centralApiService: k8s.core.v1.Service;
+  centralApiUrl: string;
 }
 
 export type PodSpecFactory = (
@@ -45,7 +45,7 @@ export function podSpecFactory({
   dbReady,
   facilityId,
   deviceId,
-  centralApiService,
+  centralApiUrl,
 }: PodSpecArgs): PodSpecFactory {
   return (
     podType: string,
@@ -137,11 +137,11 @@ export function podSpecFactory({
           },
           {
             name: 'SYNC_URL',
-            value: centralApiService.metadata.name.apply((host) => `http://${host}`),
+            value: centralApiUrl,
           },
           {
             name: 'SYNC_USERNAME',
-            value: 'sync@tamanu.io',
+            value: `sync-facility-${name}@tamanu.io`,
           },
           {
             name: 'SYNC_PASSWORD',
