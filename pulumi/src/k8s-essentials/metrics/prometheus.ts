@@ -21,9 +21,6 @@ new k8s.helm.v3.Chart('prometheus', {
       statefulSet: {
         enabled: true,
       },
-      podAnnotations: {
-        // 'consul.hashicorp.com/connect-inject': 'false',
-      },
       persistentVolume: {
         size: '20Gi',
       },
@@ -36,6 +33,22 @@ new k8s.helm.v3.Chart('prometheus', {
               },
             ],
           },
+        },
+        podAntiAffinity: {
+          requiredDuringSchedulingIgnoredDuringExecution: [
+            {
+              labelSelector: {
+                matchExpressions: [
+                  {
+                    key: 'app.kubernetes.io/name',
+                    operator: 'In',
+                    values: ['prometheus'],
+                  },
+                ],
+              },
+              topologyKey: 'topology.kubernetes.io/zone',
+            },
+          ],
         },
       },
     },

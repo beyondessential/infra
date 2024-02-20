@@ -5,6 +5,8 @@ import { eksServiceAccount } from '../common/eksServiceAccount.js';
 import { clusterName, oidcProvider } from './cluster.js';
 import { provider } from './kubeconfig.js';
 import { cfg } from '../common/coreRef.js';
+import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
+import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.js';
 
 const externalDnsZones: string[] = cfg.requireObject('externalDnsZones');
 
@@ -122,6 +124,7 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: {
             app: 'external-dns',
+            'app.kubernetes.io/name': 'external-dns',
           },
         },
         spec: {
@@ -149,6 +152,41 @@ new k8s.apps.v1.Deployment(
               ],
             },
           ],
+          tolerations: [CAN_RUN_ON_SPOT],
+          affinity: {
+            nodeAffinity: {
+              preferredDuringSchedulingIgnoredDuringExecution: [
+                {
+                  weight: 1,
+                  preference: RUN_ON_SPOT,
+                },
+              ],
+              requiredDuringSchedulingIgnoredDuringExecution: {
+                nodeSelectorTerms: [
+                  {
+                    matchExpressions: [purposeAffinity('ingress')],
+                  },
+                ],
+              },
+            },
+            // avoid co-location of redundancy
+            podAntiAffinity: {
+              requiredDuringSchedulingIgnoredDuringExecution: [
+                {
+                  labelSelector: {
+                    matchExpressions: [
+                      {
+                        key: 'app.kubernetes.io/name',
+                        operator: 'In',
+                        values: ['external-dns'],
+                      },
+                    ],
+                  },
+                  topologyKey: 'topology.kubernetes.io/zone',
+                },
+              ],
+            },
+          },
         },
       },
     },

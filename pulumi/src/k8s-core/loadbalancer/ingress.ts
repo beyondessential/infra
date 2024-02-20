@@ -6,6 +6,8 @@ import { eksServiceAccount } from '../../common/eksServiceAccount.js';
 import { clusterName, oidcProvider } from '../cluster.js';
 import { provider } from '../kubeconfig.js';
 import { awsLbPolicy } from './policy.js';
+import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.js';
+import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.js';
 
 const SERVICE_ACCOUNT_NAME = 'awslbc';
 
@@ -42,7 +44,7 @@ new k8s.helm.v3.Release(
   'lbc',
   {
     chart: 'aws-load-balancer-controller',
-    version: '1.6.1',
+    version: '1.7.1',
     repositoryOpts: {
       repo: 'https://aws.github.io/eks-charts',
     },
@@ -52,6 +54,40 @@ new k8s.helm.v3.Release(
       serviceAccount: {
         create: false,
         name: SERVICE_ACCOUNT_NAME,
+      },
+      tolerations: [CAN_RUN_ON_SPOT],
+      affinity: {
+        nodeAffinity: {
+          preferredDuringSchedulingIgnoredDuringExecution: [
+            {
+              weight: 1,
+              preference: RUN_ON_SPOT,
+            },
+          ],
+          requiredDuringSchedulingIgnoredDuringExecution: {
+            nodeSelectorTerms: [
+              {
+                matchExpressions: [purposeAffinity('ingress')],
+              },
+            ],
+          },
+        },
+        podAntiAffinity: {
+          requiredDuringSchedulingIgnoredDuringExecution: [
+            {
+              labelSelector: {
+                matchExpressions: [
+                  {
+                    key: 'app.kubernetes.io/name',
+                    operator: 'In',
+                    values: ['aws-load-balancer-controller'],
+                  },
+                ],
+              },
+              topologyKey: 'topology.kubernetes.io/zone',
+            },
+          ],
+        },
       },
     },
   },

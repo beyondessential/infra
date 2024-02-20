@@ -28,7 +28,6 @@ if (tailscaleEnabled) {
         hostname: interpolate`k8s-operator-${clusterFullName}`,
         nodeSelector: {
           'kubernetes.io/os': 'linux',
-          // 'bes.node.arch': 'amd64',
         },
         tolerations: [CAN_RUN_ON_SPOT],
         affinity: {
