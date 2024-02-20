@@ -31,8 +31,8 @@ export interface NodeGroup {
   schedule: 'ondemand' | 'spot';
   arch: 'amd64' | 'arm64';
   instanceTypes: string[] | Output<string[]>;
-  min: number;
-  max: number;
+  minPerAz: number;
+  maxPerAz: number;
   initial?: number;
 }
 
@@ -50,8 +50,8 @@ const standardGroups: NodeGroup[] =
               (i) => i.instance_type,
             ),
           ),
-          min: 0,
-          max: 30,
+          minPerAz: 0,
+          maxPerAz: 30,
         },
         {
           groupName: 'workload-x86-ondemand-small-v1',
@@ -63,8 +63,8 @@ const standardGroups: NodeGroup[] =
               (i) => i.instance_type,
             ),
           ),
-          min: 0,
-          max: 30,
+          minPerAz: 0,
+          maxPerAz: 30,
         },
         {
           groupName: 'workload-arm-spot-small-v1',
@@ -82,8 +82,8 @@ const standardGroups: NodeGroup[] =
               50,
             ).map((i) => i.instance_type),
           ),
-          min: 0,
-          max: 30,
+          minPerAz: 0,
+          maxPerAz: 30,
         },
         {
           groupName: 'workload-x86-spot-small-v1',
@@ -101,8 +101,8 @@ const standardGroups: NodeGroup[] =
               40,
             ).map((i) => i.instance_type),
           ),
-          min: 0,
-          max: 30,
+          minPerAz: 0,
+          maxPerAz: 30,
         },
         {
           groupName: 'workload-arm-spot-large-v1',
@@ -120,8 +120,8 @@ const standardGroups: NodeGroup[] =
               100,
             ).map((i) => i.instance_type),
           ),
-          min: 0,
-          max: 30,
+          minPerAz: 0,
+          maxPerAz: 30,
         },
         {
           groupName: 'workload-x86-spot-large-v1',
@@ -139,8 +139,8 @@ const standardGroups: NodeGroup[] =
               75,
             ).map((i) => i.instance_type),
           ),
-          min: 0,
-          max: 30,
+          minPerAz: 0,
+          maxPerAz: 30,
         },
         {
           groupName: 'ingress-arm-v1',
@@ -155,27 +155,8 @@ const standardGroups: NodeGroup[] =
               100,
             ).map((i) => i.instance_type),
           ),
-          min: 2,
-          max: 10,
-        },
-        {
-          groupName: 'ingress-x86-spot-v1',
-          purpose: 'ingress',
-          schedule: 'spot',
-          arch: 'amd64',
-          instanceTypes: region.apply((region) =>
-          upToMonthly(
-            spotWithinOnDemandPrice(
-              nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
-              'linux',
-            ),
-            'linux',
-            'spot',
-            50,
-          ).map((i) => i.instance_type),
-          ),
-          min: 0,
-          max: 2,
+          minPerAz: 1,
+          maxPerAz: 10,
         },
         {
           groupName: 'system-arm-v1',
@@ -190,79 +171,86 @@ const standardGroups: NodeGroup[] =
               100,
             ).map((i) => i.instance_type),
           ),
-          min: 2,
-          max: 10,
+          minPerAz: 1,
+          maxPerAz: 10,
         },
       ];
 
-for (const { groupName, purpose, instanceTypes, arch, schedule, min, max, initial } of [
+for (const { groupName, purpose, instanceTypes, arch, schedule, minPerAz, maxPerAz, initial } of [
   ...standardGroups,
   ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? []),
 ]) {
-  new aws.eks.Nodegroup(
-    groupName,
-    {
-      clusterName,
-      nodeRole: nodeRole.arn,
-      subnets: purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds,
-      capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
-      amiType: arch === 'arm64' ? 'AL2_ARM_64' : 'AL2_x86_64',
-      instanceTypes,
-      diskSize: 100,
-      scalingConfig: {
-        minSize: min,
-        desiredSize: initial ?? min,
-        maxSize: max,
-      },
-      taints:
-        schedule === 'ondemand'
-          ? []
-          : [
-              {
-                key: 'spotInstance',
-                value: 'true',
-                effect: 'PREFER_NO_SCHEDULE',
-              },
-            ],
-      updateConfig: max >= 5 ? { maxUnavailablePercentage: 20 } : { maxUnavailable: 1 },
-      labels: {
-        'bes.node.group': groupName,
-        'bes.node.purpose': purpose,
-        'bes.node.schedule': schedule,
-        'bes.node.arch': arch,
-      },
-      tags: {
-        EKSCluster: clusterName, // for IAM permissions
+  const subnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
+  subnets.apply((subnets) =>
+    subnets.forEach((subnet, az0) => {
+      const az = az0 + 1;
+      new aws.eks.Nodegroup(
+        `${groupName}-az${az}`,
+        {
+          clusterName,
+          nodeRole: nodeRole.arn,
+          subnets: [subnet],
+          capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
+          amiType: arch === 'arm64' ? 'AL2_ARM_64' : 'AL2_x86_64',
+          instanceTypes,
+          diskSize: 100,
+          scalingConfig: {
+            minSize: minPerAz,
+            desiredSize: initial ?? minPerAz,
+            maxSize: maxPerAz,
+          },
+          taints:
+            schedule === 'ondemand'
+              ? []
+              : [
+                  {
+                    key: 'spotInstance',
+                    value: 'true',
+                    effect: 'PREFER_NO_SCHEDULE',
+                  },
+                ],
+          updateConfig: maxPerAz >= 5 ? { maxUnavailablePercentage: 20 } : { maxUnavailable: 1 },
+          labels: {
+            'bes.node.group': groupName,
+            'bes.node.purpose': purpose,
+            'bes.node.schedule': schedule,
+            'bes.node.arch': arch,
+          },
+          tags: {
+            EKSCluster: clusterName, // for IAM permissions
 
-        // for billing:
-        ...tags,
-        Purpose: `k8s-${purpose}`,
+            // for billing:
+            ...tags,
+            Purpose: `k8s-${purpose}`,
 
-        'k8s.io/cluster-autoscaler/enabled': 'true', // for autodiscovery (value doesn't matter)
-        'k8s.io/cluster-autoscaler/cluster': clusterName, // for autodiscovery
-        'k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage': '100G',
+            'k8s.io/cluster-autoscaler/enabled': 'true', // for autodiscovery (value doesn't matter)
+            'k8s.io/cluster-autoscaler/cluster': clusterName, // for autodiscovery
+            'k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage': '100G',
 
-        ...(schedule === 'ondemand'
-          ? {}
-          : {
-              // Used by the cluster-autoscaler to prefer spot instances
-              'k8s.io/cluster-autoscaler/node-template/taint/spotInstance': 'true:PreferNoSchedule',
-            }),
+            ...(schedule === 'ondemand'
+              ? {}
+              : {
+                  // Used by the cluster-autoscaler to prefer spot instances
+                  'k8s.io/cluster-autoscaler/node-template/taint/spotInstance':
+                    'true:PreferNoSchedule',
+                }),
 
-        // These labels can be used to target specific node groups for workloads
-        // and will be understood by the auto-scaler for min=0 node groups.
-        'k8s.io/cluster-autoscaler/node-template/label/bes.node.group': groupName,
-        'k8s.io/cluster-autoscaler/node-template/label/bes.node.purpose': purpose,
-        'k8s.io/cluster-autoscaler/node-template/label/bes.node.schedule': schedule,
-        'k8s.io/cluster-autoscaler/node-template/label/bes.node.arch': arch,
-      },
-    },
-    {
-      // to recreate nodegroups, bump their version in the groupName.
-      // more gracefully, copy the old nodegroup with a new version, up,
-      // and then delete the old one in a subsequent up.
-      ignoreChanges: ['instanceTypes', 'scalingConfig.desiredSize'],
-      deleteBeforeReplace: false,
-    },
+            // These labels can be used to target specific node groups for workloads
+            // and will be understood by the auto-scaler for min=0 node groups.
+            'k8s.io/cluster-autoscaler/node-template/label/bes.node.group': groupName,
+            'k8s.io/cluster-autoscaler/node-template/label/bes.node.purpose': purpose,
+            'k8s.io/cluster-autoscaler/node-template/label/bes.node.schedule': schedule,
+            'k8s.io/cluster-autoscaler/node-template/label/bes.node.arch': arch,
+          },
+        },
+        {
+          // to recreate nodegroups, bump their version in the groupName.
+          // more gracefully, copy the old nodegroup with a new version, up,
+          // and then delete the old one in a subsequent up.
+          ignoreChanges: ['instanceTypes', 'scalingConfig.desiredSize'],
+          deleteBeforeReplace: false,
+        },
+      );
+    }),
   );
 }
