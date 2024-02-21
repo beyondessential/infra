@@ -4,7 +4,7 @@ import { CoreV1Api } from '@kubernetes/client-node';
 import { cfg } from '../../../common/k8s/coreRef.js';
 import { k8sClient } from '../../../common/k8s/client.js';
 import { namespace } from '../namespace.js';
-import { renderString } from 'nunjucks';
+import nunjucks from 'nunjucks';
 
 export interface TemplatedConfigArgs {
   parent: ComponentResource;
@@ -41,7 +41,7 @@ export function templatedConfig({
         ...Object.fromEntries(
           Object.entries(map.body.data ?? {}).map(([key, value]) => {
             if (key.endsWith('.njk') && typeof value === 'string') {
-              return [key.slice(0, -4), renderString(value, templateData ?? {})];
+              return [key.slice(0, -4), nunjucks.renderString(value, templateData ?? {})];
             }
 
             return [key, value];

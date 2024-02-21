@@ -1,7 +1,6 @@
 import { failIfIncorrectCluster } from '../common/k8s/coreRef.js';
 await failIfIncorrectCluster();
 
-import './certManager.js';
 import './gatewayApi.js';
 import './ingress.js';
 import './metrics/prometheus.js';

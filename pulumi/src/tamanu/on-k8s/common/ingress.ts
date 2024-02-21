@@ -17,9 +17,13 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
       metadata: {
         namespace,
         name,
+        annotations: {
+          'cert-manager.io/cluster-issuer': 'zerossl',
+        },
       },
       spec: {
         ingressClassName: 'nginx',
+        tls: [{ hosts: [host], secretName: `${name}-tls` }],
         rules: [
           {
             host,

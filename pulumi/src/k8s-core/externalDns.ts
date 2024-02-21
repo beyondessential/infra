@@ -8,7 +8,9 @@ import { cfg } from '../common/coreRef.js';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
 import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.js';
 
-const externalDnsZones: string[] = cfg.requireObject('externalDnsZones');
+const externalDnsZones: { [domain: string]: string } = cfg.requireObject('externalDnsZones');
+export const externalDnsZoneDomains = Object.keys(externalDnsZones);
+export const externalDnsZoneIds = Object.values(externalDnsZones);
 
 const policy = new awsClassic.iam.Policy('extdns-policy', {
   namePrefix: 'EKSExternalDNS-',
@@ -19,7 +21,7 @@ const policy = new awsClassic.iam.Policy('extdns-policy', {
       {
         Effect: 'Allow',
         Action: ['route53:ChangeResourceRecordSets'],
-        Resource: Object.values(externalDnsZones).map(
+        Resource: externalDnsZoneIds.map(
           (zone) => `arn:aws:route53:::hostedzone/${zone}`,
         ),
       },
@@ -136,7 +138,7 @@ new k8s.apps.v1.Deployment(
               args: [
                 '--source=service',
                 '--source=ingress',
-                ...Object.keys(externalDnsZones).map(
+                ...externalDnsZoneDomains.map(
                   (zone) => interpolate`--domain-filter=${zone}`,
                 ),
                 '--provider=aws',
