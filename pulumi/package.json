@@ -8,6 +8,7 @@
     "@types/lodash-es": "^4.17.9",
     "@types/netmask": "^2.0.3",
     "@types/node": "^20.7.0",
+    "@types/nunjucks": "^3.2.6",
     "chokidar": "^3.5.3",
     "eslint-plugin-prettier": "^4.2.1"
   },
@@ -25,6 +26,7 @@
     "@pulumi/tailscale": "^0.13.1",
     "lodash-es": "^4.17.21",
     "netmask": "^2.0.2",
+    "nunjucks": "^3.2.4",
     "yaml": "^2.3.4"
   },
   "scripts": {

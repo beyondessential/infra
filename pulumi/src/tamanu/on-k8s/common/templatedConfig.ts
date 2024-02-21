@@ -4,6 +4,7 @@ import { CoreV1Api } from '@kubernetes/client-node';
 import { cfg } from '../../../common/k8s/coreRef.js';
 import { k8sClient } from '../../../common/k8s/client.js';
 import { namespace } from '../namespace.js';
+import { renderString } from 'nunjucks';
 
 export interface TemplatedConfigArgs {
   parent: ComponentResource;
@@ -11,6 +12,7 @@ export interface TemplatedConfigArgs {
   template?: string;
   name: string;
   additionalData?: { [key: string]: string };
+  templateData?: object;
 }
 
 const k8sApi = k8sClient(CoreV1Api);
@@ -21,6 +23,7 @@ export function templatedConfig({
   template = cfg.get(kind) ?? 'basic',
   name,
   additionalData = {},
+  templateData = {},
 }: TemplatedConfigArgs): k8s.core.v1.ConfigMap {
   const templateName = `${kind}-template-${template}`;
   const original = k8sApi.readNamespacedConfigMap(templateName, 'tamanu-system');
@@ -35,7 +38,15 @@ export function templatedConfig({
         },
       },
       data: original.then((map) => ({
-        ...(map.body.data ?? {}),
+        ...Object.fromEntries(
+          Object.entries(map.body.data ?? {}).map(([key, value]) => {
+            if (key.endsWith('.njk') && typeof value === 'string') {
+              return [key.slice(0, -4), renderString(value, templateData ?? {})];
+            }
+
+            return [key, value];
+          }),
+        ),
         ...additionalData,
       })),
       binaryData: original.then((map) => map.body.binaryData ?? {}),
