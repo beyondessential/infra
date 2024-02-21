@@ -96,10 +96,10 @@
   },
   integrations: {
     vdsNc: {
-      enabled: true,
+      enabled: false,
     },
     signer: {
-      enabled: true,
+      enabled: false,
       keySecret: 'REDACTED',
     },
     fhir: {
