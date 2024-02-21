@@ -49,7 +49,6 @@ export function runWeb(
     {
       metadata: {
         namespace,
-        name: `${name}-web`,
       },
       spec: {
         replicas,

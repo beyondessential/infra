@@ -26,7 +26,6 @@ export function runApi(
     {
       metadata: {
         namespace,
-        name: `facility-${name}-api`,
       },
       spec: {
         ports: [

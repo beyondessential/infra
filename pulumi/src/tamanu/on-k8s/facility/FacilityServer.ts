@@ -80,6 +80,7 @@ export class FacilityServer extends ComponentResource {
       `facility-${name}`,
       {
         serverType: 'facility',
+        instance: deviceId,
       },
       { parent: this },
     );

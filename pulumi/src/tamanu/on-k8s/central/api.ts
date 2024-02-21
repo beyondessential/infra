@@ -52,7 +52,6 @@ export function runApi({
     {
       metadata: {
         namespace,
-        name: 'central-api',
       },
       spec: {
         replicas,
