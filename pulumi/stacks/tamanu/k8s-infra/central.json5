@@ -8,10 +8,6 @@
     reportNoUserError: true,
     useHardcodedPermissions: false,
   },
-  honeycomb: {
-    apiKey: 'REDACTED',
-    enabled: false,
-  },
   localisation: {
     data: {
       country: {

@@ -44,7 +44,7 @@ new k8s.core.v1.ConfigMap('config-facility-basic', {
     },
   },
   data: {
-    'production.json5': readFileSync('facility.json5', 'utf-8'),
+    'production.json5.njk': readFileSync('facility.json5.njk', 'utf-8'),
   },
 });
 

@@ -2,10 +2,6 @@
   db: {
     migrateOnStartup: false,
   },
-  honeycomb: {
-    apiKey: 'REDACTED',
-    enabled: false,
-  },
   sync: {
     enabled: true,
   },
@@ -14,7 +10,13 @@
   },
   survey: {
     defaultCodes: {
-      location: 'WaitingArea',
+      location: {% if instance == "facility-1" %}
+        'THWaitingArea'
+      {% elif instance == "facility-2" %}
+        'LHWaitingArea'
+      {% else %}
+        'WaitingArea'
+      {% endif %},
       department: 'Emergency',
     },
   },
