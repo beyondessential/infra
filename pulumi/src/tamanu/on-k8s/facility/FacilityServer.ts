@@ -52,6 +52,7 @@ export class FacilityServer extends ComponentResource {
         'custom-environment-variables.json': JSON.stringify(CONFIG_FROM_ENV),
       },
       templateData: {
+        fqdn,
         instance: `facility-${name}`,
         facilityId,
         deviceId,

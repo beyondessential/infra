@@ -51,6 +51,9 @@ export class CentralServer extends ComponentResource {
       additionalData: {
         'custom-environment-variables.json': JSON.stringify(CONFIG_FROM_ENV),
       },
+      templateData: {
+        fqdn,
+      },
     });
 
     const podSpec = podSpecFactory({
