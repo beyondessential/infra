@@ -51,6 +51,12 @@ export class FacilityServer extends ComponentResource {
       additionalData: {
         'custom-environment-variables.json': JSON.stringify(CONFIG_FROM_ENV),
       },
+      templateData: {
+        instance: `facility-${name}`,
+        facilityId,
+        deviceId,
+        timezone,
+      },
     });
 
     const podSpec = podSpecFactory({
