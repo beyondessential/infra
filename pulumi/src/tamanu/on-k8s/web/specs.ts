@@ -3,6 +3,7 @@ import * as k8s from '@pulumi/kubernetes';
 import { ImageType, image, imageTag } from '../image.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
+import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
 
 export type ServerType = Exclude<ImageType, 'frontend'>;
 
@@ -26,16 +27,13 @@ export function appLabels(serverType: ServerType, instance?: string): { [key: st
   };
 }
 
-export type PodSpecFactory = (
-  containerArgs?: Partial<k8s.types.input.core.v1.Container>,
-  volumes?: Input<k8s.types.input.core.v1.Volume>[],
-) => k8s.types.input.core.v1.PodSpec;
-
 export function podSpecFactory(): PodSpecFactory {
-  return (
-    { volumeMounts = [], ...containerArgs }: Partial<k8s.types.input.core.v1.Container> = {},
-    volumes: Input<k8s.types.input.core.v1.Volume>[] = [],
-  ): k8s.types.input.core.v1.PodSpec => ({
+  return ({
+    podType,
+    podSpreadSelector,
+    containerArgs: { volumeMounts = [], ...containerArgs } = {},
+    volumes = [],
+  }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
       nodeAffinity: {
@@ -53,11 +51,12 @@ export function podSpecFactory(): PodSpecFactory {
           ],
         },
       },
+      podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
     },
     volumes,
     containers: [
       {
-        name: 'web',
+        name: podType,
         image: image('frontend'),
         imagePullPolicy: 'IfNotPresent',
         volumeMounts,

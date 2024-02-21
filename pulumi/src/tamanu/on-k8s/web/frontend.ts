@@ -1,7 +1,8 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.js';
-import { PodSpecFactory, ServerType, appLabels, appSelector } from './specs.js';
+import { ServerType, appLabels, appSelector } from './specs.js';
+import { PodSpecFactory } from '../common/specFactory.js';
 
 export interface RunWebArgs {
   parent: ComponentResource;
@@ -60,28 +61,32 @@ export function runWeb(
             labels: appLabels(serverType, instance),
           },
           spec: podSpec({
-            ports: [
-              {
-                containerPort: 3000,
-                name: 'http',
+            podType: 'http',
+            podSpreadSelector: appSelector(serverType, instance),
+            containerArgs: {
+              ports: [
+                {
+                  containerPort: 3000,
+                  name: 'http',
+                },
+              ],
+              // Wait up to 60 seconds for the server to start...
+              startupProbe: {
+                periodSeconds: 1,
+                failureThreshold: 60,
+                httpGet: {
+                  path: '/',
+                  port: 3000,
+                },
               },
-            ],
-            // Wait up to 60 seconds for the server to start...
-            startupProbe: {
-              periodSeconds: 1,
-              failureThreshold: 60,
-              httpGet: {
-                path: '/',
-                port: 3000,
-              },
-            },
-            // ...then continuously check if it's up, and restart if it fails
-            livenessProbe: {
-              periodSeconds: 10,
-              failureThreshold: 2,
-              httpGet: {
-                path: '/',
-                port: 3000,
+              // ...then continuously check if it's up, and restart if it fails
+              livenessProbe: {
+                periodSeconds: 10,
+                failureThreshold: 2,
+                httpGet: {
+                  path: '/',
+                  port: 3000,
+                },
               },
             },
           }),

@@ -1,7 +1,8 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.js';
-import { PodSpecFactory, appLabels, appSelector } from './specs.js';
+import { appLabels, appSelector } from './specs.js';
+import { PodSpecFactory } from '../common/specFactory.js';
 
 export interface RunTasksArgs {
   parent: ComponentResource;
@@ -35,9 +36,7 @@ export function runTasks({
           metadata: {
             labels: appLabels('task-runner'),
           },
-          spec: {
-            ...podSpec('task-runner', ['tasks']),
-          },
+          spec: podSpec({ podType: 'task-runner', command: ['tasks'] }),
         },
       },
     },

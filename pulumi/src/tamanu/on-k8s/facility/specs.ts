@@ -1,10 +1,11 @@
-import { Input, Output, output } from '@pulumi/pulumi';
+import { Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { image, imageTag } from '../image.js';
 import { namespace } from '../namespace.js';
 import { PostgresReady } from '../common/postgres.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
+import { PodSpecFactory, PodSpecArgs, podSpreadAntiAffinity } from '../common/specFactory.js';
 
 export function appSelector(component: string, deviceId: string): { [key: string]: string } {
   return {
@@ -21,7 +22,7 @@ export function appLabels(component: string, deviceId: string): { [key: string]:
   };
 }
 
-export interface PodSpecArgs {
+export interface PodSpecFactoryArgs {
   name: string;
   timezone: string;
   appConfig: Output<string>;
@@ -31,13 +32,6 @@ export interface PodSpecArgs {
   centralApiUrl: string;
 }
 
-export type PodSpecFactory = (
-  podType: string,
-  command: string[],
-  containerArgs?: Partial<k8s.types.input.core.v1.Container>,
-  volumes?: Input<k8s.types.input.core.v1.Volume>[],
-) => k8s.types.input.core.v1.PodSpec;
-
 export function podSpecFactory({
   name,
   timezone,
@@ -46,13 +40,14 @@ export function podSpecFactory({
   facilityId,
   deviceId,
   centralApiUrl,
-}: PodSpecArgs): PodSpecFactory {
-  return (
-    podType: string,
-    command: string[],
-    { volumeMounts = [], ...containerArgs }: Partial<k8s.types.input.core.v1.Container> = {},
-    volumes: Input<k8s.types.input.core.v1.Volume>[] = [],
-  ): k8s.types.input.core.v1.PodSpec => ({
+}: PodSpecFactoryArgs): PodSpecFactory {
+  return ({
+    podType,
+    podSpreadSelector,
+    command,
+    containerArgs: { volumeMounts = [], ...containerArgs } = {},
+    volumes = [],
+  }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
       nodeAffinity: {
@@ -95,6 +90,7 @@ export function podSpecFactory({
           },
         ],
       },
+      podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
     },
     volumes: [
       {

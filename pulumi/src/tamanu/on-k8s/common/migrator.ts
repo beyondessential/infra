@@ -1,7 +1,7 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.js';
-import { PodSpecFactory } from '../facility/specs.js';
+import { PodSpecFactory } from './specFactory.js';
 
 export interface MigratorArgs {
   parent: ComponentResource;
@@ -9,7 +9,10 @@ export interface MigratorArgs {
   appConfig: k8s.core.v1.ConfigMap;
 }
 
-export function migrator(name: string, { parent, podSpec, appConfig }: MigratorArgs): k8s.batch.v1.Job {
+export function migrator(
+  name: string,
+  { parent, podSpec, appConfig }: MigratorArgs,
+): k8s.batch.v1.Job {
   return new k8s.batch.v1.Job(
     `${name}-migrator`,
     {
@@ -20,7 +23,7 @@ export function migrator(name: string, { parent, podSpec, appConfig }: MigratorA
         backoffLimit: 5,
         template: {
           spec: {
-            ...podSpec('migrator', ['migrate']),
+            ...podSpec({ podType: 'migrator', command: ['migrate'] }),
             restartPolicy: 'Never',
           },
         },

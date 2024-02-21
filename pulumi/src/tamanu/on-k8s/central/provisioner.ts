@@ -2,7 +2,7 @@ import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { namespace } from '../namespace.js';
-import { PodSpecFactory } from './specs.js';
+import { PodSpecFactory } from '../common/specFactory.js';
 
 export interface MigratorArgs {
   parent: ComponentResource;
@@ -27,10 +27,10 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s
         backoffLimit: 2,
         template: {
           spec: {
-            ...podSpec(
-              'provisioner',
-              ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json5'],
-              {
+            ...podSpec({
+              podType: 'provisioner',
+              command: ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json5'],
+              containerArgs: {
                 volumeMounts: [
                   {
                     name: 'provisioning-volume',
@@ -38,7 +38,7 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s
                   },
                 ],
               },
-              [
+              volumes: [
                 {
                   name: 'provisioning-volume',
                   configMap: {
@@ -46,7 +46,7 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s
                   },
                 },
               ],
-            ),
+            }),
             restartPolicy: 'Never',
           },
         },

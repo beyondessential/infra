@@ -1,10 +1,11 @@
-import { Input, Output, output } from '@pulumi/pulumi';
+import { Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { namespace } from '../namespace.js';
 import { PostgresReady } from '../common/postgres.js';
 import { image, imageTag } from '../image.js';
+import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
@@ -20,26 +21,20 @@ export function appLabels(component: string): { [key: string]: string } {
   };
 }
 
-export interface PodSpecArgs {
+export interface PodSpecFactoryArgs {
   timezone: string;
   appConfig: Output<string>;
   dbReady: PostgresReady;
 }
 
-export type PodSpecFactory = (
-  podName: string,
-  command: string[],
-  containerArgs?: Partial<k8s.types.input.core.v1.Container>,
-  volumes?: Input<k8s.types.input.core.v1.Volume>[],
-) => k8s.types.input.core.v1.PodSpec;
-
-export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecArgs): PodSpecFactory {
-  return (
-    podName: string,
-    command: string[],
-    { volumeMounts = [], ...containerArgs }: Partial<k8s.types.input.core.v1.Container> = {},
-    volumes: Input<k8s.types.input.core.v1.Volume>[] = [],
-  ): k8s.types.input.core.v1.PodSpec => {
+export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecFactoryArgs): PodSpecFactory {
+  return ({
+    podType,
+    podSpreadSelector,
+    command,
+    containerArgs: { volumeMounts = [], ...containerArgs } = {},
+    volumes = [],
+  }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => {
     return {
       tolerations: [CAN_RUN_ON_SPOT],
       affinity: {
@@ -83,6 +78,7 @@ export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecArgs): P
             },
           ],
         },
+        podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
       },
       volumes: [
         {
@@ -95,7 +91,7 @@ export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecArgs): P
       ],
       containers: [
         {
-          name: podName,
+          name: podType,
           image: image('central'),
           imagePullPolicy: 'IfNotPresent',
           args: command,

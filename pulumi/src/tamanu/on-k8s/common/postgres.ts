@@ -62,13 +62,12 @@ export function runPostgres({
             'bes.node.purpose': 'workload',
           },
           additionalPodAntiAffinity: {
-            // Spread out the database pods across nodes by trying to avoid
-            // nodes that already have databases in this namespace.
+            // spread out the database pods across AZs
             preferredDuringSchedulingIgnoredDuringExecution: [
               {
                 weight: 20,
                 podAffinityTerm: {
-                  topologyKey: 'kubernetes.io/hostname',
+                  topologyKey: 'topology.kubernetes.io/zone',
                   labelSelector: {
                     matchExpressions: [
                       {
