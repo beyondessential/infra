@@ -5,6 +5,7 @@ import { k8sWaitFor } from '../../../common/k8s/waitFor.js';
 import { namespace } from '../namespace.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT } from '../../../common/k8s/affinities.js';
+import { postgresUrlSecret } from './postgresUrl.js';
 
 export interface PostgresArgs {
   parent: ComponentResource;
@@ -101,7 +102,7 @@ export function runPostgres({
     { parent },
   );
 
-  return k8sWaitFor(
+  const dbReady = k8sWaitFor(
     `${name}-db`,
     async (kc, namespace) => {
       const k8sApi = kc.makeApiClient(CoreV1Api);
@@ -113,4 +114,6 @@ export function runPostgres({
     },
     namespace,
   );
+  postgresUrlSecret({ parent, name, dbReady });
+  return dbReady;
 }
