@@ -22,10 +22,7 @@ const imagePushRole = new Role('github-actions-image-push', {
           StringLike: {
             [`${url}:sub`]: [
               // Tamanu builds
-              'repo:beyondessential/tamanu:pull_request',
-              'repo:beyondessential/tamanu:ref:refs/heads/main',
-              'repo:beyondessential/tamanu:ref:refs/heads/release/*',
-              'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+              'repo:beyondessential/tamanu:*',
 
               // Tamanu builds (testbed)
               'repo:beyondessential/tamanu-new-branching:*',
@@ -68,10 +65,7 @@ const imagePullRole = new Role('github-actions-image-pull', {
           StringLike: {
             [`${url}:sub`]: [
               // Tamanu builds
-              'repo:beyondessential/tamanu:pull_request',
-              'repo:beyondessential/tamanu:ref:refs/heads/main',
-              'repo:beyondessential/tamanu:ref:refs/heads/release/*',
-              'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+              'repo:beyondessential/tamanu:*',
 
               // Tamanu builds (testbed)
               'repo:beyondessential/tamanu-new-branching:*',
