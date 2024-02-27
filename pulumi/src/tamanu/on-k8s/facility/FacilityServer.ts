@@ -7,15 +7,14 @@ import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
 import { runApi } from './api.js';
 import { ingress } from '../common/ingress.js';
 import { WebFrontend } from '../web/WebFrontend.js';
+import { ReplicaConfig, dbStorage, timezone } from '../config.js';
 
 export interface FacilityServerArgs {
   fqdn: string;
   centralApiUrl: string;
   facilityId: string;
   deviceId: string;
-  dbReplicas?: number;
-  dbStorage?: string;
-  timezone?: string;
+  replicas: ReplicaConfig;
 }
 
 export class FacilityServer extends ComponentResource {
@@ -23,15 +22,7 @@ export class FacilityServer extends ComponentResource {
 
   constructor(
     name: string,
-    {
-      fqdn,
-      centralApiUrl,
-      facilityId,
-      deviceId,
-      dbReplicas = 2, // as it runs on spot
-      dbStorage = '5Gi',
-      timezone = 'UTC',
-    }: FacilityServerArgs,
+    { fqdn, centralApiUrl, facilityId, deviceId, replicas }: FacilityServerArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:tamanu:FacilityServer', name, {}, opts);
@@ -39,7 +30,7 @@ export class FacilityServer extends ComponentResource {
     const dbReady = runPostgres({
       parent: this,
       name: `facility-${name}`,
-      replicas: dbReplicas,
+      replicas: replicas.db,
       storage: dbStorage,
       timezone,
     });
@@ -81,6 +72,7 @@ export class FacilityServer extends ComponentResource {
       deviceId,
       podSpec,
       migratorJob,
+      replicas: replicas.api,
     });
 
     const web = new WebFrontend(
@@ -88,6 +80,7 @@ export class FacilityServer extends ComponentResource {
       {
         serverType: 'facility',
         instance: deviceId,
+        replicas: replicas.web,
       },
       { parent: this },
     );

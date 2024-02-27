@@ -1,10 +1,10 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
-import { cfg } from '../../../common/k8s/coreRef.js';
 import { k8sClient } from '../../../common/k8s/client.js';
 import { namespace } from '../namespace.js';
 import nunjucks from 'nunjucks';
+import { DEFAULT_CONFIG_TEMPLATE, configTemplate } from '../config.js';
 
 export interface TemplatedConfigArgs {
   parent: ComponentResource;
@@ -17,16 +17,26 @@ export interface TemplatedConfigArgs {
 
 const k8sApi = k8sClient(CoreV1Api);
 
+async function getTemplate(kind: string, name: string) {
+  try {
+    return await k8sApi.readNamespacedConfigMap(`${kind}-template-${name}`, 'tamanu-system');
+  } catch (_) {
+    return await k8sApi.readNamespacedConfigMap(
+      `${kind}-template-${DEFAULT_CONFIG_TEMPLATE}`,
+      'tamanu-system',
+    );
+  }
+}
+
 export function templatedConfig({
   parent,
   kind,
-  template = cfg.get(kind) ?? 'basic',
   name,
   additionalData = {},
   templateData = {},
 }: TemplatedConfigArgs): k8s.core.v1.ConfigMap {
-  const templateName = `${kind}-template-${template}`;
-  const original = k8sApi.readNamespacedConfigMap(templateName, 'tamanu-system');
+  const templateName = `${kind}-template-${configTemplate}`;
+  const original = getTemplate(kind, configTemplate);
 
   return new k8s.core.v1.ConfigMap(
     name,

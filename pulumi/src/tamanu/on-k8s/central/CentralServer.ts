@@ -9,13 +9,11 @@ import { runTasks } from './tasks.js';
 import { runApi } from './api.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ingress } from '../common/ingress.js';
+import { ReplicaConfig, dbStorage, timezone } from '../config.js';
 
 export interface CentralServerArgs {
   fqdn: string;
-  apiReplicas?: number;
-  dbReplicas?: number;
-  dbStorage?: string;
-  timezone?: string;
+  replicas: ReplicaConfig;
 }
 
 export class CentralServer extends ComponentResource {
@@ -24,13 +22,7 @@ export class CentralServer extends ComponentResource {
 
   constructor(
     name: string,
-    {
-      fqdn,
-      apiReplicas = 2,
-      dbReplicas = 2,
-      dbStorage = '10Gi',
-      timezone = 'UTC',
-    }: CentralServerArgs,
+    { fqdn, replicas }: CentralServerArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:tamanu:CentralServer', name, {}, opts);
@@ -39,7 +31,7 @@ export class CentralServer extends ComponentResource {
     const dbReady = runPostgres({
       parent: this,
       name: 'central',
-      replicas: dbReplicas,
+      replicas: replicas.db,
       storage: dbStorage,
       timezone,
     });
@@ -65,16 +57,18 @@ export class CentralServer extends ComponentResource {
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
     const provisionerJob = provisioner({ parent: this, podSpec, migratorJob });
 
-    runTasks({
-      parent: this,
-      podSpec,
-      migratorJob,
-      provisionerJob,
-    });
+    if (replicas.tasks > 0) {
+      runTasks({
+        parent: this,
+        podSpec,
+        migratorJob,
+        provisionerJob,
+      });
+    }
 
     const api = runApi({
       parent: this,
-      replicas: apiReplicas,
+      replicas: replicas.api,
       podSpec,
       migratorJob,
       provisionerJob,
@@ -84,6 +78,7 @@ export class CentralServer extends ComponentResource {
       'central',
       {
         serverType: 'central',
+        replicas: replicas.web,
       },
       { parent: this },
     );
