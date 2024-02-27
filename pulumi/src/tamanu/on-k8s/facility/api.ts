@@ -62,7 +62,7 @@ export function runApi(
           spec: podSpec({
             podType: 'server',
             podSpreadSelector: appSelector('server', deviceId),
-            command: ['serve'],
+            command: ['startApi'],
             containerArgs: {
               ports: [
                 {
