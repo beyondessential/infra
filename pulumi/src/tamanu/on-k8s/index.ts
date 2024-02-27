@@ -39,3 +39,10 @@ new k8s.networking.v1.Ingress('bare-domain', {
     ],
   },
 });
+
+export const urls = Object.fromEntries(
+  Object.entries(domains).map(([key, value]) => [
+    `${key[0].toUpperCase()}${key.slice(1).replace(/(\d)/, ' $1')}`,
+    `https://${value}`,
+  ]),
+);
