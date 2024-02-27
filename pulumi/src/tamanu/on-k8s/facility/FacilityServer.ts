@@ -8,6 +8,7 @@ import { runApi } from './api.js';
 import { ingress } from '../common/ingress.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ReplicaConfig, dbStorage, timezone } from '../config.js';
+import { runTasks } from './tasks.js';
 
 export interface FacilityServerArgs {
   fqdn: string;
@@ -66,6 +67,15 @@ export class FacilityServer extends ComponentResource {
       podSpec,
       appConfig,
     });
+
+    if (replicas.tasks > 0) {
+      runTasks(name, {
+        parent: this,
+        deviceId,
+        podSpec,
+        migratorJob,
+      });
+    }
 
     const api = runApi(name, {
       parent: this,

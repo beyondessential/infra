@@ -25,10 +25,6 @@ export function runTasks({
       },
       spec: {
         replicas: 1,
-        strategy: {
-          // Stop the old before starting the new, to avoid doubling up on sync
-          type: 'Recreate',
-        },
         selector: {
           matchLabels: appSelector('task-runner'),
         },
