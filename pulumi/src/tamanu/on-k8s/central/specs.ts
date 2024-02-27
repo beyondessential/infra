@@ -147,14 +147,6 @@ export function podSpecFactory({
                 },
               },
             },
-            {
-              name: 'PROXY_TRUST_V4',
-              value: $network.apply((network) => network.v4Cidr.apply((cidr) => cidr!)),
-            },
-            {
-              name: 'PROXY_TRUST_V6',
-              value: $network.apply((network) => network.v6Cidr.apply((cidr) => cidr!)),
-            },
           ],
           resources: {
             requests: {
@@ -174,9 +166,6 @@ export function podSpecFactory({
 }
 
 export const CONFIG_FROM_ENV = {
-  proxy: {
-    trusted: ['loopback', 'PROXY_TRUST_V4', 'PROXY_TRUST_V6'],
-  },
   db: {
     host: 'DB_HOST',
     username: 'DB_USERNAME',

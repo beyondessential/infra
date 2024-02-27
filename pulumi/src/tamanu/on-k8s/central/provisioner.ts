@@ -29,7 +29,7 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s
           spec: {
             ...podSpec({
               podType: 'provisioner',
-              command: ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json5'],
+              command: ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json'],
               containerArgs: {
                 volumeMounts: [
                   {
