@@ -6,6 +6,7 @@ import { PostgresReady } from '../common/postgres.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { PodSpecFactory, PodSpecArgs, podSpreadAntiAffinity } from '../common/specFactory.js';
+import { $network } from '../../../common/k8s/coreRef.js';
 
 export function appSelector(component: string, deviceId: string): { [key: string]: string } {
   return {

@@ -6,6 +6,7 @@ import { namespace } from '../namespace.js';
 import { PostgresReady } from '../common/postgres.js';
 import { image, imageTag } from '../image.js';
 import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
+import { $network } from '../../../common/k8s/coreRef.js';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
@@ -27,7 +28,11 @@ export interface PodSpecFactoryArgs {
   dbReady: PostgresReady;
 }
 
-export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecFactoryArgs): PodSpecFactory {
+export function podSpecFactory({
+  timezone,
+  appConfig,
+  dbReady,
+}: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
     podSpreadSelector,
@@ -142,6 +147,14 @@ export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecFactoryA
                 },
               },
             },
+            {
+              name: 'PROXY_TRUST_V4',
+              value: $network.apply((network) => network.v4Cidr.apply((cidr) => cidr!)),
+            },
+            {
+              name: 'PROXY_TRUST_V6',
+              value: $network.apply((network) => network.v6Cidr.apply((cidr) => cidr!)),
+            },
           ],
           resources: {
             requests: {
@@ -161,6 +174,9 @@ export function podSpecFactory({ timezone, appConfig, dbReady }: PodSpecFactoryA
 }
 
 export const CONFIG_FROM_ENV = {
+  proxy: {
+    trusted: ['loopback', 'PROXY_TRUST_V4', 'PROXY_TRUST_V6'],
+  },
   db: {
     host: 'DB_HOST',
     username: 'DB_USERNAME',

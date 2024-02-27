@@ -8,6 +8,9 @@
     reportNoUserError: true,
     useHardcodedPermissions: false,
   },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
   localisation: {
     data: {
       country: {

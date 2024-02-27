@@ -8,7 +8,9 @@
   auth: {
     useHardcodedPermissions: false,
     secret: 'REDACTED',
-    refreshSecret: 'REDACTED',
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
   survey: {
     defaultCodes: {

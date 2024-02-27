@@ -24,6 +24,7 @@
     "@pulumi/postgresql": "^3.10.0",
     "@pulumi/pulumi": "^3.86.0",
     "@pulumi/tailscale": "^0.13.1",
+    "json5": "^2.2.3",
     "lodash-es": "^4.17.21",
     "netmask": "^2.0.2",
     "nunjucks": "^3.2.4",
