@@ -1,4 +1,4 @@
-import { ComponentResource, Output, interpolate, secret } from '@pulumi/pulumi';
+import { ComponentResource, Output, all, interpolate, secret } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { namespace } from '../namespace.js';
@@ -11,24 +11,29 @@ export interface PostgresUrlArgs {
   dbReady: PostgresReady,
 }
 
-function dbPassword(name: string, user: string): Output<null | string> {
-  return secret(namespace.apply(async namespace => {
-    const kc = k8sConfig();
-    const k8sApi = kc.makeApiClient(CoreV1Api);
+function dbPassword(dbReady: PostgresReady, name: string, user: string): Output<null | string> {
+  return secret(all([namespace, dbReady]).apply(async ([namespace]) => {
+    try {
+      const kc = k8sConfig();
+      const k8sApi = kc.makeApiClient(CoreV1Api);
 
-    const kSecret = await k8sApi.readNamespacedSecret(`${name}-db-${user}`, namespace);
-    const hidden = kSecret.body.data?.['password'];
-    if (!hidden) {
+      const kSecret = await k8sApi.readNamespacedSecret(`${name}-db-${user}`, namespace);
+      const hidden = kSecret.body.data?.['password'];
+      if (!hidden) {
+        return null;
+      }
+
+      return Buffer.from(hidden, 'base64').toString('utf-8');
+    } catch (err) {
+      console.error(`Secret ${name}-db-${user} not found or not ready: ${err}`);
       return null;
     }
-
-    return Buffer.from(hidden, 'base64').toString('utf-8');
   }));
 }
 
 export function postgresUrlSecret({ parent, name, dbReady }: PostgresUrlArgs): k8s.core.v1.Secret {
-  const appPassword = dbReady.apply(() => dbPassword(name, 'app'));
-  const postgresPassword = dbReady.apply(() => dbPassword(name, 'superuser'));
+  const appPassword = dbPassword(dbReady, name, 'app');
+  const postgresPassword = dbPassword(dbReady, name, 'superuser');
 
   return new k8s.core.v1.Secret(
     `${name}-db-url`,

@@ -21,6 +21,9 @@ async function getTemplate(kind: string, name: string) {
   try {
     return await k8sApi.readNamespacedConfigMap(`${kind}-template-${name}`, 'tamanu-system');
   } catch (_) {
+    console.log(
+      `Wanted template ${name} isn't available, falling back to ${DEFAULT_CONFIG_TEMPLATE}`,
+    );
     return await k8sApi.readNamespacedConfigMap(
       `${kind}-template-${DEFAULT_CONFIG_TEMPLATE}`,
       'tamanu-system',
