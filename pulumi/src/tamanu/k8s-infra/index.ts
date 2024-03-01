@@ -1,11 +1,11 @@
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, read, readFileSync } from 'node:fs';
 import * as k8s from '@pulumi/kubernetes';
 import { failIfIncorrectCluster } from '../../common/k8s/coreRef.js';
 await failIfIncorrectCluster();
 
-function readConfig(template: string, name: string) {
+function readConfig(template: string, name: string, encoding: BufferEncoding = 'utf-8') {
   const dir = join(dirname(fileURLToPath(import.meta.url)), 'templates', template);
   const filename = join(dir, existsSync(join(dir, name)) ? name : `${name}.njk`);
   if (!existsSync(filename)) {
@@ -13,7 +13,7 @@ function readConfig(template: string, name: string) {
   }
 
   return {
-    [filename]: readFileSync(filename, 'utf-8'),
+    [basename(filename)]: readFileSync(filename, encoding),
   };
 }
 
@@ -35,8 +35,14 @@ for (const template of ['basic']) {
         },
       },
       data: readConfig(template, 'provisioning.json5'),
+      binaryData: {
+        ...readConfig(template, 'referencedata.xlsx', 'base64'),
+        ...readConfig(template, 'immunisation.xlsx', 'base64'),
+        ...readConfig(template, 'ncd-primary-screening.xlsx', 'base64'),
+        ...readConfig(template, 'vitals.xlsx', 'base64'),
+      },
     },
-    { ignoreChanges: ['data', 'binaryData', 'stringData'] },
+    // { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
 
   new k8s.core.v1.ConfigMap(
@@ -51,7 +57,7 @@ for (const template of ['basic']) {
       },
       data: readConfig(template, 'central.json5'),
     },
-    { ignoreChanges: ['data', 'binaryData', 'stringData'] },
+    // { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
 
   new k8s.core.v1.ConfigMap(
@@ -66,7 +72,7 @@ for (const template of ['basic']) {
       },
       data: readConfig(template, 'facility.json5'),
     },
-    { ignoreChanges: ['data', 'binaryData', 'stringData'] },
+    // { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
 }
 

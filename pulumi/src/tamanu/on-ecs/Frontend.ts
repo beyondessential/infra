@@ -1,7 +1,7 @@
 import { ComponentResource, ComponentResourceOptions, Output, StackReference, all } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import * as awsClassic from '@pulumi/aws';
-import { cpuArchitecture } from './config';
+import { cpuArchitecture } from './config.js';
 
 export interface FrontendArgs {
   ecs: awsClassic.ecs.Cluster;

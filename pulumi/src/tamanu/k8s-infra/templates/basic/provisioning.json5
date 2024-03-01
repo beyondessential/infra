@@ -23,4 +23,12 @@
       password: 'sync',
     },
   },
+
+  referenceData: [{ file: '/provisioning/referencedata.xlsx' }],
+
+  programs: [
+    { file: '/provisioning/immunisation.xlsx' },
+    { file: '/provisioning/ncd-primary-screening.xlsx' },
+    { file: '/provisioning/vitals.xlsx' },
+  ],
 }
