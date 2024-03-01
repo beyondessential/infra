@@ -3,6 +3,7 @@ import * as awsx from '@pulumi/awsx';
 import * as awsClassic from '@pulumi/aws';
 import { Endpoint } from './Endpoint.js';
 import { Frontend } from './Frontend.js';
+import { cpuArchitecture } from './config.js';
 
 export interface RouterArgs {
   ecs: awsClassic.ecs.Cluster;
@@ -45,7 +46,7 @@ export class Router extends ComponentResource {
       cpu: (0.25 * 1024).toString(),
       runtimePlatform: {
         operatingSystemFamily: 'LINUX',
-        cpuArchitecture: 'X86_64',
+        cpuArchitecture,
       },
       container: {
         name: 'haproxy',

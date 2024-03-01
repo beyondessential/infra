@@ -12,6 +12,7 @@ import { Service } from '@pulumi/aws/servicediscovery/index.js';
 import { Parameter } from '@pulumi/aws/ssm/index.js';
 import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam/index.js';
 import { Endpoint } from './Endpoint.js';
+import { cpuArchitecture } from './config.js';
 
 export interface ServerArgs {
   ecs: ECSCluster;
@@ -319,7 +320,7 @@ export class Server extends ComponentResource {
       cpu: (cores * 1024).toString(),
       runtimePlatform: {
         operatingSystemFamily: 'LINUX',
-        cpuArchitecture: 'X86_64',
+        cpuArchitecture,
       },
       containers: Object.fromEntries(containers.map((container) => [container.name, container])),
       volumes: [{ name: 'config' }],

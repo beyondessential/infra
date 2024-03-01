@@ -1,6 +1,7 @@
 import { ComponentResource, ComponentResourceOptions, Output, StackReference, all } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import * as awsClassic from '@pulumi/aws';
+import { cpuArchitecture } from './config';
 
 export interface FrontendArgs {
   ecs: awsClassic.ecs.Cluster;
@@ -80,7 +81,7 @@ export class Frontend extends ComponentResource {
       cpu: (0.25 * 1024).toString(),
       runtimePlatform: {
         operatingSystemFamily: 'LINUX',
-        cpuArchitecture: 'X86_64',
+        cpuArchitecture,
       },
       containers: {
         web: {
