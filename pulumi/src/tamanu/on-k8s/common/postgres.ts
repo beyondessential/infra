@@ -2,9 +2,10 @@ import { ComponentResource, Input, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from '../../../common/k8s/waitFor.js';
-import { namespace } from '../namespace.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT } from '../../../common/k8s/affinities.js';
+import { namespace } from '../namespace.js';
+import { architecture } from '../config.js';
 import { postgresUrlSecret } from './postgresUrl.js';
 
 export interface PostgresArgs {
@@ -59,7 +60,7 @@ export function runPostgres({
           nodeSelector: {
             // Because we colocate the databases with their servers, we stick
             // to the same architecture, until we can build for arm64.
-            'bes.node.arch': 'amd64',
+            'bes.node.arch': architecture,
             'bes.node.purpose': 'workload',
           },
           additionalPodAntiAffinity: {

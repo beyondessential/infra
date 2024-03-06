@@ -1,12 +1,17 @@
 import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/k8s/coreRef.js';
+import { Architecture } from '../../common/k8s/affinities.js';
 
 export const domainBase = cfg.get('domainBase') ?? `${getStack()}.internal.tamanu.io`;
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const architecture = cfg.get('architecture') ?? 'amd64'; // TODO
 export const facilities = cfg.getNumber('facilities') ?? 2;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList'); // TODO
+
+export const architecture: Architecture = cfg.get('architecture') ?? 'amd64';
+if (!['amd64', 'arm64'].includes(architecture)) {
+  throw new Error(`Invalid architecture: ${architecture}`);
+}
 
 export const DEFAULT_CONFIG_TEMPLATE = 'basic';
 export const configTemplate = cfg.get('configTemplate') ?? DEFAULT_CONFIG_TEMPLATE;

@@ -2,11 +2,11 @@ import { Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
-import { namespace } from '../namespace.js';
 import { PostgresReady } from '../common/postgres.js';
-import { image, imageTag } from '../image.js';
 import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
-import { $network } from '../../../common/k8s/coreRef.js';
+import { namespace } from '../namespace.js';
+import { image, imageTag } from '../image.js';
+import { architecture } from '../config.js';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
@@ -53,7 +53,7 @@ export function podSpecFactory({
           requiredDuringSchedulingIgnoredDuringExecution: {
             nodeSelectorTerms: [
               {
-                matchExpressions: [archAffinity('amd64'), purposeAffinity('workload')],
+                matchExpressions: [archAffinity(architecture), purposeAffinity('workload')],
               },
             ],
           },

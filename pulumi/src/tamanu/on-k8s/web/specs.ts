@@ -1,9 +1,10 @@
 import { Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { ImageType, image, imageTag } from '../image.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
+import { architecture } from '../config.js';
+import { ImageType, image, imageTag } from '../image.js';
 
 export type ServerType = Exclude<ImageType, 'frontend'>;
 
@@ -46,7 +47,7 @@ export function podSpecFactory(): PodSpecFactory {
         requiredDuringSchedulingIgnoredDuringExecution: {
           nodeSelectorTerms: [
             {
-              matchExpressions: [archAffinity('amd64'), purposeAffinity('workload')],
+              matchExpressions: [archAffinity(architecture), purposeAffinity('workload')],
             },
           ],
         },
