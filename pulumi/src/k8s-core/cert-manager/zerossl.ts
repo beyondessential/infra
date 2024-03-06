@@ -44,6 +44,7 @@ new k8s.apiextensions.CustomResource('zerossl', {
           selector: {},
           dns01: {
             route53: {
+              region,
             }
           },
         },
