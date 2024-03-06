@@ -4,20 +4,20 @@ import { cfg, clusterFullName } from '../common/k8s/coreRef.js';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
 import { RUN_ON_SPOT } from '../common/k8s/affinities.js';
 
-const tailscaleEnabled = cfg.requireBoolean('tailscaleEnabled');
+const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
   const tailscaleClientId = cfg.require('tailscaleClientId');
   const tailscaleClientSecret = cfg.require('tailscaleClientSecret');
 
   const ns = new k8s.core.v1.Namespace('tailscale', {
     metadata: {
-      name: 'tailscale',
+      name: 'tailscale-system',
     },
   });
 
   new k8s.helm.v3.Release('tailscale', {
     chart: 'tailscale-operator',
-    version: '1.58.2',
+    version: '1.61.11',
     repositoryOpts: {
       repo: 'https://pkgs.tailscale.com/helmcharts',
     },
@@ -26,6 +26,11 @@ if (tailscaleEnabled) {
       operatorConfig: {
         logging: 'debug',
         hostname: interpolate`k8s-operator-${clusterFullName}`,
+        securityContext: {
+          capabilities: {
+            add: ['NET_ADMIN'],
+          },
+        },
         nodeSelector: {
           'kubernetes.io/os': 'linux',
         },
