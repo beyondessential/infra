@@ -182,6 +182,25 @@ const standardGroups: NodeGroup[] =
           minPerAz: 1,
           maxPerAz: 10,
         },
+        {
+          groupName: 'system-x86-v1',
+          purpose: 'system',
+          schedule: 'spot',
+          arch: 'amd64',
+          instanceTypes: region.apply((region) =>
+            upToMonthly(
+              spotWithinOnDemandPrice(
+                nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
+                'linux',
+              ),
+              'linux',
+              'spot',
+              40,
+            ).map((i) => i.instance_type),
+          ),
+          minPerAz: 0,
+          maxPerAz: 10,
+        },
       ];
 
 for (const {
