@@ -128,6 +128,12 @@ export class Cluster extends ComponentResource {
       `internal-${this.#name}`,
       {
         tags: this.#args.tags,
+        settings: [
+          {
+            name: 'containerInsights',
+            value: 'enabled',
+          },
+        ],
       },
       { parent: this },
     );
