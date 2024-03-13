@@ -249,11 +249,13 @@ const priorities = new k8s.core.v1.ConfigMap('autoscaler-priority-expander', {
     name: 'cluster-autoscaler-priority-expander',
   },
   data: {
-    priorities: YAML.stringify({
-      50: ['.*-spot-.*'],
-      30: ['.*-arm64-.*'],
-      10: ['.*'],
-    }),
+    // cannot be JSON because the keys need to not be quoted
+    // as the go YAML unmarshaller somehow expects int keys!
+    priorities: `
+50: [".*-spot-.*"],
+30: [".*-arm64-.*"],
+10: [".*"],
+    `,
   }
 }, { provider });
 
