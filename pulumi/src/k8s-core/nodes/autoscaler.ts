@@ -252,9 +252,12 @@ const priorities = new k8s.core.v1.ConfigMap('autoscaler-priority-expander', {
     // cannot be JSON because the keys need to not be quoted
     // as the go YAML unmarshaller somehow expects int keys!
     priorities: `
-50: [".*-spot-.*"],
-30: [".*-arm64-.*"],
-10: [".*"],
+80: [".*-arm-spot-large-.*"]
+70: [".*-arm-spot-.*"]
+60: [".*-spot-large-.*"]
+50: [".*-spot-.*"]
+30: [".*-arm-.*"]
+10: [".*"]
     `,
   }
 }, { provider });
@@ -333,7 +336,7 @@ new k8s.apps.v1.Deployment(
                 '--cloud-provider=aws',
                 '--skip-nodes-with-local-storage=false',
                 '--skip-nodes-with-system-pods=false',
-                '--expander=priority,most-pods,least-waste,random',
+                '--expander=priority,most-pods,random',
                 '--balance-similar-node-groups',
                 `--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled`,
                 // TODO: add k8s.io/cluster-autoscaler/cluster=${clusterName} to restrict to EKS cluster
