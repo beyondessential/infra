@@ -331,7 +331,7 @@ new k8s.apps.v1.Deployment(
                 '--cloud-provider=aws',
                 '--skip-nodes-with-local-storage=false',
                 '--skip-nodes-with-system-pods=false',
-                '--expander=least-waste',
+                '--expander=priority,most-pods,least-waste,random',
                 '--balance-similar-node-groups',
                 `--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled`,
                 // TODO: add k8s.io/cluster-autoscaler/cluster=${clusterName} to restrict to EKS cluster
