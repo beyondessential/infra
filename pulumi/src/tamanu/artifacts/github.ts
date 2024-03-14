@@ -1,9 +1,8 @@
-import { jsonStringify } from '@pulumi/pulumi';
+import { all, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { ghaOidc } from '../../common/coreRef.js';
 import { AWS_STS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.js';
-
-const TOOLS_BUCKET = 'bes-ops-tools';
+import { clients, dbDumps, servers, tools } from './buckets.js';
 
 new awsClassic.iam.Role('gha-ops-pglies-s3', {
   name: 'gha-ops-pglies-s3',
@@ -24,7 +23,6 @@ new awsClassic.iam.Role('gha-ops-pglies-s3', {
             [`${url}:sub`]: [
               'repo:beyondessential/pg_lies:pull_request',
               'repo:beyondessential/pg_lies:ref:refs/heads/main',
-              'repo:beyondessential/pg_lies:ref:refs/heads/tav-889', // temporary
             ],
           },
         })),
@@ -40,7 +38,10 @@ new awsClassic.iam.Role('gha-ops-pglies-s3', {
           {
             Effect: 'Allow',
             Action: AWS_S3_WRITE_ACTIONS,
-            Resource: [`arn:aws:s3:::${TOOLS_BUCKET}`, `arn:aws:s3:::${TOOLS_BUCKET}/pg_lies/*`],
+            Resource: tools.bucket.bucket.apply((bucket) => [
+              `arn:aws:s3:::${bucket}`,
+              `arn:aws:s3:::${bucket}/pg_lies/*`,
+            ]),
           },
         ],
       }),
@@ -82,11 +83,13 @@ new awsClassic.iam.Role('gha-ops-scripts-s3', {
           {
             Effect: 'Allow',
             Action: ['s3:GetObject', 's3:GetBucketLocation', 's3:ListBucket', 's3:PutObject'],
-            Resource: [
-              TOOLS_BUCKET,
-              'bes-tamanu-release-clients',
-              'bes-tamanu-release-servers',
-            ].flatMap((bucket) => [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`]),
+            Resource: all([
+              tools.bucket.bucket,
+              clients.bucket.bucket,
+              servers.bucket.bucket,
+            ]).apply((buckets) =>
+              buckets.flatMap((bucket) => [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`]),
+            ),
           },
         ],
       }),
@@ -110,11 +113,7 @@ new awsClassic.iam.Role('gha-tamanu-test-data-snapshots-s3', {
             [`${url}:aud`]: AWS_STS,
           },
           StringLike: {
-            [`${url}:sub`]: [
-              'repo:beyondessential/tamanu:pull_request',
-              'repo:beyondessential/tamanu:ref:refs/heads/main',
-              'repo:beyondessential/tamanu:ref:refs/heads/release/*',
-            ],
+            [`${url}:sub`]: ['repo:beyondessential/tamanu:*'],
           },
         })),
       },
@@ -129,7 +128,10 @@ new awsClassic.iam.Role('gha-tamanu-test-data-snapshots-s3', {
           {
             Effect: 'Allow',
             Action: AWS_S3_WRITE_ACTIONS,
-            Resource: [`arn:aws:s3:::bes-tamanu-test-data-snapshots`, `arn:aws:s3:::bes-tamanu-test-data-snapshots/*`],
+            Resource: dbDumps.bucket.apply((bucket) => [
+              `arn:aws:s3:::${bucket}`,
+              `arn:aws:s3:::${bucket}/*`,
+            ]),
           },
         ],
       }),
