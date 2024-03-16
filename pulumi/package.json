@@ -3,7 +3,7 @@
   "type": "module",
   "devDependencies": {
     "@beyondessential/eslint-config-js": "^1.1.1",
-    "@swc/cli": "^0.1.62",
+    "@swc/cli": "^0.3.10",
     "@swc/core": "^1.3.90",
     "@types/lodash-es": "^4.17.9",
     "@types/netmask": "^2.0.3",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.418.0",
-    "@kubernetes/client-node": "^0.19.0",
+    "@kubernetes/client-node": "^0.20.0",
     "@pulumi/aws": "^6.2.1",
     "@pulumi/aws-native": "^0.77.0",
     "@pulumi/awsx": "^1.0.5",
@@ -31,7 +31,7 @@
     "yaml": "^2.3.4"
   },
   "scripts": {
-    "build": "swc ./src --out-dir ./build --source-maps --copy-files",
+    "build": "swc ./src --out-dir ./build --source-maps --copy-files --strip-leading-paths",
     "watch": "npm run build -- --watch",
     "postinstall": "npm run build"
   }
