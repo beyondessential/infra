@@ -1,5 +1,7 @@
-import { Config } from '@pulumi/pulumi';
-import * as aws from '@pulumi/aws';
+import { Config, interpolate } from '@pulumi/pulumi';
+import * as aws from '@pulumi/aws-native';
+import * as awsClassic from '@pulumi/aws';
+import { region } from '../common/awsAccount.js';
 import { Network } from '../common/Network.js';
 import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../constants/external.js';
 
@@ -8,7 +10,7 @@ const v6 = cfg.requireBoolean('networkV6');
 const forEksCluster = cfg.getBoolean('forEksCluster');
 
 export const tags: { [key: string]: string } = cfg.getObject('tags') ?? {};
-export const { outputs: network } = new Network('core-network', {
+const $network = new Network('core-network', {
   // Generally this should be 10.xx.0.0/16,
   // where xx is the last two digits of the AWS account,
   // unless that conflicts with something else.
@@ -17,8 +19,9 @@ export const { outputs: network } = new Network('core-network', {
   eksSubnetTags: forEksCluster ? {} : false,
   tags,
 });
+export const network = $network.outputs;
 
-export const { arn: dbSubnetGroup } = new aws.rds.SubnetGroup('core-workload', {
+export const { arn: dbSubnetGroup } = new awsClassic.rds.SubnetGroup('core-workload', {
   subnetIds: network.workloadSubnetIds,
   tags: {
     Purpose: 'database',
@@ -26,8 +29,46 @@ export const { arn: dbSubnetGroup } = new aws.rds.SubnetGroup('core-workload', {
   },
 });
 
+new awsClassic.ec2.VpcEndpoint('core-endpoint-s3', {
+  serviceName: interpolate`com.amazonaws.${region}.s3`,
+  vpcId: network.vpc,
+  routeTableIds: [...$network.nats, ...$network.workloads].map((sub) => sub.routes.id),
+  tags: {
+    Name: 'core-endpoint-s3',
+    Purpose: 'nat',
+    ...tags,
+  },
+});
+
+// for ipv6/dualstack support see Private Endpoints column:
+// https://docs.aws.amazon.com/vpc/latest/userguide/aws-ipv6-support.html
+for (const service of [
+  // list of useful endpoints from here:
+  // https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html
+  'ec2',
+  'ecr.api',
+  'ecr.dkr',
+  'elasticloadbalancing',
+  'logs',
+  'sts',
+]) {
+  const slug = service.replace(/[^a-z0-9]+/g, '-');
+  new awsClassic.ec2.VpcEndpoint(`core-endpoint-workload-${slug}`, {
+    serviceName: interpolate`com.amazonaws.${region}.${service}`,
+    vpcId: network.vpc,
+    privateDnsEnabled: true,
+    subnetIds: $network.workloads.map((sub) => sub.subnet.id),
+    vpcEndpointType: 'Interface',
+    tags: {
+      Name: `core-endpoint-${slug}`,
+      Purpose: 'nat',
+      ...tags,
+    },
+  });
+}
+
 // Github Actions OIDC roles for CD
-const oidcProvider = new aws.iam.OpenIdConnectProvider('github-actions', {
+const oidcProvider = new awsClassic.iam.OpenIdConnectProvider('github-actions', {
   clientIdLists: [AWS_STS],
   url: GITHUB_OIDC_URL,
   // Not strictly needed anymore for github
@@ -40,7 +81,7 @@ export const ghaOidc = {
 
 // https://docs.aws.amazon.com/eks/latest/userguide/cni-iam-role.html#cni-iam-role-create-ipv6-policy
 export const eksCniV6Policy = v6
-  ? new aws.iam.Policy('eks-cni-ipv6', {
+  ? new awsClassic.iam.Policy('eks-cni-ipv6', {
       name: 'AmazonEKS_CNI_IPv6_Policy',
       description: 'Policy for EKS CNI IPv6',
       policy: {

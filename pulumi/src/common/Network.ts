@@ -51,20 +51,20 @@ interface SubnetBlock {
 }
 
 export class Network extends ComponentResource {
-  #name: string;
+  readonly name: string;
   #args: Required<NetworkArgs>;
 
-  #vpc: Vpc;
-  #v4igw?: InternetGateway;
-  #v6igw?: EgressOnlyInternetGateway;
-  #nats: SubnetBlock[];
-  #workloads: SubnetBlock[];
+  readonly vpc: Vpc;
+  readonly v4igw?: InternetGateway;
+  readonly v6igw?: EgressOnlyInternetGateway;
+  readonly nats: SubnetBlock[];
+  readonly workloads: SubnetBlock[];
 
-  outputs: NetworkOutputs;
+  readonly outputs: NetworkOutputs;
 
   constructor(name: string, args: NetworkArgs, opts: ComponentResourceOptions = {}) {
     super('bes:common:Network', name, {}, opts);
-    this.#name = name;
+    this.name = name;
     this.#args = {
       ipv4Cidr: false,
       v6: false,
@@ -75,13 +75,13 @@ export class Network extends ComponentResource {
     };
 
     // VPC is the top resource here.
-    this.#vpc = new Vpc(
+    this.vpc = new Vpc(
       name,
       {
         cidrBlock: args.ipv4Cidr || undefined,
         assignGeneratedIpv6CidrBlock: args.v6,
 
-        // both required for service discovery
+        // both required for service discovery and VPC endpoints
         enableDnsSupport: true,
         enableDnsHostnames: true,
 
@@ -98,33 +98,33 @@ export class Network extends ComponentResource {
 
     // V4 Internet Gateway sits outside the subnets, required for NAT and such
     // to be able to access the V4 internet, but not used directly for workloads.
-    this.#v4igw = args.ipv4Cidr
+    this.v4igw = args.ipv4Cidr
       ? new InternetGateway(
           name,
           {
-            vpcId: this.#vpc.id,
+            vpcId: this.vpc.id,
             tags: {
-              Name: `${this.#name}-ingw4`,
+              Name: `${this.name}-ingw4`,
               ...this.#args.tags,
             },
           },
-          { parent: this.#vpc },
+          { parent: this.vpc },
         )
       : undefined;
 
     // V6 Internet Gateway sits outside the subnets, use by all subnets to
     // access the V6 internet.
-    this.#v6igw = args.v6
+    this.v6igw = args.v6
       ? new EgressOnlyInternetGateway(
           name,
           {
-            vpcId: this.#vpc.id,
+            vpcId: this.vpc.id,
             tags: {
-              Name: `${this.#name}-ingw6`,
+              Name: `${this.name}-ingw6`,
               ...this.#args.tags,
             },
           },
-          { parent: this.#vpc },
+          { parent: this.vpc },
         )
       : undefined;
 
@@ -133,33 +133,33 @@ export class Network extends ComponentResource {
     // AZ, which leaves a bunch of space reserved for future expansion. In a
     // perfect world /30s would even be enough, but AWS doesn't support that.
     const appliancesV4 = this.#args.ipv4Cidr && nthSubnetV4(this.#args.ipv4Cidr, 24, 0);
-    this.#nats = this.#args.zones.map((zone, i) =>
+    this.nats = this.#args.zones.map((zone, i) =>
       this.natSubnet(zone, {
         ipv4Block: appliancesV4 ? nthSubnetV4(appliancesV4, 28, i) : undefined,
-        ipv6Block: args.v6 ? nthSubnetV6(this.#vpc.ipv6CidrBlock, i) : undefined,
+        ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, i) : undefined,
       }),
     );
 
     // Main workload subnets, covering all AZs with a v4 /24 each, and a v6 /64.
     // That gives us over 750 usable IPv4s, and basically infinite IPv6s.
-    this.#workloads = this.#args.zones.map((zone, i) =>
+    this.workloads = this.#args.zones.map((zone, i) =>
       this.workloadSubnet(zone, i + 1, {
         ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, i + 1) : undefined,
         ipv6Block: args.v6
-          ? nthSubnetV6(this.#vpc.ipv6CidrBlock, this.#nats.length + i)
+          ? nthSubnetV6(this.vpc.ipv6CidrBlock, this.nats.length + i)
           : undefined,
       }),
     );
 
     this.registerOutputs(
       (this.outputs = {
-        vpc: this.#vpc.id,
-        v4Cidr: this.#vpc.cidrBlock.apply((cidr) => cidr),
-        v6Cidr: this.#vpc.ipv6CidrBlock.apply((cidr) => cidr),
-        natSubnets: this.#nats.map(subnetToOutput),
-        workloadSubnets: this.#workloads.map(subnetToOutput),
-        natSubnetIds: output(this.#nats.map((subnet) => subnet.subnet.id)),
-        workloadSubnetIds: output(this.#workloads.map((subnet) => subnet.subnet.id)),
+        vpc: this.vpc.id,
+        v4Cidr: this.vpc.cidrBlock.apply((cidr) => cidr),
+        v6Cidr: this.vpc.ipv6CidrBlock.apply((cidr) => cidr),
+        natSubnets: this.nats.map(subnetToOutput),
+        workloadSubnets: this.workloads.map(subnetToOutput),
+        natSubnetIds: output(this.nats.map((subnet) => subnet.subnet.id)),
+        workloadSubnetIds: output(this.workloads.map((subnet) => subnet.subnet.id)),
       }),
     );
   }
@@ -168,7 +168,7 @@ export class Network extends ComponentResource {
     zone: string,
     { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
-    const name = `${this.#name}-nat-${zone}`;
+    const name = `${this.name}-nat-${zone}`;
     const tags = {
       Name: name,
       Purpose: 'nat',
@@ -180,7 +180,7 @@ export class Network extends ComponentResource {
     const subnet = new Subnet(
       name,
       {
-        vpcId: this.#vpc.id,
+        vpcId: this.vpc.id,
         cidrBlock: ipv4Block,
         ipv6CidrBlock: ipv6Block,
         ipv6Native: ipv6Only,
@@ -203,14 +203,14 @@ export class Network extends ComponentResource {
         },
       },
       {
-        parent: this.#vpc,
+        parent: this.vpc,
       },
     );
 
     const routes = new RouteTable(
       name,
       {
-        vpcId: this.#vpc.id,
+        vpcId: this.vpc.id,
         tags,
       },
       { parent: subnet },
@@ -234,34 +234,34 @@ export class Network extends ComponentResource {
             allocationId: ipv4.allocationId,
             tags,
           },
-          { parent: subnet, dependsOn: [this.#v4igw!] },
+          { parent: subnet, dependsOn: [this.v4igw!] },
         )
       : undefined;
 
-    this.#v4igw &&
+    this.v4igw &&
       new Route(
         `${name}-out4`,
         {
           routeTableId: routes.id,
           destinationCidrBlock: '0.0.0.0/0',
-          gatewayId: this.#v4igw.id,
+          gatewayId: this.v4igw.id,
         },
         { parent: routes },
       );
 
-    this.#v6igw &&
+    this.v6igw &&
       new Route(
         `${name}-out6`,
         {
           routeTableId: routes.id,
           destinationIpv6CidrBlock: '::/0',
-          egressOnlyGatewayId: this.#v6igw.id,
+          egressOnlyGatewayId: this.v6igw.id,
         },
         { parent: routes },
       );
 
     nat &&
-      this.#v6igw &&
+      this.v6igw &&
       new Route(
         `${name}-out64`,
         {
@@ -285,7 +285,7 @@ export class Network extends ComponentResource {
     index: number,
     { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
-    const name = `${this.#name}-workload${index}-${zone}`;
+    const name = `${this.name}-workload${index}-${zone}`;
     const tags = {
       Name: name,
       Purpose: 'workload',
@@ -297,7 +297,7 @@ export class Network extends ComponentResource {
     const subnet = new Subnet(
       name,
       {
-        vpcId: this.#vpc.id,
+        vpcId: this.vpc.id,
         cidrBlock: ipv4Block,
         ipv6CidrBlock: ipv6Block,
         ipv6Native: ipv6Only,
@@ -320,14 +320,14 @@ export class Network extends ComponentResource {
         },
       },
       {
-        parent: this.#vpc,
+        parent: this.vpc,
       },
     );
 
     const routes = new RouteTable(
       name,
       {
-        vpcId: this.#vpc.id,
+        vpcId: this.vpc.id,
         tags,
       },
       { parent: subnet },
@@ -341,7 +341,7 @@ export class Network extends ComponentResource {
       { parent: routes },
     );
 
-    const nat = this.#nats.find((nat) => nat.zone === zone)?.nat;
+    const nat = this.nats.find((nat) => nat.zone === zone)?.nat;
 
     nat &&
       new Route(
@@ -354,19 +354,19 @@ export class Network extends ComponentResource {
         { parent: routes },
       );
 
-    this.#v6igw &&
+    this.v6igw &&
       new Route(
         `${name}-out6`,
         {
           routeTableId: routes.id,
           destinationIpv6CidrBlock: '::/0',
-          egressOnlyGatewayId: this.#v6igw.id,
+          egressOnlyGatewayId: this.v6igw.id,
         },
         { parent: routes },
       );
 
     nat &&
-      this.#v6igw &&
+      this.v6igw &&
       new Route(
         `${name}-out64`,
         {
