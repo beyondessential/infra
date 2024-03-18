@@ -30,12 +30,10 @@ new Role(
             },
             StringLike: {
               [`${url}:sub`]: [
-                // Data Lake
                 'repo:beyondessential/data-lake:pull_request',
                 'repo:beyondessential/data-lake:ref:refs/heads/main',
                 'repo:beyondessential/data-lake:ref:refs/tags/v*.*.*',
 
-                // Data Lake
                 'repo:beyondessential/tamanu-modules-dbt:pull_request',
                 'repo:beyondessential/tamanu-modules-dbt:ref:refs/heads/main',
                 'repo:beyondessential/tamanu-modules-dbt:ref:refs/tags/v*.*.*',
