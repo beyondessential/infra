@@ -42,13 +42,13 @@ const DEFAULT_REPLICAS: ReplicaConfig = {
   web: 2,
 };
 
-function getReplicas(serverType: 'api' | 'db' | 'tasks' | 'web', server: 'central' | 'facility') {
+function getReplicas(serverType: 'api' | 'db' | 'tasks' | 'web', server: 'central' | 'facility', defaultValue: number = null) {
   const specificName = `${server}${serverType[0].toUpperCase()}${serverType.slice(1)}Replicas`;
   const genericName = `${serverType}Replicas`;
   return Math.max(
     Math.min(
       MAX_REPLICAS[serverType],
-      cfg.getNumber(specificName) ?? cfg.getNumber(genericName) ?? DEFAULT_REPLICAS[serverType],
+      cfg.getNumber(specificName) ?? cfg.getNumber(genericName) ?? defaultValue ?? DEFAULT_REPLICAS[serverType],
     ),
     MIN_REPLICAS[serverType],
   );
@@ -62,9 +62,9 @@ export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
     web: getReplicas('web', 'central'),
   },
   facility: {
-    api: getReplicas('api', 'facility'),
+    api: getReplicas('api', 'facility', 1),
     db: getReplicas('db', 'facility'),
-    tasks: getReplicas('tasks', 'facility'), // TODO
+    tasks: getReplicas('tasks', 'facility', 0),
     web: getReplicas('web', 'facility'),
   },
 };
