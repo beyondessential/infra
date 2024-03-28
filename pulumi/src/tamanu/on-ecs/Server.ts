@@ -91,6 +91,7 @@ export class Server extends ComponentResource {
           this.#args.imageName
         } server ${this.#args.facilityId ?? ''}`,
         value: readFileSync(this.#args.configTemplate, 'utf8'),
+        overwrite: true,
         tags: this.#args.tags,
       },
       { parent: this, ignoreChanges: ['value'] },
