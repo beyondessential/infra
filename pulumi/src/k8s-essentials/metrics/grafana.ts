@@ -22,7 +22,7 @@ const adminSecret = new k8s.core.v1.Secret(
 
 new k8s.helm.v3.Release('grafana', {
   chart: 'grafana',
-  version: '6.60.1',
+  version: '7.3.7',
   repositoryOpts: {
     repo: 'https://grafana.github.io/helm-charts',
   },
@@ -48,6 +48,17 @@ new k8s.helm.v3.Release('grafana', {
             },
           ],
         },
+      },
+    },
+    ingress: {
+      enabled: true,
+      ingressClassName: 'tailscale',
+      hosts: ['grafana', 'grafana.tail53aef.ts.net'],
+      tls: [
+        { hosts: ['grafana'] },
+      ],
+      annotations: {
+        'tailscale.com/tags': 'tag:tools',
       },
     },
   },

@@ -17,7 +17,7 @@ new k8s.helm.v3.Chart('prometheus', {
       enabled: false,
     },
     server: {
-      replicaCount: 2,
+      replicaCount: 1,
       statefulSet: {
         enabled: true,
       },
