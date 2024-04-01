@@ -14,7 +14,7 @@ function handler(event) {
   }
 
   // https://host/path -> redirect to https://host/path/
-  if (!uri.includes('.') && !uri.includes('/bestool/') && !uri.includes('/caddy/')) {
+  if (!uri.includes('.') && !uri.includes('/bestool/') && !uri.includes('/caddy/') && !uri.includes('/wal-g/')) {
     return {
       statusCode: 307,
       statusDescription: 'Temporary Redirect',
