@@ -1,0 +1,6 @@
+name: msupply
+description: Open mSupply deployed on K8S
+runtime:
+  name: nodejs
+  options:
+    typescript: false
