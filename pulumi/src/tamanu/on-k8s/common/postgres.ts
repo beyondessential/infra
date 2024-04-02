@@ -58,9 +58,6 @@ export function runPostgres({
         },
         affinity: {
           nodeSelector: {
-            // Because we colocate the databases with their servers, we stick
-            // to the same architecture, until we can build for arm64.
-            'bes.node.arch': architecture,
             'bes.node.purpose': 'workload',
           },
           additionalPodAntiAffinity: {
