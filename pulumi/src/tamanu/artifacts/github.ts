@@ -76,7 +76,7 @@ new awsClassic.iam.Role('gha-ops-scripts-s3', {
   },
   inlinePolicies: [
     {
-      name: 'OpsScriptsPush',
+      name: 'OpsToolsPush',
       policy: jsonStringify({
         Version: '2012-10-17',
         Statement: [
@@ -90,6 +90,15 @@ new awsClassic.iam.Role('gha-ops-scripts-s3', {
             ]).apply((buckets) =>
               buckets.flatMap((bucket) => [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`]),
             ),
+          },
+          {
+            Effect: 'Allow',
+            Action: ['cloudfront:CreateInvalidation'],
+            Resource: [
+              tools.distribution.arn,
+              clients.distribution.arn,
+              servers.distribution.arn,
+            ],
           },
         ],
       }),

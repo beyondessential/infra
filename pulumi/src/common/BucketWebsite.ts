@@ -27,6 +27,7 @@ const DEFAULT_404 = '<!DOCTYPE html><title>404 Not Found</title><h1>404</h1><p>N
 
 export class BucketWebsite extends ComponentResource {
   readonly bucket: awsClassic.s3.BucketV2;
+  readonly distribution: awsClassic.cloudfront.Distribution;
 
   constructor(
     name: string,
@@ -142,7 +143,7 @@ export class BucketWebsite extends ComponentResource {
     );
 
     const originId = this.bucket.id.apply((id) => `S3-${id}`);
-    const distribution = new awsClassic.cloudfront.Distribution(
+    this.distribution = new awsClassic.cloudfront.Distribution(
       `${name}-distribution`,
       {
         comment: bucketName,
@@ -233,7 +234,7 @@ export class BucketWebsite extends ComponentResource {
               Resource: this.bucket.bucket.apply((name) => `arn:aws:s3:::${name}/*`),
               Condition: {
                 StringEquals: {
-                  'AWS:SourceArn': distribution.arn,
+                  'AWS:SourceArn': this.distribution.arn,
                 },
               },
             },
@@ -258,9 +259,9 @@ export class BucketWebsite extends ComponentResource {
         type: 'A',
         aliases: [
           {
-            name: distribution.domainName,
+            name: this.distribution.domainName,
             evaluateTargetHealth: false,
-            zoneId: distribution.hostedZoneId,
+            zoneId: this.distribution.hostedZoneId,
           },
         ],
       },
@@ -275,9 +276,9 @@ export class BucketWebsite extends ComponentResource {
         type: 'AAAA',
         aliases: [
           {
-            name: distribution.domainName,
+            name: this.distribution.domainName,
             evaluateTargetHealth: false,
-            zoneId: distribution.hostedZoneId,
+            zoneId: this.distribution.hostedZoneId,
           },
         ],
       },
