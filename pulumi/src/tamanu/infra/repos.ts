@@ -14,6 +14,7 @@ export const repositories = [
   'facility',
   'frontend',
   'meta',
+  'msupply'
 ].map((image) => {
   const policy = getPolicyDocumentOutput({
     statements: [
