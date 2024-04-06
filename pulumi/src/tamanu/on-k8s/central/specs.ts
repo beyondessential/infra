@@ -151,12 +151,8 @@ export function podSpecFactory({
           ],
           resources: {
             requests: {
-              cpu: '200m',
+              cpu: '5m',
               memory: '200Mi',
-            },
-            limits: {
-              cpu: '1000m',
-              memory: '500Mi',
             },
           },
           ...containerArgs,
