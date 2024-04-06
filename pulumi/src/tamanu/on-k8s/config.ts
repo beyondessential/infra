@@ -2,11 +2,11 @@ import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/k8s/coreRef.js';
 import { Architecture } from '../../common/k8s/affinities.js';
 
-export const domainBase = cfg.get('domainBase') ?? `${getStack()}.internal.tamanu.io`;
+export const domainBase = cfg.get('domainBase') ?? `${getStack()}.internal.tamanu.io`; // TODO: use k8score's/k8s-infra's base?
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const facilities = cfg.getNumber('facilities') ?? 2;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
-export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList'); // TODO
+export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
 
 export const architecture: Architecture = cfg.get('architecture') ?? 'amd64';
 if (!['amd64', 'arm64'].includes(architecture)) {
