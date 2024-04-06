@@ -42,7 +42,7 @@ const DEFAULT_REPLICAS: ReplicaConfig = {
   web: 2,
 };
 
-function getReplicas(serverType: 'api' | 'db' | 'tasks' | 'web', server: 'central' | 'facility', defaultValue: number = null) {
+function getReplicas(serverType: 'api' | 'db' | 'tasks' | 'web', server: 'central' | 'facility', defaultValue: null | number = null) {
   const specificName = `${server}${serverType[0].toUpperCase()}${serverType.slice(1)}Replicas`;
   const genericName = `${serverType}Replicas`;
   return Math.max(
