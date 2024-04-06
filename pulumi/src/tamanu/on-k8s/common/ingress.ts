@@ -18,7 +18,7 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
         namespace,
         name,
         annotations: {
-          'cert-manager.io/cluster-issuer': 'zerossl',
+          'cert-manager.io/cluster-issuer': 'letsencrypt',
           'cert-manager.io/private-key-algorithm': 'ECDSA',
         },
       },
