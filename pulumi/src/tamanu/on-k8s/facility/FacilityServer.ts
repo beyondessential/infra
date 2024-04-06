@@ -1,4 +1,4 @@
-import { ComponentResource, ComponentResourceOptions } from '@pulumi/pulumi';
+import { ComponentResource, ComponentResourceOptions, Input, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { runPostgres } from '../common/postgres.js';
 import { templatedConfig } from '../common/templatedConfig.js';
@@ -9,6 +9,7 @@ import { ingress } from '../common/ingress.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ReplicaConfig, dbStorage, timezone } from '../config.js';
 import { runTasks } from './tasks.js';
+import { Provisioning } from '../central/provisioner.js';
 
 export interface FacilityServerArgs {
   fqdn: string;
@@ -16,6 +17,7 @@ export interface FacilityServerArgs {
   facilityId: string;
   deviceId: string;
   replicas: ReplicaConfig;
+  provisioning: Output<Provisioning>;
 }
 
 export class FacilityServer extends ComponentResource {
@@ -23,7 +25,7 @@ export class FacilityServer extends ComponentResource {
 
   constructor(
     name: string,
-    { fqdn, centralApiUrl, facilityId, deviceId, replicas }: FacilityServerArgs,
+    { fqdn, centralApiUrl, facilityId, deviceId, replicas, provisioning }: FacilityServerArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:tamanu:FacilityServer', name, {}, opts);
@@ -36,7 +38,7 @@ export class FacilityServer extends ComponentResource {
       timezone,
     });
 
-    const appConfig = templatedConfig({
+    const appConfig = provisioning.apply(provisioning => templatedConfig({
       parent: this,
       kind: 'config-facility',
       name: `facility-${name}`,
@@ -49,8 +51,10 @@ export class FacilityServer extends ComponentResource {
         facilityId,
         deviceId,
         timezone,
+        provisioning,
+        centralApiUrl,
       },
-    });
+    }));
 
     const podSpec = podSpecFactory({
       name,

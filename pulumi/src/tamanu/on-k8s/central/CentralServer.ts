@@ -1,10 +1,10 @@
-import { ComponentResource, ComponentResourceOptions } from '@pulumi/pulumi';
+import { ComponentResource, ComponentResourceOptions, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { migrator } from '../common/migrator.js';
 import { runPostgres } from '../common/postgres.js';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
-import { provisioner } from './provisioner.js';
+import { Provisioning, provisioner } from './provisioner.js';
 import { runTasks } from './tasks.js';
 import { runApi } from './api.js';
 import { WebFrontend } from '../web/WebFrontend.js';
@@ -19,6 +19,7 @@ export interface CentralServerArgs {
 export class CentralServer extends ComponentResource {
   readonly fqdn: string;
   readonly ingress: k8s.networking.v1.Ingress;
+  readonly provisioning: Output<Provisioning>;
 
   constructor(
     name: string,
@@ -55,7 +56,8 @@ export class CentralServer extends ComponentResource {
     });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
-    const provisionerJob = provisioner({ parent: this, podSpec, migratorJob });
+    const { job: provisionerJob, provisioning } = provisioner({ parent: this, podSpec, migratorJob });
+    this.provisioning = provisioning;
 
     if (replicas.tasks > 0) {
       runTasks({

@@ -126,26 +126,6 @@ export function podSpecFactory({
             value: 'production',
           },
           {
-            name: 'FACILITY_ID',
-            value: facilityId,
-          },
-          {
-            name: 'DEVICE_ID',
-            value: deviceId,
-          },
-          {
-            name: 'SYNC_URL',
-            value: centralApiUrl,
-          },
-          {
-            name: 'SYNC_USERNAME',
-            value: `sync-facility-${name}@tamanu.io`,
-          },
-          {
-            name: 'SYNC_PASSWORD',
-            value: 'sync',
-          },
-          {
             name: 'DB_HOST',
             value: dbReady.apply(() => `facility-${name}-db-rw`),
           },
@@ -200,15 +180,4 @@ export const CONFIG_FROM_ENV = {
     password: 'DB_PASSWORD',
     name: 'DB_NAME',
   },
-  sync: {
-    host: 'SYNC_URL',
-    email: 'SYNC_USERNAME',
-    password: 'SYNC_PASSWORD',
-  },
-  countryTimeZone: 'TZ',
-  localisation: {
-    timeZone: 'TZ',
-  },
-  serverFacilityId: 'FACILITY_ID',
-  deviceId: 'DEVICE_ID',
 };

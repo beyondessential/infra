@@ -12,17 +12,14 @@ const central = new CentralServer('central', {
 });
 
 for (let i = 1; i <= facilities; i += 1) {
-  new FacilityServer(
-    `${i}`,
-    {
-      fqdn: domains[`facility${i}`],
-      centralApiUrl: `http://${domains.central}`,
-      facilityId: `facility-${i}`,
-      deviceId: `facility-${i}`,
-      replicas: replicas.facility,
-    },
-    { dependsOn: [central] },
-  );
+  new FacilityServer(`${i}`, {
+    fqdn: domains[`facility${i}`],
+    centralApiUrl: `http://${domains.central}`,
+    facilityId: `facility-${i}`,
+    deviceId: `facility-${i}`,
+    replicas: replicas.facility,
+    provisioning: central.provisioning,
+  });
 }
 
 new k8s.networking.v1.Ingress('bare-domain', {

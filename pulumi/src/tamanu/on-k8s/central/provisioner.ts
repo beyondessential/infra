@@ -1,5 +1,6 @@
-import { ComponentResource } from '@pulumi/pulumi';
+import { ComponentResource, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import JSON5 from 'json5';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { namespace } from '../namespace.js';
 import { PodSpecFactory } from '../common/specFactory.js';
@@ -10,14 +11,34 @@ export interface MigratorArgs {
   migratorJob: k8s.batch.v1.Job;
 }
 
-export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s.batch.v1.Job {
+export interface Provisioning {
+  users: { [email: string]: {
+    password: string;
+    role?: string;
+  } };
+}
+
+export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
+  job: k8s.batch.v1.Job;
+  provisioning: Output<Provisioning>;
+} {
   const provisioningConfig = templatedConfig({
     parent: this,
     kind: 'provisioning',
     name: 'provisioning',
   });
 
-  return new k8s.batch.v1.Job(
+  const provisioning = provisioningConfig.data.apply(data => {
+    for (const key in ['provisioning.json5', 'provisioning.json']) {
+      if (data[key]) {
+        return JSON5.parse(data[key]) as Provisioning;
+      }
+    }
+
+    throw new Error('No provisioning data found');
+  });
+
+  const job = new k8s.batch.v1.Job(
     'central-provisioner',
     {
       metadata: {
@@ -62,4 +83,6 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): k8s
       // replaceOnChanges: ['*'],
     },
   );
+
+  return { job, provisioning };
 }

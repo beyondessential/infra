@@ -1,4 +1,4 @@
-import { ComponentResource } from '@pulumi/pulumi';
+import { ComponentResource, Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.js';
 import { PodSpecFactory } from './specFactory.js';
@@ -6,7 +6,7 @@ import { PodSpecFactory } from './specFactory.js';
 export interface MigratorArgs {
   parent: ComponentResource;
   podSpec: PodSpecFactory;
-  appConfig: k8s.core.v1.ConfigMap;
+  appConfig: Input<k8s.core.v1.ConfigMap>;
 }
 
 export function migrator(
