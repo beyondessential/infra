@@ -12,10 +12,12 @@ export interface MigratorArgs {
 }
 
 export interface Provisioning {
-  users: { [email: string]: {
-    password: string;
-    role?: string;
-  } };
+  users: {
+    [email: string]: {
+      password: string;
+      role?: string;
+    };
+  };
 }
 
 export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
@@ -28,8 +30,12 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
     name: 'provisioning',
   });
 
-  const provisioning = provisioningConfig.data.apply(data => {
-    for (const key in ['provisioning.json5', 'provisioning.json']) {
+  const liveData = k8s.core.v1.ConfigMap.get('actual-provisioning', provisioningConfig.id, {
+    parent: provisioningConfig,
+  });
+
+  const provisioning = liveData.data.apply((data) => {
+    for (const key of ['provisioning.json5', 'provisioning.json']) {
       if (data[key]) {
         return JSON5.parse(data[key]) as Provisioning;
       }
