@@ -11,5 +11,6 @@ import './nodes/autoscaler.js';
 import './loadbalancer/ingress.js';
 import './externalDns.js';
 import './cert-manager/controller.js';
+import './cert-manager/letsencrypt.js';
 import './cert-manager/zerossl.js';
 import './storage.js';
