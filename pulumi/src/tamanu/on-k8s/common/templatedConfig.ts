@@ -71,12 +71,6 @@ export function templatedConfig({
               });
             }
 
-            // Temporary until https://github.com/beyondessential/tamanu/pull/5363 lands
-            if (key.endsWith('.json5') && typeof value === 'string') {
-              key = key.slice(0, -1);
-              value = JSON.stringify(JSON5.parse(value), null, 2);
-            }
-
             return [key, value];
           }),
         ),
