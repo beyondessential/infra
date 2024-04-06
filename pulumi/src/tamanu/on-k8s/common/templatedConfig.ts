@@ -1,8 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import { ComponentResource, Output, all, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api, V1ConfigMap } from '@kubernetes/client-node';
 import nunjucks from 'nunjucks';
-import JSON5 from 'json5';
 import { k8sClient } from '../../../common/k8s/client.js';
 import { namespace } from '../namespace.js';
 import { DEFAULT_CONFIG_TEMPLATE, configTemplate } from '../config.js';
@@ -49,6 +49,12 @@ export function templatedConfig({
 }: TemplatedConfigArgs): k8s.core.v1.ConfigMap {
   const templateName = `${kind}-template-${configTemplate}`;
   const original = getTemplate(kind, configTemplate);
+  const templater = new nunjucks.Environment();
+  templater.addFilter(
+    'randomstring',
+    (length: number, format: 'hex' | 'base64' | 'base64url' = 'hex') =>
+      randomBytes(length).toString(format),
+  );
 
   return new k8s.core.v1.ConfigMap(
     name,
@@ -64,7 +70,7 @@ export function templatedConfig({
           Object.entries(map.data ?? {}).map(([key, value]) => {
             if (key.endsWith('.njk') && typeof value === 'string') {
               key = key.slice(0, -4);
-              value = nunjucks.renderString(value, {
+              value = templater.renderString(value, {
                 ...(templateData ?? {}),
                 networkV4Cidr: network.v4Cidr,
                 networkV6Cidr: network.v6Cidr,
