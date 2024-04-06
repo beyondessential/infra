@@ -55,6 +55,7 @@ export function podSpecFactory(): PodSpecFactory {
       podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
     },
     volumes,
+    imagePullSecrets: [{name: 'pullsecret-github'}],
     containers: [
       {
         name: podType,

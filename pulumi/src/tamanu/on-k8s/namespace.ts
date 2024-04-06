@@ -29,3 +29,13 @@ new k8s.apiextensions.CustomResource(
   },
   { parent: ns },
 );
+
+// until images are public:
+import { CoreV1Api } from '@kubernetes/client-node';
+import { k8sClient } from '../../common/k8s/client.js';
+const k8sApi = k8sClient(CoreV1Api);
+new k8s.core.v1.Secret('pullsecret-github', {
+  metadata: { name: 'pullsecret-github', namespace },
+  type: 'kubernetes.io/dockerconfigjson',
+  data: await k8sApi.readNamespacedSecret('pullsecret-github', 'tamanu-system').then(resp => resp.body.data),
+});
