@@ -3,8 +3,8 @@
     migrateOnStartup: false,
   },
   auth: {
-    secret: 'REDACTED',
-    refreshSecret: 'REDACTED',
+    secret: '{{ 40 | randomstring }}',
+    refreshSecret: '{{ 40 | randomstring }}',
     reportNoUserError: true,
     useHardcodedPermissions: false,
   },
@@ -103,7 +103,6 @@
     },
     signer: {
       enabled: false,
-      keySecret: 'REDACTED',
     },
     fhir: {
       enabled: true,
