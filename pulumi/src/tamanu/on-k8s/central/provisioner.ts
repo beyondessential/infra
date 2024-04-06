@@ -56,7 +56,7 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
           spec: {
             ...podSpec({
               podType: 'provisioner',
-              command: ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json'],
+              command: ['provision', '--skip-if-not-needed', '/provisioning/provisioning.json5'],
               containerArgs: {
                 volumeMounts: [
                   {
