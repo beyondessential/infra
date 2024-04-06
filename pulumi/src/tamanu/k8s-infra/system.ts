@@ -33,12 +33,6 @@ for (const template of ['basic']) {
         },
       },
       data: readConfig(template, 'provisioning.json5'),
-      binaryData: {
-        ...readConfig(template, 'referencedata.xlsx', 'base64'),
-        ...readConfig(template, 'immunisation.xlsx', 'base64'),
-        ...readConfig(template, 'ncd-primary-screening.xlsx', 'base64'),
-        ...readConfig(template, 'vitals.xlsx', 'base64'),
-      },
     },
     { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
