@@ -28,9 +28,6 @@ export interface PodSpecFactoryArgs {
   timezone: string;
   appConfig: Output<string>;
   dbReady: PostgresReady;
-  facilityId: string;
-  deviceId: string;
-  centralApiUrl: string;
 }
 
 export function podSpecFactory({
@@ -38,9 +35,6 @@ export function podSpecFactory({
   timezone,
   appConfig,
   dbReady,
-  facilityId,
-  deviceId,
-  centralApiUrl,
 }: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
