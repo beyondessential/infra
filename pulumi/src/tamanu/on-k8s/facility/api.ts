@@ -52,6 +52,9 @@ export function runApi(
       },
       spec: {
         replicas,
+        strategy: {
+          type: 'Recreate',
+        },
         selector: {
           matchLabels: appSelector('server', deviceId),
         },

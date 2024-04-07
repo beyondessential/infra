@@ -61,9 +61,6 @@ export class FacilityServer extends ComponentResource {
       timezone,
       appConfig: appConfig.metadata.name,
       dbReady,
-      facilityId,
-      deviceId,
-      centralApiUrl,
     });
 
     const migratorJob = migrator(`facility-${name}`, {
