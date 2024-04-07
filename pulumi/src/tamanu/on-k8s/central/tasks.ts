@@ -25,6 +25,10 @@ export function runTasks({
       },
       spec: {
         replicas: 1,
+        strategy: {
+          // Avoid double-running scheduled tasks
+          type: 'Recreate',
+        },
         selector: {
           matchLabels: appSelector('task-runner'),
         },
