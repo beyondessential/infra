@@ -14,7 +14,7 @@ const central = new CentralServer('central', {
 for (let i = 1; i <= facilities; i += 1) {
   new FacilityServer(`${i}`, {
     fqdn: domains[`facility${i}`],
-    centralApiUrl: `http://${domains.central}`,
+    centralApiUrl: `https://${domains.central}`,
     facilityId: `facility-${i}`,
     deviceId: `facility-${i}`,
     replicas: replicas.facility,
