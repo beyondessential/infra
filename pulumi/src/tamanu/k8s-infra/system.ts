@@ -1,17 +1,24 @@
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import * as k8s from '@pulumi/kubernetes';
 
-function readConfig(template: string, name: string, encoding: BufferEncoding = 'utf-8') {
+function readConfig(
+  template: string,
+  file: string,
+  { outname, encoding = 'utf-8' }: { outname?: string; encoding?: BufferEncoding } = {},
+) {
   const dir = join(dirname(fileURLToPath(import.meta.url)), 'templates', template);
-  const filename = join(dir, existsSync(join(dir, name)) ? name : `${name}.njk`);
+  const filename = join(dir, existsSync(join(dir, file)) ? file : `${file}.njk`);
   if (!existsSync(filename)) {
-    throw new Error(`Template ${template}/${name} not found`);
+    throw new Error(`Template ${template}/${file} not found`);
   }
 
   return {
-    [basename(filename)]: readFileSync(filename, encoding),
+    [outname ? `${outname}.${extname(filename)}` : basename(filename)]: readFileSync(
+      filename,
+      encoding,
+    ),
   };
 }
 
@@ -47,7 +54,7 @@ for (const template of ['basic']) {
           'bes.tamanu/template': 'config-central',
         },
       },
-      data: readConfig(template, 'central.json5'),
+      data: readConfig(template, 'central.json5', { outname: 'production' }),
     },
     { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
@@ -62,7 +69,7 @@ for (const template of ['basic']) {
           'bes.tamanu/template': 'config-facility',
         },
       },
-      data: readConfig(template, 'facility.json5'),
+      data: readConfig(template, 'facility.json5', { outname: 'production' }),
     },
     { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
