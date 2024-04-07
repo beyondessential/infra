@@ -28,7 +28,7 @@ const namespace = new k8s.core.v1.Namespace('tamanu-system', {
   },
 });
 
-for (const template of ['basic']) {
+for (const template of ['basic', 'pr', 'rc']) {
   new k8s.core.v1.ConfigMap(
     `provisioning-${template}`,
     {
