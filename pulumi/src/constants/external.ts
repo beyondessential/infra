@@ -34,8 +34,24 @@ export const AWS_ECR_PUSH_ACTIONS = [
   'ecr:UploadLayerPart',
 ];
 
-export const AWS_S3_READ_ACTIONS = ['s3:GetObject', 's3:GetBucketLocation', 's3:ListBucket'];
+export const AWS_S3_READ_ACTIONS = [
+  's3:GetObject',
+  's3:GetObjectAttributes',
+  's3:HeadBucket',
+  's3:HeadObject',
+  's3:GetBucketLocation',
+  's3:ListBuckets',
+  's3:ListObjects',
+  's3:ListObjectsV2',
+];
 export const AWS_S3_WRITE_ACTIONS = [...AWS_S3_READ_ACTIONS, 's3:PutObject'];
+export const AWS_S3_MULTIPART_ACTIONS = [
+  ...AWS_S3_WRITE_ACTIONS,
+  's3:AbortMultipartUpload',
+  's3:CreateMultipartUpload',
+  's3:UploadPart',
+  's3:ListParts',
+];
 
 export function alpineAmi(
   version: string = '3.*',

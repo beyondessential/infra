@@ -1,7 +1,6 @@
 import { Config, getStack, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { AWS_EC2, AWS_S3_WRITE_ACTIONS, AWS_STS } from '../../constants/external.js';
-import { AWS_TAMANU_INTERNAL_CERTBOT_POLICY, LOGS_BUCKETS } from "../../constants/internal.js";
+import { AWS_EC2, AWS_S3_MULTIPART_ACTIONS } from '../../constants/external.js';
 
 export const BUCKET_NAME = `bes-tamanu-${getStack()}-backups`;
 
@@ -24,7 +23,7 @@ const policy = new awsClassic.iam.Policy('backups-policy', {
     Statement: [
       {
         Effect: 'Allow',
-        Action: AWS_S3_WRITE_ACTIONS,
+        Action: AWS_S3_MULTIPART_ACTIONS,
         Resource: [BUCKET_NAME].flatMap((bucket) => [
           `arn:aws:s3:::${bucket}`,
           `arn:aws:s3:::${bucket}/*`,
