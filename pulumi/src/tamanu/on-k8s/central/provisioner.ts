@@ -4,6 +4,7 @@ import JSON5 from 'json5';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { namespace } from '../namespace.js';
 import { PodSpecFactory } from '../common/specFactory.js';
+import { timezone } from '../config.js';
 
 export interface MigratorArgs {
   parent: ComponentResource;
@@ -28,6 +29,9 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
     parent: this,
     kind: 'provisioning',
     name: 'provisioning',
+    additionalData: {
+      timezone,
+    },
   });
 
   const liveData = k8s.core.v1.ConfigMap.get('actual-provisioning', provisioningConfig.id, {

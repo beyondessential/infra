@@ -46,6 +46,7 @@ export class CentralServer extends ComponentResource {
       },
       templateData: {
         fqdn,
+        timezone,
       },
     });
 
