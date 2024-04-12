@@ -29,6 +29,9 @@ export function podSpreadAntiAffinity(podSpreadSelector?: {
               ],
             },
             topologyKey: 'topology.kubernetes.io/zone',
+
+            // only apply rules within a deployment's rollout, not across all matching pods ever
+            matchLabelKeys: ['pod-template-hash'],
           },
         ],
       }
