@@ -64,7 +64,7 @@ export function runApi({
           },
           spec: podSpec({
             podType: 'server',
-            podSpreadSelector: appSelector('api-server'),
+            podSpreadSelector: appLabels('api-server'),
             command: ['serve'],
             containerArgs: {
               ports: [

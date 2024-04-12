@@ -61,7 +61,7 @@ export function runWeb(
           },
           spec: podSpec({
             podType: 'http',
-            podSpreadSelector: appSelector(serverType, instance),
+            podSpreadSelector: appLabels(serverType, instance),
             containerArgs: {
               ports: [
                 {

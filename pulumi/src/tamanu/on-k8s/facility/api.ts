@@ -64,7 +64,7 @@ export function runApi(
           },
           spec: podSpec({
             podType: 'server',
-            podSpreadSelector: appSelector('server', deviceId),
+            podSpreadSelector: appLabels('server', deviceId),
             command: ['startAll'], // startApi once split
             containerArgs: {
               ports: [
