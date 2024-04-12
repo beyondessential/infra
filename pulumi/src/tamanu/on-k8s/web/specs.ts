@@ -2,7 +2,7 @@ import { Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
-import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
+import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { architecture } from '../config.js';
 import { ImageType, image, imageTag } from '../image.js';
 
@@ -31,7 +31,6 @@ export function appLabels(serverType: ServerType, instance?: string): { [key: st
 export function podSpecFactory(): PodSpecFactory {
   return ({
     podType,
-    podSpreadSelector,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
     volumes = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
@@ -52,7 +51,6 @@ export function podSpecFactory(): PodSpecFactory {
           ],
         },
       },
-      podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
     },
     volumes,
     imagePullSecrets: [{name: 'pullsecret-github'}],

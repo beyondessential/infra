@@ -5,7 +5,6 @@ import { k8sWaitFor } from '../../../common/k8s/waitFor.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT } from '../../../common/k8s/affinities.js';
 import { namespace } from '../namespace.js';
-import { architecture } from '../config.js';
 import { postgresUrlSecret } from './postgresUrl.js';
 
 export interface PostgresArgs {
@@ -59,31 +58,6 @@ export function runPostgres({
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
-          },
-          additionalPodAntiAffinity: {
-            // spread out the database pods across AZs
-            preferredDuringSchedulingIgnoredDuringExecution: [
-              {
-                weight: 20,
-                podAffinityTerm: {
-                  topologyKey: 'topology.kubernetes.io/zone',
-                  labelSelector: {
-                    matchExpressions: [
-                      {
-                        key: 'namespace',
-                        operator: 'In',
-                        values: [namespace],
-                      },
-                      {
-                        key: 'app.kubernetes.io/component',
-                        operator: 'In',
-                        values: ['database'],
-                      },
-                    ],
-                  },
-                },
-              },
-            ],
           },
           tolerations: [CAN_RUN_ON_SPOT],
           nodeAffinity: {

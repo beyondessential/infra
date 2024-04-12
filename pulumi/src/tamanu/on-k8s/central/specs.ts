@@ -35,7 +35,6 @@ export function podSpecFactory({
 }: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
-    podSpreadSelector,
     command,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
     volumes = [],
@@ -58,7 +57,6 @@ export function podSpecFactory({
             ],
           },
         },
-        podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
       },
       volumes: [
         {
