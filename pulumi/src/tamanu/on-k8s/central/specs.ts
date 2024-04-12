@@ -58,31 +58,6 @@ export function podSpecFactory({
             ],
           },
         },
-        // Co-locate the facility server pod with its database when possible
-        podAffinity: {
-          preferredDuringSchedulingIgnoredDuringExecution: [
-            {
-              weight: 100,
-              podAffinityTerm: {
-                topologyKey: 'kubernetes.io/hostname',
-                labelSelector: {
-                  matchExpressions: [
-                    {
-                      key: 'namespace',
-                      operator: 'In',
-                      values: [namespace],
-                    },
-                    {
-                      key: 'name',
-                      operator: 'In',
-                      values: ['central-db'],
-                    },
-                  ],
-                },
-              },
-            },
-          ],
-        },
         podAntiAffinity: podSpreadAntiAffinity(podSpreadSelector),
       },
       volumes: [
