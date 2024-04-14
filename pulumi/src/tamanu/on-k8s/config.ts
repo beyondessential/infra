@@ -1,8 +1,19 @@
 import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/k8s/coreRef.js';
 import { Architecture } from '../../common/k8s/affinities.js';
+import { truncateDomainIfNeeded } from '../../common/dns.js';
 
-export const domainBase = cfg.get('domainBase') ?? `${getStack()}.internal.tamanu.io`; // TODO: use k8score's/k8s-infra's base?
+export const normalizedStack = getStack()
+  .toLowerCase()
+  .replace(/[^a-z0-9-]+/g, '-')
+  .replace(/-+$/, '')
+  .slice(0, 63 - 'tamanu-'.length) // 63 is the max length of a k8s namespace, minus the prefix tamanu-
+  .replace(/^-+|-+$/g, '');
+
+// TODO: use k8score's/k8s-infra's base?
+export const domainBase =
+  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'internal.tamanu.io');
+
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const facilities = cfg.getNumber('facilities') ?? 2;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
@@ -42,13 +53,20 @@ const DEFAULT_REPLICAS: ReplicaConfig = {
   web: 2,
 };
 
-function getReplicas(serverType: 'api' | 'db' | 'tasks' | 'web', server: 'central' | 'facility', defaultValue: null | number = null) {
+function getReplicas(
+  serverType: 'api' | 'db' | 'tasks' | 'web',
+  server: 'central' | 'facility',
+  defaultValue: null | number = null,
+) {
   const specificName = `${server}${serverType[0].toUpperCase()}${serverType.slice(1)}Replicas`;
   const genericName = `${serverType}Replicas`;
   return Math.max(
     Math.min(
       MAX_REPLICAS[serverType],
-      cfg.getNumber(specificName) ?? cfg.getNumber(genericName) ?? defaultValue ?? DEFAULT_REPLICAS[serverType],
+      cfg.getNumber(specificName) ??
+        cfg.getNumber(genericName) ??
+        defaultValue ??
+        DEFAULT_REPLICAS[serverType],
     ),
     MIN_REPLICAS[serverType],
   );

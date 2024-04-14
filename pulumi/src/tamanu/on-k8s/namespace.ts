@@ -1,14 +1,14 @@
-import { getStack } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { cfg } from '../../common/k8s/coreRef.js';
+import { normalizedStack } from './config.js';
 
-const name = cfg.get('namespace');
+const name = cfg.get('namespace') ?? `tamanu-${normalizedStack}`;
 if (name === 'system' || name === 'super') {
   throw new Error(`Namespace name ${name} is reserved`);
 }
 
 const ns = new k8s.core.v1.Namespace(
-  `tamanu-${getStack()}`,
+  `tamanu-${normalizedStack}`,
   {
     metadata: {
       name,
