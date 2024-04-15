@@ -38,6 +38,10 @@ new Role(
                 'repo:beyondessential/tamanu-modules-dbt:ref:refs/heads/main',
                 'repo:beyondessential/tamanu-modules-dbt:ref:refs/tags/v*.*.*',
 
+                'repo:beyondessential/data-staging:pull_request',
+                'repo:beyondessential/data-staging:ref:refs/heads/main',
+                'repo:beyondessential/data-staging:ref:refs/tags/v*.*.*',
+
                 // Testing
                 'repo:beyondessential/data-lake:ref:refs/heads/docs-deploy',
                 'repo:beyondessential/tamanu-modules-dbt:ref:refs/heads/docs-deploy',
