@@ -51,8 +51,14 @@ export function runPostgres({
         ],
         resources: {
           requests: {
-            memory: '250m',
-            cpu: '100m',
+            memory: '750Mi',
+            cpu: '10m',
+          },
+        },
+        postgresql: {
+          parameters: {
+            // should be about 25% of requested memory
+            shared_buffers: '200MB',
           },
         },
         affinity: {
