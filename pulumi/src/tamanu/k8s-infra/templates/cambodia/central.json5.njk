@@ -1,0 +1,252 @@
+{
+  db: {
+    migrateOnStartup: false,
+  },
+  auth: {
+    secret: '{{ 40 | randomstring }}',
+    refreshSecret: '{{ 40 | randomstring }}',
+    reportNoUserError: true,
+    useHardcodedPermissions: false,
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  countryTimeZone: '{{ timezone }}',
+  localisation: {
+    data: {
+      "templates": {
+        "letterhead": {
+          "title": "KINGDOM OF CAMBODIA",
+          "subTitle": "Nation     Religion     King"
+        }
+      },
+      "country": {
+        "alpha-2": "KH",
+        "alpha-3": "KHM",
+        "name": "Cambodia"
+      },
+      timeZone: '{{ timezone }}',
+      "features": {
+        "enableVaccineConsent": false,
+        "patientPlannedMove": true,
+        "enablePatientDeaths": true,
+        "enableInvoicing": true,
+        "editPatientDisplayId": true,
+        "enableCovidClearanceCertificate": true,
+        "quickPatientGenerator": true
+      },
+      disabledReports: [
+        'aefi',
+        'india-assistive-technology-device-line-list',
+        'iraq-assistive-technology-device-line-list',
+      ],
+      "imagingTypes": {
+        "fluroscopy": {
+            "label": "Fluroscopy"
+        },
+        "xRay": {
+            "label": "X-Ray"
+        },
+        "mri": {
+            "label": "MRI"
+        },
+        "echocardiogram": {
+            "label": "Echocardiogram"
+        },
+        "ctScan": {
+            "label": "CT Scan"
+        },
+        "ecg": {
+            "label": "Electrocardiogram (ECG)"
+        },
+        "endoscopy": {
+            "label": "Endoscopy"
+        },
+        "mammogram": {
+            "label": "Mammogram"
+        },
+        "holterMonitor": {
+            "label": "Holter Monitor"
+        },
+        "angiogram": {
+            "label": "Angiogram"
+        },
+        "colonoscopy": {
+            "label": "Colonoscopy"
+        },
+        "ultrasound": {
+            "label": "Ultrasound"
+        }
+      },
+      "layouts": {
+          "patientDetails": "cambodia",
+          "patientTabs": {
+            "details": {
+              "sortPriority": -50
+            },
+            "results": {
+              "hidden": true
+            },
+            "referrals": {
+              "hidden": true
+            },
+            "documents": {
+              "hidden": true
+            },
+            "vaccines": {
+              "sortPriority": -20
+            },
+            "medication": {
+              "hidden": true
+            },
+            "invoices": {
+              "hidden": true
+            }
+          },
+          "sidebar": {
+            "patients": {
+              "patientsInpatients": {
+                "hidden": true
+              },
+              "patientsEmergency": {
+                "hidden": true
+              },
+              "patientsOutpatients": {
+                "hidden": true
+              }
+            },
+            "scheduling": {
+              "hidden": true
+            },
+            "medication": {
+              "hidden": true
+            },
+            "imaging": {
+              "hidden": true
+            },
+            "labs": {
+              "hidden": true
+            },
+            "immunisations": {
+              "hidden": false
+            },
+            "programRegistry": {
+              "hidden": true
+            },
+            "facilityAdmin": {
+              "bedManagement": {
+                "hidden": true
+              }
+            }
+          }
+      },
+      "fields": {
+        "firstName": {
+            "requiredPatientData": true
+        },
+        "lastName": {
+            "requiredPatientData": true
+        },
+        "sex": {
+            "requiredPatientData": true
+        },
+        "villageId": {
+            "requiredPatientData": true
+        },
+        "emergencyContactName": {
+            "requiredPatientData": false
+        },
+        "emergencyContactNumber": {
+            "requiredPatientData": false
+        },
+        "culturalName": {
+            "requiredPatientData": false
+        },
+        "primaryContactNumber": {
+            "requiredPatientData": false
+        },
+        "secondaryContactNumber": {
+            "requiredPatientData": false
+        },
+        "settlementId": {
+            "requiredPatientData": true
+        },
+        "streetVillage": {
+            "requiredPatientData": false
+        },
+        "subdivisionId": {
+            "requiredPatientData": true
+        },
+        "divisionId": {
+            "requiredPatientData": true
+        },
+        "medicalAreaId": {
+            "requiredPatientData": true
+        },
+        "nursingZoneId": {
+            "requiredPatientData": true
+        },
+        "countryId": {
+            "defaultValue": "country-Cambodia"
+        },
+        "locationId": {
+            "defaultValue": "location-ChamkarDoung"
+        },
+        "locationGroupId": {
+            "defaultValue": "locationgroup-ChamkarDounghealthcenter"
+        },
+        "nationalityId": {
+            "defaultValue": "nationality-Khmer"
+        },
+        "countryOfBirthId": {
+            "defaultValue": "country-Cambodia"
+        }
+      }
+    },
+  },
+  tupaiaApiClient: {
+    environment: 'dev',
+    auth: {
+      password: 'REDACTED',
+      username: 'tamanu-server@tupaia.org',
+    },
+  },
+  mailgun: {
+    apiKey: 'REDACTED',
+    domain: 'tupaia.org',
+    from: 'tamanu@tupaia.org',
+  },
+  updateUrls: {
+    mobile: 'https://install.appcenter.ms/orgs/beyond-essential/apps/tamanu-mobile-only/distribution_groups/staging',
+  },
+  disk: {
+    diskPath: '/',
+    freeSpaceRequired: {
+      gigabytesForUploadingDocuments: 0.1,
+    },
+  },
+  schedules: {
+    fhirMaterialiser: {
+      limit: 1000,
+    },
+  },
+  integrations: {
+    vdsNc: {
+      enabled: false,
+    },
+    signer: {
+      enabled: false,
+    },
+    fhir: {
+      enabled: true,
+    },
+    mSupply: {
+      enabled: true,
+    },
+  },
+  notifications: {
+    certificates: {
+      labTestCategoryIds: ['labTestCategory-COVID', 'labTestCategory-COVIDRAT'],
+    },
+  },
+}

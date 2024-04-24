@@ -20,6 +20,10 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
         annotations: {
           'cert-manager.io/cluster-issuer': 'letsencrypt',
           'cert-manager.io/private-key-algorithm': 'ECDSA',
+
+          // for websocket
+          'nginx.ingress.kubernetes.io/proxy-read-timeout': '3600',
+          'nginx.ingress.kubernetes.io/proxy-send-timeout': '3600',
         },
       },
       spec: {
@@ -56,6 +60,18 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
                 },
                 {
                   path: '/v1',
+                  pathType: 'Prefix',
+                  backend: {
+                    service: {
+                      name: api.metadata.name,
+                      port: {
+                        name: 'http',
+                      },
+                    },
+                  },
+                },
+                {
+                  path: '/socket.io',
                   pathType: 'Prefix',
                   backend: {
                     service: {

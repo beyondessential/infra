@@ -1,0 +1,30 @@
+{
+  db: {
+    migrateOnStartup: false,
+  },
+  sync: {
+    enabled: true,
+    host: '{{ centralApiUrl }}',
+    email: 'admin@eir.org',
+    password: '{{ provisioning.users["admin@eir.org"].password }}'
+  },
+  auth: {
+    useHardcodedPermissions: false,
+    secret: '{{ 40 | randomstring }}',
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  survey: {
+    defaultCodes: {
+      location: 'Chamkar.DoungHC',
+      department: 'EPI',
+    }
+  },
+  countryTimeZone: '{{ timezone }}',
+  localisation: {
+    timeZone: '{{ timezone }}',
+  },
+  serverFacilityId: '{{ facilityId }}',
+  deviceId: '{{ deviceId }}',
+}
