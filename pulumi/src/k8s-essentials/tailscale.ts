@@ -17,7 +17,7 @@ if (tailscaleEnabled) {
 
   new k8s.helm.v3.Release('tailscale', {
     chart: 'tailscale-operator',
-    version: '1.61.11',
+    version: '1.64.2',
     repositoryOpts: {
       repo: 'https://pkgs.tailscale.com/helmcharts',
     },
