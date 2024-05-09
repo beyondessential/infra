@@ -25,7 +25,7 @@ const imagePushRole = new Role('github-actions-image-push', {
               'repo:beyondessential/tamanu:*',
 
               // Tamanu builds (testbed)
-              'repo:beyondessential/tamanu-new-branching:*',
+              'repo:beyondessential/tamanu-repo-experiments:*',
 
               // Configurator and ECS Router glue containers
               'repo:beyondessential/ops:pull_request',
@@ -68,7 +68,7 @@ const imagePullRole = new Role('github-actions-image-pull', {
               'repo:beyondessential/tamanu:*',
 
               // Tamanu builds (testbed)
-              'repo:beyondessential/tamanu-new-branching:*',
+              'repo:beyondessential/tamanu-repo-experiments:*',
             ],
           },
         })),
@@ -148,7 +148,7 @@ new Role('github-actions-deploy', {
               'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
               // Tamanu builds (testbed)
-              'repo:beyondessential/tamanu-new-branching:*',
+              'repo:beyondessential/tamanu-repo-experiments:*',
             ],
           },
         })),
@@ -220,7 +220,7 @@ new Role('github-actions-desktop-s3', {
               'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
               // Tamanu builds (testbed)
-              // 'repo:beyondessential/tamanu-new-branching:*',
+              'repo:beyondessential/tamanu-repo-experiments:*',
             ],
           },
         })),
@@ -273,7 +273,7 @@ new Role('github-actions-server-s3', {
               'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
 
               // Tamanu builds (testbed)
-              // 'repo:beyondessential/tamanu-new-branching:*',
+              'repo:beyondessential/tamanu-repo-experiments:*',
             ],
           },
         })),
