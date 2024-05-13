@@ -120,7 +120,7 @@ export class Cluster extends ComponentResource {
 
     this.#db = $cluster.apply((cluster) =>
       getDatabase({
-        dbInstanceIdentifier: cluster.database.instance as string,
+        dbInstanceArn: cluster.database.instance as string,
       }),
     );
 

@@ -15,7 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.418.0",
     "@kubernetes/client-node": "^0.20.0",
-    "@pulumi/aws": "^6.2.1",
+    "@pulumi/aws": "^6.35.0",
     "@pulumi/aws-native": "^0.77.0",
     "@pulumi/awsx": "^1.0.5",
     "@pulumi/command": "^0.9.1",
