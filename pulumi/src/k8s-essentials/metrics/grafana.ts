@@ -39,6 +39,10 @@ new k8s.helm.v3.Release('grafana', {
       userKey: 'username',
       passwordKey: 'password',
     },
+    env: {
+      GF_DATE_FORMATS_INTERVAL_HOUR: 'DD/MM HH:mm',
+      GF_DATE_FORMATS_INTERVAL_DAY: 'DD/MM',
+    },
     affinity: {
       nodeAffinity: {
         requiredDuringSchedulingIgnoredDuringExecution: {
