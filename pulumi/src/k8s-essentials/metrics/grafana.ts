@@ -22,7 +22,7 @@ const adminSecret = new k8s.core.v1.Secret(
 
 new k8s.helm.v3.Release('grafana', {
   chart: 'grafana',
-  version: '7.3.7',
+  version: '7.3.11',
   repositoryOpts: {
     repo: 'https://grafana.github.io/helm-charts',
   },
