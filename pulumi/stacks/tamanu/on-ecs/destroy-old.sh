@@ -3,7 +3,6 @@
 pulumi stack select
 pulumi stack export > state.json
 sed -i s/100.74.88.92/100.72.193.51/ state.json
-read
 pulumi stack import -f < state.json
 rm state.json
 
