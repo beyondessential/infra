@@ -21,6 +21,8 @@ import {
 export interface NetworkArgs {
   ipv4Cidr?: false | string;
   v6?: boolean;
+  privateSubnets?: boolean;
+  publicSubnets?: boolean;
   zones?: string[];
   eksSubnetTags?: false | { [key: string]: string };
   tags?: { [key: string]: string };
@@ -71,6 +73,8 @@ export class Network extends ComponentResource {
     this.#args = {
       ipv4Cidr: false,
       v6: false,
+      privateSubnets: true,
+      publicSubnets: true,
       zones: ['a', 'b', 'c'],
       eksSubnetTags: false,
       tags: {},
@@ -99,8 +103,9 @@ export class Network extends ComponentResource {
       { parent: this },
     );
 
-    // V4 Internet Gateway sits outside the subnets, required for NAT and such
-    // to be able to access the V4 internet, but not used directly for workloads.
+    // V4 Internet Gateway sits outside the subnets, required for NAT and public
+    // workloads to be able to access the V4 internet, but not used directly for
+    // private workloads.
     this.v4igw = args.ipv4Cidr
       ? new InternetGateway(
           name,
@@ -136,30 +141,33 @@ export class Network extends ComponentResource {
     // AZ, which leaves a bunch of space reserved for future expansion. In a
     // perfect world /30s would even be enough, but AWS doesn't support that.
     const appliancesV4 = this.#args.ipv4Cidr && nthSubnetV4(this.#args.ipv4Cidr, 24, 0);
-    this.nats = this.#args.zones.map((zone, i) =>
+    this.nats = this.#args.privateSubnets ? this.#args.zones.map((zone, i) =>
       this.natSubnet(zone, {
         ipv4Block: appliancesV4 ? nthSubnetV4(appliancesV4, 28, i) : undefined,
         ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, i) : undefined,
       }),
-    );
+    ) : [];
 
     // Private workload subnets, covering all AZs with a v4 /24 each, and a v6 /64.
     // That gives us over 750 usable IPv4s, and basically infinite IPv6s.
-    this.workloads = this.#args.zones.map((zone, i) =>
+    this.workloads = this.#args.privateSubnets ? this.#args.zones.map((zone, i) =>
       this.workloadSubnet(zone, i + 1, {
         ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, i + 1) : undefined,
         ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, this.nats.length + i) : undefined,
       }),
-    );
+    ) : [];
 
     // Public workload subnets, covering all AZs with a v4 /24 each, and a v6 /64.
     // That gives us over 750 usable IPv4s, and basically infinite IPv6s.
-    this.publicWorkloads = this.#args.zones.map((zone, i) =>
+    this.publicWorkloads = this.#args.publicSubnets ? this.#args.zones.map((zone, i) =>
       this.publicWorkloadSubnet(zone, i + 1, {
-        ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, this.workloads.length + i + 1) : undefined,
-        ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, this.workloads.length + this.nats.length + i) : undefined,
+        ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, this.#args.zones.length + i + 1) : undefined,
+        ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, (this.#args.zones.length * 2) + i) : undefined,
       }),
-    );
+    ) : [];
+    // these always come "after" the private workloads, even if they're disabled,
+    // so that the indexes are consistent and we can opt in/out without deleting
+    // and recreating subnets.
 
     this.registerOutputs(
       (this.outputs = {
