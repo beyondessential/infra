@@ -50,30 +50,37 @@ if (withEndpoints) {
     },
   });
 
-  // for ipv6/dualstack support see Private Endpoints column:
-  // https://docs.aws.amazon.com/vpc/latest/userguide/aws-ipv6-support.html
-  for (const service of [
-    // list of useful endpoints from here:
-    // https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html
-    'ec2',
-    'ecr.api',
-    'ecr.dkr',
-    'elasticloadbalancing',
-    'logs',
-    'sts',
-  ]) {
-    const slug = service.replace(/[^a-z0-9]+/g, '-');
-    new awsClassic.ec2.VpcEndpoint(`core-endpoint-workload-${slug}`, {
-      serviceName: interpolate`com.amazonaws.${region}.${service}`,
-      vpcId: network.vpc,
-      privateDnsEnabled: true,
-      subnetIds: [...$network.workloads, ...$network.publicWorkloads].map((sub) => sub.subnet.id),
-      vpcEndpointType: 'Interface',
-      tags: {
-        Name: `core-endpoint-${slug}`,
-        ...tags,
-      },
-    });
+  if (privateSubnets || publicSubnets) {
+    // for ipv6/dualstack support see Private Endpoints column:
+    // https://docs.aws.amazon.com/vpc/latest/userguide/aws-ipv6-support.html
+    for (const service of [
+      // list of useful endpoints from here:
+      // https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html
+      'ec2',
+      'ecr.api',
+      'ecr.dkr',
+      'elasticloadbalancing',
+      'logs',
+      'sts',
+    ]) {
+      const slug = service.replace(/[^a-z0-9]+/g, '-');
+      new awsClassic.ec2.VpcEndpoint(`core-endpoint-workload-${slug}`, {
+        serviceName: interpolate`com.amazonaws.${region}.${service}`,
+        vpcId: network.vpc,
+        privateDnsEnabled: true,
+        subnetIds: (privateSubnets
+          ? $network.workloads
+          : publicSubnets
+            ? $network.publicWorkloads
+            : []
+        ).map((sub) => sub.subnet.id),
+        vpcEndpointType: 'Interface',
+        tags: {
+          Name: `core-endpoint-${slug}`,
+          ...tags,
+        },
+      });
+    }
   }
 }
 
