@@ -1,0 +1,3 @@
+name: tamanu-on-linux
+description: Tamanu deployment on Linux
+runtime: nodejs
