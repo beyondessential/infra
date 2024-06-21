@@ -2,7 +2,6 @@ import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/coreRef.js';
 import { truncateDomainIfNeeded } from '../../common/dns.js';
 
-export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined;
 
 export const normalizedStack = getStack()
@@ -22,25 +21,27 @@ export interface Facility {
   instance?: string;
 }
 
-export const facilities: Required<Facility>[] = ((cfg.getObject('facilities') as Facility[]) ?? [
-  { name: 'Facility 1', id: 'facility-1', subdomain: 'facility-1', instance: 't4g.medium' },
-  { name: 'Facility 2', id: 'facility-2', subdomain: 'facility-2', instance: 't4g.medium' },
-]).map((facility: Facility) => ({
+export const facilities: Required<Facility>[] = (
+  (cfg.getObject('facilities') as Facility[]) ?? [{ id: 'facility-1' }, { id: 'facility-2' }]
+).map((facility: Facility) => ({
   subdomain: facility.id,
   name: facility.id,
   instance: 't4g.medium',
   ...facility,
 }));
 
-export const DEFAULT_CONFIG_TEMPLATE = 'basic';
-export const configTemplate = cfg.get('configTemplate') ?? DEFAULT_CONFIG_TEMPLATE;
+export const instances = [
+  {
+    id: 'central',
+    name: 'Central',
+    subdomain: 'central',
+    instance: cfg.get('centralInstance') ?? 't4g.large',
+  },
+  ...facilities,
+];
 
-export const domains = {
-  central: `central.${domainBase}`,
-  ...Object.fromEntries(
-    Array.from({ length: facilities.length }, (_, i) => [
-      `facility${i + 1}`,
-      `facility-${i + 1}.${domainBase}`,
-    ]),
-  ),
-};
+export const domains = Object.fromEntries(
+  instances.map(({ name, subdomain }) => [name, `${subdomain}.${domainBase}`]),
+);
+
+export const zoneId = cfg.get('zoneId') ?? 'Z0565335834ZM6R45IL3';
