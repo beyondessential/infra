@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { normalizedStack, domainBase, domains, instances, zoneId } from './config.js';
+import { normalizedStack, domainBase, domains, instances, zoneId, diskSize, namePrefix } from './config.js';
 import { $network, cfg } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
 
@@ -24,7 +24,7 @@ const sg = new aws.ec2.SecurityGroup(
     ],
     egress: [securityGroupRules.all],
     tags: {
-      Name: normalizedStack,
+      Name: `${namePrefix}${normalizedStack}`,
       Purpose: 'workload',
     },
   },
@@ -44,13 +44,13 @@ for (const [i, inst] of instances.entries()) {
       ami: UBUNTU_24_04_LTS_ARM64_SYDNEY,
       instanceType: inst.instance,
       rootBlockDevice: {
-        volumeSize: 50,
+        volumeSize: diskSize,
       },
       subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[i % ids.length]),
       vpcSecurityGroupIds: [sg.id],
       keyName: cfg.get('keyName') ?? 'ops',
       tags: {
-        Name: inst.name,
+        Name: `${namePrefix}${inst.name}`,
       },
     },
     {
@@ -61,6 +61,9 @@ for (const [i, inst] of instances.entries()) {
   const ip = new aws.ec2.Eip(inst.id, {
     instance: vm.id,
     domain: 'vpc',
+    tags: {
+      Name: `${namePrefix}${inst.name}`,
+    },
   });
 
   new aws.route53.Record(`${inst.id}-v4`, {

@@ -45,3 +45,5 @@ export const domains = Object.fromEntries(
 );
 
 export const zoneId = cfg.get('zoneId') ?? 'Z0565335834ZM6R45IL3';
+export const diskSize = cfg.getNumber('diskSize') ?? 50;
+export const namePrefix = cfg.get('namePrefix') ?? '';
