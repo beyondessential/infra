@@ -59,8 +59,8 @@ export class Network extends ComponentResource {
   #args: Required<NetworkArgs>;
 
   readonly vpc: Vpc;
-  readonly v4igw?: InternetGateway;
-  readonly v6igw?: EgressOnlyInternetGateway;
+  readonly ingw?: InternetGateway;
+  readonly v6outgw?: EgressOnlyInternetGateway;
   readonly nats: SubnetBlock[];
   readonly workloads: SubnetBlock[];
   readonly publicWorkloads: SubnetBlock[];
@@ -106,7 +106,7 @@ export class Network extends ComponentResource {
     // V4 Internet Gateway sits outside the subnets, required for NAT and public
     // workloads to be able to access the V4 internet, but not used directly for
     // private workloads.
-    this.v4igw = args.ipv4Cidr
+    this.ingw = args.ipv4Cidr
       ? new InternetGateway(
           name,
           {
@@ -120,51 +120,66 @@ export class Network extends ComponentResource {
         )
       : undefined;
 
-    // V6 Internet Gateway sits outside the subnets, use by all subnets to
-    // access the V6 internet.
-    this.v6igw = args.v6
-      ? new EgressOnlyInternetGateway(
-          name,
-          {
-            vpcId: this.vpc.id,
-            tags: {
-              Name: `${this.name}-ingw6`,
-              ...this.#args.tags,
+    // V6 Egress-only Internet Gateway sits outside the subnets, used by private
+    // subnets to access the V6 internet.
+    this.v6outgw =
+      args.v6 && this.#args.privateSubnets
+        ? new EgressOnlyInternetGateway(
+            name,
+            {
+              vpcId: this.vpc.id,
+              tags: {
+                Name: `${this.name}-ingw6`,
+                ...this.#args.tags,
+              },
             },
-          },
-          { parent: this.vpc },
-        )
-      : undefined;
+            { parent: this.vpc },
+          )
+        : undefined;
 
     // We use the first /24 for network appliances (NAT). However we don't
     // define an actual subnet for this, instead we create small /28s for each
     // AZ, which leaves a bunch of space reserved for future expansion. In a
     // perfect world /30s would even be enough, but AWS doesn't support that.
     const appliancesV4 = this.#args.ipv4Cidr && nthSubnetV4(this.#args.ipv4Cidr, 24, 0);
-    this.nats = this.#args.privateSubnets ? this.#args.zones.map((zone, i) =>
-      this.natSubnet(zone, {
-        ipv4Block: appliancesV4 ? nthSubnetV4(appliancesV4, 28, i) : undefined,
-        ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, i) : undefined,
-      }),
-    ) : [];
+    this.nats = this.#args.privateSubnets
+      ? this.#args.zones.map((zone, i) =>
+          this.natSubnet(zone, {
+            ipv4Block: appliancesV4 ? nthSubnetV4(appliancesV4, 28, i) : undefined,
+            ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, i) : undefined,
+          }),
+        )
+      : [];
 
     // Private workload subnets, covering all AZs with a v4 /24 each, and a v6 /64.
     // That gives us over 750 usable IPv4s, and basically infinite IPv6s.
-    this.workloads = this.#args.privateSubnets ? this.#args.zones.map((zone, i) =>
-      this.workloadSubnet(zone, i + 1, {
-        ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, i + 1) : undefined,
-        ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, this.nats.length + i) : undefined,
-      }),
-    ) : [];
+    this.workloads = this.#args.privateSubnets
+      ? this.#args.zones.map((zone, i) =>
+          this.workloadSubnet(zone, i + 1, {
+            ipv4Block: this.#args.ipv4Cidr
+              ? nthSubnetV4(this.#args.ipv4Cidr, 24, i + 1)
+              : undefined,
+            ipv6Block: args.v6
+              ? nthSubnetV6(this.vpc.ipv6CidrBlock, this.nats.length + i)
+              : undefined,
+          }),
+        )
+      : [];
 
     // Public workload subnets, covering all AZs with a v4 /24 each, and a v6 /64.
     // That gives us over 750 usable IPv4s, and basically infinite IPv6s.
-    this.publicWorkloads = this.#args.publicSubnets ? this.#args.zones.map((zone, i) =>
-      this.publicWorkloadSubnet(zone, i + 1, {
-        ipv4Block: this.#args.ipv4Cidr ? nthSubnetV4(this.#args.ipv4Cidr, 24, this.#args.zones.length + i + 1) : undefined,
-        ipv6Block: args.v6 ? nthSubnetV6(this.vpc.ipv6CidrBlock, (this.#args.zones.length * 2) + i) : undefined,
-      }),
-    ) : [];
+    this.publicWorkloads = this.#args.publicSubnets
+      ? this.#args.zones.map((zone, i) =>
+          this.publicWorkloadSubnet(zone, i + 1, {
+            ipv4Block: this.#args.ipv4Cidr
+              ? nthSubnetV4(this.#args.ipv4Cidr, 24, this.#args.zones.length + i + 1)
+              : undefined,
+            ipv6Block: args.v6
+              ? nthSubnetV6(this.vpc.ipv6CidrBlock, this.#args.zones.length * 2 + i)
+              : undefined,
+          }),
+        )
+      : [];
     // these always come "after" the private workloads, even if they're disabled,
     // so that the indexes are consistent and we can opt in/out without deleting
     // and recreating subnets.
@@ -224,7 +239,10 @@ export class Network extends ComponentResource {
       {
         parent: this.vpc,
         // these are nice-to-have but can't be enabled when updating an existing
-        ignoreChanges: ['enableResourceNameDnsARecordOnLaunch', 'enableResourceNameDnsAaaaRecordOnLaunch'],
+        ignoreChanges: [
+          'enableResourceNameDnsARecordOnLaunch',
+          'enableResourceNameDnsAaaaRecordOnLaunch',
+        ],
       },
     );
 
@@ -255,34 +273,34 @@ export class Network extends ComponentResource {
             allocationId: ipv4.allocationId,
             tags,
           },
-          { parent: subnet, dependsOn: [this.v4igw!] },
+          { parent: subnet, dependsOn: [this.ingw!] },
         )
       : undefined;
 
-    this.v4igw &&
+    this.ingw &&
       new Route(
         `${name}-out4`,
         {
           routeTableId: routes.id,
           destinationCidrBlock: '0.0.0.0/0',
-          gatewayId: this.v4igw.id,
+          gatewayId: this.ingw.id,
         },
         { parent: routes },
       );
 
-    this.v6igw &&
+    this.#args.v6 && this.ingw &&
       new Route(
         `${name}-out6`,
         {
           routeTableId: routes.id,
           destinationIpv6CidrBlock: '::/0',
-          egressOnlyGatewayId: this.v6igw.id,
+          gatewayId: this.ingw.id,
         },
         { parent: routes },
       );
 
     nat &&
-      this.v6igw &&
+      this.v6outgw &&
       new Route(
         `${name}-out64`,
         {
@@ -304,10 +322,7 @@ export class Network extends ComponentResource {
   workloadSubnet(
     zone: string,
     index: number,
-    {
-      ipv4Block,
-      ipv6Block,
-    }: { ipv4Block?: string; ipv6Block?: Output<string> },
+    { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
     const name = `${this.name}-workload${index}-${zone}`;
     const tags = {
@@ -345,7 +360,10 @@ export class Network extends ComponentResource {
       {
         parent: this.vpc,
         // these are nice-to-have but can't be enabled when updating an existing
-        ignoreChanges: ['enableResourceNameDnsARecordOnLaunch', 'enableResourceNameDnsAaaaRecordOnLaunch'],
+        ignoreChanges: [
+          'enableResourceNameDnsARecordOnLaunch',
+          'enableResourceNameDnsAaaaRecordOnLaunch',
+        ],
       },
     );
 
@@ -379,19 +397,19 @@ export class Network extends ComponentResource {
         { parent: routes },
       );
 
-    this.v6igw &&
+    this.v6outgw &&
       new Route(
         `${name}-out6`,
         {
           routeTableId: routes.id,
           destinationIpv6CidrBlock: '::/0',
-          egressOnlyGatewayId: this.v6igw.id,
+          egressOnlyGatewayId: this.v6outgw.id,
         },
         { parent: routes },
       );
 
     nat &&
-      this.v6igw &&
+      this.v6outgw &&
       new Route(
         `${name}-out64`,
         {
@@ -413,10 +431,7 @@ export class Network extends ComponentResource {
   publicWorkloadSubnet(
     zone: string,
     index: number,
-    {
-      ipv4Block,
-      ipv6Block,
-    }: { ipv4Block?: string; ipv6Block?: Output<string> },
+    { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
     const name = `${this.name}-pubworkload${index}-${zone}`;
     const tags = {
@@ -454,7 +469,10 @@ export class Network extends ComponentResource {
       {
         parent: this.vpc,
         // these are nice-to-have but can't be enabled when updating an existing
-        ignoreChanges: ['enableResourceNameDnsARecordOnLaunch', 'enableResourceNameDnsAaaaRecordOnLaunch'],
+        ignoreChanges: [
+          'enableResourceNameDnsARecordOnLaunch',
+          'enableResourceNameDnsAaaaRecordOnLaunch',
+        ],
       },
     );
 
@@ -475,24 +493,25 @@ export class Network extends ComponentResource {
       { parent: routes },
     );
 
-    this.v4igw &&
+    this.ingw &&
       new Route(
         `${name}-out4`,
         {
           routeTableId: routes.id,
           destinationCidrBlock: '0.0.0.0/0',
-          gatewayId: this.v4igw.id,
+          gatewayId: this.ingw.id,
         },
         { parent: routes },
       );
 
-    this.v6igw &&
+    this.#args.v6 &&
+      this.ingw &&
       new Route(
         `${name}-out6`,
         {
           routeTableId: routes.id,
           destinationIpv6CidrBlock: '::/0',
-          egressOnlyGatewayId: this.v6igw.id,
+          gatewayId: this.ingw.id,
         },
         { parent: routes },
       );

@@ -1,4 +1,4 @@
-import { Config, interpolate } from '@pulumi/pulumi';
+import { Config } from '@pulumi/pulumi';
 import { CrossStack } from '../CrossStack.js';
 import { k8sConfig } from './client.js';
 
