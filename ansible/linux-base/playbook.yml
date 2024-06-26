@@ -1,0 +1,36 @@
+- name: Linux base setup
+  hosts: all
+  tasks:
+    - name: Update all packages
+      become: true
+      ansible.builtin.apt:
+        cache_valid_time: 600
+        clean: true
+        upgrade: dist
+        autoremove: true
+
+    - name: Set hostname
+      become: true
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+        use: systemd
+
+    - name: Set timezone
+      become: true
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+    - name: Install basic tooling
+      become: true
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - fish
+          - htop
+          - nano
+          - neovim
+          - nethogs
+          - tmux
+          - uuid
