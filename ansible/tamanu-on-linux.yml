@@ -6,15 +6,22 @@
       mount: /var/log
       fs_type: btrfs
       mount_opts: defaults,compress=zstd:6
+      tags: [base]
     - role: linux-ebs-volume
       volume: sdp
       mount: /var/lib/postgresql
       fs_type: ext4
       mount_opts: defaults,noatime,discard
-
+      tags: [base]
     - role: linux-base
+      tags: [base]
+
     - role: linux-postgres
+      tags: [base, postgres]
     - role: linux-tailscale
+      tags: [base, tailscale]
+    - role: linux-caddy
+      tags: [base, caddy]
 
 
 # - name: Central server setup

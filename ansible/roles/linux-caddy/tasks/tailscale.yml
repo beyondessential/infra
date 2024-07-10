@@ -1,0 +1,7 @@
+---
+- name: Allow caddy to manage tailscale certificates
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/default/tailscaled
+    line: TS_PERMIT_CERT_UID=caddy
+  notify: Restart tailscale

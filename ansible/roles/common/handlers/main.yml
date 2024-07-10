@@ -1,0 +1,14 @@
+---
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Reboot
+  become: true
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: Rebooting to apply changes
+
+- name: Update package facts
+  ansible.builtin.package_facts:

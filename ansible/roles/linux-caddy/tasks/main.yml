@@ -1,0 +1,7 @@
+---
+- ansible.builtin.include_tasks: install.yml
+- ansible.builtin.include_tasks: tailscale.yml
+  when: tailscale_configured is defined and tailscale_configured
+- ansible.builtin.set_fact:
+    caddy_configured: true
+    caddy_version: "{{ caddy_version }}"

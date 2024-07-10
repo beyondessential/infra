@@ -1,0 +1,55 @@
+---
+- name: Download caddy {{ caddy_version }}
+  become: true
+  ansible.builtin.get_url:
+    url: https://tools.ops.tamanu.io/caddy/{{ caddy_version }}/caddy-{{ ansible_architecture }}-unknown-linux-gnu
+    dest: /usr/bin/caddy
+    mode: a=rx,u=rwx
+  notify:
+    - Regenerate caddy manpages
+    - Regenerate caddy completions
+
+- name: Add caddy group
+  become: true
+  ansible.builtin.group:
+    name: caddy
+    system: true
+
+- name: Add caddy user
+  become: true
+  ansible.builtin.user:
+    group: caddy
+    name: caddy
+    shell: /usr/bin/false
+    home: /var/lib/caddy
+    create_home: true
+
+- name: Add caddy config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/caddy
+    state: directory
+
+- name: Add caddy service file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service
+    src: "{{ lookup('ansible.builtin.fileglob', 'caddy.service') }}"
+  notify: Reload systemd
+
+- name: Add default caddy config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/Caddyfile
+    src: "{{ lookup('ansible.builtin.fileglob', 'Caddyfile.j2') }}"
+  notify: Restart caddy
+
+- name: Configure larger buffers for UDP connections
+  become: true
+  loop:
+    - { name: net.core.rmem_max, value: 2500000 }
+    - { name: net.core.wmem_max, value: 2500000 }
+  ansible.posix.sysctl:
+    sysctl_file: /etc/sysctl.d/99-caddy.conf
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"

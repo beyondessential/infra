@@ -1,0 +1,14 @@
+{
+	admin localhost:2019
+
+	storage file_system {
+		root /var/lib/caddy
+	}
+
+	log {
+		output stdout
+	}
+
+	email {{ caddy_email }}
+	cert_issuer acme
+}
