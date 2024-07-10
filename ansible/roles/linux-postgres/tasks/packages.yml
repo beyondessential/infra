@@ -1,0 +1,31 @@
+---
+- name: Add pgdg apt key
+  become: true
+  ansible.builtin.apt_key:
+    id: ACCC4CF8
+    data: "{{ lookup('ansible.builtin.file', 'apt.asc') }}"
+    state: present
+
+- name: Add pgdg repo
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb https://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main
+    state: present
+
+- name: Prioritise pgdg repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99-pgdg
+    content: |
+      Package: *
+      Pin: release o=apt.postgresql.org
+      Pin-Priority: 900
+
+- name: Install postgresql
+  become: true
+  ansible.builtin.apt:
+    name: postgresql-{{ postgresql_version }}
+    state: present
+  notify:
+    - Update package facts
+    - Restart postgres

@@ -1,0 +1,5 @@
+---
+- ansible.builtin.include_tasks: packages.yml
+- ansible.builtin.set_fact:
+    postgresql_configured: true
+    postgresql_version: "{{ postgresql_version }}"

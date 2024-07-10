@@ -1,0 +1,6 @@
+---
+- ansible.builtin.include_tasks: packages.yml
+- ansible.builtin.include_tasks: postgres.yml
+  when: postgresql_configured is defined and postgresql_configured
+- ansible.builtin.set_fact:
+    tailscale_configured: true

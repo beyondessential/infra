@@ -1,0 +1,8 @@
+---
+- name: Regenerate locales
+  become: true
+  ansible.builtin.command:
+    cmd: locale-gen
+
+- name: Update package facts
+  ansible.builtin.package_facts:

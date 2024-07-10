@@ -1,0 +1,31 @@
+---
+- name: Add tailscale apt key
+  become: true
+  ansible.builtin.apt_key:
+    id: 458CA832957F5868
+    data: "{{ lookup('ansible.builtin.file', 'apt.asc') }}"
+    state: present
+
+- name: Add tailscale repo
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb https://pkgs.tailscale.com/stable/ubuntu {{ ansible_distribution_release }} main
+    state: present
+
+- name: Prioritise tailscale repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99-tailscale
+    content: |
+      Package: *
+      Pin: release o=pkgs.tailscale.com
+      Pin-Priority: 900
+
+- name: Install tailscale
+  become: true
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+  notify:
+    - Update package facts
+    - Restart tailscale

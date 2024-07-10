@@ -1,0 +1,40 @@
+---
+argument_specs:
+  main:
+    options:
+      volume:
+        type: str
+        required: true
+        description: |
+          The /dev/ name of the EBS volume, as defined in the EC2 VolumeAttachment
+
+      mount:
+        type: str
+        required: true
+        description: |
+          Where to mount the volume
+
+      mount_opts:
+        type: str
+        required: false
+        default: defaults
+        description: |
+          Mount options to use. Changing this won't remount the volume.
+          For btrfs, you can add compression options here.
+
+      fs_type:
+        type: str
+        required: false
+        default: btrfs
+        description: |
+          The filesystem type to use.
+          Changing this won't reformat the volume.
+          https://docs.ansible.com/ansible/latest/collections/community/general/filesystem_module.html
+
+      fs_opts:
+        type: str
+        required: false
+        description: |
+          Filesystem formatting options to use, passed to mkfs.{{fs_type}}.
+          Changing this won't reformat the volume.
+

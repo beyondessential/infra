@@ -1,0 +1,12 @@
+---
+- name: Allow tailscale access to postgres
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf
+    append_newline: true
+    prepend_newline: true
+    block: |
+      # Tailscale
+      host all all 100.64.0.0/10 scram-sha-256
+      host all all fd7a:115c:a1e0:ab12::/64 scram-sha-256
+  notify: Restart postgres

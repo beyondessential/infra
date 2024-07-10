@@ -1,0 +1,54 @@
+---
+- name: Update all packages
+  become: true
+  ansible.builtin.apt:
+    cache_valid_time: 600
+    clean: true
+    upgrade: dist
+    autoremove: true
+
+- name: Install basic tooling
+  become: true
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - fish
+      - gnupg
+      - htop
+      - iftop
+      - iotop
+      - jq
+      - lm-sensors
+      - mosh
+      - nano
+      - neovim
+      - nethogs
+      - nvme-cli
+      - ripgrep
+      - software-properties-common
+      - tmux
+      - tzdata
+      - uuid
+
+- name: Set apt repo auto-update
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.daily/apt-update
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      apt update
+
+- name: Set ssh auto-upgrade
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.weekly/apt-upgrade-ssh
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      apt install -y openssh-server
+
+- name: Gather package facts
+  ansible.builtin.package_facts:

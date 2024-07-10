@@ -1,0 +1,26 @@
+- name: Common setup
+  hosts: all
+  roles:
+    - role: linux-ebs-volume
+      volume: sdl
+      mount: /var/log
+      fs_type: btrfs
+      mount_opts: defaults,compress=zstd:6
+    - role: linux-ebs-volume
+      volume: sdp
+      mount: /var/lib/postgresql
+      fs_type: ext4
+      mount_opts: defaults,noatime,discard
+
+    - role: linux-base
+    - role: linux-postgres
+    - role: linux-tailscale
+
+
+# - name: Central server setup
+#   hosts: central
+#   roles:
+
+# - name: Facility all servers setup
+#   hosts: facility
+#   roles:

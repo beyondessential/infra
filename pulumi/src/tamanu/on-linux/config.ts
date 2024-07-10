@@ -45,5 +45,13 @@ export const domains = Object.fromEntries(
 );
 
 export const zoneId = cfg.get('zoneId') ?? 'Z0565335834ZM6R45IL3';
-export const diskSize = cfg.getNumber('diskSize') ?? 50;
 export const namePrefix = cfg.get('namePrefix') ?? '';
+
+export const diskSizes = {
+  root: cfg.getNumber('diskGB.root') ?? 10,
+  logs: cfg.getNumber('diskGB.logs') ?? 10,
+  data: cfg.getNumber('diskGB.data') ?? 50,
+};
+
+export const sshKey = cfg.get('keyName') ?? 'ops';
+export const hardDelete = cfg.getBoolean('hardDelete') ?? false;

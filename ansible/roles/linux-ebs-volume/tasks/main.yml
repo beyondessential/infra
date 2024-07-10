@@ -1,0 +1,86 @@
+---
+- name: Make sure nvme-cli is available
+  become: true
+  ansible.builtin.apt:
+    name: nvme-cli
+
+- name: Figure out if and where the EBS volume '{{ volume }}' is attached
+  become: true
+  ansible.builtin.shell: |
+    for f in /dev/nvme*n1
+    do
+      echo -n $f=
+      nvme id-ctrl -V $f | grep ^0000: | grep -oP '(?<=")[^.]+'
+    done | grep {{ volume }}$ | cut -d= -f1 || true
+  register: volume_device
+  changed_when: false
+
+- name: Format volume {{ volume }}
+  when: volume_device.stdout != ''
+  become: true
+  community.general.filesystem:
+    fstype: "{{ fs_type }}"
+    dev: "{{ volume_device.stdout }}"
+    opts: "{{ fs_opts if fs_opts is defined else '' }}"
+
+- name: Figure out if {{ mount }} is already on a separate partition
+  ansible.builtin.shell: grep -qs ' {{ mount }} ' /proc/mounts && echo 'true' || true
+  register: is_already_partition
+  changed_when: false
+
+- name: Figure out if {{ mount }} exists
+  ansible.builtin.shell: test -d {{ mount }} && echo 'true' || true
+  register: mountpoint_exists
+  changed_when: false
+
+- name: Copy existing files to new volume
+  when: volume_device.stdout != '' and is_already_partition.stdout != 'true' and mountpoint_exists.stdout == 'true'
+  notify: Reboot
+  block:
+    - name: Unmount /mnt
+      become: true
+      ansible.posix.mount:
+        path: /mnt
+        state: unmounted
+    - name: Temporarily mount volume
+      become: true
+      ansible.posix.mount:
+        src: "{{ volume_device.stdout }}"
+        path: /mnt
+        fstype: "{{ fs_type }}"
+        opts: "{{ mount_opts if mount_opts is defined else '' }}"
+        state: ephemeral
+    - name: Copy old files to new volume
+      become: true
+      ansible.builtin.command: rsync -a {{ mount }}/ /mnt/
+    - name: Unmount /mnt
+      become: true
+      ansible.posix.mount:
+        path: /mnt
+        state: unmounted
+
+- name: Get volume UUID
+  when: volume_device.stdout != ''
+  become: true
+  ansible.builtin.shell: blkid -s UUID -o value {{ volume_device.stdout }}
+  register: volume_uuid
+  changed_when: false
+
+- name: Mount volume {{ volume }} permanently
+  when: volume_uuid.stdout != ''
+  become: true
+  ansible.posix.mount:
+    src: "UUID={{ volume_uuid.stdout }}"
+    path: "{{ mount }}"
+    fstype: "{{ fs_type }}"
+    opts: "{{ mount_opts if mount_opts is defined else '' }}"
+    state: mounted
+
+- name: Grow {{ volume }} filesystem if needed
+  when: volume_device.stdout != ''
+  become: true
+  community.general.filesystem:
+    fstype: "{{ fs_type }}"
+    dev: "{{ volume_device.stdout }}"
+    opts: "{{ fs_opts if fs_opts is defined else '' }}"
+    resizefs: true

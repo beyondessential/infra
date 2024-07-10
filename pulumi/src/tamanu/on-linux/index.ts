@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { normalizedStack, domainBase, domains, instances, zoneId, diskSize, namePrefix } from './config.js';
+import { normalizedStack, domainBase, domains, instances, zoneId, diskSizes, namePrefix, hardDelete, sshKey } from './config.js';
 import { $network, cfg } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
 
@@ -37,26 +37,62 @@ const sg = new aws.ec2.SecurityGroup(
 // https://cloud-images.ubuntu.com/locator/ec2/
 const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-02a9b44bb576c447d';
 
+const DEVICE_NAMES = {
+  root: '/dev/root',
+  logs: '/dev/sdl',
+  data: '/dev/sdp', // p for postgres
+};
+
 for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
     inst.id,
     {
       ami: UBUNTU_24_04_LTS_ARM64_SYDNEY,
       instanceType: inst.instance,
+      disableApiTermination: !hardDelete,
+      monitoring: true,
       rootBlockDevice: {
-        volumeSize: diskSize,
+        volumeSize: diskSizes.root,
+        volumeType: 'gp3',
+        encrypted: true,
+      },
+      metadataOptions: {
+        httpTokens: 'required', // IMDSv2
+        httpProtocolIpv6: 'enabled',
+        instanceMetadataTags: 'enabled',
       },
       subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[i % ids.length]),
       vpcSecurityGroupIds: [sg.id],
-      keyName: cfg.get('keyName') ?? 'ops',
+      keyName: sshKey,
       tags: {
         Name: `${namePrefix}${inst.name}`,
       },
     },
     {
       ignoreChanges: ['rootBlockDevice'],
+      deleteBeforeReplace: true,
     },
   );
+
+  for (const [name, size] of Object.entries(diskSizes)) {
+    if (name === 'root') continue;
+    const volume = new aws.ebs.Volume(`${inst.id}-${name}`, {
+      availabilityZone: vm.availabilityZone,
+      size,
+      type: 'gp3',
+      finalSnapshot: true,
+      encrypted: true,
+      tags: {
+        Name: `${namePrefix}${inst.name} ${name}`,
+      },
+    }, { deleteBeforeReplace: true });
+
+    new aws.ec2.VolumeAttachment(`${inst.id}-${name}`, {
+      deviceName: DEVICE_NAMES[name],
+      volumeId: volume.id,
+      instanceId: vm.id,
+    }, { deleteBeforeReplace: true });
+  }
 
   const ip = new aws.ec2.Eip(inst.id, {
     instance: vm.id,

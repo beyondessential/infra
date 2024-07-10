@@ -1,0 +1,5 @@
+---
+- ansible.builtin.include_tasks: hostname.yml
+- ansible.builtin.include_tasks: timezone.yml
+- ansible.builtin.include_tasks: locale.yml
+- ansible.builtin.include_tasks: packages.yml
