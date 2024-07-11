@@ -6,3 +6,22 @@
     line: "listen_addresses = '*'"
     regexp: "^#?listen_addresses\\s*="
   notify: Restart postgres
+
+# TODO: PKI
+# - name: Allow postgres TLS connections
+#   become: true
+#   ansible.builtin.lineinfile:
+#     path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+#     line: "ssl = on"
+#     regexp: "^#?ssl\\s*="
+#   notify: Reload postgres
+
+# Default cipher suites still allow various old cipher suites; we can
+# reasonably exclude everything before the TLS 1.2 era.
+- name: Restrict cipher suites for postgres TLS connections
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    line: "ssl_ciphers = 'HIGH:!SSLv3:!TLSv1'"
+    regexp: "^#?ssl_ciphers\\s*="
+  notify: Reload postgres
