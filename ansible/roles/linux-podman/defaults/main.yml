@@ -1,0 +1,13 @@
+---
+podman_version: "5.1.1"
+crun_version: "1.15"
+compose_version: "2.28.1"
+
+podman_network_subnets:
+  - { subnet: '10.100.0.0/8', gateway: '10.100.0.1' }
+  - { subnet: 'fd62:6573:b558:f686::/64', gateway: 'fd62:6573:b558:f686::1' }
+# fd00::/8 is the private IPv6 address range
+# 626573 is "bes" in hex
+#
+# generate a new random one with:
+# node -e 'f=()=>(a=new Uint8Array(2),crypto.getRandomValues(a),Buffer.from(a).toString("hex"));console.log(`fd62:6573:${f()}:${f()}::/64`)'

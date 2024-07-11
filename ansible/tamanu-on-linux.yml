@@ -22,6 +22,8 @@
       tags: [base, tailscale]
     - role: linux-caddy
       tags: [base, caddy]
+    - role: linux-podman
+      tags: [base, podman]
 
 
 # - name: Central server setup

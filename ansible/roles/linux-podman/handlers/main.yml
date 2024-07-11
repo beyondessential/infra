@@ -1,0 +1,23 @@
+---
+- name: Restart caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    state: restarted
+
+- name: Reload caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    state: reloaded
+
+- name: Regenerate caddy manpages
+  become: true
+  ansible.builtin.command: caddy manpage --directory /usr/share/man/man8
+
+- name: Regenerate caddy completions
+  become: true
+  ansible.builtin.shell: |
+    caddy completion bash > /usr/share/bash-completion/completions/caddy
+    caddy completion zsh > /usr/share/zsh/site-functions/_caddy
+    caddy completion fish > /usr/share/fish/vendor_completions.d/caddy.fish

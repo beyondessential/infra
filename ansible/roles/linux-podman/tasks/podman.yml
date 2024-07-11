@@ -1,0 +1,40 @@
+---
+- name: Install netavark
+  become: true
+  ansible.builtin.apt:
+    package: netavark
+
+- name: Install podman {{ podman_version }}
+  become: true
+  ansible.builtin.apt:
+    deb: https://tools.ops.tamanu.io/podman/{{ podman_version }}/podman-{{ ansible_architecture }}-unknown-linux-gnu-{{ podman_version }}.deb
+
+- name: Install containers.conf
+  become: true
+  ansible.builtin.copy:
+    remote_src: true
+    src: /usr/share/containers/containers.conf
+    dest: /etc/containers/containers.conf
+    force: false
+
+- name: Use netavark for container networking
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    line: network_backend = "netavark"
+    regexp: '^#?network_backend\\s*='
+
+- name: Configure default podman network
+  become: true
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.fileglob', 'networks-podman.json.j2') }}"
+    dest: /etc/containers/networks/podman.json
+
+- name: Set podman image auto-cleanup
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.daily/podman-image-cleanup
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      podman image prune --all --filter until=24h --force

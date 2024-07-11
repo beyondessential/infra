@@ -12,6 +12,7 @@
   ansible.builtin.apt:
     name:
       - apt-transport-https
+      - bash-completion
       - ca-certificates
       - curl
       - fish
@@ -25,12 +26,12 @@
       - nano
       - neovim
       - nethogs
-      - nvme-cli
       - ripgrep
       - software-properties-common
       - tmux
       - tzdata
       - uuid
+      - xz-utils # for .deb installs via ansible
 
 - name: Set apt repo auto-update
   become: true
