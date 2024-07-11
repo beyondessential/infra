@@ -1,0 +1,13 @@
+---
+- name: Add caddy config directories
+  become: true
+  ansible.builtin.file:
+    path: /etc/caddy/servers
+    state: directory
+
+- name: Add base caddy config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/Caddyfile
+    src: "{{ lookup('ansible.builtin.fileglob', 'Caddyfile.j2') }}"
+  notify: Restart caddy

@@ -1,15 +1,20 @@
 {
-	admin localhost:2019
+  admin localhost:2019
 
-	storage file_system {
-		root /var/lib/caddy
-	}
+  storage file_system {
+    root /var/lib/caddy
+  }
 
-	log {
-		output stdout
-	}
+  log {
+    output stdout
+  }
 
-	email {{ caddy_email }}
+  email {{ caddy_email }}
+
+  {% if caddy_zerossl_api_key is defined %}
+  cert_issuer zerossl {{ caddy_zerossl_api_key }}
+  {% endif %}
+
 	cert_issuer acme
 }
 

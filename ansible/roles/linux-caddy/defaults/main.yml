@@ -1,3 +1,6 @@
 ---
 caddy_version: "2.7.6"
 caddy_email: tls-renewal@bes.au
+
+# Enable the ZeroSSL certificate issuer
+#caddy_zerossl_api_key: APIKEY
