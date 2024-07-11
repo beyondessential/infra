@@ -27,7 +27,7 @@
 - name: Add caddy config directory
   become: true
   ansible.builtin.file:
-    path: /etc/caddy
+    path: /etc/caddy/servers
     state: directory
 
 - name: Add caddy service file
@@ -37,7 +37,7 @@
     src: "{{ lookup('ansible.builtin.fileglob', 'caddy.service') }}"
   notify: Reload systemd
 
-- name: Add default caddy config
+- name: Add base caddy config
   become: true
   ansible.builtin.template:
     dest: /etc/caddy/Caddyfile
