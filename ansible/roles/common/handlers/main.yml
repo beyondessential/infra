@@ -14,12 +14,6 @@
 - name: Update package facts
   ansible.builtin.package_facts:
 
-- name: Restart tailscale
-  become: true
-  ansible.builtin.systemd:
-    name: tailscaled
-    state: restarted
-
 - name: Restart postgres
   become: true
   ansible.builtin.systemd:

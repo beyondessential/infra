@@ -1,0 +1,8 @@
+---
+# Tailscale should very rarely be restarted during Ansible runs,
+# so leave the handler here, not in common, to discourage use.
+- name: Restart tailscale
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: restarted
