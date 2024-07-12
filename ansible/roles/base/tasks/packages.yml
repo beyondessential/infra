@@ -26,6 +26,7 @@
       - nano
       - neovim
       - nethogs
+      - python3-psycopg2 # required for ansible postgres modules
       - ripgrep
       - software-properties-common
       - tmux

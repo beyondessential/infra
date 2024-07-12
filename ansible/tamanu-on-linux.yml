@@ -26,11 +26,16 @@
     - role: podman
       tags: [base, podman]
 
+- name: Central server setup
+  hosts: central
+  roles:
+    - role: postgres-database
+      dbname: tamanu
+      tags: [app, postgres]
 
-# - name: Central server setup
-#   hosts: central
-#   roles:
-
-# - name: Facility all servers setup
-#   hosts: facility
-#   roles:
+- name: Facility all servers setup
+  hosts: facility
+  roles:
+    - role: postgres-database
+      dbname: tamanu
+      tags: [app, postgres]

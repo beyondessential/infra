@@ -1,0 +1,28 @@
+---
+- name: Create postgres user '{{ postgres_username }}'
+  become: true
+  become_user: postgres
+  when: postgres_create_user
+  community.postgresql.postgresql_user:
+    name: "{{ postgres_username }}"
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + postgres_username) }}"
+  environment:
+    PGOPTIONS: "-c password_encryption=scram-sha-256"
+
+- name: Create postgres database '{{ postgres_database }}' with owner '{{ postgres_username }}'
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_database }}"
+    owner: "{{ postgres_username }}"
+
+- name: Allow local access to postgres
+  when: postgres_unix_socket
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ postgres_username }}"
+    databases: "{{ postgres_database }}"
+    method: scram-sha-256
+  notify: Reload postgres

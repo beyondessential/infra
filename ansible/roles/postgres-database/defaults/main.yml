@@ -1,0 +1,5 @@
+---
+postgres_database: "{{ dbname }}"
+postgres_username: "{{ username | default(dbname) | default('tamanu') }}"
+postgres_create_user: "{{ create_user | default(true) }}"
+postgres_unix_socket: "{{ unix_socket | default(true) }}"
