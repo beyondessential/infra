@@ -6,8 +6,6 @@
   community.postgresql.postgresql_user:
     name: "{{ postgres_username }}"
     password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + postgres_username) }}"
-  environment:
-    PGOPTIONS: "-c password_encryption=scram-sha-256"
 
 - name: Create postgres database '{{ postgres_database }}' with owner '{{ postgres_username }}'
   become: true

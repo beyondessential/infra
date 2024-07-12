@@ -7,6 +7,14 @@
     regexp: "^#?listen_addresses\\s*="
   notify: Restart postgres
 
+- name: Raise password hashing iterations
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/current/main/postgresql.conf
+    line: "scram_iterations = 50000"
+    regexp: "^#?scram_iterations\\s*="
+  notify: Reload postgres
+
 # TODO: PKI
 # - name: Allow postgres TLS connections
 #   become: true
