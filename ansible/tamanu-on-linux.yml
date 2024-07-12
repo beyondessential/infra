@@ -6,15 +6,16 @@
       mount: /var/log
       fs_type: btrfs
       mount_opts: defaults,compress=zstd:6
-      tags: [base]
+      tags: [base, volumes]
     - role: ebs-volume
       volume: sdp
       mount: /var/lib/postgresql
       fs_type: ext4
       mount_opts: defaults,noatime,discard
-      tags: [base]
+      tags: [base, volumes]
+
     - role: base
-      tags: [base]
+      tags: [base, packages]
 
     - role: postgres
       tags: [base, postgres]
