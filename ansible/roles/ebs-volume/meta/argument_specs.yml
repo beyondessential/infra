@@ -17,15 +17,13 @@ argument_specs:
       mount_opts:
         type: str
         required: false
-        default: defaults
         description: |
           Mount options to use. Changing this won't remount the volume.
           For btrfs, you can add compression options here.
 
       fs_type:
         type: str
-        required: false
-        default: btrfs
+        required: true
         description: |
           The filesystem type to use.
           Changing this won't reformat the volume.
