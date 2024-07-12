@@ -29,3 +29,10 @@
   notify:
     - Update package facts
     - Restart postgres
+
+- name: Symlink current postgresql version configuration
+  become: true
+  ansible.builtin.file:
+    src: /etc/postgresql/{{ postgresql_version }}
+    dest: /etc/postgresql/current
+    state: link
