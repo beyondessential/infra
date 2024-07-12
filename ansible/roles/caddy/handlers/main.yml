@@ -9,3 +9,9 @@
     caddy completion bash > /usr/share/bash-completion/completions/caddy
     caddy completion zsh > /usr/share/zsh/site-functions/_caddy
     caddy completion fish > /usr/share/fish/vendor_completions.d/caddy.fish
+
+- name: Enable caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true

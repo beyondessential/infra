@@ -29,4 +29,7 @@
   ansible.builtin.copy:
     dest: /etc/systemd/system/caddy.service
     src: "{{ lookup('ansible.builtin.fileglob', 'caddy.service') }}"
-  notify: Reload systemd
+  notify:
+    - Reload systemd
+    - Enable caddy
+    - Restart caddy
