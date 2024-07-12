@@ -1,16 +1,4 @@
 ---
-- name: Restart caddy
-  become: true
-  ansible.builtin.systemd:
-    name: caddy
-    state: restarted
-
-- name: Reload caddy
-  become: true
-  ansible.builtin.systemd:
-    name: caddy
-    state: reloaded
-
 - name: Regenerate caddy manpages
   become: true
   ansible.builtin.command: caddy manpage --directory /usr/share/man/man8
