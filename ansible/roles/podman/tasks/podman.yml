@@ -38,3 +38,9 @@
     content: |
       #!/bin/sh
       podman image prune --all --filter until=24h --force
+
+- name: Make quadlet directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd
+    state: directory
