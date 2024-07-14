@@ -1,0 +1,12 @@
+---
+- name: Install tmux
+  become: true
+  ansible.builtin.apt:
+    name: tmux
+  notify: Update package facts
+
+- name: Add tmux config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/tmux.conf
+    src: "{{ lookup('ansible.builtin.fileglob', 'tmux.conf.j2') }}"

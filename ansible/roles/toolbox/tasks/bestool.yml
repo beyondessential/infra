@@ -1,0 +1,15 @@
+---
+- name: Download bestool
+  become: true
+  ansible.builtin.get_url:
+    url: https://tools.ops.tamanu.io/bestool/latest/{{ ansible_architecture }}-unknown-linux-musl/bestool
+    dest: /usr/local/bin/bestool
+    mode: a=rx,u=rwx
+  notify: Regenerate bestool completions
+
+- name: Add tb alias
+  become: true
+  ansible.builtin.file:
+    src: /usr/local/bin/bestool
+    dest: /usr/local/bin/tb
+    state: link

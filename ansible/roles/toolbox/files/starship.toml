@@ -1,0 +1,33 @@
+# Show the previous command's exit code if it was non-zero
+[status]
+disabled = false
+format = "[#❗$status]($style) "
+
+# Shorten paths in the prompt
+[directory]
+fish_style_pwd_dir_length = 1
+
+# Always show the full hostname
+[hostname]
+ssh_only = false
+trim_at = ""
+
+# Show which shell we're in, as otherwise it's indistinguishable
+[shell]
+disabled = false
+style ="dimmed white bold"
+# The default values are 'bsh' and 'fsh', which could be confusing
+bash_indicator = "bash"
+fish_indicator = "fish"
+
+# Save time by disabling various version/status modules we don't use
+[battery]
+disabled = true
+[nodejs]
+disabled = true
+[php]
+disabled = true
+[ruby]
+disabled = true
+[rust]
+disabled = true

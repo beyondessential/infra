@@ -16,6 +16,8 @@
 
     - role: baseline
       tags: [base, baseline]
+    - role: toolbox
+      tags: [base, toolbox]
 
     - role: postgres
       tags: [base, postgres]
