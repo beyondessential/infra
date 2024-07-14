@@ -14,8 +14,8 @@
       mount_opts: defaults,noatime,discard
       tags: [base, volumes]
 
-    - role: base
-      tags: [base, packages]
+    - role: baseline
+      tags: [base, baseline]
 
     - role: postgres
       tags: [base, postgres]

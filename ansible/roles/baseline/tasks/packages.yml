@@ -15,24 +15,12 @@
       - bash-completion
       - ca-certificates
       - curl
-      - fish
       - gnupg
-      - htop
-      - iftop
-      - iotop
-      - jq
-      - lm-sensors
-      - mosh
-      - nano
-      - neovim
-      - nethogs
       - python3-psycopg2 # required for ansible postgres modules
-      - ripgrep
       - software-properties-common
-      - tmux
       - tzdata
-      - uuid
       - xz-utils # for .deb installs via ansible
+  notify: Update package facts
 
 - name: Set apt repo auto-update
   become: true
@@ -51,6 +39,3 @@
     content: |
       #!/bin/sh
       apt install -y openssh-server
-
-- name: Gather package facts
-  ansible.builtin.package_facts:
