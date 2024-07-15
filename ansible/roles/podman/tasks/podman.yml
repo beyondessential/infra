@@ -44,3 +44,15 @@
   ansible.builtin.file:
     path: /etc/containers/systemd
     state: directory
+
+# For quadlet compatibility
+- name: Symlink podman binaries into /usr/bin
+  loop:
+    - podman
+    - podman-remote
+    - podmansh
+  become: true
+  ansible.builtin.file:
+    src: /usr/local/bin/{{ item }}
+    dest: /usr/bin/{{ item }}
+    state: link
