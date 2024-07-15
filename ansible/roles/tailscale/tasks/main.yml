@@ -4,3 +4,11 @@
   when: postgresql_configured is defined and postgresql_configured
 - ansible.builtin.set_fact:
     tailscale_configured: true
+
+- name: Add ts-up script
+  when: tailscale_name is defined
+  become: true
+  ansible.builtin.template:
+    dest: /usr/local/bin/ts-up
+    src: "{{ lookup('ansible.builtin.fileglob', 'ts-up.j2') }}"
+    mode: '0755'
