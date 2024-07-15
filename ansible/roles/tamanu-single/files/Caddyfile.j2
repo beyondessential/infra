@@ -19,7 +19,9 @@
   reverse_proxy /* {
     header_up Host "localhost"
 
-    to http://127.0.0.1:5000
+    dynamic a frontend.tamanu.internal 3000 {
+      resolvers 10.100.0.1
+    }
 
     fail_duration 10s
     lb_policy least_conn
@@ -35,7 +37,9 @@
 
   header /v1/* Cache-Control no-store
   reverse_proxy /v1/* {
-    to http://127.0.0.1:4000
+    dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
+      resolvers 10.100.0.1
+    }
 
     fail_duration 15s
     lb_policy least_conn
@@ -48,7 +52,9 @@
 
   header /api/* Cache-Control no-store
   reverse_proxy /api/* {
-    to http://127.0.0.1:4000
+    dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
+      resolvers 10.100.0.1
+    }
 
     fail_duration 15s
     lb_policy least_conn
