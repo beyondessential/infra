@@ -34,8 +34,8 @@
     dest: /etc/tamanu/env
     mode: '0644'
     content: |
-      TAMANU_VERSION={{ version }}
-      TAMANU_VERSION_DOMAIN={{ version | replace('.', '-') }}
+      TAMANU_VERSION={{ tamanu_version }}
+      TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
 
 - name: Install container quadlets
   become: true

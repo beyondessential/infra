@@ -2,5 +2,5 @@
 - name: Set hostname
   become: true
   ansible.builtin.hostname:
-    name: "{{ inventory_hostname }}"
+    name: "{{ public_hostname }}"
     use: systemd

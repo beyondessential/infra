@@ -1,7 +1,7 @@
 {
   countryTimeZone: "{{ timezone }}",
   serverFacilityId: "{{ tamanu_facility_id }}",
-  canonicalUrl: "{{ inventory_hostname }}",
+  canonicalUrl: "https://{{ public_hostname }}",
   sync: {
     host: "{{ tamanu_central_canonical_url }}",
     email: "{{ tamanu_sync_email }}",

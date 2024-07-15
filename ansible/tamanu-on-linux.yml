@@ -37,7 +37,6 @@
 
     - role: tamanu-single
       type: central
-      version: v2.10.0
       db_name: tamanu
       tags: [app, tamanu]
 
@@ -50,6 +49,5 @@
 
     - role: tamanu-single
       type: facility
-      version: v2.10.0
       db_name: tamanu
       tags: [app, tamanu]

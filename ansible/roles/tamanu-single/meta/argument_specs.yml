@@ -17,7 +17,7 @@ argument_specs:
 
       version:
         type: str
-        required: true
+        required: false
         description: |
           Version of the server to deploy.
           Can be any container image tag or ID.
