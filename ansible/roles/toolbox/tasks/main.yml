@@ -3,3 +3,10 @@
 - ansible.builtin.include_tasks: bestool.yml
 - ansible.builtin.include_tasks: starship.yml
 - ansible.builtin.include_tasks: tmux.yml
+
+- name: Add tsw script
+  become: true
+  ansible.builtin.copy:
+    dest: /usr/local/bin/tsw
+    src: "{{ lookup('ansible.builtin.fileglob', 'tsw.fish') }}"
+    mode: '0755'
