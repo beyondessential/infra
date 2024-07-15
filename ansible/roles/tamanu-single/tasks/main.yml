@@ -1,0 +1,46 @@
+---
+- name: Add tamanu caddy config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/servers/tamanu
+    src: "{{ lookup('ansible.builtin.fileglob', 'Caddyfile.j2') }}"
+  notify: Reload caddy
+
+- name: Create tamanu config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu
+    mode: '0755'
+    state: directory
+
+- name: Add tamanu app config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/tamanu/production.json5
+    src: "{{ lookup('ansible.builtin.fileglob', tamanu_server_type + '.json5.j2') }}"
+    mode: '0640'
+    force: false # preserve modifications
+
+- name: Add tamanu-run script
+  become: true
+  ansible.builtin.template:
+    dest: /usr/local/bin/tamanu-run
+    src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-run.j2') }}"
+    mode: '0755'
+
+- name: Add version file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/tamanu/env
+    mode: '0644'
+    content: |
+      TAMANU_VERSION={{ version }}
+      TAMANU_VERSION_DOMAIN={{ version | replace('.', '-') }}
+
+- name: Install container quadlets
+  become: true
+  with_fileglob: tamanu-*.container
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/containers/systemd/{{ item | basename }}
+  notify: Reload systemd

@@ -1,0 +1,48 @@
+{
+  countryTimeZone: "{{ timezone }}",
+  canonicalHostName: "{{ tamanu_central_canonical_url }}",
+  auth: {
+    secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'tamanuauth') }}",
+    refreshToken: {
+      secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'tamanurefresh') }}",
+    },
+    reportNoUserError: true,
+    useHardcodedPermissions: false,
+  },
+  db: {
+    name: "{{ tamanu_db_name }}",
+    verbose: false,
+    username: "{{ tamanu_db_user }}",
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + tamanu_db_user) }}",
+    host: "/var/run/postgresql",
+    port: null,
+    migrateOnStartup: false,
+  },
+  localisation: {
+    data: {
+      templates: {
+        letterhead: {
+          title: "{{ tamanu_letterhead_title }}",
+          subTitle: "{{ tamanu_letterhead_subtitle }}",
+        },
+      },
+      country: {
+        name: "{{ tamanu_country_name }}",
+        "alpha-2": "{{ tamanu_country_alpha2 }}",
+        "alpha-3": "{{ tamanu_country_alpha3 }}",
+      },
+      timeZone: '{{ timezone}}',
+    },
+  },
+  disk: {
+    diskPath: '/var/lib/postgresql',
+    freeSpaceRequired: {
+      gigabytesForUploadingDocuments: 0.1,
+    },
+  },
+  notifications: {
+    certificates: {
+      labTestCategoryIds: ['labTestCategory-COVID', 'labTestCategory-COVIDRAT'],
+    },
+  },
+}

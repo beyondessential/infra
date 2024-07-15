@@ -1,0 +1,36 @@
+---
+argument_specs:
+  main:
+    description: |
+      Deploy a single Tamanu server (API and frontend).
+      For multiplexed deployments, use the `tamanu-multiplex` role (TODO).
+    options:
+      type:
+        type: str
+        required: true
+        choices:
+          - central
+          - facility
+        description: |
+          Type of server to configure.
+          Must be one of 'central' or 'facility'.
+
+      version:
+        type: str
+        required: true
+        description: |
+          Version of the server to deploy.
+          Can be any container image tag or ID.
+
+      db_name:
+        type: str
+        required: true
+        description: |
+          Name of the database to use.
+
+      db_user:
+        type: str
+        required: false
+        description: |
+          Name of the database user to login with.
+          Defaults to the same as the database name.

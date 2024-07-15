@@ -1,0 +1,29 @@
+#!/bin/sh
+
+version="${1}"
+if [ -z "$version" ]; then
+  cat <<HELP
+Run a subcommand in a tamanu server container.
+
+With the current version:
+    $ $(basename $0) current <command...>
+
+With an arbitrary container image tag:
+    $ $(basename $0) <tag> <command...>
+
+Example: migrate to version 2.10.0:
+    $ $(basename $0) v2.10.0 migrate
+HELP
+  exit 1
+fi
+shift
+
+if [ "$version" = "current" ]; then
+  version=$(grep TAMANU_VERSION= /etc/tamanu/env | cut -d\= -f2)
+fi
+
+exec sudo podman run -it --rm \
+  -v /etc/tamanu:/config \
+  -v /var/run/postgresql:/var/run/postgresql \
+  ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:$version \
+  $*

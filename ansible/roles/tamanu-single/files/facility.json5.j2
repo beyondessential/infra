@@ -1,0 +1,29 @@
+{
+  countryTimeZone: "{{ timezone }}",
+  serverFacilityId: "{{ tamanu_facility_id }}",
+  canonicalUrl: "{{ inventory_hostname }}",
+  sync: {
+    host: "{{ tamanu_central_canonical_url }}",
+    email: "{{ tamanu_sync_email }}",
+    password: "{{ tamanu_sync_password }}",
+  },
+  auth: {
+    secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'tamanuauth') }}",
+    useHardcodedPermissions: false,
+  },
+  survey: {
+    defaultCodes: {
+      department: "{{ tamanu_default_department }}",
+      location: "{{ tamanu_default_location }}",
+    },
+  },
+  db: {
+    name: "{{ tamanu_db_name }}",
+    verbose: false,
+    username: "{{ tamanu_db_user }}",
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + tamanu_db_user) }}",
+    host: "/var/run/postgresql",
+    port: null,
+    migrateOnStartup: false,
+  },
+}

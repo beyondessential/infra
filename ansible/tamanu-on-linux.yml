@@ -35,9 +35,21 @@
       dbname: tamanu
       tags: [app, postgres]
 
+    - role: tamanu-single
+      type: central
+      version: v2.10.0
+      db_name: tamanu
+      tags: [app, tamanu]
+
 - name: Facility all servers setup
   hosts: facility
   roles:
     - role: postgres-database
       dbname: tamanu
       tags: [app, postgres]
+
+    - role: tamanu-single
+      type: facility
+      version: v2.10.0
+      db_name: tamanu
+      tags: [app, tamanu]

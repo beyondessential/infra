@@ -1,0 +1,18 @@
+[Unit]
+Description=Tamanu Facility server API
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-facility:${TAMANU_VERSION}
+Volume=/etc/tamanu:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=api.facility.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.api.facility.tamanu.internal
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

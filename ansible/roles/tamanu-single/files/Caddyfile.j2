@@ -1,0 +1,78 @@
+(server) {
+  log {
+    output stdout
+  }
+
+  header / Cache-Control no-cache
+  header /manifest.json Cache-Control no-cache
+
+  handle_errors {
+    @custom_err file /resources/errors/{err.status_code}.html
+    handle @custom_err {
+      rewrite * {file_match.relative}
+      file_server
+    }
+  }
+
+  encode zstd gzip
+
+  reverse_proxy /* {
+    header_up Host "localhost"
+
+    to http://127.0.0.1:5000
+
+    fail_duration 10s
+    lb_policy least_conn
+    health_uri /
+    health_headers {
+      Host "localhost"
+    }
+
+    transport http {
+      keepalive 65s
+    }
+  }
+
+  header /v1/* Cache-Control no-store
+  reverse_proxy /v1/* {
+    to http://127.0.0.1:4000
+
+    fail_duration 15s
+    lb_policy least_conn
+    health_uri /api/public/ping
+
+    transport http {
+      keepalive 65s
+    }
+  }
+
+  header /api/* Cache-Control no-store
+  reverse_proxy /api/* {
+    to http://127.0.0.1:4000
+
+    fail_duration 15s
+    lb_policy least_conn
+    health_uri /api/public/ping
+
+    transport http {
+      keepalive 65s
+    }
+  }
+}
+
+:80 {
+  import server
+}
+
+{{ inventory_hostname }} {
+  import server
+}
+
+{% if tailscale_name is defined %}
+{{ tailscale_name }}.{{ tailnet }}.ts.net {
+  import server
+  tls {
+    get_certificate tailscale
+  }
+}
+{% endif %}

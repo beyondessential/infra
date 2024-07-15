@@ -1,0 +1,20 @@
+[Unit]
+Description=Tamanu Central server API
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-central:${TAMANU_VERSION}
+Exec=serve
+Volume=/etc/tamanu:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=api.central.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.api.central.tamanu.internal
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+DefaultInstance=0

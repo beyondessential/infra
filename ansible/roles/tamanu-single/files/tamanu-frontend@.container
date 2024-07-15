@@ -1,0 +1,19 @@
+[Unit]
+Description=Tamanu frontend
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-frontend:${TAMANU_VERSION}
+Volume=/etc/tamanu:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=frontend.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.frontend.tamanu.internal
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+DefaultInstance=0

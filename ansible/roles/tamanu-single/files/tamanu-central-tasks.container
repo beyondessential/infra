@@ -1,0 +1,17 @@
+[Unit]
+Description=Tamanu Central server scheduled tasks
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-central:${TAMANU_VERSION}
+Exec=tasks
+Volume=/etc/tamanu:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
