@@ -3,7 +3,7 @@
   become: true
   ansible.builtin.unarchive:
     remote_src: true
-    src: https://github.com/starship/starship/releases/latest/download/starship-{{ ansible_architecture }}-unknown-linux-musl.tar.gz
+    src: https://github.com/starship/starship/releases/download/{{ starship_version }}/starship-{{ ansible_architecture }}-unknown-linux-musl.tar.gz
     dest: /usr/bin
     mode: a=rx,u=rwx
   notify: Regenerate starship completions
