@@ -3,6 +3,7 @@
   become: true
   ansible.builtin.apt:
     name:
+      - btrfs-compsize
       - fish
       - htop
       - iftop
