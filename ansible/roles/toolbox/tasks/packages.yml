@@ -14,5 +14,6 @@
       - neovim
       - nethogs
       - ripgrep
+      - tree
       - uuid
   notify: Update package facts
