@@ -11,6 +11,7 @@
   ansible.builtin.systemd:
     name: "{{ item }}"
     state: stopped
+  notify: Reload caddy
 
 - name: Upgrade the frontend service A
   become: true
@@ -18,6 +19,7 @@
     name: tamanu-frontend@a
     state: restarted
     enabled: true
+  notify: Reload caddy
 
 - name: Wait for new frontend to start
   ansible.builtin.wait_for:
@@ -31,6 +33,7 @@
     name: tamanu-frontend@b
     state: restarted
     enabled: true
+  notify: Reload caddy
 
 # cleanup any legacy or experiments;
 # two frontend services is way more than enough and only really serves
@@ -42,6 +45,7 @@
     name: "{{ item }}"
     state: stopped
     enabled: false
+  notify: Reload caddy
 
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
@@ -55,3 +59,4 @@
     name: "{{ item }}"
     state: started
     enabled: true
+  notify: Reload caddy
