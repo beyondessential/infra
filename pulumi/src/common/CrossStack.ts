@@ -1,7 +1,7 @@
 import { Output, StackReference, all } from '@pulumi/pulumi';
 import { NetworkOutputs, fromStackReference as networkFromStackReference } from './Network.js';
 
-export type CrossStackNetwork = Omit<NetworkOutputs, 'natSubnets' | 'workloadSubnets'> & {
+export type CrossStackNetwork = Omit<NetworkOutputs, 'natSubnets' | 'workloadSubnets' | 'publicWorkloadSubnets'> & {
   subnetIds: Output<string[]>;
 };
 
@@ -56,9 +56,10 @@ export class CrossStack {
     const network = networkFromStackReference(this.ref, key);
     return {
       ...network,
-      subnetIds: all([network.natSubnetIds, network.workloadSubnetIds]).apply(([nat, workload]) => [
+      subnetIds: all([network.natSubnetIds, network.workloadSubnetIds, network.publicWorkloadSubnetIds]).apply(([nat, workload, pub]) => [
         ...nat,
         ...workload,
+        ...pub,
       ]),
     };
   }

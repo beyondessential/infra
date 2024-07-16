@@ -5,6 +5,8 @@ import { region } from '../common/awsAccount.js';
 import { Network } from '../common/Network.js';
 import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../constants/external.js';
 
+export { accountId } from '../common/awsAccount.js';
+
 const cfg = new Config();
 const v6 = cfg.requireBoolean('networkV6');
 const forEksCluster = cfg.getBoolean('forEksCluster');
