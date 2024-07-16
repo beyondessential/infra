@@ -1,0 +1,63 @@
+---
+- name: Create versioned tamanu config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu/{{ tamanu_version }}
+    mode: '0750'
+    state: directory
+
+- name: Copy legacy app config to new version
+  become: true
+  ansible.builtin.copy:
+    remote_src: true
+    src: /etc/tamanu/production.json5
+    dest: /etc/tamanu/{{ tamanu_version }}/production.json5
+    mode: '0640'
+    force: false # preserve modifications
+  ignore_errors: true
+  notify: Legacy rm app config
+
+- name: Copy current app config to new version
+  become: true
+  ansible.builtin.copy:
+    remote_src: true
+    src: /etc/tamanu/current/production.json5
+    dest: /etc/tamanu/{{ tamanu_version }}/production.json5
+    mode: '0640'
+    force: false # preserve modifications
+  ignore_errors: true
+  register: copy_current
+
+- name: Add new tamanu app config
+  when: copy_current.failed
+  become: true
+  ansible.builtin.template:
+    dest: /etc/tamanu/{{ tamanu_version }}/production.json5
+    src: "{{ lookup('ansible.builtin.fileglob', tamanu_server_type + '.json5.j2') }}"
+    mode: '0640'
+    force: false # preserve modifications
+
+- name: Move current symlink
+  become: true
+  ansible.builtin.file:
+    src: /etc/tamanu/{{ tamanu_version }}
+    dest: /etc/tamanu/current
+    state: link
+    force: true
+
+- name: Add version file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/tamanu/env
+    mode: '0644'
+    content: |
+      TAMANU_VERSION={{ tamanu_version }}
+      TAMANU_VERSION_DOMAIN={{ tamanu_version_domain }}
+
+- name: Pull the Tamanu images
+  become: true
+  loop:
+    - "{{ tamanu_image_server }}"
+    - "{{ tamanu_image_frontend }}"
+  containers.podman.podman_image:
+    name: "{{ item }}"

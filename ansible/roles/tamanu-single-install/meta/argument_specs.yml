@@ -15,13 +15,6 @@ argument_specs:
           Type of server to configure.
           Must be one of 'central' or 'facility'.
 
-      version:
-        type: str
-        required: false
-        description: |
-          Version of the server to deploy.
-          Can be any container image tag or ID.
-
       db_name:
         type: str
         required: true

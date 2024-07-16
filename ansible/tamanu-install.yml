@@ -35,7 +35,7 @@
       dbname: tamanu
       tags: [app, postgres]
 
-    - role: tamanu-single
+    - role: tamanu-single-install
       type: central
       db_name: tamanu
       tags: [app, tamanu]
@@ -47,7 +47,7 @@
       dbname: tamanu
       tags: [app, postgres]
 
-    - role: tamanu-single
+    - role: tamanu-single-install
       type: facility
       db_name: tamanu
       tags: [app, tamanu]

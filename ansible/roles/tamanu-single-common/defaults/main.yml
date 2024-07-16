@@ -1,5 +1,6 @@
 ---
 tamanu_version: "{{ version | default('v2.10.0') }}"
+tamanu_version_domain: "{{ version | default('v2.10.0') | replace('.', '-') }}"
 tamanu_db_name: "{{ db_name }}"
 tamanu_db_user: "{{ db_user | default(db_name) }}"
 tamanu_server_type: "{{ type }}"

@@ -23,7 +23,7 @@ if [ "$version" = "current" ]; then
 fi
 
 exec sudo podman run -it --rm \
-  -v /etc/tamanu:/config \
+  -v "/etc/tamanu/$version:/config" \
   -v /var/run/postgresql:/var/run/postgresql \
   ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:$version \
   $*
