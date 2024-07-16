@@ -1,0 +1,57 @@
+---
+- name: Collect which services are running
+  ansible.builtin.service_facts:
+- name: Print service facts
+  ansible.builtin.debug:
+    msg: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
+
+- name: Stop the application services
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+
+- name: Upgrade the frontend service A
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-frontend@a
+    state: restarted
+    enabled: true
+
+- name: Wait for new frontend to start
+  ansible.builtin.wait_for:
+    host: "{{ tamanu_version_domain }}.frontend.tamanu.internal"
+    port: 3000
+    timeout: 10
+
+- name: Upgrade the frontend service B
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-frontend@b
+    state: restarted
+    enabled: true
+
+# cleanup any legacy or experiments;
+# two frontend services is way more than enough and only really serves
+# to provide a way to do a rolling upgrade
+- name: Stop frontend services that don't need to be running
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$') }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+
+- name: Migrate the database
+  ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
+
+# this assumes the service facts haven't changed,
+# so we're starting exactly the original service loadout
+- name: Start the application services
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
