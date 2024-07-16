@@ -1,7 +1,7 @@
 ---
 - ansible.builtin.include_tasks: crun.yml
 - ansible.builtin.include_tasks: podman.yml
-- ansible.builtin.include_tasks: composes.yml
+- ansible.builtin.include_tasks: network.yml
 - ansible.builtin.set_fact:
     podman_configured: true
     podman_version: "{{ podman_version }}"

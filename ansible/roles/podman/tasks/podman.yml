@@ -24,12 +24,6 @@
     line: network_backend = "netavark"
     regexp: '^#?network_backend\\s*='
 
-- name: Configure default podman network
-  become: true
-  ansible.builtin.template:
-    src: "{{ lookup('ansible.builtin.fileglob', 'networks-podman.json.j2') }}"
-    dest: /etc/containers/networks/podman.json
-
 - name: Set podman image auto-cleanup
   become: true
   ansible.builtin.copy:

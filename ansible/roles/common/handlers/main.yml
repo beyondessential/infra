@@ -14,6 +14,12 @@
 - name: Update package facts
   ansible.builtin.package_facts:
 
+- name: Reload systemd-networkd
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-networkd
+    state: reloaded
+
 - name: Restart postgres
   become: true
   ansible.builtin.systemd:

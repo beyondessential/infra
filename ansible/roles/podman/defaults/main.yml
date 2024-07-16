@@ -3,8 +3,8 @@ podman_version: "5.1.2.1"
 crun_version: "1.15"
 
 podman_network_subnets:
-  - { subnet: '10.100.0.0/16', gateway: '10.100.0.1' }
-  - { subnet: 'fd62:6573:b558:f686::/64', gateway: 'fd62:6573:b558:f686::1' }
+  - { subnet: '10.100.0.1/16', gateway: '10.100.0.1' }
+  - { subnet: 'fd62:6573:b558:f686::1/64', gateway: 'fd62:6573:b558:f686::1' }
 # fd00::/8 is the private IPv6 address range
 # 626573 is "bes" in hex
 #

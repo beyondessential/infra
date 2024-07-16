@@ -1,0 +1,19 @@
+---
+- name: Make container network directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/networks
+    state: directory
+
+- name: Configure default podman network
+  become: true
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.fileglob', 'networks-podman.json.j2') }}"
+    dest: /etc/containers/networks/podman.json
+
+- name: Configure resolved to look into the podman network
+  become: true
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.fileglob', 'podman.network.j2') }}"
+    dest: /etc/systemd/network/podman.network
+  notify: Reload systemd-networkd
