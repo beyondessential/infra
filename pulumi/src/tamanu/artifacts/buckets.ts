@@ -43,6 +43,17 @@ export const clients = new BucketWebsite('clients', {
   },
 });
 
+export const translations = new BucketWebsite('translations', {
+  domain: 'translations.ops.tamanu.io',
+  bucketName: 'bes-tamanu-translations',
+  zoneId,
+  logsBucket: LOGS_BUCKETS.TAMANU,
+  bucketItselfPublic: false,
+  tags: {
+    Purpose: 'tamanu-translations',
+  },
+});
+
 export const dbDumps = new awsClassic.s3.BucketV2('bes-tamanu-test-data-snapshots-bucket', {
   bucket: 'bes-tamanu-test-data-snapshots',
 });
@@ -65,13 +76,17 @@ new awsClassic.s3.BucketLifecycleConfigurationV2(
   { parent: dbDumps },
 );
 
-new awsClassic.s3.BucketIntelligentTieringConfiguration('data-snapshots-tiering', {
-  bucket: dbDumps.bucket,
-  status: 'Enabled',
-  tierings: [
-    {
-      accessTier: 'DEEP_ARCHIVE_ACCESS',
-      days: 180,
-    }
-  ],
-}, { parent: dbDumps });
+new awsClassic.s3.BucketIntelligentTieringConfiguration(
+  'data-snapshots-tiering',
+  {
+    bucket: dbDumps.bucket,
+    status: 'Enabled',
+    tierings: [
+      {
+        accessTier: 'DEEP_ARCHIVE_ACCESS',
+        days: 180,
+      },
+    ],
+  },
+  { parent: dbDumps },
+);
