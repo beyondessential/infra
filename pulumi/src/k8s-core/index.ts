@@ -1,5 +1,6 @@
-export { coreStackName, failIfIncorrectAccount } from '../common/coreRef.js';
-await failIfIncorrectAccount();
+export { coreStackName } from '../common/coreRef.js';
+import { failIfIncorrectAccount } from '../common/coreRef.js';
+failIfIncorrectAccount();
 
 import { cluster } from './cluster.js';
 export { clusterName as name, tags, version } from './cluster.js';
@@ -14,5 +15,4 @@ import './externalDns.js';
 import './cert-manager/controller.js';
 import './cert-manager/letsencrypt.js';
 import './cert-manager/zerossl.js';
-import './storage.js';import { failIfIncorrectAccount } from '../common/coreRef.js';
-
+import './storage.js';

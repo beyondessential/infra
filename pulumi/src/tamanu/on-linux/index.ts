@@ -2,7 +2,7 @@ import * as aws from '@pulumi/aws';
 import { normalizedStack, domainBase, domains, instances, zoneId, diskSizes, namePrefix, hardDelete, sshKey } from './config.js';
 import { $network, failIfIncorrectAccount } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
-await failIfIncorrectAccount();
+failIfIncorrectAccount();
 
 export const urls = Object.fromEntries(
   Object.entries(domains).map(([key, value]) => [
