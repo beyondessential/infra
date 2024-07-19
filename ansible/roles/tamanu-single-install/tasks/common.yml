@@ -1,16 +1,40 @@
 ---
+- name: Add tamanu group
+  become: true
+  ansible.builtin.group:
+    name: tamanu
+    system: true
+
+- name: Add tamanu user
+  become: true
+  ansible.builtin.user:
+    group: tamanu
+    name: tamanu
+    shell: /usr/bin/false
+
+- name: Add ubuntu user to tamanu group
+  become: true
+  ansible.builtin.user:
+    name: ubuntu
+    groups: tamanu
+    append: yes
+
 - name: Add tamanu caddy config
   become: true
   ansible.builtin.template:
     dest: /etc/caddy/servers/tamanu
     src: "{{ lookup('ansible.builtin.fileglob', 'Caddyfile.j2') }}"
+    owner: tamanu
+    group: tamanu
   notify: Reload caddy
 
 - name: Create tamanu config directory
   become: true
   ansible.builtin.file:
     path: /etc/tamanu
-    mode: '0755'
+    mode: '0775'
+    owner: tamanu
+    group: tamanu
     state: directory
 
 - name: Install common container quadlets

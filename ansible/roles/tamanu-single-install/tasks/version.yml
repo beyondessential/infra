@@ -3,7 +3,9 @@
   become: true
   ansible.builtin.file:
     path: /etc/tamanu/{{ tamanu_version }}
-    mode: '0750'
+    mode: '0770'
+    owner: tamanu
+    group: tamanu
     state: directory
 
 - name: Copy legacy app config to new version
@@ -12,7 +14,9 @@
     remote_src: true
     src: /etc/tamanu/production.json5
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
-    mode: '0640'
+    mode: '0660'
+    owner: tamanu
+    group: tamanu
     force: false # preserve modifications
   ignore_errors: true
   notify: Legacy rm app config
@@ -23,7 +27,9 @@
     remote_src: true
     src: /etc/tamanu/current/production.json5
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
-    mode: '0640'
+    mode: '0660'
+    owner: tamanu
+    group: tamanu
     force: false # preserve modifications
   ignore_errors: true
   register: copy_current
@@ -34,14 +40,27 @@
   ansible.builtin.template:
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
     src: "{{ lookup('ansible.builtin.fileglob', tamanu_server_type + '.json5.j2') }}"
-    mode: '0640'
+    mode: '0660'
+    owner: tamanu
+    group: tamanu
     force: false # preserve modifications
+
+- name: Set permissions of tamanu app config
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu/{{ tamanu_version }}/production.json5
+    mode: '0660'
+    owner: tamanu
+    group: tamanu
+    state: file
 
 - name: Move current symlink
   become: true
   ansible.builtin.file:
     src: /etc/tamanu/{{ tamanu_version }}
     dest: /etc/tamanu/current
+    owner: tamanu
+    group: tamanu
     state: link
     force: true
 
@@ -49,10 +68,12 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/tamanu/env
-    mode: '0644'
+    mode: '0664'
+    owner: tamanu
+    group: tamanu
     content: |
       TAMANU_VERSION={{ tamanu_version }}
-      TAMANU_VERSION_DOMAIN={{ tamanu_version_domain }}
+      TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
 
 - name: Pull the Tamanu images
   become: true

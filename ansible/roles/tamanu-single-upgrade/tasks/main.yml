@@ -23,7 +23,7 @@
 
 - name: Wait for new frontend to start
   ansible.builtin.wait_for:
-    host: "{{ tamanu_version_domain }}.frontend.tamanu.internal"
+    host: "{{ tamanu_version | replace('.', '-') }}.frontend.tamanu.internal"
     port: 3000
     timeout: 10
 
