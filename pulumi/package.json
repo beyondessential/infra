@@ -21,6 +21,7 @@
     "@pulumi/command": "^0.9.1",
     "@pulumi/eks": "^1.0.3",
     "@pulumi/kubernetes": "^4.3.0",
+    "@pulumi/oci": "^2.3.0",
     "@pulumi/postgresql": "^3.10.0",
     "@pulumi/pulumi": "^3.86.0",
     "@pulumi/tailscale": "^0.13.1",
@@ -28,6 +29,7 @@
     "lodash-es": "^4.17.21",
     "netmask": "^2.0.2",
     "nunjucks": "^3.2.4",
+    "typescript": "^5.5.3",
     "yaml": "^2.3.4"
   },
   "scripts": {
