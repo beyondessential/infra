@@ -39,7 +39,7 @@
 
 - name: Install common container quadlets
   become: true
-  with_fileglob: tamanu-frontend.container
+  with_fileglob: tamanu-frontend@.container
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: /etc/containers/systemd/{{ item | basename }}
