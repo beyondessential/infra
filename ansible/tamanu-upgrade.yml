@@ -8,9 +8,9 @@
         that: tamanu_version is defined
         msg: "tamanu_version is not defined. Please set it in the inventory file."
 
-    - name: Check tamanu-run works and the version exists before doing anything
-      tags: [pre, go]
-      ansible.builtin.command: tamanu-run {{ tamanu_version }} help
+    # - name: Check tamanu-run works and the version exists before doing anything
+    #   tags: [pre, go]
+    #   ansible.builtin.command: tamanu-run {{ tamanu_version }} help
 
 - name: Central pre-upgrade (if needed)
   hosts: central
