@@ -1,5 +1,0 @@
-{
-  "name": "@tamanu/legacy-on-ecs",
-  "type": "module",
-  "main": "../../../build/tamanu/legacy-on-ecs/index.js"
-}
