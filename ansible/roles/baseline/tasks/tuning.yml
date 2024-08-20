@@ -1,0 +1,7 @@
+---
+# https://ably.com/blog/optimizing-global-message-transit-latency-a-journey-through-tcp-configuration
+- ansible.posix.sysctl:
+    name: net.ipv4.tcp_slow_start_after_idle
+    value: '0'
+    sysctl_file: /etc/sysctl.d/tcp-tuning.conf
+

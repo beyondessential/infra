@@ -4,3 +4,4 @@
 - ansible.builtin.include_tasks: locale.yml
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: accounting.yml
+- ansible.builtin.include_tasks: tuning.yml
