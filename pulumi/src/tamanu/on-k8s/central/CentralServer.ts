@@ -7,6 +7,7 @@ import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
 import { Provisioning, provisioner } from './provisioner.js';
 import { runTasks } from './tasks.js';
 import { runApi } from './api.js';
+import { runFhirWorker } from './fhir.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ingress } from '../common/ingress.js';
 import { ReplicaConfig, dbStorage, timezone } from '../config.js';
@@ -57,7 +58,11 @@ export class CentralServer extends ComponentResource {
     });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
-    const { job: provisionerJob, provisioning } = provisioner({ parent: this, podSpec, migratorJob });
+    const { job: provisionerJob, provisioning } = provisioner({
+      parent: this,
+      podSpec,
+      migratorJob,
+    });
     this.provisioning = provisioning;
 
     if (replicas.tasks > 0) {
@@ -66,6 +71,30 @@ export class CentralServer extends ComponentResource {
         podSpec,
         migratorJob,
         provisionerJob,
+      });
+
+      runFhirWorker({
+        parent: this,
+        podSpec,
+        migratorJob,
+        provisionerJob,
+        name: 'refresh',
+        topics: [
+          'fhir.refresh.allFromUpstream',
+          'fhir.refresh.entireResource',
+          'fhir.refresh.fromUpstream',
+        ],
+        replicas: replicas.tasks,
+      });
+
+      runFhirWorker({
+        parent: this,
+        podSpec,
+        migratorJob,
+        provisionerJob,
+        name: 'resolver',
+        topics: ['fhir.resolver'],
+        replicas: replicas.tasks,
       });
     }
 
