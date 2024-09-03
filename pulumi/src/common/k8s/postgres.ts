@@ -1,15 +1,15 @@
 import { ComponentResource, Input, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
-import { k8sWaitFor } from '../../../common/k8s/waitFor.js';
-import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
-import { RUN_ON_SPOT } from '../../../common/k8s/affinities.js';
-import { namespace } from '../namespace.js';
+import { k8sWaitFor } from './waitFor.js';
+import { CAN_RUN_ON_SPOT } from './tolerations.js';
+import { RUN_ON_SPOT } from './affinities.js';
 import { postgresUrlSecret } from './postgresUrl.js';
 
 export interface PostgresArgs {
   parent: ComponentResource;
-  name: string;
+  namespace: Input<string>;
+  name: Input<string>;
   replicas: Input<number>;
   storage: Input<string>;
   timezone: Input<string>;
@@ -19,6 +19,7 @@ export type PostgresReady = Output<void>;
 
 export function runPostgres({
   parent,
+  namespace,
   name,
   replicas,
   storage,
@@ -92,6 +93,6 @@ export function runPostgres({
     },
     namespace,
   );
-  postgresUrlSecret({ parent, name, dbReady });
+  postgresUrlSecret({ parent, namespace, name, dbReady });
   return dbReady;
 }

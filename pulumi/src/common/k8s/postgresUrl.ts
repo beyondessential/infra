@@ -1,18 +1,18 @@
-import { ComponentResource, Output, all, interpolate, secret } from '@pulumi/pulumi';
+import { ComponentResource, Input, Output, all, interpolate, secret } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
-import { namespace } from '../namespace.js';
-import { k8sConfig } from '../../../common/k8s/client.js';
+import { k8sConfig } from './client.js';
 import { PostgresReady } from './postgres.js';
 
 export interface PostgresUrlArgs {
   parent: ComponentResource;
-  name: string;
+  namespace: Input<string>;
+  name: Input<string>;
   dbReady: PostgresReady,
 }
 
-function dbPassword(dbReady: PostgresReady, name: string, user: string): Output<null | string> {
-  return secret(all([namespace, dbReady]).apply(async ([namespace]) => {
+function dbPassword(dbReady: PostgresReady, namespace: Input<string>, name: Input<string>, user: string): Output<null | string> {
+  return secret(all([namespace, name, dbReady]).apply(async ([namespace, name]) => {
     try {
       const kc = k8sConfig();
       const k8sApi = kc.makeApiClient(CoreV1Api);
@@ -31,9 +31,9 @@ function dbPassword(dbReady: PostgresReady, name: string, user: string): Output<
   }));
 }
 
-export function postgresUrlSecret({ parent, name, dbReady }: PostgresUrlArgs): k8s.core.v1.Secret {
-  const appPassword = dbPassword(dbReady, name, 'app');
-  const postgresPassword = dbPassword(dbReady, name, 'superuser');
+export function postgresUrlSecret({ parent, namespace, name, dbReady }: PostgresUrlArgs): k8s.core.v1.Secret {
+  const appPassword = dbPassword(dbReady, namespace, name, 'app');
+  const postgresPassword = dbPassword(dbReady, namespace, name, 'superuser');
 
   return new k8s.core.v1.Secret(
     `${name}-db-url`,

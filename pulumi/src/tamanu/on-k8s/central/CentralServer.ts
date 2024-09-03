@@ -1,7 +1,7 @@
 import { ComponentResource, ComponentResourceOptions, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { migrator } from '../common/migrator.js';
-import { runPostgres } from '../common/postgres.js';
+import { runPostgres } from '../../../common/k8s/postgres.js';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
 import { Provisioning, provisioner } from './provisioner.js';
@@ -10,6 +10,7 @@ import { runApi } from './api.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ingress } from '../common/ingress.js';
 import { ReplicaConfig, dbStorage, timezone } from '../config.js';
+import { namespace } from '../namespace.js';
 
 export interface CentralServerArgs {
   fqdn: string;
@@ -31,6 +32,7 @@ export class CentralServer extends ComponentResource {
 
     const dbReady = runPostgres({
       parent: this,
+      namespace,
       name: 'central',
       replicas: replicas.db,
       storage: dbStorage,

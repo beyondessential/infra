@@ -1,6 +1,6 @@
 import { ComponentResource, ComponentResourceOptions, Input, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { runPostgres } from '../common/postgres.js';
+import { runPostgres } from '../../../common/k8s/postgres.js';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { migrator } from '../common/migrator.js';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
@@ -10,6 +10,7 @@ import { WebFrontend } from '../web/WebFrontend.js';
 import { ReplicaConfig, dbStorage, timezone } from '../config.js';
 import { runTasks } from './tasks.js';
 import { Provisioning } from '../central/provisioner.js';
+import { namespace } from '../namespace.js';
 
 export interface FacilityServerArgs {
   fqdn: string;
@@ -32,6 +33,7 @@ export class FacilityServer extends ComponentResource {
 
     const dbReady = runPostgres({
       parent: this,
+      namespace,
       name: `facility-${name}`,
       replicas: replicas.db,
       storage: dbStorage,
