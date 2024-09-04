@@ -1,4 +1,3 @@
-import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { failIfIncorrectCluster, clusterName } from '../../common/k8s/coreRef.js';
 import { namespace } from './namespace.js';
@@ -248,7 +247,7 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: labels('server'),
         },
-        spec: spec('server', ['server'], {
+        spec: spec('server', ['server', '--api-only'], {
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
             periodSeconds: 1,
@@ -276,28 +275,28 @@ new k8s.apps.v1.Deployment(
   { dependsOn: [migrator] },
 );
 
-// new k8s.apps.v1.Deployment(
-//   'pingtask',
-//   {
-//     metadata: {
-//       labels: labels('pingtask'),
-//       namespace,
-//     },
-//     spec: {
-//       replicas: 1,
-//       strategy: {
-//         type: 'Recreate',
-//       },
-//       selector: {
-//         matchLabels: labels('pingtask'),
-//       },
-//       template: {
-//         metadata: {
-//           labels: labels('pingtask'),
-//         },
-//         spec: spec('pingtask', ['pingtask']),
-//       },
-//     },
-//   },
-//   { dependsOn: [migrator] },
-// );
+new k8s.apps.v1.Deployment(
+  'pingtask',
+  {
+    metadata: {
+      labels: labels('pingtask'),
+      namespace,
+    },
+    spec: {
+      replicas: 1,
+      strategy: {
+        type: 'Recreate',
+      },
+      selector: {
+        matchLabels: labels('pingtask'),
+      },
+      template: {
+        metadata: {
+          labels: labels('pingtask'),
+        },
+        spec: spec('pingtask', ['pingtask']),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);

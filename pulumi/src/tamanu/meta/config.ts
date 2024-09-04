@@ -15,7 +15,7 @@ export const domain =
   truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'internal.tamanu.io');
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const replicas = cfg.getNumber('replicas') ?? 1;
+export const replicas = cfg.getNumber('replicas') ?? 2;
 
 export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';
 if (!['amd64', 'arm64'].includes(architecture)) {
