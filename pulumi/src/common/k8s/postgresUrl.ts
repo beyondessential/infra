@@ -30,6 +30,18 @@ function dbPassword(dbReady: Output<void | k8s.core.v1.Secret>, namespace: Input
   }));
 }
 
+export enum PostgresUrlSecretKey {
+  AppPassword = 'app.password',
+  AppDbUrl = 'app.dburl',
+  AppRocket = 'app.rocket',
+  AppLocalDbUrl = 'app.localdburl',
+  AppLocalJdbc = 'app.localjdbc',
+  PostgresPassword = 'postgres.password',
+  PostgresDbUrl = 'postgres.dburl',
+  PostgresLocalDbUrl = 'postgres.localdburl',
+  PostgresLocalJdbc = 'postgres.localjdbc',
+}
+
 export function postgresUrlSecret({ parent, namespace, name, dbReady }: PostgresUrlArgs): k8s.core.v1.Secret {
   const appPassword = dbPassword(dbReady, namespace, name, 'app');
   const postgresPassword = dbPassword(dbReady, namespace, name, 'superuser');
@@ -47,12 +59,15 @@ export function postgresUrlSecret({ parent, namespace, name, dbReady }: Postgres
       },
       type: 'Opaque',
       stringData: {
-        'app.password': interpolate`${appPassword}`,
-        'app.dburl': interpolate`postgres://app:${appPassword}@localhost:5433/app`,
-        'app.jdbc': interpolate`jdbc:postgresql://localhost:5433/app?user=app&password=${appPassword}`,
-        'postgres.password': interpolate`${postgresPassword}`,
-        'postgres.dburl': interpolate`postgres://postgres:${postgresPassword}@localhost:5433/postgres`,
-        'postgres.jdbc': interpolate`jdbc:postgresql://localhost:5433/postgres?user=postgres&password=${postgresPassword}`,
+        [PostgresUrlSecretKey.AppPassword]: interpolate`${appPassword}`,
+        [PostgresUrlSecretKey.AppDbUrl]: interpolate`postgres://app:${appPassword}@${name}-db-rw/app`,
+        [PostgresUrlSecretKey.AppRocket]: interpolate`{postgres={url="postgres://app:${appPassword}@${name}-db-rw/app"}}`,
+        [PostgresUrlSecretKey.AppLocalDbUrl]: interpolate`postgres://app:${appPassword}@localhost:5433/app`,
+        [PostgresUrlSecretKey.AppLocalJdbc]: interpolate`jdbc:postgresql://localhost:5433/app?user=app&password=${appPassword}`,
+        [PostgresUrlSecretKey.PostgresPassword]: interpolate`${postgresPassword}`,
+        [PostgresUrlSecretKey.PostgresDbUrl]: interpolate`postgres://postgres:${postgresPassword}@${name}-db-rw/postgres`,
+        [PostgresUrlSecretKey.PostgresLocalDbUrl]: interpolate`postgres://postgres:${postgresPassword}@localhost:5433/postgres`,
+        [PostgresUrlSecretKey.PostgresLocalJdbc]: interpolate`jdbc:postgresql://localhost:5433/postgres?user=postgres&password=${postgresPassword}`,
       },
     },
     { parent },
