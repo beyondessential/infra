@@ -1,0 +1,5 @@
+{
+  "name": "@bes/tamanu-meta",
+  "type": "module",
+  "main": "../../../build/tamanu/meta/index.js"
+}
