@@ -2,9 +2,8 @@ import { Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
-import { PostgresReady } from '../common/postgres.js';
-import { PodSpecArgs, PodSpecFactory, podSpreadAntiAffinity } from '../common/specFactory.js';
-import { namespace } from '../namespace.js';
+import { PostgresReady } from '../../../common/k8s/postgres.js';
+import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { image, imageTag } from '../image.js';
 import { architecture } from '../config.js';
 
