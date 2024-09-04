@@ -207,8 +207,8 @@ function spec(
         ],
         resources: {
           requests: {
-            cpu: '1m',
-            memory: '2Mi',
+            cpu: '2m',
+            memory: '10Mi',
           },
         },
         ...containerArgs,
