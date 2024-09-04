@@ -2,16 +2,15 @@ import { ComponentResource, Input, Output, all, interpolate, secret } from '@pul
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sConfig } from './client.js';
-import { PostgresReady } from './postgres.js';
 
 export interface PostgresUrlArgs {
-  parent: ComponentResource;
+  parent?: ComponentResource;
   namespace: Input<string>;
   name: Input<string>;
-  dbReady: PostgresReady,
+  dbReady: Output<void | k8s.core.v1.Secret>,
 }
 
-function dbPassword(dbReady: PostgresReady, namespace: Input<string>, name: Input<string>, user: string): Output<null | string> {
+function dbPassword(dbReady: Output<void | k8s.core.v1.Secret>, namespace: Input<string>, name: Input<string>, user: string): Output<null | string> {
   return secret(all([namespace, name, dbReady]).apply(async ([namespace, name]) => {
     try {
       const kc = k8sConfig();

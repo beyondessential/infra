@@ -7,7 +7,7 @@ import { RUN_ON_SPOT } from './affinities.js';
 import { postgresUrlSecret } from './postgresUrl.js';
 
 export interface PostgresArgs {
-  parent: ComponentResource;
+  parent?: ComponentResource;
   namespace: Input<string>;
   name: Input<string>;
   replicas: Input<number>;
@@ -15,7 +15,7 @@ export interface PostgresArgs {
   timezone: Input<string>;
 }
 
-export type PostgresReady = Output<void>;
+export type PostgresReady = Output<k8s.core.v1.Secret>;
 
 export function runPostgres({
   parent,
@@ -93,6 +93,6 @@ export function runPostgres({
     },
     namespace,
   );
-  postgresUrlSecret({ parent, namespace, name, dbReady });
-  return dbReady;
+  const url = postgresUrlSecret({ parent, namespace, name, dbReady });
+  return dbReady.apply(() => url);
 }
