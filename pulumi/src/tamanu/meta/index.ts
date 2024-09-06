@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
 import { failIfIncorrectCluster, clusterName } from '../../common/k8s/coreRef.js';
 import { namespace } from './namespace.js';
-import { architecture, dbStorage, domain, replicas } from './config.js';
+import { architecture, dbStorage, domains, replicas } from './config.js';
 import { caRootCert } from './ca.js';
 import { runPostgres } from '../../common/k8s/postgres.js';
 import { image } from './image.js';
@@ -10,7 +10,7 @@ import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.js';
 import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.js';
 await failIfIncorrectCluster();
 
-export { domain };
+export { domains };
 
 const dbReady = runPostgres({
   namespace,
@@ -28,7 +28,7 @@ const labels = (task: string) => ({
 new k8s.core.v1.Service('meta', {
   metadata: {
     annotations: {
-      'external-dns.alpha.kubernetes.io/hostname': domain,
+      'external-dns.alpha.kubernetes.io/hostname': domains.join(','),
       'service.beta.kubernetes.io/aws-load-balancer-type': 'external',
       'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
       'service.beta.kubernetes.io/aws-load-balancer-ip-address-type': 'dualstack',
@@ -88,8 +88,8 @@ new k8s.apiextensions.CustomResource('app-tls', {
     namespace,
   },
   spec: {
-    commonName: domain,
-    dnsNames: [domain],
+    commonName: domains[0],
+    dnsNames: domains,
     secretName: tlsSecret,
     privateKey: {
       algorithm: 'ECDSA',

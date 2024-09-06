@@ -10,9 +10,9 @@ export const normalizedStack = `tamanu-meta-${getStack()}`
   .slice(0, 63) // 63 is the max length of a k8s namespace
   .replace(/^-+|-+$/g, '');
 
-export const domain =
-  cfg.get('domain') ??
-  truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'internal.tamanu.io');
+export const domains: string[] =
+  cfg.getObject('domains') ??
+  [truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'internal.tamanu.io')];
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const replicas = cfg.getNumber('replicas') ?? 2;
