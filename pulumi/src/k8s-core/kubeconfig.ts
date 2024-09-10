@@ -43,5 +43,5 @@ export const kubeconfig = jsonStringify({
 
 export const provider = new Provider('kubernetes', {
   kubeconfig,
-  deleteUnreachable: true,
+  // deleteUnreachable: true,
 });

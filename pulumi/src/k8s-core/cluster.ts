@@ -43,7 +43,8 @@ export const cluster = new aws.eks.Cluster(
   {
     // changing this Cluster in any way causes pulumi to throw a tantrum,
     // so protect it and ignore certain bits forcefully
-    ignoreChanges: ['tags'],
+    ignoreChanges: ['tags', 'resourcesVpcConfig', 'version'],
+    // protect: true, // actually that's more annoying than useful
   },
 );
 
