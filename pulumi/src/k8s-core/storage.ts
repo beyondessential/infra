@@ -53,5 +53,25 @@ new k8s.storage.v1.StorageClass(
   { dependsOn: addon, provider },
 );
 
+new k8s.storage.v1.StorageClass(
+  'ebs-gp3',
+  {
+    provisioner: 'ebs.csi.aws.com',
+    metadata: {
+      name: 'ebs-gp3',
+      annotations: {
+        'storageclass.kubernetes.io/is-default-class': 'true',
+      },
+    },
+    parameters: {
+      type: 'gp3',
+      'csi.storage.k8s.io/fstype': 'ext4',
+    },
+    allowVolumeExpansion: true,
+    volumeBindingMode: 'WaitForFirstConsumer',
+  },
+  { dependsOn: addon, provider },
+);
+
 // TODO: https://github.com/kubernetes-csi/external-snapshotter/tree/master/client/config/crd
 // then reinstall the csi plugin?
