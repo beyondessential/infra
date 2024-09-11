@@ -15,6 +15,7 @@ export const domainBase =
   cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'internal.tamanu.io');
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
+export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
 export const facilities = cfg.getNumber('facilities') ?? 2;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO

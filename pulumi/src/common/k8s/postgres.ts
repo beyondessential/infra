@@ -14,7 +14,7 @@ export interface PostgresArgs {
   replicas: Input<number>;
   storage: Input<string>;
   timezone: Input<string>;
-  backupSchedule?: Input<string> | true;
+  backupSchedule?: Input<string | boolean>;
 }
 
 export type PostgresReady = Output<k8s.core.v1.Secret>;

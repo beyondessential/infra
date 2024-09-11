@@ -7,7 +7,7 @@ import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
 import { runApi } from './api.js';
 import { ingress } from '../common/ingress.js';
 import { WebFrontend } from '../web/WebFrontend.js';
-import { ReplicaConfig, dbStorage, timezone } from '../config.js';
+import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.js';
 import { runTasks } from './tasks.js';
 import { Provisioning } from '../central/provisioner.js';
 import { namespace } from '../namespace.js';
@@ -38,6 +38,7 @@ export class FacilityServer extends ComponentResource {
       replicas: replicas.db,
       storage: dbStorage,
       timezone,
+      backupSchedule: dbBackups,
     });
 
     const appConfig = provisioning.apply(provisioning => templatedConfig({

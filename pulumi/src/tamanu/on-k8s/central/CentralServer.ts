@@ -10,7 +10,7 @@ import { runApi } from './api.js';
 import { runFhirWorker } from './fhir.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ingress } from '../common/ingress.js';
-import { ReplicaConfig, dbStorage, timezone } from '../config.js';
+import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.js';
 import { namespace } from '../namespace.js';
 
 export interface CentralServerArgs {
@@ -38,6 +38,7 @@ export class CentralServer extends ComponentResource {
       replicas: replicas.db,
       storage: dbStorage,
       timezone,
+      backupSchedule: dbBackups,
     });
 
     const appConfig = templatedConfig({
