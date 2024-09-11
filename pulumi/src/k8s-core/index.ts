@@ -4,9 +4,12 @@ failIfIncorrectAccount();
 
 import { cluster } from './cluster.js';
 export { clusterName as name, tags, version } from './cluster.js';
+import { bucket as backupsBucketObj, role as backupsRole } from './backups.js';
 export const arn = cluster.arn;
 export const endpoint = cluster.endpoint;
 export const ca = cluster.certificateAuthorityData;
+export const backupsBucket = backupsBucketObj.bucket;
+export const backupsServiceAccountArn = backupsRole.arn;
 
 import './nodes/groups.js';
 import './nodes/autoscaler.js';

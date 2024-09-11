@@ -52,3 +52,6 @@ new k8s.storage.v1.StorageClass(
   },
   { dependsOn: addon, provider },
 );
+
+// TODO: https://github.com/kubernetes-csi/external-snapshotter/tree/master/client/config/crd
+// then reinstall the csi plugin?

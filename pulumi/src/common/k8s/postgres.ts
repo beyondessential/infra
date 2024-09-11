@@ -1,10 +1,11 @@
-import { ComponentResource, Input, Output } from '@pulumi/pulumi';
+import { ComponentResource, Input, interpolate, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from './waitFor.js';
 import { CAN_RUN_ON_SPOT } from './tolerations.js';
 import { RUN_ON_SPOT } from './affinities.js';
 import { postgresUrlSecret } from './postgresUrl.js';
+import { backups } from './coreRef.js';
 
 export interface PostgresArgs {
   parent?: ComponentResource;
@@ -13,6 +14,7 @@ export interface PostgresArgs {
   replicas: Input<number>;
   storage: Input<string>;
   timezone: Input<string>;
+  backupSchedule?: Input<string> | true;
 }
 
 export type PostgresReady = Output<k8s.core.v1.Secret>;
@@ -24,6 +26,7 @@ export function runPostgres({
   replicas,
   storage,
   timezone,
+  backupSchedule,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -76,10 +79,62 @@ export function runPostgres({
             ],
           },
         },
+        serviceAccountTemplate: {
+          metadata: {
+            annotations: {
+              'eks.amazonaws.com/role-arn': backups.sa,
+            },
+          },
+        },
+        backup: {
+          barmanObjectStore: {
+            destinationPath: interpolate`s3://${backups.bucket}/cnpg.io/${namespace}/${name}/`,
+            s3Credentials: {
+              inheritFromIAMRole: true,
+            },
+            data: {
+              compression: 'bzip2',
+            },
+            wal: {
+              compression: 'bzip2',
+              maxParallel: 2,
+            },
+          },
+          // TODO: need the crds, see storage.ts
+          // volumeSnapshot: {
+          //   className: 'ebs-gp2',
+          // },
+        },
+        // logLevel: 'trace',
       },
     },
     { parent },
   );
+
+  if (backupSchedule) {
+    if (backupSchedule === true) backupSchedule = '0 0 0 * * 1'; // weekly
+    new k8s.apiextensions.CustomResource(
+      `${name}-backup`,
+      {
+        apiVersion: 'postgresql.cnpg.io/v1',
+        kind: 'ScheduledBackup',
+        metadata: {
+          name: `${name}-backup`,
+          namespace,
+          labels: {
+            'app.kubernetes.io/name': name,
+            'app.kubernetes.io/component': 'database',
+          },
+        },
+        spec: {
+          schedule: backupSchedule,
+          backupOwnerReference: 'self',
+          cluster: { name: `${name}-db` },
+        },
+      },
+      { parent },
+    );
+  }
 
   const dbReady = k8sWaitFor(
     `${name}-db`,

@@ -37,12 +37,21 @@ export function eksServiceAccount(
               Federated: arn,
             },
             Action: 'sts:AssumeRoleWithWebIdentity',
-            Condition: {
-              StringEquals: {
-                [`${id}:aud`]: AWS_STS,
-                [`${id}:sub`]: `system:serviceaccount:${namespace}:${serviceAccount}`,
-              },
-            },
+            Condition: namespace.includes('*')
+              ? {
+                  StringEquals: {
+                    [`${id}:aud`]: AWS_STS,
+                  },
+                  StringLike: {
+                    [`${id}:sub`]: `system:serviceaccount:${namespace}:*`,
+                  },
+                }
+              : {
+                  StringEquals: {
+                    [`${id}:aud`]: AWS_STS,
+                    [`${id}:sub`]: `system:serviceaccount:${namespace}:${serviceAccount}`,
+                  },
+                },
           },
         ],
       })),

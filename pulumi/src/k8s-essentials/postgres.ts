@@ -9,15 +9,12 @@ const namespace = new k8s.core.v1.Namespace('cnpg-system', {
 const cnpg = new k8s.helm.v3.Chart('cloudnative-pg', {
   repo: 'cnpg',
   chart: 'cloudnative-pg',
-  version: '0.18.2',
+  version: '0.22.0',
   fetchOpts: {
     repo: 'https://cloudnative-pg.github.io/charts',
   },
   namespace: namespace.metadata.name,
   values: {
-    podAnnotations: {
-      // 'consul.hashicorp.com/connect-inject': 'false',
-    },
     affinity: {
       nodeAffinity: {
         requiredDuringSchedulingIgnoredDuringExecution: {
@@ -40,7 +37,6 @@ new k8s.core.v1.ConfigMap(
       namespace: namespace.metadata.name,
     },
     data: {
-      INHERITED_ANNOTATIONS: 'consul.hashicorp.com/connect-inject*',
       INHERITED_LABELS: 'app.kubernetes.io/*',
     },
   },

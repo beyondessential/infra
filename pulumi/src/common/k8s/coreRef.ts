@@ -11,6 +11,10 @@ export const clusterName = $core.name;
 export const clusterFullName = core.name.split('/')[2];
 export const tags = $core.tags;
 export const version = $core.version;
+export const backups = {
+  bucket: $core.backupsBucket,
+  sa: $core.backupsServiceAccountArn,
+};
 
 const upperCore = $core.coreStack.apply(name => new CrossStack(`bes/core/${name}`));
 export const $network = upperCore.apply(core => core.network());

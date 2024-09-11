@@ -27,6 +27,8 @@ export interface CrossStackK8sCoreOutput {
   coreStack: Output<string>;
   tags: Output<{ [key: string]: string }>;
   version: Output<string>;
+  backupsBucket: Output<string>;
+  backupsServiceAccountArn: Output<string>;
 }
 
 export class CrossStack {
@@ -95,6 +97,8 @@ export class CrossStack {
       coreStack: this.get('coreStackName'),
       tags: this.get('tags'),
       version: this.get('version'),
+      backupsBucket: this.get('backupsBucket'),
+      backupsServiceAccountArn: this.get('backupsServiceAccountArn'),
     };
   }
 }
