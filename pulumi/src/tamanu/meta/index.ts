@@ -18,6 +18,7 @@ const dbReady = runPostgres({
   replicas: 2,
   storage: dbStorage,
   timezone: 'Etc/UTC',
+  backupSchedule: true,
 });
 
 const labels = (task: string) => ({
@@ -193,6 +194,10 @@ function spec(
           {
             name: 'ROCKET_PORT',
             value: '8000',
+          },
+          {
+            name: 'ROCKET_LOG_LEVEL',
+            value: 'normal',
           },
           {
             name: 'ROCKET_DATABASES',
