@@ -22,9 +22,6 @@ new k8s.storage.v1.StorageClass(
     provisioner: 'ebs.csi.aws.com',
     metadata: {
       name: 'ebs-gp2',
-      annotations: {
-        'storageclass.kubernetes.io/is-default-class': 'true',
-      },
     },
     parameters: {
       type: 'gp2',
