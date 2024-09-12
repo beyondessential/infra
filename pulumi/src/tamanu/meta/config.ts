@@ -14,7 +14,7 @@ export const domains: string[] =
   cfg.getObject('domains') ??
   [truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'internal.tamanu.io')];
 
-export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
+export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
 export const replicas = cfg.getNumber('replicas') ?? 2;
 
 export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';
