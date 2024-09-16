@@ -88,7 +88,7 @@ export function runPostgres({
             },
           },
         },
-        backup: (syncWal || backupSchedule) && {
+        backup: (syncWal || backupSchedule) ? {
           barmanObjectStore: {
             destinationPath: interpolate`s3://${backups.bucket}/cnpg.io/${namespace}/${name}/`,
             s3Credentials: {
