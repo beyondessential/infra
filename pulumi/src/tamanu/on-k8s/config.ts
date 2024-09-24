@@ -20,7 +20,7 @@ export const facilities = cfg.getNumber('facilities') ?? 2;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
 
-export const architecture: Architecture = cfg.get('architecture') ?? 'amd64';
+export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';
 if (!['amd64', 'arm64'].includes(architecture)) {
   throw new Error(`Invalid architecture: ${architecture}`);
 }
