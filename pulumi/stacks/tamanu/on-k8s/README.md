@@ -8,6 +8,8 @@ That forms the "domain base", then facility, central, etc names are prepended as
 - `imageTag` - Specify what version is deployed, see <https://github.com/beyondessential/tamanu/releases> or <https://github.com/beyondessential/tamanu/pkgs/container/tamanu-central>.
 - `k8s-core` - Which Kubernetes cluster to deploy to, use `bes/k8s-core/tamanu-internal-main`.
 
+You also need a Kubernetes/kubectl connection config to the cluster (see below).
+
 ## Config optionals
 
 - `domainBase` - The "domain base" can be overridden entirely with this config.
@@ -35,4 +37,40 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 }
 
 export const configTemplate = cfg.get('configTemplate') ?? DEFAULT_CONFIG_TEMPLATE;
+```
+
+## Connect to Kubernetes via Tailscale
+
+Install Kubectl: https://kubernetes.io/docs/tasks/tools/install-kubectl-linux
+
+Create the folder: `mkdir -p ~/.kube`
+
+Paste the kubectl config in the `~/.kube/config` file:
+
+```
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    server: https://k8s-operator-tamanu-internal-main.tail53aef.ts.net
+  name: k8s-operator-tamanu-internal-main.tail53aef.ts.net
+contexts:
+- context:
+    cluster: k8s-operator-tamanu-internal-main.tail53aef.ts.net
+    user: tailscale-auth
+  name: k8s-operator-tamanu-internal-main.tail53aef.ts.net
+current-context: k8s-operator-tamanu-internal-main.tail53aef.ts.net
+preferences: {}
+users:
+- name: tailscale-auth
+  user:
+    token: unused
+```
+
+(for example `nano ~/.kube/config`, then paste in, then save with Ctrl-O, then Ctrl-X to exit)
+
+Then verify it works with `kubectl cluster-info`. You should see something like:
+
+```
+Kubernetes control plane is running at https://k8s-operator-tamanu-internal-main.tail53aef.ts.net
 ```
