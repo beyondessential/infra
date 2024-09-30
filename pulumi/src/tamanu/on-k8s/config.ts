@@ -28,6 +28,7 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 export const DEFAULT_CONFIG_TEMPLATE = 'basic';
 export const configTemplate = cfg.get('configTemplate') ?? DEFAULT_CONFIG_TEMPLATE;
 
+export const SERVICE_ACCOUNT_NAME = 'app-sa';
 export const serviceAccount: undefined | string = cfg.get('serviceAccount');
 
 export interface ReplicaConfig {

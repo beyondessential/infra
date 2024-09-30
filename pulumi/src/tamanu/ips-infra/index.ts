@@ -1,4 +1,4 @@
-import { failIfIncorrectCluster, clusterName } from '../../common/k8s/coreRef.js';
+import { failIfIncorrectCluster, clusterName, oidcProvider } from '../../common/k8s/coreRef.js';
 await failIfIncorrectCluster();
 
 import { dirname, join } from 'node:path';
@@ -10,7 +10,6 @@ import { AWS_STS } from '../../constants/external.js';
 import { LOGS_BUCKETS } from '../../constants/internal.js';
 import { BUCKET_NAME, ZONE_ID } from './constants.js';
 import { eksServiceAccount } from '../../common/eksServiceAccount.js';
-import { oidcProviderArn } from '../../k8s-core/index.js';
 
 const SERVICE_ACCOUNT_NAME = 'ips-bucket';
 
@@ -84,11 +83,13 @@ new awsClassic.iam.Role('gha-ips-s3-viewer', {
   ],
 });
 
-eksServiceAccount('ips-bucket-role', {
+const sa = eksServiceAccount('ips-bucket-role', {
   roleName: 'EKSIpsBucket-',
   roleDescription: interpolate`Service account for ips bucket (cluster: ${clusterName})`,
   serviceAccountName: SERVICE_ACCOUNT_NAME,
-  oidcProviderArn: oidcProviderArn,
+  oidcProviderArn: oidcProvider,
   namespace: 'tamanu-*',
   managedPolicyArns: [policy.arn],
 });
+
+export const serviceAccountArn = sa.arn;

@@ -5,8 +5,7 @@ import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/
 import { PostgresReady } from '../../../common/k8s/postgres.js';
 import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { image, imageTag } from '../image.js';
-import { architecture, serviceAccount } from '../config.js';
-import { SERVICE_ACCOUNT_NAME } from '../index.js';
+import { architecture, serviceAccount, SERVICE_ACCOUNT_NAME } from '../config.js';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
