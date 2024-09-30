@@ -40,6 +40,7 @@ export function podSpecFactory({
     command,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
     volumes = [],
+    env = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
@@ -83,6 +84,7 @@ export function podSpecFactory({
           ...vms,
         ]),
         env: [
+          ...env,
           {
             name: 'TZ',
             value: timezone,

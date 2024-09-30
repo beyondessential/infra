@@ -66,6 +66,7 @@ export function runApi({
             podType: 'server',
             podSpreadSelector: appLabels('api-server'),
             command: ['serve'],
+            env: [{ name: 'PORT', value: '3000' }],
             containerArgs: {
               ports: [
                 {

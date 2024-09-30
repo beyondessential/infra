@@ -33,6 +33,7 @@ export function podSpecFactory(): PodSpecFactory {
     podType,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
     volumes = [],
+    env = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
@@ -61,6 +62,7 @@ export function podSpecFactory(): PodSpecFactory {
         imagePullPolicy: 'IfNotPresent',
         volumeMounts,
         env: [
+          ...env,
           {
             name: 'NODE_ENV',
             value: nodeEnv,
