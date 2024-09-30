@@ -78,19 +78,18 @@ function getReplicas(
   );
 }
 
+function getServerReplicas(server: 'central' | 'facility') {
+  return {
+    api: getReplicas('api', server),
+    db: getReplicas('db', server),
+    tasks: getReplicas('tasks', server),
+    web: getReplicas('web', server),
+  };
+}
+
 export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
-  central: {
-    api: getReplicas('api', 'central'),
-    db: getReplicas('db', 'central'),
-    tasks: getReplicas('tasks', 'central'),
-    web: getReplicas('web', 'central'),
-  },
-  facility: {
-    api: getReplicas('api', 'facility', 1),
-    db: getReplicas('db', 'facility'),
-    tasks: getReplicas('tasks', 'facility', 0),
-    web: getReplicas('web', 'facility'),
-  },
+  central: getServerReplicas('central'),
+  facility: getServerReplicas('facility'),
 };
 
 export const domains = {
