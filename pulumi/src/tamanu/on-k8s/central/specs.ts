@@ -122,6 +122,60 @@ export function podSpecFactory({
                 },
               },
             },
+            {
+              name: 'TUPAIA_API_USERNAME',
+              valueFrom: {
+                secretKeyRef: {
+                  name: 'tupaia',
+                  key: 'username',
+                },
+              },
+            },
+            {
+              name: 'TUPAIA_API_PASSWORD',
+              valueFrom: {
+                secretKeyRef: {
+                  name: 'tupaia',
+                  key: 'password',
+                },
+              },
+            },
+            {
+              name: 'MAILGUN_API_KEY',
+              valueFrom: {
+                secretKeyRef: {
+                  name: 'mailgun',
+                  key: 'apiKey',
+                },
+              },
+            },
+            {
+              name: 'MAILGUN_DOMAIN',
+              valueFrom: {
+                secretKeyRef: {
+                  name: 'mailgun',
+                  key: 'domain',
+                },
+              },
+            },
+            {
+              name: 'MAILGUN_FROM',
+              valueFrom: {
+                secretKeyRef: {
+                  name: 'mailgun',
+                  key: 'from',
+                },
+              },
+            },
+            {
+              name: 'BUGSNAG_API_KEY',
+              valueFrom: {
+                secretKeyRef: {
+                  name: 'bugsnag',
+                  key: 'apiKey',
+                },
+              },
+            },
           ],
           resources: {
             requests: {
@@ -146,5 +200,19 @@ export const CONFIG_FROM_ENV = {
   countryTimeZone: 'TZ',
   localisation: {
     timeZone: 'TZ',
+  },
+  tupaiaApiClient: {
+    auth: {
+      username: 'TUPAIA_API_USERNAME',
+      password: 'TUPAIA_API_PASSWORD',
+    },
+  },
+  mailgun: {
+    apiKey: 'MAILGUN_API_KEY',
+    domain: 'MAILGUN_DOMAIN',
+    from: 'MAILGUN_FROM',
+  },
+  errors: {
+    apiKey: 'BUGSNAG_API_KEY',
   },
 };
