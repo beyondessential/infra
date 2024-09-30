@@ -54,7 +54,7 @@ for (const template of ['basic', 'pr', 'rc', 'cambodia']) {
           'bes.tamanu/template': 'config-central',
         },
       },
-      data: readConfig(template, 'central.json5', { outname: 'production' }),
+      data: readConfig(template, 'central.json5', { outname: 'local' }),
     },
     { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
@@ -69,7 +69,7 @@ for (const template of ['basic', 'pr', 'rc', 'cambodia']) {
           'bes.tamanu/template': 'config-facility',
         },
       },
-      data: readConfig(template, 'facility.json5', { outname: 'production' }),
+      data: readConfig(template, 'facility.json5', { outname: 'local' }),
     },
     { ignoreChanges: ['data', 'binaryData', 'stringData'] },
   );
