@@ -9,7 +9,7 @@ function readConfig(
   file: string,
   { outname, encoding = 'utf-8' }: { outname?: string; encoding?: BufferEncoding } = {},
 ) {
-  const dir = join(dirname(fileURLToPath(import.meta.url)), 'templates', template);
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'templates', template);
   const filename = join(dir, existsSync(join(dir, file)) ? file : `${file}.njk`);
   if (!existsSync(filename)) {
     throw new Error(`Template ${template}/${file} not found`);
