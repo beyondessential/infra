@@ -17,12 +17,15 @@ export interface RunApiOutput {
   service: k8s.core.v1.Service;
 }
 
-export function runApi(
+export function runServer(
   name: string,
+  type: 'api' | 'sync',
   { parent, deviceId, replicas = 1, podSpec, migratorJob }: RunApiArgs,
 ): RunApiOutput {
+  const command = type === 'api' ? 'startApi' : 'startSync';
+
   const service = new k8s.core.v1.Service(
-    `facility-${name}-api`,
+    `facility-${name}-${type}`,
     {
       metadata: {
         namespace,
@@ -36,7 +39,7 @@ export function runApi(
             name: 'http',
           },
         ],
-        selector: appSelector('server', deviceId),
+        selector: appSelector(`${type}-server`, deviceId),
         clusterIP: 'None',
       },
     },
@@ -44,28 +47,29 @@ export function runApi(
   );
 
   const deployment = new k8s.apps.v1.Deployment(
-    `facility-${name}-api`,
+    `facility-${name}-${type}`,
     {
       metadata: {
         namespace,
-        name: `facility-${name}-api`,
+        name: `facility-${name}-${type}`,
       },
       spec: {
         replicas,
         strategy: {
-          type: 'Recreate',
+          type: type === 'api' ? 'RollingUpdate' : 'Recreate',
         },
         selector: {
-          matchLabels: appSelector('server', deviceId),
+          matchLabels: appSelector(`${type}-server`, deviceId),
         },
         template: {
           metadata: {
-            labels: appLabels('server', deviceId),
+            labels: appLabels(`${type}-server`, deviceId),
           },
           spec: podSpec({
             podType: 'server',
-            podSpreadSelector: appLabels('server', deviceId),
-            command: ['startAll'], // startApi once split
+            podSpreadSelector: appLabels(`${type}-server`, deviceId),
+            command: [command],
+            env: [{ name: 'PORT', value: '3000' }],
             containerArgs: {
               ports: [
                 {

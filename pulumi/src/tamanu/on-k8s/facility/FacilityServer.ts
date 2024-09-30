@@ -4,7 +4,7 @@ import { runPostgres } from '../../../common/k8s/postgres.js';
 import { templatedConfig } from '../common/templatedConfig.js';
 import { migrator } from '../common/migrator.js';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
-import { runApi } from './api.js';
+import { runServer } from './server.js';
 import { ingress } from '../common/ingress.js';
 import { WebFrontend } from '../web/WebFrontend.js';
 import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.js';
@@ -81,12 +81,19 @@ export class FacilityServer extends ComponentResource {
       });
     }
 
-    const api = runApi(name, {
+    const api = runServer(name, 'api', {
       parent: this,
       deviceId,
       podSpec,
       migratorJob,
       replicas: replicas.api,
+    });
+
+    const sync = runServer(name, 'sync', {
+      parent: this,
+      deviceId,
+      podSpec,
+      migratorJob,
     });
 
     const web = new WebFrontend(
@@ -105,6 +112,7 @@ export class FacilityServer extends ComponentResource {
       host: fqdn,
       web: web.service,
       api: api.service,
+      sync: sync.service,
     });
   }
 }
