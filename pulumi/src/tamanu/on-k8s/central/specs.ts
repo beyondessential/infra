@@ -5,7 +5,7 @@ import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/
 import { PostgresReady } from '../../../common/k8s/postgres.js';
 import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { image, imageTag } from '../image.js';
-import { architecture, serviceAccount, SERVICE_ACCOUNT_NAME } from '../config.js';
+import { architecture, nodeEnv, serviceAccount, SERVICE_ACCOUNT_NAME } from '../config.js';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
@@ -88,7 +88,7 @@ export function podSpecFactory({
             },
             {
               name: 'NODE_ENV',
-              value: 'production',
+              value: nodeEnv,
             },
             {
               name: 'DB_HOST',

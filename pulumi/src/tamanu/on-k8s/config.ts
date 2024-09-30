@@ -25,6 +25,8 @@ if (!['amd64', 'arm64'].includes(architecture)) {
   throw new Error(`Invalid architecture: ${architecture}`);
 }
 
+export const nodeEnv = cfg.get('nodeEnv') ?? 'production';
+
 export const DEFAULT_CONFIG_TEMPLATE = 'basic';
 export const configTemplate = cfg.get('configTemplate') ?? DEFAULT_CONFIG_TEMPLATE;
 

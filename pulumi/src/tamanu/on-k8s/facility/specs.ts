@@ -4,7 +4,7 @@ import { PostgresReady } from '../../../common/k8s/postgres.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { PodSpecFactory, PodSpecArgs } from '../common/specFactory.js';
-import { architecture } from '../config.js';
+import { architecture, nodeEnv } from '../config.js';
 import { image, imageTag } from '../image.js';
 
 export function appSelector(component: string, deviceId: string): { [key: string]: string } {
@@ -89,7 +89,7 @@ export function podSpecFactory({
           },
           {
             name: 'NODE_ENV',
-            value: 'production',
+            value: nodeEnv,
           },
           {
             name: 'DB_HOST',
