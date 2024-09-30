@@ -8,14 +8,13 @@ export interface IngressArgs {
   host: string;
   api: k8s.core.v1.Service;
   web: k8s.core.v1.Service;
-  sync?: k8s.core.v1.Service;
 }
 
 function compact<T>(obj: Array<T | undefined>): Array<T> {
   return obj.filter(Boolean) as Array<T>;
 }
 
-export function ingress({ name, host, api, sync, web, parent }: IngressArgs) {
+export function ingress({ name, host, api, web, parent }: IngressArgs) {
   const route = (path: string, backend: k8s.core.v1.Service): k8s.types.input.networking.v1.HTTPIngressPath => ({
     path,
     pathType: 'Prefix',
@@ -56,7 +55,6 @@ export function ingress({ name, host, api, sync, web, parent }: IngressArgs) {
                 route('/api', api),
                 route('/v1', api),
                 route('/socket.io', api),
-                sync && route('/sync', sync),
               ]),
             },
           },
