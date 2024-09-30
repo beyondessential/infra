@@ -6,6 +6,7 @@ import { PostgresReady } from '../../../common/k8s/postgres.js';
 import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { image, imageTag } from '../image.js';
 import { architecture, nodeEnv, serviceAccount, SERVICE_ACCOUNT_NAME } from '../config.js';
+import { compact } from 'lodash-es';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
@@ -81,7 +82,7 @@ export function podSpecFactory({
             },
             ...vms,
           ]),
-          env: [
+          env: compact([
             ...env,
             {
               name: 'TZ',
@@ -90,6 +91,10 @@ export function podSpecFactory({
             {
               name: 'NODE_ENV',
               value: nodeEnv,
+            },
+            imageTag.startsWith('sha-') && {
+              name: 'REVISION',
+              value: imageTag.replace(/^sha-/, '').slice(0, 10),
             },
             {
               name: 'DB_HOST',
@@ -176,7 +181,7 @@ export function podSpecFactory({
                 },
               },
             },
-          ],
+          ]),
           resources: {
             requests: {
               cpu: '5m',

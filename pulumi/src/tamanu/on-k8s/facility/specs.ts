@@ -6,6 +6,7 @@ import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { PodSpecFactory, PodSpecArgs } from '../common/specFactory.js';
 import { architecture, nodeEnv } from '../config.js';
 import { image, imageTag } from '../image.js';
+import { compact } from 'lodash-es';
 
 export function appSelector(component: string, deviceId: string): { [key: string]: string } {
   return {
@@ -82,7 +83,7 @@ export function podSpecFactory({
           },
           ...vms,
         ]),
-        env: [
+        env: compact([
           ...env,
           {
             name: 'TZ',
@@ -91,6 +92,10 @@ export function podSpecFactory({
           {
             name: 'NODE_ENV',
             value: nodeEnv,
+          },
+          imageTag.startsWith('sha-') && {
+            name: 'REVISION',
+            value: imageTag.replace(/^sha-/, '').slice(0, 10),
           },
           {
             name: 'DB_HOST',
@@ -132,7 +137,7 @@ export function podSpecFactory({
               },
             },
           },
-        ],
+        ]),
         resources: {
           requests: {
             cpu: '5m',
