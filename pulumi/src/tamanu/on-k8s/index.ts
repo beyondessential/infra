@@ -6,6 +6,8 @@ import { namespace } from './namespace.js';
 import { domainBase, domains, facilities, replicas, serviceAccount, SERVICE_ACCOUNT_NAME } from './config.js';
 await failIfIncorrectCluster();
 
+import './secrets.js';
+
 if (serviceAccount) {
   new k8s.core.v1.ServiceAccount('app-sa', {
     metadata: {
