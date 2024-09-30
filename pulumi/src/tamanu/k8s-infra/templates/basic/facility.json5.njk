@@ -17,6 +17,9 @@
     useHardcodedPermissions: false,
     secret: '{{ 40 | randomstring }}',
   },
+  errors: {
+    enabled: true,
+  },
   proxy: {
     trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
