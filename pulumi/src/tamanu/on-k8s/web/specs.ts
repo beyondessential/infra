@@ -54,7 +54,6 @@ export function podSpecFactory(): PodSpecFactory {
       },
     },
     volumes,
-    imagePullSecrets: [{name: 'pullsecret-github'}],
     containers: [
       {
         name: podType,
