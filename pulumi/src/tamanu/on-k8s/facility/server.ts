@@ -101,7 +101,7 @@ export function runServer(
         },
       },
     },
-    { parent, dependsOn: [migratorJob] },
+    { parent, dependsOn: [migratorJob], ignoreChanges: ['spec.replicas'] },
   );
 
   return { service, deployment };

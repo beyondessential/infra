@@ -97,7 +97,7 @@ export function runApi({
         },
       },
     },
-    { parent, dependsOn: [migratorJob, provisionerJob] },
+    { parent, dependsOn: [migratorJob, provisionerJob], ignoreChanges: ['spec.replicas'] },
   );
 
   return { service, deployment };

@@ -20,6 +20,9 @@ export function runTasks(
     {
       metadata: {
         namespace,
+        annotations: {
+          'pulumi.com/patchForce': 'true',
+        },
       },
       spec: {
         replicas: 1,

@@ -93,7 +93,7 @@ export function runWeb(
         },
       },
     },
-    { parent },
+    { parent, ignoreChanges: ['spec.replicas'] },
   );
 
   return { service, deployment };
