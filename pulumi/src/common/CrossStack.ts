@@ -1,7 +1,10 @@
 import { Output, StackReference, all } from '@pulumi/pulumi';
 import { NetworkOutputs, fromStackReference as networkFromStackReference } from './Network.js';
 
-export type CrossStackNetwork = Omit<NetworkOutputs, 'natSubnets' | 'workloadSubnets' | 'publicWorkloadSubnets'> & {
+export type CrossStackNetwork = Omit<
+  NetworkOutputs,
+  'natSubnets' | 'workloadSubnets' | 'publicWorkloadSubnets'
+> & {
   subnetIds: Output<string[]>;
 };
 
@@ -29,6 +32,7 @@ export interface CrossStackK8sCoreOutput {
   version: Output<string>;
   backupsBucket: Output<string>;
   backupsServiceAccountArn: Output<string>;
+  oidcProviderArn: Output<string>;
 }
 
 export class CrossStack {
@@ -58,11 +62,11 @@ export class CrossStack {
     const network = networkFromStackReference(this.ref, key);
     return {
       ...network,
-      subnetIds: all([network.natSubnetIds, network.workloadSubnetIds, network.publicWorkloadSubnetIds]).apply(([nat, workload, pub]) => [
-        ...nat,
-        ...workload,
-        ...pub,
-      ]),
+      subnetIds: all([
+        network.natSubnetIds,
+        network.workloadSubnetIds,
+        network.publicWorkloadSubnetIds,
+      ]).apply(([nat, workload, pub]) => [...nat, ...workload, ...pub]),
     };
   }
 
@@ -99,6 +103,7 @@ export class CrossStack {
       version: this.get('version'),
       backupsBucket: this.get('backupsBucket'),
       backupsServiceAccountArn: this.get('backupsServiceAccountArn'),
+      oidcProviderArn: this.get('oidcProviderArn'),
     };
   }
 }
