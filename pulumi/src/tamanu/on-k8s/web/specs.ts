@@ -66,6 +66,15 @@ export function podSpecFactory(): PodSpecFactory {
             name: 'NODE_ENV',
             value: nodeEnv,
           },
+          {
+            name: 'BUGSNAG_API_KEY',
+            valueFrom: {
+              secretKeyRef: {
+                name: 'bugsnag',
+                key: 'apiKey',
+              },
+            },
+          },
         ],
         resources: {
           requests: {

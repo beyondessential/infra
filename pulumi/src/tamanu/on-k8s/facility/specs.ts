@@ -123,6 +123,15 @@ export function podSpecFactory({
               },
             },
           },
+          {
+            name: 'BUGSNAG_API_KEY',
+            valueFrom: {
+              secretKeyRef: {
+                name: 'bugsnag',
+                key: 'apiKey',
+              },
+            },
+          },
         ],
         resources: {
           requests: {
@@ -142,5 +151,8 @@ export const CONFIG_FROM_ENV = {
     username: 'DB_USERNAME',
     password: 'DB_PASSWORD',
     name: 'DB_NAME',
+  },
+  errors: {
+    apiKey: 'BUGSNAG_API_KEY',
   },
 };
