@@ -1,5 +1,6 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import { compact } from 'lodash-es';
 import { namespace } from '../namespace.js';
 
 export interface IngressArgs {
@@ -8,10 +9,6 @@ export interface IngressArgs {
   host: string;
   api: k8s.core.v1.Service;
   web: k8s.core.v1.Service;
-}
-
-function compact<T>(obj: Array<T | undefined>): Array<T> {
-  return obj.filter(Boolean) as Array<T>;
 }
 
 export function ingress({ name, host, api, web, parent }: IngressArgs) {

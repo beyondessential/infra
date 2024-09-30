@@ -1,4 +1,4 @@
-import { Input } from '@pulumi/pulumi';
+import { compact } from 'lodash-es';
 import * as k8s from '@pulumi/kubernetes';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
@@ -60,11 +60,15 @@ export function podSpecFactory(): PodSpecFactory {
         image: image('frontend'),
         imagePullPolicy: 'IfNotPresent',
         volumeMounts,
-        env: [
+        env: compact([
           ...env,
           {
             name: 'NODE_ENV',
             value: nodeEnv,
+          },
+          imageTag.startsWith('sha-') && {
+            name: 'REVISION',
+            value: imageTag.replace(/^sha-/, '').slice(0, 10),
           },
           {
             name: 'BUGSNAG_API_KEY',
@@ -75,7 +79,7 @@ export function podSpecFactory(): PodSpecFactory {
               },
             },
           },
-        ],
+        ]),
         resources: {
           requests: {
             cpu: '1m',
