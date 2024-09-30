@@ -29,6 +29,7 @@ export function runServer(
     {
       metadata: {
         namespace,
+        name: `facility-${name}-${type}`,
       },
       spec: {
         ports: [

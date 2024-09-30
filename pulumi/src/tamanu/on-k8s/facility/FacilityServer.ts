@@ -56,6 +56,8 @@ export class FacilityServer extends ComponentResource {
         timezone,
         provisioning,
         centralApiUrl,
+        syncApiUrl: `http://facility-${name}-sync`,
+        syncApiPort: 80,
       },
     }));
 
@@ -89,7 +91,7 @@ export class FacilityServer extends ComponentResource {
       replicas: replicas.api,
     });
 
-    const sync = runServer(name, 'sync', {
+    runServer(name, 'sync', {
       parent: this,
       deviceId,
       podSpec,
@@ -112,7 +114,6 @@ export class FacilityServer extends ComponentResource {
       host: fqdn,
       web: web.service,
       api: api.service,
-      sync: sync.service,
     });
   }
 }
