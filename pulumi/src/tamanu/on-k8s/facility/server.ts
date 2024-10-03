@@ -41,7 +41,6 @@ export function runServer(
           },
         ],
         selector: appSelector(`${type}-server`, deviceId),
-        clusterIP: 'None',
       },
     },
     { parent, dependsOn: [migratorJob], replaceOnChanges: ['clusterIP'] },

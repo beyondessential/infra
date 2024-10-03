@@ -41,7 +41,6 @@ export function runApi({
           },
         ],
         selector: appSelector('api-server'),
-        clusterIP: 'None',
       },
     },
     { parent, dependsOn: [migratorJob, provisionerJob], replaceOnChanges: ['clusterIP'] },
