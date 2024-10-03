@@ -41,25 +41,27 @@ export class FacilityServer extends ComponentResource {
       backupSchedule: dbBackups,
     });
 
-    const appConfig = provisioning.apply(provisioning => templatedConfig({
-      parent: this,
-      kind: 'config-facility',
-      name: `facility-${name}`,
-      additionalData: {
-        'custom-environment-variables.json': JSON.stringify(CONFIG_FROM_ENV),
-      },
-      templateData: {
-        fqdn,
-        instance: `facility-${name}`,
-        facilityId,
-        deviceId,
-        timezone,
-        provisioning,
-        centralApiUrl,
-        syncApiUrl: `http://facility-${name}-sync`,
-        syncApiPort: 80,
-      },
-    }));
+    const appConfig = provisioning.apply((provisioning) =>
+      templatedConfig({
+        parent: this,
+        kind: 'config-facility',
+        name: `facility-${name}`,
+        additionalData: {
+          'custom-environment-variables.json': JSON.stringify(CONFIG_FROM_ENV),
+        },
+        templateData: {
+          fqdn,
+          instance: `facility-${name}`,
+          facilityId,
+          deviceId,
+          timezone,
+          provisioning,
+          centralApiUrl,
+          syncApiUrl: `http://facility-${name}-sync`,
+          syncApiPort: 80,
+        },
+      }),
+    );
 
     const podSpec = podSpecFactory({
       name,
@@ -83,19 +85,19 @@ export class FacilityServer extends ComponentResource {
       });
     }
 
+    const sync = runServer(name, 'sync', {
+      parent: this,
+      deviceId,
+      podSpec,
+      dependsOn: [migratorJob],
+    });
+
     const api = runServer(name, 'api', {
       parent: this,
       deviceId,
       podSpec,
-      migratorJob,
+      dependsOn: [migratorJob, sync.service],
       replicas: replicas.api,
-    });
-
-    runServer(name, 'sync', {
-      parent: this,
-      deviceId,
-      podSpec,
-      migratorJob,
     });
 
     const web = new WebFrontend(

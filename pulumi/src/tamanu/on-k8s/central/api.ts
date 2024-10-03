@@ -43,7 +43,7 @@ export function runApi({
         selector: appSelector('api-server'),
       },
     },
-    { parent, dependsOn: [migratorJob, provisionerJob], replaceOnChanges: ['clusterIP'] },
+    { parent, replaceOnChanges: ['clusterIP'] },
   );
 
   const deployment = new k8s.apps.v1.Deployment(

@@ -1,4 +1,4 @@
-import { ComponentResource } from '@pulumi/pulumi';
+import { ComponentResource, Input, Resource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.js';
 import { appLabels, appSelector } from './specs.js';
@@ -9,7 +9,7 @@ export interface RunApiArgs {
   deviceId: string;
   replicas?: number;
   podSpec: PodSpecFactory;
-  migratorJob: k8s.batch.v1.Job;
+  dependsOn?: Input<Resource>[];
 }
 
 export interface RunApiOutput {
@@ -20,7 +20,7 @@ export interface RunApiOutput {
 export function runServer(
   name: string,
   type: 'api' | 'sync',
-  { parent, deviceId, replicas = 1, podSpec, migratorJob }: RunApiArgs,
+  { parent, deviceId, replicas = 1, podSpec, dependsOn = [] }: RunApiArgs,
 ): RunApiOutput {
   const command = type === 'api' ? 'startApi' : 'startSync';
 
@@ -43,7 +43,7 @@ export function runServer(
         selector: appSelector(`${type}-server`, deviceId),
       },
     },
-    { parent, dependsOn: [migratorJob], replaceOnChanges: ['clusterIP'] },
+    { parent, replaceOnChanges: ['clusterIP'] },
   );
 
   const deployment = new k8s.apps.v1.Deployment(
@@ -100,7 +100,7 @@ export function runServer(
         },
       },
     },
-    { parent, dependsOn: [migratorJob], ignoreChanges: ['spec.replicas'] },
+    { parent, dependsOn, ignoreChanges: ['spec.replicas'] },
   );
 
   return { service, deployment };
