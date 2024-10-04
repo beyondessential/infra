@@ -35,6 +35,7 @@ const policy = new awsClassic.iam.Policy('ips-bucket-policy', {
         Action: ['s3:GetObject', 's3:GetBucketLocation', 's3:ListBucket', 's3:PutObject'],
         Resource: [BUCKET_NAME].flatMap((bucket) => [
           `arn:aws:s3:::${bucket}`,
+          `arn:aws:s3:::${bucket}/ips-demo/*`,
           `arn:aws:s3:::${bucket}/viewer/*`,
         ]),
       },
