@@ -63,6 +63,7 @@ new k8s.helm.v3.Release(
           'enable-real-ip': 'true',
           'proxy-real-ip-cidr': '0.0.0.0/0,::/0',
           'use-proxy-protocol': 'true',
+          'proxy-body-size': '50m',
         },
         publishService: { enabled: true },
         service: {
