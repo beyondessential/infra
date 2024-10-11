@@ -87,6 +87,9 @@ new k8s.apiextensions.CustomResource('app-tls', {
   kind: 'Certificate',
   metadata: {
     namespace,
+    annotations: {
+      'pulumi.com/patchForce': 'true',
+    },
   },
   spec: {
     commonName: domains[0],
