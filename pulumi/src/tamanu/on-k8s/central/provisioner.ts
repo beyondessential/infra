@@ -12,11 +12,20 @@ export interface MigratorArgs {
   migratorJob: k8s.batch.v1.Job;
 }
 
+type Settings = { [key: string]: string | { [key: string]: string } };
+
 export interface Provisioning {
   users: {
     [email: string]: {
       password: string;
       role?: string;
+    };
+  };
+  settings: {
+    global: Settings;
+    central: Settings;
+    facilities: {
+      [facilityId: string]: Settings;
     };
   };
 }

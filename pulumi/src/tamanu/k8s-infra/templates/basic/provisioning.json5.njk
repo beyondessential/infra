@@ -16,6 +16,44 @@
     {% endfor %}
   },
 
+  settings: {
+    global: {
+      features: {
+        patientPlannedMove: true,
+        enablePatientDeaths: true,
+        enableInvoicing: true,
+        editPatientDisplayId: true,
+        enableCovidClearanceCertificate: true,
+        quickPatientGenerator: true,
+      },
+    },
+    central: {
+      disk: {
+        freeSpaceRequired: {
+          gigabytesForUploadingDocuments: 0.1,
+        }
+      }
+    },
+    facilities: {
+      {% for n in range(1, 10) %}
+      'facility-{{ n }}': {
+        survey: {
+          defaultCodes: {
+            location: {% if n == 1 %}
+              'THWaitingArea'
+            {% elif n == 2 %}
+              'LHWaitingArea'
+            {% else %}
+              'WaitingArea'
+            {% endif %},
+            department: 'Emergency',
+          }
+        }
+      },
+      {% endfor %}
+    },
+  },
+
   referenceData: [
     {
       url: 'https://bes-tamanu-dev-referencedata.s3.ap-southeast-2.amazonaws.com/referencedata/default.xlsx',

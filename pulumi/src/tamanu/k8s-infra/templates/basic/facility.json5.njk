@@ -23,18 +23,6 @@
   proxy: {
     trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
-  survey: {
-    defaultCodes: {
-      location: {% if instance == "facility-1" %}
-        'THWaitingArea'
-      {% elif instance == "facility-2" %}
-        'LHWaitingArea'
-      {% else %}
-        'WaitingArea'
-      {% endif %},
-      department: 'Emergency',
-    },
-  },
   countryTimeZone: '{{ timezone }}',
   localisation: {
     timeZone: '{{ timezone }}',
