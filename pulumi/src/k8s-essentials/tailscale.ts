@@ -17,7 +17,7 @@ if (tailscaleEnabled) {
 
   new k8s.helm.v3.Release('tailscale', {
     chart: 'tailscale-operator',
-    version: '1.64.2',
+    version: '1.76.6',
     repositoryOpts: {
       repo: 'https://pkgs.tailscale.com/helmcharts',
     },
@@ -63,6 +63,19 @@ if (tailscaleEnabled) {
       apiServerProxyConfig: {
         mode: 'true',
       },
+    },
+  });
+
+  new k8s.apiextensions.CustomResource('exit-node', {
+    metadata: {
+      namespace: ns.metadata.name,
+    },
+    apiVersion: 'tailscale.com/v1alpha1',
+    kind: 'Connector',
+    spec: {
+      hostname: interpolate`exit-k8s-${clusterFullName}`,
+      tags: ['tag:server'],
+      exitNode: true,
     },
   });
 }

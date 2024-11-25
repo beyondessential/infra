@@ -21,3 +21,5 @@ export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';
 if (!['amd64', 'arm64'].includes(architecture)) {
   throw new Error(`Invalid architecture: ${architecture}`);
 }
+
+export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
