@@ -7,7 +7,7 @@
 - name: Install podman {{ podman_version }}
   become: true
   ansible.builtin.apt:
-    deb: https://tools.ops.tamanu.io/podman/{{ podman_version }}/podman-{{ ansible_architecture }}-unknown-linux-gnu-{{ podman_version }}.deb
+    deb: https://tools.ops.tamanu.io/podman/{{ podman_version }}/podman-{{ ansible_architecture }}-unknown-linux-gnu35-{{ podman_version }}.deb
 
 - name: Make sure podman runs
   ansible.builtin.shell: podman --version

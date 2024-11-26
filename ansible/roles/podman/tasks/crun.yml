@@ -1,8 +1,12 @@
 ---
+# - name: Check glibc version
+#   shell: dpkg -s libc-bin | awk '/Version/ {print $2}'
+#   register: glibc_version
+
 - name: Install crun {{ crun_version }}
   become: true
   ansible.builtin.apt:
-    deb: https://tools.ops.tamanu.io/crun/{{ crun_version }}/crun-{{ ansible_architecture }}-unknown-linux-gnu-{{ crun_version }}.deb
+    deb: https://tools.ops.tamanu.io/crun/{{ crun_version }}/crun-{{ ansible_architecture }}-unknown-linux-gnu35-{{ crun_version }}.deb
 
 - name: Make sure crun runs
   ansible.builtin.shell: crun --version
