@@ -12,10 +12,10 @@
     name: tamanu
     shell: /usr/bin/false
 
-- name: Add ubuntu user to tamanu group
+- name: Add login user to tamanu group
   become: true
   ansible.builtin.user:
-    name: ubuntu
+    name: "{{ ansible_user}}"
     groups: tamanu
     append: yes
 
