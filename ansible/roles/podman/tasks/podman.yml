@@ -9,6 +9,9 @@
   ansible.builtin.apt:
     deb: https://tools.ops.tamanu.io/podman/{{ podman_version }}/podman-{{ ansible_architecture }}-unknown-linux-gnu-{{ podman_version }}.deb
 
+- name: Make sure podman runs
+  ansible.builtin.shell: podman --version
+
 - name: Install containers.conf
   become: true
   ansible.builtin.copy:

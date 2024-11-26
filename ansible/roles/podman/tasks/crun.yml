@@ -3,3 +3,6 @@
   become: true
   ansible.builtin.apt:
     deb: https://tools.ops.tamanu.io/crun/{{ crun_version }}/crun-{{ ansible_architecture }}-unknown-linux-gnu-{{ crun_version }}.deb
+
+- name: Make sure crun runs
+  ansible.builtin.shell: crun --version
