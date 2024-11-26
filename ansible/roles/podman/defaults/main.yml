@@ -1,5 +1,5 @@
 ---
-podman_version: "5.1.2.1"
+podman_version: "5.3.1"
 crun_version: "1.18.2"
 
 podman_network_subnets:
