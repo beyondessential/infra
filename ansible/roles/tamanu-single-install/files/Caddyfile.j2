@@ -70,9 +70,11 @@
   import server
 }
 
+{% if not (public_hostname | regex_search('\\.local$')) %}
 {{ public_hostname }} {
   import server
 }
+{% endif %}
 
 {% if tailscale_name is defined %}
 {{ tailscale_name }}.{{ tailnet }}.ts.net {
