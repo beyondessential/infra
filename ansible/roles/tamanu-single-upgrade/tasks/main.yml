@@ -13,6 +13,9 @@
     state: stopped
   notify: Reload caddy
 
+- name: Reload caddy
+  meta: flush_handlers
+
 - name: Upgrade the frontend service A
   become: true
   ansible.builtin.systemd:
@@ -20,6 +23,9 @@
     state: restarted
     enabled: true
   notify: Reload caddy
+
+- name: Reload caddy
+  meta: flush_handlers
 
 - name: Wait for new frontend to start
   ansible.builtin.wait_for:
@@ -35,6 +41,9 @@
     enabled: true
   notify: Reload caddy
 
+- name: Reload caddy
+  meta: flush_handlers
+
 # cleanup any legacy or experiments;
 # two frontend services is way more than enough and only really serves
 # to provide a way to do a rolling upgrade
@@ -46,6 +55,9 @@
     state: stopped
     enabled: false
   notify: Reload caddy
+
+- name: Reload caddy
+  meta: flush_handlers
 
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
@@ -60,3 +72,6 @@
     state: started
     enabled: true
   notify: Reload caddy
+
+- name: Reload caddy
+  meta: flush_handlers
