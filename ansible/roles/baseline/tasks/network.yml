@@ -2,5 +2,5 @@
 - name: Set hostname
   become: true
   ansible.builtin.hostname:
-    name: "{{ public_hostname }}"
+    name: "{{ public_hostname | regex_replace('\\.local$') }}"
     use: systemd
