@@ -9,7 +9,7 @@
 - name: Add tailscale repo
   become: true
   ansible.builtin.apt_repository:
-    repo: deb https://pkgs.tailscale.com/stable/ubuntu {{ ansible_distribution_release }} main
+    repo: deb https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
     state: present
 
 - name: Prioritise tailscale repo
