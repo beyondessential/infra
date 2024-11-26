@@ -14,7 +14,7 @@
     starship completions fish > /usr/share/fish/vendor_completions.d/starship.fish
 
 - name: Restart iti services
-  if: ansible_user == 'iti'
+  when: ansible_user == 'iti'
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"

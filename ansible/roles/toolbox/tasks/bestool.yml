@@ -16,7 +16,7 @@
     dest: /usr/local/bin/tb
     state: link
 
-- if: ansible_user == 'iti'
+- when: ansible_user == 'iti'
   name: Update iti LCD scripts
   become: true
   loop:
@@ -29,7 +29,7 @@
     mode: a=rx,u=rwx
   notify: Restart iti services
 
-- if: ansible_user == 'iti'
+- when: ansible_user == 'iti'
   name: Update iti LCD services
   become: true
   loop:
