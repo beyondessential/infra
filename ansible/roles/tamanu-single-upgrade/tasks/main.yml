@@ -29,9 +29,11 @@
 
 - name: Wait for new frontend to start
   ansible.builtin.wait_for:
-    host: "{{ tamanu_version | replace('.', '-') }}.frontend.tamanu.internal"
-    port: 3000
-    timeout: 20
+    timeout: 10
+    # This used to be a check for the frontend to exist in DNS, but that was
+    # unreliable as it depended on the system DNS connecting to the netavark
+    # DNS, which was not always the case. Waiting for 10 seconds is suboptimal,
+    # but it's better than nothing.
 
 - name: Upgrade the frontend service B
   become: true
