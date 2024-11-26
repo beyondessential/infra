@@ -31,7 +31,7 @@
   ansible.builtin.wait_for:
     host: "{{ tamanu_version | replace('.', '-') }}.frontend.tamanu.internal"
     port: 3000
-    timeout: 10
+    timeout: 20
 
 - name: Upgrade the frontend service B
   become: true
