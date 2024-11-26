@@ -12,3 +12,18 @@
     starship completions bash > /usr/share/bash-completion/completions/starship
     starship completions zsh > /usr/share/zsh/site-functions/_starship
     starship completions fish > /usr/share/fish/vendor_completions.d/starship.fish
+
+- name: Restart iti services
+  if: ansible_user == 'iti'
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - iti-lcd-server
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature

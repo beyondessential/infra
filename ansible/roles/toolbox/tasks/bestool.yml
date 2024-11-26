@@ -5,7 +5,9 @@
     url: https://tools.ops.tamanu.io/bestool/{{ bestool_version }}/{{ ansible_architecture }}-unknown-linux-musl/bestool
     dest: /usr/local/bin/bestool
     mode: a=rx,u=rwx
-  notify: Regenerate bestool completions
+  notify:
+    - Regenerate bestool completions
+    - Restart iti services
 
 - name: Add tb alias
   become: true
@@ -13,3 +15,33 @@
     src: /usr/local/bin/bestool
     dest: /usr/local/bin/tb
     state: link
+
+- if: ansible_user == 'iti'
+  name: Update iti LCD scripts
+  become: true
+  loop:
+    - iti-addresses
+    - iti-lcd-wifi
+    - iti-localtime
+  ansible.builtin.get_url:
+    url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}
+    dest: /usr/local/bin/{{ item }}
+    mode: a=rx,u=rwx
+  notify: Restart iti services
+
+- if: ansible_user == 'iti'
+  name: Update iti LCD services
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.get_url:
+    url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}.service
+    dest: /etc/systemd/system/{{ item }}
+    mode: a=r,u=rw
+  notify: Restart iti services
