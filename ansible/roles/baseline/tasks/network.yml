@@ -4,3 +4,24 @@
   ansible.builtin.hostname:
     name: "{{ public_hostname | regex_replace('\\.local$') }}"
     use: systemd
+
+- name: Install resolved
+  become: true
+  ansible.builtin.apt:
+    name:
+      - systemd-resolved
+  notify: Restart systemd-resolved
+
+- name: Enable resolved
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: yes
+    state: started
+
+- name: Set resolved as DNS
+  become: true
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
