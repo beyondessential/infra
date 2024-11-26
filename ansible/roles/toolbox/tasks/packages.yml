@@ -4,6 +4,7 @@
   ansible.builtin.apt:
     name:
       - btrfs-compsize
+      - dnsutils
       - fish
       - htop
       - iftop
