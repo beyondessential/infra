@@ -30,6 +30,12 @@
     - Update package facts
     - Restart postgres
 
+# during first install, the service is not started (handlers are not run) until
+# after the play completes, and thus the symlink step below fails. Workaround by
+# forcing the handlers to run now.
+- name: Make sure postgresql is running now
+  meta: flush_handlers
+
 - name: Symlink current postgresql version configuration
   become: true
   ansible.builtin.file:
