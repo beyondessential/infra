@@ -36,7 +36,7 @@ const sg = new aws.ec2.SecurityGroup(
 );
 
 // https://cloud-images.ubuntu.com/locator/ec2/
-const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-02a9b44bb576c447d';
+const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-09b56d1f2bd9893f7';
 
 const DEVICE_NAMES = {
   root: '/dev/root',
