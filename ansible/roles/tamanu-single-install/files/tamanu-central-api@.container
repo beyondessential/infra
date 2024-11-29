@@ -4,7 +4,7 @@ Description=Tamanu Central server API
 [Container]
 EnvironmentFile=/etc/tamanu/env
 Image=ghcr.io/beyondessential/tamanu-central:${TAMANU_VERSION}
-Exec=serve
+Exec=startApi
 Volume=/etc/tamanu/${TAMANU_VERSION}:/config
 Volume=/var/run/postgresql:/var/run/postgresql
 NetworkAlias=api.central.tamanu.internal
