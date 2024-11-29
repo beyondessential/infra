@@ -70,7 +70,7 @@ for (const [i, inst] of instances.entries()) {
       },
     },
     {
-      ignoreChanges: ['rootBlockDevice'],
+      ignoreChanges: ['ami', 'rootBlockDevice'],
       deleteBeforeReplace: true,
     },
   );
