@@ -1,5 +1,15 @@
 import * as aws from '@pulumi/aws';
-import { normalizedStack, domainBase, domains, instances, zoneId, diskSizes, namePrefix, hardDelete, sshKey } from './config.js';
+import {
+  normalizedStack,
+  domainBase,
+  domains,
+  instances,
+  zoneId,
+  diskSizes,
+  namePrefix,
+  hardDelete,
+  sshKey,
+} from './config.js';
 import { $network, failIfIncorrectAccount } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
 failIfIncorrectAccount();
@@ -77,7 +87,9 @@ for (const [i, inst] of instances.entries()) {
 
   for (const [name, size] of Object.entries(diskSizes)) {
     if (name === 'root') continue;
-    const volume = new aws.ebs.Volume(`${inst.id}-${name}`, {
+    const volume = new aws.ebs.Volume(
+      `${inst.id}-${name}`,
+      {
       availabilityZone: vm.availabilityZone,
       size,
       type: 'gp3',
@@ -86,13 +98,19 @@ for (const [i, inst] of instances.entries()) {
       tags: {
         Name: `${namePrefix}${inst.name} ${name}`,
       },
-    }, { deleteBeforeReplace: true });
+      },
+      { deleteBeforeReplace: true },
+    );
 
-    new aws.ec2.VolumeAttachment(`${inst.id}-${name}`, {
+    new aws.ec2.VolumeAttachment(
+      `${inst.id}-${name}`,
+      {
       deviceName: DEVICE_NAMES[name],
       volumeId: volume.id,
       instanceId: vm.id,
-    }, { deleteBeforeReplace: true });
+      },
+      { deleteBeforeReplace: true },
+    );
   }
 
   const ip = new aws.ec2.Eip(inst.id, {
@@ -111,7 +129,8 @@ for (const [i, inst] of instances.entries()) {
     records: [ip.publicIp],
   });
 
-  vm.ipv6Addresses.length && new aws.route53.Record(`${inst.id}-v6`, {
+  vm.ipv6Addresses.length &&
+    new aws.route53.Record(`${inst.id}-v6`, {
     zoneId: zoneId,
     name: domains[inst.name],
     type: aws.route53.RecordType.AAAA,
