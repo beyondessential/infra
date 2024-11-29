@@ -49,6 +49,8 @@ export const AWS_S3_MULTIPART_ACTIONS = [
   's3:ListMultipartUploadParts',
 ];
 
+export const AWS_BACKUP_DEFAULT_SERVICE_ROLE = 'role/service-role/AWSBackupDefaultServiceRole';
+
 export function alpineAmi(
   version: string = '3.*',
   arch: string = 'aarch64',

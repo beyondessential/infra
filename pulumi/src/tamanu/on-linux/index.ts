@@ -1,4 +1,5 @@
 import * as aws from '@pulumi/aws';
+import * as awsNative from '@pulumi/aws-native';
 import {
   normalizedStack,
   domainBase,
@@ -12,6 +13,9 @@ import {
 } from './config.js';
 import { $network, failIfIncorrectAccount } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
+import { all, getStack, interpolate, Output } from '@pulumi/pulumi';
+import { accountId } from '../../common/awsAccount.js';
+import { AWS_BACKUP_DEFAULT_SERVICE_ROLE } from '../../constants/external.js';
 failIfIncorrectAccount();
 
 export const urls = Object.fromEntries(
@@ -45,6 +49,60 @@ const sg = new aws.ec2.SecurityGroup(
   },
 );
 
+const vault = new awsNative.backup.BackupVault(
+  'backup',
+  {
+    backupVaultName: interpolate`tamanu-on-linux-${getStack()}`,
+    backupVaultTags: {
+      Purpose: 'Backup',
+      Name: getStack(),
+    },
+  },
+  { parent: this },
+);
+
+const backup = new awsNative.backup.BackupPlan(
+  'backup-180days',
+  {
+    backupPlan: {
+      backupPlanName: interpolate`tamanu-on-linux-${getStack()}-180days`,
+      backupPlanRule: [
+        {
+          ruleName: 'daily-keep8days',
+          targetBackupVault: vault.backupVaultName,
+          scheduleExpression: 'cron(30 0 ? * * *)',
+          lifecycle: {
+            deleteAfterDays: 8,
+          },
+        },
+        {
+          ruleName: 'weekly-keep8weeks',
+          targetBackupVault: vault.backupVaultName,
+          scheduleExpression: 'cron(0 12 ? * 7 *)',
+          lifecycle: {
+            deleteAfterDays: 64,
+          },
+        },
+        {
+          ruleName: 'monthly-warm1month-cold6months',
+          targetBackupVault: vault.backupVaultName,
+          scheduleExpression: 'cron(0 0 1 * ? *)',
+          lifecycle: {
+            deleteAfterDays: 180,
+            moveToColdStorageAfterDays: 32,
+            optInToArchiveForSupportedResources: true,
+          },
+        },
+      ],
+    },
+    backupPlanTags: {
+      Purpose: 'Backup',
+      Name: getStack(),
+    },
+  },
+  { parent: this },
+);
+
 // https://cloud-images.ubuntu.com/locator/ec2/
 const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-09b56d1f2bd9893f7';
 
@@ -53,6 +111,8 @@ const DEVICE_NAMES = {
   logs: '/dev/sdl',
   data: '/dev/sdp', // p for postgres
 };
+
+const backupResources: Output<string>[] = [];
 
 for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
@@ -85,29 +145,33 @@ for (const [i, inst] of instances.entries()) {
     },
   );
 
+  backupResources.push(vm.arn);
+
   for (const [name, size] of Object.entries(diskSizes)) {
     if (name === 'root') continue;
     const volume = new aws.ebs.Volume(
       `${inst.id}-${name}`,
       {
-      availabilityZone: vm.availabilityZone,
-      size,
-      type: 'gp3',
-      finalSnapshot: true,
-      encrypted: true,
-      tags: {
-        Name: `${namePrefix}${inst.name} ${name}`,
-      },
+        availabilityZone: vm.availabilityZone,
+        size,
+        type: 'gp3',
+        finalSnapshot: true,
+        encrypted: true,
+        tags: {
+          Name: `${namePrefix}${inst.name} ${name}`,
+        },
       },
       { deleteBeforeReplace: true },
     );
 
+    backupResources.push(volume.arn);
+
     new aws.ec2.VolumeAttachment(
       `${inst.id}-${name}`,
       {
-      deviceName: DEVICE_NAMES[name],
-      volumeId: volume.id,
-      instanceId: vm.id,
+        deviceName: DEVICE_NAMES[name],
+        volumeId: volume.id,
+        instanceId: vm.id,
       },
       { deleteBeforeReplace: true },
     );
@@ -131,10 +195,26 @@ for (const [i, inst] of instances.entries()) {
 
   vm.ipv6Addresses.length &&
     new aws.route53.Record(`${inst.id}-v6`, {
-    zoneId: zoneId,
-    name: domains[inst.name],
-    type: aws.route53.RecordType.AAAA,
-    ttl: 300,
-    records: [vm.ipv6Addresses[0]],
-  });
+      zoneId: zoneId,
+      name: domains[inst.name],
+      type: aws.route53.RecordType.AAAA,
+      ttl: 300,
+      records: [vm.ipv6Addresses[0]],
+    });
 }
+
+all(backupResources).apply(
+  (resources) =>
+    new awsNative.backup.BackupSelection(
+      'backup-resources',
+      {
+        backupPlanId: backup.backupPlanId,
+        backupSelection: {
+          selectionName: interpolate`tamanu-on-linux-${getStack()}`,
+          iamRoleArn: interpolate`arn:aws:iam::${accountId}:${AWS_BACKUP_DEFAULT_SERVICE_ROLE}`,
+          resources,
+        },
+      },
+      { parent: backup },
+    ),
+);
