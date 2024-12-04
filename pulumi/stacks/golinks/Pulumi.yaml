@@ -1,0 +1,6 @@
+name: golinks
+description: Tailscale's golinks deployed on K8S
+runtime:
+  name: nodejs
+  options:
+    typescript: false
