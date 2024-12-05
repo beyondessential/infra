@@ -36,6 +36,7 @@
     state: directory
 
 - name: Schedule cleanup of old backups
+  become: true
   ansible.builtin.template:
     dest: /etc/tmpfiles.d/tamanu-backup.conf
     src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-backup.conf.j2') }}"
@@ -49,7 +50,7 @@
     - tamanu-backup.service
   ansible.builtin.template:
     dest: /etc/systemd/system/{{ item }}
-    src: "{{ lookup('ansible.builtin.fileglob', item + '.j2') }}"
+    src: "{{ lookup('ansible.builtin.fileglob', item ~ '.j2') }}"
     mode: '0660'
     force: true
   notify: Reload systemd
