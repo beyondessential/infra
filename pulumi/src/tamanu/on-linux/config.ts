@@ -14,31 +14,57 @@ export const normalizedStack = getStack()
 export const domainBase =
   cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'internal.tamanu.io');
 
+export interface Disks {
+  root?: number;
+  logs?: number;
+  data?: number;
+}
+
+const defaultDisks: Disks = {
+  root: cfg.getNumber('disks.root') ?? 10,
+  logs: cfg.getNumber('disks.logs') ?? 10,
+  data: cfg.getNumber('disks.data') ?? 50,
+};
+
 export interface Facility {
   id: string;
   name?: string;
   subdomain?: string;
   instance?: string;
+  disks?: Disks;
 }
 
 export const facilities: Required<Facility>[] = (
-  (cfg.getObject('facilities') as Facility[]) ?? [{ id: 'facility-1' }, { id: 'facility-2' }]
-).map((facility: Facility) => ({
-  subdomain: facility.id,
-  name: facility.id,
-  instance: 't4g.medium',
-  ...facility,
-}));
+  (cfg.getObject('facilities') as Facility[]) ?? [{ id: 'a' }, { id: 'b' }]
+).map((facility: Facility) => {
+  const id = facility.id.startsWith('facility-') ? facility.id : `facility-${facility.id}`;
+  return {
+    subdomain: id,
+    name: id,
+    instance: 't4g.medium',
+    ...facility,
+    id,
+    disks: {
+      ...defaultDisks,
+      ...facility.disks,
+    },
+  };
+});
 
-export const instances = [
-  {
-    id: 'central',
-    name: 'Central',
-    subdomain: 'central',
-    instance: cfg.get('centralInstance') ?? 't4g.large',
+const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'>) ?? {};
+export const central: Required<Facility> = {
+  name: 'Central',
+  subdomain: 'central',
+  instance: 't4g.large',
+  ...cfgCentral,
+  id: 'central',
+  disks: {
+    ...defaultDisks,
+    ...cfgCentral.disks,
   },
-  ...facilities,
-];
+};
+
+export const instances: Required<Facility>[] = [central, ...facilities];
 
 export const domains = Object.fromEntries(
   instances.map(({ name, subdomain }) => [name, `${subdomain}.${domainBase}`]),
@@ -46,12 +72,6 @@ export const domains = Object.fromEntries(
 
 export const zoneId = cfg.get('zoneId') ?? 'Z0565335834ZM6R45IL3';
 export const namePrefix = cfg.get('namePrefix') ?? '';
-
-export const diskSizes = {
-  root: cfg.getNumber('diskGB.root') ?? 10,
-  logs: cfg.getNumber('diskGB.logs') ?? 10,
-  data: cfg.getNumber('diskGB.data') ?? 50,
-};
 
 export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;

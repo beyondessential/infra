@@ -6,7 +6,6 @@ import {
   domains,
   instances,
   zoneId,
-  diskSizes,
   namePrefix,
   hardDelete,
   sshKey,
@@ -123,7 +122,7 @@ for (const [i, inst] of instances.entries()) {
       disableApiTermination: !hardDelete,
       monitoring: true,
       rootBlockDevice: {
-        volumeSize: diskSizes.root,
+        volumeSize: inst.disks.root,
         volumeType: 'gp3',
         encrypted: true,
       },
@@ -147,7 +146,7 @@ for (const [i, inst] of instances.entries()) {
 
   backupResources.push(vm.arn);
 
-  for (const [name, size] of Object.entries(diskSizes)) {
+  for (const [name, size] of Object.entries(inst.disks)) {
     if (name === 'root') continue;
     const volume = new aws.ebs.Volume(
       `${inst.id}-${name}`,
