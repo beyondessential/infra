@@ -1,0 +1,7 @@
+[Unit]
+Description=Tamanu database backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/bestool tamanu backup --write-to /opt/tamanu-backup/auto
+User={{ ansible_user }}
