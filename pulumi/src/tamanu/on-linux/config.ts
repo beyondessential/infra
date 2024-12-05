@@ -11,8 +11,11 @@ export const normalizedStack = getStack()
   .slice(0, 63) // max length for a domain label
   .replace(/^-+|-+$/g, '');
 
-export const domainBase =
-  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'internal.tamanu.io');
+export const domainBase = cfg.require('domainBase');
+export const zoneId = cfg.require('zoneId');
+export const namePrefix = cfg.get('namePrefix') ?? '';
+export const sshKey = cfg.get('keyName') ?? 'ops';
+export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
 
 export interface Disks {
   root?: number;
@@ -69,9 +72,3 @@ export const instances: Required<Facility>[] = [central, ...facilities];
 export const domains = Object.fromEntries(
   instances.map(({ name, subdomain }) => [name, `${subdomain}.${domainBase}`]),
 );
-
-export const zoneId = cfg.get('zoneId') ?? 'Z0565335834ZM6R45IL3';
-export const namePrefix = cfg.get('namePrefix') ?? '';
-
-export const sshKey = cfg.get('keyName') ?? 'ops';
-export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
