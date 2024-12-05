@@ -10,22 +10,20 @@
     useHardcodedPermissions: false,
   },
   db: {
-    name: "{{ tamanu_db_name }}",
-    verbose: false,
-    username: "{{ tamanu_db_user }}",
-    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + tamanu_db_user) }}",
-    host: "/var/run/postgresql",
-    port: null,
-    migrateOnStartup: false,
+    reportSchemas: {
+      enabled: true,
+    },
   },
   localisation: {
     data: {
+      {% if tamanu_version | version('2.20.0', '<') %}
       templates: {
         letterhead: {
           title: "{{ tamanu_letterhead_title }}",
           subTitle: "{{ tamanu_letterhead_subtitle }}",
         },
       },
+      {% endif %}
       country: {
         name: "{{ tamanu_country_name }}",
         "alpha-2": "{{ tamanu_country_alpha2 }}",
@@ -35,7 +33,6 @@
     },
   },
   disk: {
-    diskPath: '/var/lib/postgresql',
     freeSpaceRequired: {
       gigabytesForUploadingDocuments: 0.1,
     },

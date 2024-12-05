@@ -18,12 +18,8 @@
     },
   },
   db: {
-    name: "{{ tamanu_db_name }}",
-    verbose: false,
-    username: "{{ tamanu_db_user }}",
-    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + tamanu_db_user) }}",
-    host: "/var/run/postgresql",
-    port: null,
-    migrateOnStartup: false,
+    reportSchemas: {
+      enabled: true,
+    },
   },
 }
