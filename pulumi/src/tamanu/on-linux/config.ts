@@ -37,22 +37,22 @@ export interface Facility {
   disks?: Disks;
 }
 
-export const facilities: Required<Facility>[] = (
-  (cfg.getObject('facilities') as Facility[]) ?? [{ id: 'a' }, { id: 'b' }]
-).map((facility: Facility) => {
-  const id = facility.id.startsWith('facility-') ? facility.id : `facility-${facility.id}`;
-  return {
-    subdomain: id,
-    name: id,
-    instance: 't4g.medium',
-    ...facility,
-    id,
-    disks: {
-      ...defaultDisks,
-      ...facility.disks,
-    },
-  };
-});
+export const facilities: Required<Facility>[] = (cfg.requireObject('facilities') as Facility[]).map(
+  (facility: Facility) => {
+    const id = facility.id.startsWith('facility-') ? facility.id : `facility-${facility.id}`;
+    return {
+      subdomain: id,
+      name: id,
+      instance: 't4g.medium',
+      ...facility,
+      id,
+      disks: {
+        ...defaultDisks,
+        ...facility.disks,
+      },
+    };
+  },
+);
 
 const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'>) ?? {};
 export const central: Required<Facility> = {
