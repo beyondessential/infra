@@ -54,3 +54,10 @@
     mode: '0660'
     force: true
   notify: Reload systemd
+
+- name: Activate backup timer
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-backup.timer
+    enabled: yes
+    state: started
