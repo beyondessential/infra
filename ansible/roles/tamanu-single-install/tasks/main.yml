@@ -1,3 +1,4 @@
 ---
 - ansible.builtin.include_tasks: common.yml
+- ansible.builtin.include_tasks: database.yml
 - ansible.builtin.include_tasks: version.yml

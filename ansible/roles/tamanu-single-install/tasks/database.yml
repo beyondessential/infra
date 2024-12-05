@@ -1,0 +1,32 @@
+---
+- name: Add reporting database users
+  loop:
+    - reporting
+    - raw
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ item }}"
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + item) }}"
+
+- name: Allow reporting users access to postgres
+  loop:
+    - reporting
+    - raw
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ item }}"
+    databases: tamanu
+    method: scram-sha-256
+  notify: Reload postgres
+
+- name: Create backup folder
+  become: true
+  ansible.builtin.file:
+    path: /opt/tamanu-backup
+    mode: '0770'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
