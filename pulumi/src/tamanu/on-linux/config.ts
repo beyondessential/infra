@@ -1,6 +1,5 @@
 import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/coreRef.js';
-import { truncateDomainIfNeeded } from '../../common/dns.js';
 
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined;
 

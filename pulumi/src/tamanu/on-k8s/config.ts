@@ -16,7 +16,6 @@ export const domainBase =
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
-export const facilities = cfg.getNumber('facilities') ?? 2;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
 
@@ -87,6 +86,24 @@ function getServerReplicas(server: 'central' | 'facility') {
   };
 }
 
+export const facilities = cfg.getNumber('facilities') ?? 2;
+let facilityNames: string[] = cfg.getObject('facilityNames') ?? [];
+const named = facilityNames.length;
+if (named > facilities) {
+  throw new Error('Cannot have more facilityNames than facilities');
+} else if (named < facilities) {
+  facilityNames = facilityNames.concat(
+    Array.from({ length: facilities - named }, (_, i) => `facility-${named + i + 1}`),
+  );
+}
+facilityNames = facilityNames
+  .map((name) => name.toLowerCase())
+  .map((name) => (name.startsWith('facility') ? name : `facility-${name}`));
+if (facilityNames.length != new Set(facilityNames).size) {
+  throw new Error('Facility names must be unique');
+}
+export { facilityNames };
+
 export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
   central: getServerReplicas('central'),
   facility: getServerReplicas('facility'),
@@ -94,10 +111,5 @@ export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
 
 export const domains = {
   central: `central.${domainBase}`,
-  ...Object.fromEntries(
-    Array.from({ length: facilities }, (_, i) => [
-      `facility${i + 1}`,
-      `facility-${i + 1}.${domainBase}`,
-    ]),
-  ),
+  ...Object.fromEntries(facilityNames.map((name) => [name, `${name}.${domainBase}`])),
 };

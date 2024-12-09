@@ -3,7 +3,14 @@ import { failIfIncorrectCluster } from '../../common/k8s/coreRef.js';
 import { CentralServer } from './central/CentralServer.js';
 import { FacilityServer } from './facility/FacilityServer.js';
 import { namespace } from './namespace.js';
-import { domainBase, domains, facilities, replicas, serviceAccount, SERVICE_ACCOUNT_NAME } from './config.js';
+import {
+  domainBase,
+  domains,
+  facilityNames,
+  replicas,
+  serviceAccount,
+  SERVICE_ACCOUNT_NAME,
+} from './config.js';
 await failIfIncorrectCluster();
 
 import './secrets.js';
@@ -25,12 +32,12 @@ const central = new CentralServer('central', {
   replicas: replicas.central,
 });
 
-for (let i = 1; i <= facilities; i += 1) {
-  new FacilityServer(`${i}`, {
-    fqdn: domains[`facility${i}`],
+for (const name of facilityNames) {
+  new FacilityServer(name, {
+    fqdn: domains[name],
     centralApiUrl: `https://${domains.central}`,
-    facilityId: `facility-${i}`,
-    deviceId: `facility-${i}`,
+    facilityId: name,
+    deviceId: name,
     replicas: replicas.facility,
     provisioning: central.provisioning,
   });

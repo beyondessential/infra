@@ -16,6 +16,7 @@ You also need a Kubernetes/kubectl connection config to the cluster (see below).
 - `dbStorage` - How much storage to give Postgres. Must be `<number>Gi`, defaults to `5Gi`.
 - `dbBackups` - Experimental, do not use.
 - `facilities` - Number of facilities to deploy, defaults to 2.
+- `facilityNames` - Array of subdomain names of facilities. If there are less than the count `facilities`, then the unnamed ones are filled as `facility-N`.
 - `timezone` - Timezone, defaults to `Pacific/Auckland`.
 - `ipAllowList` - Experimental, do not use.
 - `architecture` - Defaults to `amd64`, use `arm64`.
