@@ -96,9 +96,7 @@ if (named > facilities) {
     Array.from({ length: facilities - named }, (_, i) => `facility-${named + i + 1}`),
   );
 }
-facilityNames = facilityNames
-  .map((name) => name.toLowerCase())
-  .map((name) => (name.startsWith('facility') ? name : `facility-${name}`));
+facilityNames = facilityNames.map((name) => name.toLowerCase());
 if (facilityNames.length != new Set(facilityNames).size) {
   throw new Error('Facility names must be unique');
 }

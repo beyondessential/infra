@@ -32,8 +32,8 @@ const central = new CentralServer('central', {
   replicas: replicas.central,
 });
 
-for (const name of facilityNames) {
-  new FacilityServer(name, {
+for (const [i, name] of facilityNames.entries()) {
+  new FacilityServer(`${i + 1}`, {
     fqdn: domains[name],
     centralApiUrl: `https://${domains.central}`,
     facilityId: name,
