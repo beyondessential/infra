@@ -9,6 +9,7 @@ export interface RunTasksArgs {
   podSpec: PodSpecFactory;
   migratorJob: k8s.batch.v1.Job;
   provisionerJob: k8s.batch.v1.Job;
+  enabled: boolean;
 }
 
 export function runTasks({
@@ -16,6 +17,7 @@ export function runTasks({
   podSpec,
   migratorJob,
   provisionerJob,
+  enabled,
 }: RunTasksArgs): k8s.apps.v1.Deployment {
   return new k8s.apps.v1.Deployment(
     'central-tasks',
@@ -27,7 +29,7 @@ export function runTasks({
         },
       },
       spec: {
-        replicas: 1,
+        replicas: enabled ? 1 : 0,
         strategy: {
           // Avoid double-running scheduled tasks
           type: 'Recreate',

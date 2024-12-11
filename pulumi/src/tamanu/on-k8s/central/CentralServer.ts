@@ -68,38 +68,37 @@ export class CentralServer extends ComponentResource {
     });
     this.provisioning = provisioning;
 
-    if (replicas.tasks > 0) {
-      runTasks({
-        parent: this,
-        podSpec,
-        migratorJob,
-        provisionerJob,
-      });
+    runTasks({
+      parent: this,
+      podSpec,
+      migratorJob,
+      provisionerJob,
+      enabled: replicas.tasks > 0,
+    });
 
-      runFhirWorker({
-        parent: this,
-        podSpec,
-        migratorJob,
-        provisionerJob,
-        name: 'refresh',
-        topics: [
-          'fhir.refresh.allFromUpstream',
-          'fhir.refresh.entireResource',
-          'fhir.refresh.fromUpstream',
-        ],
-        replicas: replicas.tasks,
-      });
+    runFhirWorker({
+      parent: this,
+      podSpec,
+      migratorJob,
+      provisionerJob,
+      name: 'refresh',
+      topics: [
+        'fhir.refresh.allFromUpstream',
+        'fhir.refresh.entireResource',
+        'fhir.refresh.fromUpstream',
+      ],
+      replicas: replicas.tasks,
+    });
 
-      runFhirWorker({
-        parent: this,
-        podSpec,
-        migratorJob,
-        provisionerJob,
-        name: 'resolver',
-        topics: ['fhir.resolver'],
-        replicas: replicas.tasks,
-      });
-    }
+    runFhirWorker({
+      parent: this,
+      podSpec,
+      migratorJob,
+      provisionerJob,
+      name: 'resolver',
+      topics: ['fhir.resolver'],
+      replicas: replicas.tasks,
+    });
 
     const api = runApi({
       parent: this,
