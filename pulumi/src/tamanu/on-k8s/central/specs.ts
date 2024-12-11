@@ -1,12 +1,13 @@
 import { Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import { compact } from 'lodash-es';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
 import { PostgresReady } from '../../../common/k8s/postgres.js';
 import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { image, imageTag } from '../image.js';
-import { architecture, nodeEnv, serviceAccount, SERVICE_ACCOUNT_NAME } from '../config.js';
-import { compact } from 'lodash-es';
+import { architecture, nodeEnv } from '../config.js';
+import { sa } from '../serviceAccount.js';
 
 export function appSelector(component: string): { [key: string]: string } {
   return {
@@ -59,7 +60,7 @@ export function podSpecFactory({
           },
         },
       },
-      serviceAccountName: serviceAccount && SERVICE_ACCOUNT_NAME,
+      serviceAccountName: sa?.metadata.name,
       volumes: [
         {
           name: 'config-volume',
