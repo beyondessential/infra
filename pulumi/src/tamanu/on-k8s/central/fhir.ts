@@ -28,6 +28,9 @@ export function runFhirWorker({
     {
       metadata: {
         namespace,
+        annotations: {
+          'pulumi.com/patchForce': 'true',
+        },
       },
       spec: {
         replicas,
@@ -47,6 +50,6 @@ export function runFhirWorker({
         },
       },
     },
-    { parent, dependsOn: [migratorJob, provisionerJob], ignoreChanges: ['spec.replicas'] },
+    { parent, dependsOn: [migratorJob, provisionerJob] },
   );
 }

@@ -52,6 +52,9 @@ export function runServer(
       metadata: {
         namespace,
         name: `facility-${name}-${type}`,
+        annotations: {
+          'pulumi.com/patchForce': 'true',
+        },
       },
       spec: {
         replicas,
@@ -100,7 +103,7 @@ export function runServer(
         },
       },
     },
-    { parent, dependsOn, ignoreChanges: ['spec.replicas'] },
+    { parent, dependsOn },
   );
 
   return { service, deployment };

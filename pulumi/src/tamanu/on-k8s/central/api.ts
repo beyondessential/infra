@@ -51,6 +51,9 @@ export function runApi({
     {
       metadata: {
         namespace,
+        annotations: {
+          'pulumi.com/patchForce': 'true',
+        },
       },
       spec: {
         replicas,
@@ -96,7 +99,7 @@ export function runApi({
         },
       },
     },
-    { parent, dependsOn: [migratorJob, provisionerJob], ignoreChanges: ['spec.replicas'] },
+    { parent, dependsOn: [migratorJob, provisionerJob] },
   );
 
   return { service, deployment };
