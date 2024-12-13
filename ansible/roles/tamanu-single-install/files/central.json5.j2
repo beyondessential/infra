@@ -16,14 +16,12 @@
   },
   localisation: {
     data: {
-      {% if tamanu_version | version('2.20.0', '<') %}
       templates: {
         letterhead: {
           title: "{{ tamanu_letterhead_title }}",
           subTitle: "{{ tamanu_letterhead_subtitle }}",
         },
       },
-      {% endif %}
       country: {
         name: "{{ tamanu_country_name }}",
         "alpha-2": "{{ tamanu_country_alpha2 }}",
