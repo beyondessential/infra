@@ -2,12 +2,14 @@
   hosts: all
   roles:
     - role: ebs-volume
+      when: ansible_user != 'iti'
       volume: sdl
       mount: /var/log
       fs_type: btrfs
       mount_opts: defaults,compress=zstd:6
       tags: [base, volumes]
     - role: ebs-volume
+      when: ansible_user != 'iti'
       volume: sdp
       mount: /var/lib/postgresql
       fs_type: ext4
