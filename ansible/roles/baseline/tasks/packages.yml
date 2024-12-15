@@ -1,5 +1,6 @@
 ---
 - name: Remove rpi-connect if present
+  become: true
   ansible.builtin.apt:
     name: rpi-connect
     state: absent
