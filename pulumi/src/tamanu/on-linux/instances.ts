@@ -2,7 +2,6 @@ import * as aws from '@pulumi/aws';
 import {
   domains,
   instances,
-  zoneId,
   namePrefix,
   hardDelete,
   sshKey,
@@ -12,6 +11,7 @@ import { Output } from '@pulumi/pulumi';
 
 import { applyBackup } from './backup.js';
 import { sg } from './firewall.js';
+import { applyDNS } from './dns.js';
 
 // https://cloud-images.ubuntu.com/locator/ec2/
 const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-09b56d1f2bd9893f7';
@@ -23,6 +23,7 @@ const DEVICE_NAMES = {
 };
 
 const backupResources: Output<string>[] = [];
+const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map;
 
 for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
@@ -95,8 +96,7 @@ for (const [i, inst] of instances.entries()) {
     },
   });
 
-  new aws.route53.Record(`${inst.id}-v4`, {
-    zoneId: zoneId,
+  records.set(`${inst.id}-v4`, {
     name: domains[inst.name],
     type: aws.route53.RecordType.A,
     ttl: 300,
@@ -104,8 +104,7 @@ for (const [i, inst] of instances.entries()) {
   });
 
   vm.ipv6Addresses.length &&
-    new aws.route53.Record(`${inst.id}-v6`, {
-      zoneId: zoneId,
+    records.set(`${inst.id}-v6`, {
       name: domains[inst.name],
       type: aws.route53.RecordType.AAAA,
       ttl: 300,
@@ -114,3 +113,4 @@ for (const [i, inst] of instances.entries()) {
 }
 
 applyBackup(backupResources);
+applyDNS(records);
