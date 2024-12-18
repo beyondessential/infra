@@ -13,6 +13,11 @@ export interface CrossStackGhaOidc {
   url: Output<string>;
 }
 
+export interface CrossStackZone {
+  id: Output<string>;
+  name: Output<string>;
+}
+
 export interface CrossStackK8sCore {
   arn: string;
   ca: string;
@@ -76,6 +81,14 @@ export class CrossStack {
     return {
       arn: ghaOidc.apply((oidc) => oidc.arn),
       url: ghaOidc.apply((oidc) => oidc.url),
+    };
+  }
+
+  // from core
+  zone(): CrossStackZone {
+    return {
+      id: this.get('zoneId'),
+      name: this.get('zoneName'),
     };
   }
 

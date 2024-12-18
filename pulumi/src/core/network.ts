@@ -14,7 +14,7 @@ import {
 } from './config.js';
 
 const $network = accountId.apply((id) => {
-  const ipv4Cidr = v4 === undefined || v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;
+  const ipv4Cidr = v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;
 
   return new Network('core-network', {
     ipv4Cidr,

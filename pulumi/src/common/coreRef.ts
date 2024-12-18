@@ -17,6 +17,7 @@ export const stackName = getStack().replace(new RegExp(`^${coreStackName}-`), ''
 export const pascalStackName = upperFirst(camelCase(stackName));
 
 export const ghaOidc = $core.ghaOidc();
+export const zone = $core.zone();
 
 export function failIfIncorrectAccount(): void {
   all([$core.get('accountId'), accountId]).apply(([coreAccountId, accountId]) => {
