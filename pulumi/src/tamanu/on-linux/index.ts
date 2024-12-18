@@ -7,7 +7,7 @@ import './firewall.js';
 import './instances.js';
 
 export const urls = Object.fromEntries(
-  Object.entries(domains).map(([key, value]) => [
+  Object.entries({...domains}).map(([key, value]) => [
     `${key[0].toUpperCase()}${key.slice(1).replace(/(\d)/, ' $1')}`,
     `https://${value}`,
   ]),

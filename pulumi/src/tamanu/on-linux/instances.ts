@@ -97,7 +97,7 @@ for (const [i, inst] of instances.entries()) {
   });
 
   records.set(`${inst.id}-v4`, {
-    name: domains[inst.name],
+    name: domains.get(inst.name)!,
     type: aws.route53.RecordType.A,
     ttl: 300,
     records: [ip.publicIp],
@@ -105,7 +105,7 @@ for (const [i, inst] of instances.entries()) {
 
   vm.ipv6Addresses.length &&
     records.set(`${inst.id}-v6`, {
-      name: domains[inst.name],
+      name: domains.get(inst.name)!,
       type: aws.route53.RecordType.AAAA,
       ttl: 300,
       records: [vm.ipv6Addresses[0]],

@@ -1,4 +1,5 @@
 import * as aws from '@pulumi/aws';
+import { interpolate } from '@pulumi/pulumi';
 import { normalizedStack, domainBase, namePrefix } from './config.js';
 import { $network } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
@@ -7,7 +8,7 @@ export const sg = new aws.ec2.SecurityGroup(
   normalizedStack,
   {
     vpcId: $network.vpc,
-    description: `for ${domainBase}`,
+    description: interpolate`for ${domainBase}`,
     ingress: [
       ...securityGroupRules.allICMP,
       securityGroupRules.openPort('SSH', 22),

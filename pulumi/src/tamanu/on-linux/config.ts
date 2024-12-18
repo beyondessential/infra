@@ -1,17 +1,37 @@
-import { getStack } from '@pulumi/pulumi';
-import { cfg } from '../../common/coreRef.js';
+import { getStack, interpolate } from '@pulumi/pulumi';
+import { cfg, zone } from '../../common/coreRef.js';
 
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined;
 
 export const normalizedStack = getStack()
   .toLowerCase()
-  .replace(/[^a-z0-9-]+/g, '-')
+  .replaceAll(/[^a-z0-9-]+/g, '-')
   .replace(/-+$/, '')
   .slice(0, 63) // max length for a domain label
-  .replace(/^-+|-+$/g, '');
+  .replaceAll(/^-+|-+$/g, '');
 
-export const domainBase = cfg.require('domainBase');
-export const zoneId = cfg.require('zoneId');
+export const zoneId = zone.id.apply((id) => cfg.get('zoneId') ?? id ?? cfg.require('zoneId'));
+export const domainBase = zone.name.apply((name) => {
+  const domain = cfg.get('domainBase');
+  if (domain && !domain?.includes('.')) {
+    return `${domain}.${name}`;
+  }
+
+  if (!domain && name) {
+    const root = name.split('.')[0].replace('-dev', '');
+    return `${normalizedStack
+      .replaceAll(root, '')
+      .replaceAll(/-+/g, '-')
+      .replaceAll(/^-+|-+$/g, '')}.${name}`;
+  }
+
+  if (domain) {
+    return domain;
+  }
+
+  return cfg.require('domainBase');
+});
+
 export const namePrefix = cfg.get('namePrefix') ?? '';
 export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
@@ -68,6 +88,6 @@ export const central: Required<Facility> = {
 
 export const instances: Required<Facility>[] = [central, ...facilities];
 
-export const domains = Object.fromEntries(
-  instances.map(({ name, subdomain }) => [name, `${subdomain}.${domainBase}`]),
+export const domains = new Map(
+  instances.map(({ name, subdomain }) => [name, interpolate`${subdomain}.${domainBase}`]),
 );
