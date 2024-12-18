@@ -20,6 +20,7 @@
     users: "{{ item }}"
     databases: tamanu
     method: scram-sha-256
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
   notify: Reload postgres
 
 - name: Create backup folders
