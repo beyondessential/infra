@@ -19,3 +19,7 @@
       - tree
       - uuid
   notify: Update package facts
+
+- name: Install dog (DNS client)
+  community.general.snap:
+    name: dog
