@@ -28,4 +28,10 @@
     state: present
   notify:
     - Update package facts
-    - Restart tailscale
+
+- name: Enable tailscale
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: started
+    enabled: true
