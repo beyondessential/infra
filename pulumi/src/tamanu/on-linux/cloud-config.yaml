@@ -1,0 +1,15 @@
+#cloud-config
+runcmd:
+  - ["hostnamectl", "set-hostname", "%HOSTNAME%"]
+  - ["mkdir", "-p", "/home/ubuntu/.ssh"]
+  - ["sh", "-c", "echo ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u emergency@tamanu >> /home/ubuntu/.ssh/authorized_keys"]
+  - ["sh", "-c", "curl -fsSL https://tailscale.com/install.sh | sh"]
+  - [
+      "tailscale",
+      "up",
+      "--auth-key=%TAILSCALE_AUTH_KEY%",
+      "--advertise-tags=%TAILSCALE_TAGS%",
+      "--hostname=%TAILSCALE_NAME%",
+      "--ssh",
+      "--operator=ubuntu",
+    ]

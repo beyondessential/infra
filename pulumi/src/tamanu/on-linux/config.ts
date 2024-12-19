@@ -52,10 +52,10 @@ const typeGuess = (() => {
   }
 })();
 
-export const tailscaleTags = zoneRoot.apply((root) => {
+export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   const tags = cfg.get('tailscaleTags')?.split(/,\s*/);
   if (tags) {
-    return tags;
+    return [...new Set(tags).values()];
   }
 
   const defaultTags = ['tag:server', 'tag:server-tamanu'];

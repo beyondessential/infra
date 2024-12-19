@@ -1,11 +1,26 @@
-import * as aws from '@pulumi/aws';
-import { instances, namePrefix, hardDelete, sshKey } from './config.js';
-import { $network } from '../../common/coreRef.js';
-import { Output } from '@pulumi/pulumi';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
+import * as aws from '@pulumi/aws';
+import { all, Output, secret } from '@pulumi/pulumi';
+
+import { $network } from '../../common/coreRef.js';
+import { tailscaleKey } from '../../common/tailscaleKey.js';
+
+import {
+  instances,
+  namePrefix,
+  hardDelete,
+  sshKey,
+  tailscaleTags,
+  normalizedStack,
+} from './config.js';
 import { applyBackup } from './backup.js';
 import { sg } from './firewall.js';
 import { applyDNS } from './dns.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // https://cloud-images.ubuntu.com/locator/ec2/
 const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-09b56d1f2bd9893f7';
@@ -20,6 +35,12 @@ const backupResources: Output<string>[] = [];
 const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map();
 
 for (const [i, inst] of instances.entries()) {
+  const authKey = tailscaleKey(inst.id, {
+    tags: tailscaleTags,
+    expirySecs: 15 * 60,
+    description: `tamanu-on-linux -- ${normalizedStack} -- ${inst.id}`,
+  });
+
   const vm = new aws.ec2.Instance(
     inst.id,
     {
@@ -40,12 +61,22 @@ for (const [i, inst] of instances.entries()) {
       subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[i % ids.length]),
       vpcSecurityGroupIds: [sg.id],
       keyName: sshKey,
+      userData: all([authKey.key, tailscaleTags, inst.tailscaleName, inst.fqdn]).apply(
+        ([key, tags, name, fqdn]) =>
+          secret(
+            readFileSync(join(__dirname, 'cloud-config.yaml'), 'utf-8')
+              .replace(/%TAILSCALE_AUTH_KEY%/g, key)
+              .replace(/%TAILSCALE_TAGS%/g, tags.join(','))
+              .replace(/%TAILSCALE_NAME%/g, name)
+              .replace(/%HOSTNAME%/g, fqdn),
+          ),
+      ),
       tags: {
         Name: `${namePrefix}${inst.name}`,
       },
     },
     {
-      ignoreChanges: ['ami', 'rootBlockDevice'],
+      ignoreChanges: ['ami', 'rootBlockDevice', 'userData'],
       deleteBeforeReplace: true,
     },
   );
