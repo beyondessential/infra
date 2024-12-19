@@ -1,3 +1,5 @@
+import { interpolate } from '@pulumi/pulumi';
+
 import { domains } from './config.js';
 import { failIfIncorrectAccount } from '../../common/coreRef.js';
 failIfIncorrectAccount();
@@ -7,8 +9,8 @@ import './firewall.js';
 import './instances.js';
 
 export const urls = Object.fromEntries(
-  Object.entries({...domains}).map(([key, value]) => [
+  [...domains.entries()].map(([key, value]) => [
     `${key[0].toUpperCase()}${key.slice(1).replace(/(\d)/, ' $1')}`,
-    `https://${value}`,
+    interpolate`https://${value}`,
   ]),
 );
