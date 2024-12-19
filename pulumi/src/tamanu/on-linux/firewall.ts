@@ -11,7 +11,6 @@ export const sg = new aws.ec2.SecurityGroup(
     description: interpolate`for ${domainBase}`,
     ingress: [
       ...securityGroupRules.allICMP,
-      securityGroupRules.openPort('SSH', 22),
       securityGroupRules.openPort('HTTP', 80),
       securityGroupRules.openPort('HTTPS', 443),
       securityGroupRules.openPort('HTTP3', 443, 'udp'),
