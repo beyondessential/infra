@@ -30,6 +30,12 @@
     dest: /etc/systemd/system/caddy.service
     src: "{{ lookup('ansible.builtin.fileglob', 'caddy.service') }}"
   notify:
-    - Reload systemd
-    - Enable caddy
     - Restart caddy
+
+- name: Enable caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    daemon_reload: true
+    state: started
