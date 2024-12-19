@@ -1,9 +1,7 @@
 #cloud-config
 runcmd:
+  # set up tailscale
   - ["hostnamectl", "set-hostname", "%HOSTNAME%"]
-  - ["mkdir", "-p", "/home/ubuntu/.ssh"]
-  - ["sh", "-c", "echo ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u emergency@tamanu >> /home/ubuntu/.ssh/authorized_keys"]
-  - ["sh", "-c", "echo TS_PERMIT_CERT_UID=caddy > /etc/default/tailscaled"]
   - ["sh", "-c", "curl -fsSL https://tailscale.com/install.sh | sh"]
   - [
       "tailscale",
@@ -14,3 +12,12 @@ runcmd:
       "--ssh",
       "--operator=ubuntu",
     ]
+  - ["systemctl", "enable", "tailscaled"]
+
+  # do early set up for caddy+tailscale so ansible doesn't have to restart tailscale
+  - ["sh", "-c", "echo TS_PERMIT_CERT_UID=caddy > /etc/default/tailscaled"]
+  - ["systemctl", "restart", "tailscaled"]
+
+  # pop an emergency key in for access if tailscale fails
+  - ["mkdir", "-p", "/home/ubuntu/.ssh"]
+  - ["sh", "-c", "echo ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u emergency@tamanu >> /home/ubuntu/.ssh/authorized_keys"]
