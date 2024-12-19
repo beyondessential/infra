@@ -6,9 +6,16 @@
     tailscale_configured: true
 
 - name: Add ts-up script
-  when: tailscale_name is defined
+  when: tailscale_name is defined and tailscale_tags is defined
   become: true
   ansible.builtin.template:
     dest: /usr/local/bin/ts-up
     src: "{{ lookup('ansible.builtin.fileglob', 'ts-up.j2') }}"
     mode: '0755'
+
+- name: Remove ts-up scripts
+  when: tailscale_name is not defined or tailscale_tags is not defined
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/bin/ts-up
+    state: absent
