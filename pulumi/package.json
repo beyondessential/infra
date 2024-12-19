@@ -2,19 +2,17 @@
   "name": "pulumi-bes",
   "type": "module",
   "devDependencies": {
-    "@beyondessential/eslint-config-js": "^1.1.1",
     "@swc/cli": "^0.5.1",
     "@swc/core": "^1.3.90",
     "@types/lodash-es": "^4.17.9",
     "@types/netmask": "^2.0.3",
     "@types/node": "^22.10.1",
     "@types/nunjucks": "^3.2.6",
-    "chokidar": "^3.5.3",
-    "eslint-plugin-prettier": "^5.2.1"
+    "chokidar": "^3.5.3"
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.418.0",
-    "@kubernetes/client-node": "^0.22.3",
+    "@kubernetes/client-node": "^1.0.0",
     "@pulumi/aws": "^6.35.0",
     "@pulumi/aws-native": "^1.11.0",
     "@pulumi/awsx": "^2.19.0",
