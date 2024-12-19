@@ -1,11 +1,5 @@
 import * as aws from '@pulumi/aws';
-import {
-  domains,
-  instances,
-  namePrefix,
-  hardDelete,
-  sshKey,
-} from './config.js';
+import { instances, namePrefix, hardDelete, sshKey } from './config.js';
 import { $network } from '../../common/coreRef.js';
 import { Output } from '@pulumi/pulumi';
 
@@ -23,7 +17,7 @@ const DEVICE_NAMES = {
 };
 
 const backupResources: Output<string>[] = [];
-const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map;
+const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map();
 
 for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
@@ -97,7 +91,7 @@ for (const [i, inst] of instances.entries()) {
   });
 
   records.set(`${inst.id}-v4`, {
-    name: domains.get(inst.name)!,
+    name: inst.fqdn,
     type: aws.route53.RecordType.A,
     ttl: 300,
     records: [ip.publicIp],
@@ -105,7 +99,7 @@ for (const [i, inst] of instances.entries()) {
 
   vm.ipv6Addresses.length &&
     records.set(`${inst.id}-v6`, {
-      name: domains.get(inst.name)!,
+      name: inst.fqdn,
       type: aws.route53.RecordType.AAAA,
       ttl: 300,
       records: [vm.ipv6Addresses[0]],

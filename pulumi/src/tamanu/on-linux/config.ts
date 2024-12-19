@@ -1,4 +1,4 @@
-import { getStack, interpolate } from '@pulumi/pulumi';
+import { all, getStack, Input, interpolate, Output } from '@pulumi/pulumi';
 import { cfg, zone } from '../../common/coreRef.js';
 
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined;
@@ -11,14 +11,16 @@ export const normalizedStack = getStack()
   .replaceAll(/^-+|-+$/g, '');
 
 export const zoneId = zone.id.apply((id) => cfg.get('zoneId') ?? id ?? cfg.require('zoneId'));
-export const domainBase = zone.name.apply((name) => {
+
+const zoneRoot = zone.name.apply((name) => name.split('.')[0].replace('-dev', ''));
+
+export const domainBase = all([zone.name, zoneRoot]).apply(([name, root]) => {
   const domain = cfg.get('domainBase');
   if (domain && !domain?.includes('.')) {
     return `${domain}.${name}`;
   }
 
   if (!domain && name) {
-    const root = name.split('.')[0].replace('-dev', '');
     return `${normalizedStack
       .replaceAll(root, '')
       .replaceAll(/-+/g, '-')
@@ -35,6 +37,39 @@ export const domainBase = zone.name.apply((name) => {
 export const namePrefix = cfg.get('namePrefix') ?? '';
 export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
+
+const typeGuess = (() => {
+  if (normalizedStack.includes('demo')) {
+    return 'demo';
+  }
+
+  if (normalizedStack.includes('clone')) {
+    return 'clone';
+  }
+
+  if (normalizedStack.includes('prod')) {
+    return 'prod';
+  }
+})();
+
+export const tailscaleTags = zoneRoot.apply((root) => {
+  const tags = cfg.get('tailscaleTags')?.split(/,\s*/);
+  if (tags) {
+    return tags;
+  }
+
+  const defaultTags = ['tag:server', 'tag:server-tamanu'];
+
+  if (root) {
+    defaultTags.push(`tag:server-tamanu-${root}`);
+  }
+
+  if (typeGuess) {
+    defaultTags.push(`tag:server-tamanu-${typeGuess}`);
+  }
+
+  return defaultTags;
+});
 
 export interface Disks {
   root?: number;
@@ -54,15 +89,25 @@ export interface Facility {
   subdomain?: string;
   instance?: string;
   disks?: Disks;
+  tailscaleName?: Input<string>;
 }
 
-export const facilities: Required<Facility>[] = (cfg.requireObject('facilities') as Facility[]).map(
-  (facility: Facility) => {
+export interface Server extends Required<Facility> {
+  fqdn: Output<string>;
+}
+
+export const facilities: Server[] = (cfg.requireObject('facilities') as Facility[])
+  .map((facility: Facility) => {
     const id = facility.id.startsWith('facility-') ? facility.id : `facility-${facility.id}`;
     return {
       subdomain: id,
       name: id,
       instance: 't4g.medium',
+      tailscaleName: zoneRoot.apply((root) =>
+        ['tamanu', root, typeGuess, 'facility', id.replace(/^facility-/, '')]
+          .filter(Boolean)
+          .join('-'),
+      ),
       ...facility,
       id,
       disks: {
@@ -70,24 +115,27 @@ export const facilities: Required<Facility>[] = (cfg.requireObject('facilities')
         ...facility.disks,
       },
     };
-  },
-);
+  })
+  .map((facility) => ({
+    ...facility,
+    fqdn: interpolate`${facility.subdomain}.${domainBase}`,
+  }));
 
 const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'>) ?? {};
-export const central: Required<Facility> = {
+export const central: Server = {
   name: 'Central',
   subdomain: 'central',
   instance: 't4g.large',
+  tailscaleName: zoneRoot.apply((root) =>
+    ['tamanu', root, typeGuess, 'central'].filter(Boolean).join('-'),
+  ),
   ...cfgCentral,
   id: 'central',
+  fqdn: interpolate`${cfgCentral.subdomain ?? 'central'}.${domainBase}`,
   disks: {
     ...defaultDisks,
     ...cfgCentral.disks,
   },
 };
 
-export const instances: Required<Facility>[] = [central, ...facilities];
-
-export const domains = new Map(
-  instances.map(({ name, subdomain }) => [name, interpolate`${subdomain}.${domainBase}`]),
-);
+export const instances: Server[] = [central, ...facilities];
