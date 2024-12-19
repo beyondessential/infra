@@ -60,7 +60,6 @@ for (const [i, inst] of instances.entries()) {
       },
       subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[i % ids.length]),
       vpcSecurityGroupIds: [sg.id],
-      keyName: sshKey,
       userData: all([authKey.key, tailscaleTags, inst.tailscaleName, inst.fqdn]).apply(
         ([key, tags, name, fqdn]) =>
           secret(
