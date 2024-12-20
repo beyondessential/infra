@@ -1,6 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { interpolate } from '@pulumi/pulumi';
-import { normalizedStack, domainBase, namePrefix } from './config.js';
+import { normalizedStack, namePrefix } from './config.js';
 import { $network } from '../../common/coreRef.js';
 import * as securityGroupRules from '../../common/securityGroupRules.js';
 
@@ -8,7 +7,7 @@ export const sg = new aws.ec2.SecurityGroup(
   normalizedStack,
   {
     vpcId: $network.vpc,
-    description: interpolate`for ${domainBase}`,
+    description: normalizedStack,
     ingress: [
       ...securityGroupRules.allICMP,
       securityGroupRules.openPort('HTTP', 80),
@@ -23,6 +22,6 @@ export const sg = new aws.ec2.SecurityGroup(
   },
   {
     parent: this,
-    ignoreChanges: ['ingress', 'egress'],
+    ignoreChanges: ['ingress', 'egress', 'description'],
   },
 );
