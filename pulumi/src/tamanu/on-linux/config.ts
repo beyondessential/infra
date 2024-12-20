@@ -13,7 +13,7 @@ export const normalizedStack = getStack()
 export const zoneId = zone.id.apply((id) => cfg.get('zoneId') ?? id ?? cfg.require('zoneId'));
 
 const zoneRoot = zone.name.apply((name) => {
-  const root = name.split('.')[0].replace('-dev', '');
+  const root = name.split('.')[0].replace('-dev', '').replace('tamanu-', '');
   if (root === 'tamanu') return null;
 
   return root;
