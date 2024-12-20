@@ -12,7 +12,12 @@ export const normalizedStack = getStack()
 
 export const zoneId = zone.id.apply((id) => cfg.get('zoneId') ?? id ?? cfg.require('zoneId'));
 
-const zoneRoot = zone.name.apply((name) => name.split('.')[0].replace('-dev', ''));
+const zoneRoot = zone.name.apply((name) => {
+  const root = name.split('.')[0].replace('-dev', '');
+  if (root === 'tamanu') return null;
+
+  return root;
+});
 
 export const domainBase = all([zone.name, zoneRoot]).apply(([name, root]) => {
   const domain = cfg.get('domainBase');
@@ -22,7 +27,7 @@ export const domainBase = all([zone.name, zoneRoot]).apply(([name, root]) => {
 
   if (!domain && name) {
     return `${normalizedStack
-      .replaceAll(root, '')
+      .replaceAll(root ?? '', '')
       .replaceAll(/-+/g, '-')
       .replaceAll(/^-+|-+$/g, '')}.${name}`;
   }
@@ -32,6 +37,16 @@ export const domainBase = all([zone.name, zoneRoot]).apply(([name, root]) => {
   }
 
   return cfg.require('domainBase');
+});
+export const tailscaleBase = zoneRoot.apply((root) => {
+  const override = cfg.get('tailscaleBase');
+  if (override) {
+    return override;
+  }
+
+  return ['tamanu', root, typeGuess]
+    .filter(Boolean)
+    .join('-');
 });
 
 export const namePrefix = cfg.get('namePrefix') ?? '';
@@ -103,11 +118,7 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
       subdomain: id,
       name: id,
       instance: 't4g.medium',
-      tailscaleName: zoneRoot.apply((root) =>
-        ['tamanu', root, typeGuess, 'facility', id.replace(/^facility-/, '')]
-          .filter(Boolean)
-          .join('-'),
-      ),
+      tailscaleName: interpolate`${tailscaleBase}-facility-${id.replace(/^facility-/, '')}`,
       ...facility,
       id,
       disks: {
@@ -126,9 +137,7 @@ export const central: Server = {
   name: 'Central',
   subdomain: 'central',
   instance: 't4g.large',
-  tailscaleName: zoneRoot.apply((root) =>
-    ['tamanu', root, typeGuess, 'central'].filter(Boolean).join('-'),
-  ),
+  tailscaleName: interpolate`${tailscaleBase}-central`,
   ...cfgCentral,
   id: 'central',
   fqdn: interpolate`${cfgCentral.subdomain ?? 'central'}.${domainBase}`,
