@@ -32,22 +32,19 @@ if (domain) {
             'route53:ListResourceRecordSets',
             'route53:GetChange',
             'route53:GetHostedZone',
-            'route53:ChangeResourceRecordSets'
+            'route53:ChangeResourceRecordSets',
           ],
           Resource: [
             interpolate`arn:aws:route53:::hostedzone/${zone.id}`,
-            'arn:aws:route53:::change/*'
-          ]
+            'arn:aws:route53:::change/*',
+          ],
         },
         {
           Effect: 'Allow',
-          Action: [
-            'route53:ListHostedZonesByName',
-            'route53:ListHostedZones'
-          ],
-          Resource: '*'
-        }
-      ]
+          Action: ['route53:ListHostedZonesByName', 'route53:ListHostedZones'],
+          Resource: '*',
+        },
+      ],
     },
   });
 }

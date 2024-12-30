@@ -8,7 +8,8 @@
     "@types/netmask": "^2.0.3",
     "@types/node": "^22.10.1",
     "@types/nunjucks": "^3.2.6",
-    "chokidar": "^3.5.3"
+    "chokidar": "^3.5.3",
+    "prettier": "^3.4.2"
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.418.0",
