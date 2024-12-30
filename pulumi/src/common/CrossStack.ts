@@ -16,6 +16,7 @@ export interface CrossStackGhaOidc {
 export interface CrossStackZone {
   id: Output<string>;
   name: Output<string>;
+  mgmtPolicyArn: Output<string>;
 }
 
 export interface CrossStackK8sCore {
@@ -89,6 +90,7 @@ export class CrossStack {
     return {
       id: this.get('zoneId'),
       name: this.get('zoneName'),
+      mgmtPolicyArn: this.get('zoneMgmtPolicy'),
     };
   }
 
