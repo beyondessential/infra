@@ -123,7 +123,7 @@ spec:
                       description: Key is the name of the label or annotation. It must conform to the normal rules for Kubernetes label/annotation keys.
                       type: string
                     value:
-                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annoation values, which are far more restrictive for labels than for anntations.
+                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annotation values, which are far more restrictive for labels than for annotations.
                       type: string
                   required:
                   - key
@@ -131,7 +131,7 @@ spec:
                   type: object
                 type: array
               labels:
-                description: Lables is a list of labels and values to apply to the current namespace and all of its descendants. All label keys must match a regex specified on the command line by --managed-namespace-label. A namespace cannot have a KVP that conflicts with one of its ancestors.
+                description: Labels is a list of labels and values to apply to the current namespace and all of its descendants. All label keys must match a regex specified on the command line by --managed-namespace-label. A namespace cannot have a KVP that conflicts with one of its ancestors.
                 items:
                   description: MetaKVP represents a label or annotation
                   properties:
@@ -139,7 +139,7 @@ spec:
                       description: Key is the name of the label or annotation. It must conform to the normal rules for Kubernetes label/annotation keys.
                       type: string
                     value:
-                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annoation values, which are far more restrictive for labels than for anntations.
+                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annotation values, which are far more restrictive for labels than for annotations.
                       type: string
                   required:
                   - key
@@ -405,7 +405,7 @@ spec:
                       description: Key is the name of the label or annotation. It must conform to the normal rules for Kubernetes label/annotation keys.
                       type: string
                     value:
-                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annoation values, which are far more restrictive for labels than for anntations.
+                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annotation values, which are far more restrictive for labels than for annotations.
                       type: string
                   required:
                   - key
@@ -421,7 +421,7 @@ spec:
                       description: Key is the name of the label or annotation. It must conform to the normal rules for Kubernetes label/annotation keys.
                       type: string
                     value:
-                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annoation values, which are far more restrictive for labels than for anntations.
+                      description: Value is the value of the label or annotation. It must confirm to the normal rules for Kubernetes label or annotation values, which are far more restrictive for labels than for annotations.
                       type: string
                   required:
                   - key
