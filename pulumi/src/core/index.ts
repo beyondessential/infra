@@ -7,4 +7,4 @@ export { tags, domain as zoneName } from './config.js';
 export { ghaOidc } from './oidc.js';
 export { eksCniV6Policy } from './policy.js';
 export { network, dbSubnetGroup } from './network.js';
-export { zoneId, zoneNS } from './zone.js';
+export { zoneId, zoneNS, zoneMgmtPolicy } from './zone.js';
