@@ -136,7 +136,7 @@ const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'>) ?? {};
 export const central: Server = {
   name: 'Central',
   subdomain: 'central',
-  instance: 't4g.large',
+  instance: 't4g.medium',
   tailscaleName: interpolate`${tailscaleBase}-central`,
   ...cfgCentral,
   id: 'central',
