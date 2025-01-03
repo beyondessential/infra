@@ -17,7 +17,9 @@ if (domain) {
           ignoreChanges: ['vpcs', 'hostedZoneConfig', 'description'],
         }
       : {
-          ignoreChanges: ['description'],
+          // the zone may have a trailing dot or may not,
+          // this confuses Pulumi and it tries to recreate the zone
+          ignoreChanges: ['name', 'description'],
         },
   );
 
