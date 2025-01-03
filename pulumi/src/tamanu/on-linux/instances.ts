@@ -38,7 +38,7 @@ for (const [i, inst] of instances.entries()) {
   const authKey = tailscaleKey(inst.id, {
     tags: tailscaleTags,
     expirySecs: 6 * 60 * 60, // excessive but it lets us deal with most problems eg. EIP quotas
-    description: `tamanu-on-linux -- ${normalizedStack} -- ${inst.id}`,
+    description: `tamanu ${normalizedStack} ${inst.id}`.substring(0, 50),
   });
 
   const vm = new aws.ec2.Instance(
