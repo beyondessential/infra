@@ -23,18 +23,18 @@ function getTemplate(kind: string, name: string): Output<V1ConfigMap> {
   return output(
     (async () => {
       try {
-        return (await k8sApi.readNamespacedConfigMap(`${kind}-template-${name}`, 'tamanu-system'))
-          .body;
+        return await k8sApi.readNamespacedConfigMap({
+          name: `${kind}-template-${name}`,
+          namespace: 'tamanu-system',
+        });
       } catch (_) {
         console.log(
           `Wanted template ${name} isn't available, falling back to ${DEFAULT_CONFIG_TEMPLATE}`,
         );
-        return (
-          await k8sApi.readNamespacedConfigMap(
-            `${kind}-template-${DEFAULT_CONFIG_TEMPLATE}`,
-            'tamanu-system',
-          )
-        ).body;
+        return await k8sApi.readNamespacedConfigMap({
+          name: `${kind}-template-${DEFAULT_CONFIG_TEMPLATE}`,
+          namespace: 'tamanu-system',
+        });
       }
     })(),
   );

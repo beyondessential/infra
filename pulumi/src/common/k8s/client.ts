@@ -13,7 +13,7 @@ export function k8sConfig(kubeconfig?: string): k8s.KubeConfig {
 }
 
 export function k8sClient<T extends k8s.ApiType>(
-  apiClientType: new (server: string) => T,
+  apiClientType: new (config: k8s.Configuration) => T,
   kubeconfig?: string,
 ): T {
   return k8sConfig(kubeconfig).makeApiClient(apiClientType);

@@ -5,7 +5,7 @@ import { namespace } from './namespace.js';
 
 const k8sApi = k8sClient(CoreV1Api);
 
-for (const secret of (await k8sApi.listNamespacedSecret('tamanu-system')).body.items) {
+for (const secret of (await k8sApi.listNamespacedSecret({ namespace: 'tamanu-system' })).items) {
   const name = secret?.metadata?.name;
   if (!name) continue;
 
