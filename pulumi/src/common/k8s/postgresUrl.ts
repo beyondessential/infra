@@ -16,7 +16,7 @@ function dbPassword(dbReady: Output<void | k8s.core.v1.Secret>, namespace: Input
       const kc = k8sConfig();
       const k8sApi = kc.makeApiClient(CoreV1Api);
 
-      const kSecret = await k8sApi.readNamespacedSecret(`${name}-db-${user}`, namespace);
+      const kSecret = await k8sApi.readNamespacedSecret({ name: `${name}-db-${user}`, namespace });
       const hidden = kSecret.body.data?.['password'];
       if (!hidden) {
         return null;
