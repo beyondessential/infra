@@ -142,8 +142,8 @@ export function runPostgres({
     `${name}-db`,
     async (kc, namespace) => {
       const k8sApi = kc.makeApiClient(CoreV1Api);
-      const endpoint = await k8sApi.readNamespacedEndpoints(`${name}-db-rw`, namespace);
-      const readyAddresses = endpoint?.body?.subsets?.[0]?.addresses ?? [];
+      const endpoint = await k8sApi.readNamespacedEndpoints({ name: `${name}-db-rw`, namespace });
+      const readyAddresses = endpoint?.subsets?.[0]?.addresses ?? [];
       if (readyAddresses.length === 0) {
         throw new Error('No ready addresses');
       }
