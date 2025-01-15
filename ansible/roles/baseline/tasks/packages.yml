@@ -17,6 +17,7 @@
   become: true
   ansible.builtin.apt:
     name:
+      - acl # required for some become/postgres tasks
       - apt-transport-https
       - bash-completion
       - ca-certificates
