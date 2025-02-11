@@ -1,4 +1,0 @@
-name: oci-core
-description: per OCI Compartment core setup
-runtime:
-  name: nodejs
