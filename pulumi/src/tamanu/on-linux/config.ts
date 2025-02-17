@@ -132,8 +132,8 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
     fqdn: interpolate`${facility.subdomain}.${domainBase}`,
   }));
 
-const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'>) ?? {};
-export const central: Server = {
+const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'> | false) ?? {};
+export const central: Server | false = cfgCentral === false ? false : {
   name: 'Central',
   subdomain: 'central',
   instance: 't4g.medium',
@@ -147,4 +147,4 @@ export const central: Server = {
   },
 };
 
-export const instances: Server[] = [central, ...facilities];
+export const instances: Server[] = [...(central ? [central] : []), ...facilities];
