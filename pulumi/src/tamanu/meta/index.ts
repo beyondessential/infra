@@ -285,6 +285,7 @@ new k8s.apps.v1.Deployment(
           labels: labels('server'),
         },
         spec: spec('server', ['server', '--api-only'], {
+          /*
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
             periodSeconds: 1,
@@ -305,6 +306,7 @@ new k8s.apps.v1.Deployment(
               scheme: 'HTTPS',
             },
           },
+          */
         }),
       },
     },
