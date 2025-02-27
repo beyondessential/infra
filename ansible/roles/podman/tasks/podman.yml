@@ -27,6 +27,13 @@
     line: network_backend = "netavark"
     regexp: '^#?network_backend\\s*='
 
+- name: Use host timezone by default for containers
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    line: tz = "local"
+    regexp: '^#?tz\\s*='
+
 - name: Set podman image auto-cleanup
   become: true
   ansible.builtin.copy:
