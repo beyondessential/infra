@@ -83,6 +83,7 @@
     group: tamanu
     content: |
       # this is controlled by Ansible and will be overwritten if you make changes
+      TZ={{ timezone }}
       TAMANU_VERSION={{ tamanu_version }}
       TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
 
