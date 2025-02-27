@@ -9,6 +9,7 @@ Volume=/var/run/postgresql:/var/run/postgresql
 NetworkAlias=api.facility.tamanu.internal
 NetworkAlias=${TAMANU_VERSION_DOMAIN}.api.facility.tamanu.internal
 Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+Timezone=local
 
 [Service]
 EnvironmentFile=/etc/tamanu/env
