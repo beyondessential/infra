@@ -23,7 +23,8 @@ import { applyDNS } from './dns.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // https://cloud-images.ubuntu.com/locator/ec2/
-const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-09b56d1f2bd9893f7';
+// search for `ap-southeast-2 24.04 arm`
+const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-0fae8bcb3f3621e32';
 
 const DEVICE_NAMES = {
   root: '/dev/root',
