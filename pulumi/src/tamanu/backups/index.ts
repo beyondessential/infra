@@ -17,7 +17,7 @@ const bucket = new awsClassic.s3.BucketV2(
   { protect: true },
 );
 
-const policy = new awsClassic.iam.Policy('backups-policy', {
+const fullPolicy = new awsClassic.iam.Policy('backups-policy', {
   policy: jsonStringify({
     Version: '2012-10-17',
     Statement: [
@@ -33,7 +33,7 @@ const policy = new awsClassic.iam.Policy('backups-policy', {
   }),
 }, { dependsOn: [bucket] });
 
-const role = new awsClassic.iam.Role('backups-role', {
+const fullRole = new awsClassic.iam.Role('backups-role', {
   assumeRolePolicy: {
     Version: '2012-10-17',
     Statement: [
@@ -46,12 +46,44 @@ const role = new awsClassic.iam.Role('backups-role', {
       },
     ],
   },
-  managedPolicyArns: [policy.arn],
+  managedPolicyArns: [fullPolicy.arn],
+});
+
+const incomingPolicy = new awsClassic.iam.Policy('backups-incoming-policy', {
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: AWS_S3_MULTIPART_ACTIONS,
+        Resource: [BUCKET_NAME].flatMap((bucket) => [
+          `arn:aws:s3:::${bucket}`,
+          `arn:aws:s3:::${bucket}/incoming/*`,
+        ]),
+      },
+    ],
+  }),
+}, { dependsOn: [bucket] });
+
+const incomingRole = new awsClassic.iam.Role('backups-incoming-role', {
+  assumeRolePolicy: {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'sts:AssumeRole',
+        Principal: {
+          Service: AWS_EC2,
+        },
+      },
+    ],
+  },
+  managedPolicyArns: [incomingPolicy.arn],
 });
 
 new awsClassic.iam.InstanceProfile('ec2-backups-instance', {
   name: 'EC2InstanceProfileForTamanuBackupsPush',
-  role: role.name,
+  role: incomingRole.name,
 });
 
 const config = new Config();
@@ -63,6 +95,6 @@ if (config.getBoolean('externalAccessUser')) {
 
   new awsClassic.iam.UserPolicyAttachment('backups-user', {
     user: user.name,
-    policyArn: policy.arn,
+    policyArn: incomingPolicy.arn,
   });
 }
