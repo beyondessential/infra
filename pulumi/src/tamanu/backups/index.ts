@@ -2,6 +2,9 @@ import { Config, getStack, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { AWS_EC2, AWS_S3_MULTIPART_ACTIONS } from '../../constants/external.js';
 
+import { failIfIncorrectAccount } from '../../common/coreRef.js';
+failIfIncorrectAccount();
+
 export const BUCKET_NAME = `bes-tamanu-${getStack()}-backups`;
 
 const tags = {
