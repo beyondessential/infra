@@ -19,12 +19,16 @@ import {
 import { applyBackup } from './backup.js';
 import { sg } from './firewall.js';
 import { applyDNS } from './dns.js';
+import { region } from '../../common/awsAccount.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // https://cloud-images.ubuntu.com/locator/ec2/
 // search for `ap-southeast-2 24.04 arm`
-const UBUNTU_24_04_LTS_ARM64_SYDNEY = 'ami-0fae8bcb3f3621e32';
+const UBUNTU_24_04_LTS_ARM64 = {
+  'ap-southeast-2': 'ami-0fae8bcb3f3621e32',
+  'eu-central-2': 'ami-00f2dffdfea591a60',
+};
 
 const DEVICE_NAMES = {
   root: '/dev/root',
@@ -45,7 +49,7 @@ for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
     inst.id,
     {
-      ami: UBUNTU_24_04_LTS_ARM64_SYDNEY,
+      ami: region.apply(reg => UBUNTU_24_04_LTS_ARM64[reg]),
       instanceType: inst.instance,
       disableApiTermination: !hardDelete,
       monitoring: true,

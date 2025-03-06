@@ -4,6 +4,7 @@ import {
   ComponentResourceOptions,
   Output,
   StackReference,
+  interpolate,
   output,
 } from '@pulumi/pulumi';
 import {
@@ -17,6 +18,7 @@ import {
   Subnet,
   Vpc,
 } from '@pulumi/aws/ec2/index.js';
+import { region } from './awsAccount.js';
 
 export interface NetworkArgs {
   ipv4Cidr?: false | string;
@@ -219,7 +221,7 @@ export class Network extends ComponentResource {
         cidrBlock: ipv4Block,
         ipv6CidrBlock: ipv6Block,
         ipv6Native: ipv6Only,
-        availabilityZone: `ap-southeast-2${zone}`,
+        availabilityZone: interpolate`${region}${zone}`,
         mapPublicIpOnLaunch: true,
         assignIpv6AddressOnCreation: !!ipv6Block,
         enableDns64: ipv6Only,
@@ -340,7 +342,7 @@ export class Network extends ComponentResource {
         cidrBlock: ipv4Block,
         ipv6CidrBlock: ipv6Block,
         ipv6Native: ipv6Only,
-        availabilityZone: `ap-southeast-2${zone}`,
+        availabilityZone: interpolate`${region}${zone}`,
         mapPublicIpOnLaunch: false,
         assignIpv6AddressOnCreation: !!ipv6Block,
         enableDns64: ipv6Only,
@@ -449,7 +451,7 @@ export class Network extends ComponentResource {
         cidrBlock: ipv4Block,
         ipv6CidrBlock: ipv6Block,
         ipv6Native: ipv6Only,
-        availabilityZone: `ap-southeast-2${zone}`,
+        availabilityZone: interpolate`${region}${zone}`,
         mapPublicIpOnLaunch: true,
         assignIpv6AddressOnCreation: !!ipv6Block,
         enableDns64: ipv6Only,
