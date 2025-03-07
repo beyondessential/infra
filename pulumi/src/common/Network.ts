@@ -18,7 +18,6 @@ import {
   Subnet,
   Vpc,
 } from '@pulumi/aws/ec2/index.js';
-import { region } from './awsAccount.js';
 
 export interface NetworkArgs {
   ipv4Cidr?: false | string;
@@ -213,6 +212,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
+    const region = output(import('./awsAccount').then(a => a.region));
 
     const subnet = new Subnet(
       name,
@@ -334,6 +334,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
+    const region = output(import('./awsAccount').then(a => a.region));
 
     const subnet = new Subnet(
       name,
@@ -443,6 +444,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
+    const region = output(import('./awsAccount').then(a => a.region));
 
     const subnet = new Subnet(
       name,
