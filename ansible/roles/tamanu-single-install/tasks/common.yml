@@ -53,6 +53,24 @@
     dest: /etc/containers/systemd/{{ item | basename }}
   notify: Reload systemd
 
+- name: Create drop-in directory for quadlets
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d
+    state: directory
+
+- name: Disable IPv6 for quadlets
+  when: tamanu_ipv6 == false
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/{{ item | basename }}.d/noipv6.conf
+    content: |
+      [Container]
+      Sysctl=net.ipv6.conf.all.disable_ipv6=1
+  notify: Reload systemd
+
 - name: Add tamanu-run script
   become: true
   ansible.builtin.template:
