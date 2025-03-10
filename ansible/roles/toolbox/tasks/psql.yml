@@ -1,0 +1,10 @@
+---
+- name: Find psqlrc location
+  ansible.builtin.shell: pg_config --sysconfdir
+  register: pg_config_output
+
+- name: Configure system-wide psqlrc
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ pg_config_output.stdout }}/psqlrc"
+    src: "{{ lookup('ansible.builtin.fileglob', 'psqlrc') }}"
