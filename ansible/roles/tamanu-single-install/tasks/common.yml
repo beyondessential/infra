@@ -61,7 +61,7 @@
     state: directory
 
 - name: Disable IPv6 for quadlets
-  when: tamanu_ipv6 == false
+  when: not tamanu_ipv6
   become: true
   with_fileglob: tamanu-{{ tamanu_server_type }}*.container
   ansible.builtin.copy:
