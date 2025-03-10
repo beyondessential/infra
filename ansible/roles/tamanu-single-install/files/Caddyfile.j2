@@ -21,6 +21,9 @@
 
     dynamic a frontend.tamanu.internal 3000 {
       resolvers 10.100.0.1
+      {% if not tamanu_ipv6 %}
+      versions ipv4
+      {% endif %}
     }
 
     fail_duration 10s
@@ -39,6 +42,9 @@
   reverse_proxy /v1/* {
     dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
       resolvers 10.100.0.1
+      {% if not tamanu_ipv6 %}
+      versions ipv4
+      {% endif %}
     }
 
     fail_duration 15s
@@ -54,6 +60,9 @@
   reverse_proxy /api/* {
     dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
       resolvers 10.100.0.1
+      {% if not tamanu_ipv6 %}
+      versions ipv4
+      {% endif %}
     }
 
     fail_duration 15s
