@@ -1,6 +1,6 @@
 ---
-podman_version: "5.3.1"
-crun_version: "1.18.2"
+podman_version: "5.4.0"
+crun_version: "1.20"
 
 podman_network_subnets:
   - { subnet: '10.100.0.1/16', gateway: '10.100.0.1' }
