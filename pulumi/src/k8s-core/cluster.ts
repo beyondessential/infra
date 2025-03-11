@@ -2,7 +2,6 @@ import { Agent } from 'node:https';
 import { interpolate } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import * as awsClassic from '@pulumi/aws';
-import { getIssuerCAThumbprint } from '@pulumi/eks/cert-thumprint.js';
 import { AWS_STS } from '../constants/external.js';
 import { $network, cfg, stackName } from '../common/coreRef.js';
 import { dnsSuffix, region } from '../common/awsAccount.js';
@@ -51,27 +50,10 @@ export const cluster = new aws.eks.Cluster(
 export const clusterName = cluster.name.apply((n) => n!);
 
 // OIDC provider for the cluster
-const https = new Agent({ maxCachedSessions: 0 });
-const eksOidcProviderUrl = interpolate`https://oidc.eks.${region}.${dnsSuffix}`;
-const fingerprint = getIssuerCAThumbprint(eksOidcProviderUrl, https);
 export const oidcProvider = new aws.iam.OidcProvider('eks-oidc', {
   clientIdList: [AWS_STS],
-  thumbprintList: [fingerprint],
   url: cluster.openIdConnectIssuerUrl,
 });
-
-new aws.eks.IdentityProviderConfig(
-  'oidc',
-  {
-    clusterName,
-    type: aws.eks.IdentityProviderConfigType.Oidc,
-    oidc: {
-      clientId: oidcProvider.clientIdList[0],
-      issuerUrl: cluster.openIdConnectIssuerUrl,
-    },
-  },
-  { parent: cluster },
-);
 
 export function addAddon(
   addonName: string,
