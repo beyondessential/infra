@@ -53,7 +53,7 @@ export const clusterName = cluster.name.apply((n) => n!);
 export const oidcProvider = new aws.iam.OidcProvider('eks-oidc', {
   clientIdList: [AWS_STS],
   url: cluster.openIdConnectIssuerUrl,
-});
+}, { ignoreChanges: ['thumbprintList'] });
 
 export function addAddon(
   addonName: string,
