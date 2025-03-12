@@ -6,6 +6,13 @@
     host: "{{ tamanu_central_canonical_url }}",
     email: "{{ tamanu_sync_email }}",
     password: "{{ tamanu_sync_password }}",
+    dynamicLimiter: {
+      initialLimit: 10000,
+      minLimit: 1000,
+      maxLimit: 100000,
+      optimalTimePerPageMs: 10000,
+      maxLimitChangePerPage: 0.3,
+    },
   },
   auth: {
     secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'tamanuauth') }}",
