@@ -1,0 +1,22 @@
+# This GREATLY decreases the CPU usage from systemd-resolved.
+#
+# There's an issue in that systemd-resolved sets a 0 TTL for its records, so
+# that applications don't cache them. The problem is that Tamanu currently
+# doesn't keep its fetch connections open, so even in a small deployment, the
+# sync process may perform hundreds or thousands of DNS queries per second.
+
+- name: A record for tamanu central in /etc/hosts
+  become: true
+  loop: "{{ query('community.dns.lookup', tamanu_central_hostname, type='A') }}"
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}  {{ tamanu_central_hostname }}"
+    state: "{{ tamanu_cache_central_dns | ternary('present', 'absent') }}"
+
+- name: AAAA record for tamanu central in /etc/hosts
+  become: true
+  loop: "{{ query('community.dns.lookup', tamanu_central_hostname, type='AAAA') }}"
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}  {{ tamanu_central_hostname }}"
+    state: "{{ tamanu_cache_central_dns | ternary('present', 'absent') }}"

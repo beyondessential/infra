@@ -2,3 +2,5 @@
 - ansible.builtin.include_tasks: common.yml
 - ansible.builtin.include_tasks: database.yml
 - ansible.builtin.include_tasks: version.yml
+- ansible.builtin.include_tasks: dns.yml
+  when: tamanu_server_type != 'central'
