@@ -11,3 +11,17 @@
     dest: /usr/local/bin/tsw
     src: "{{ lookup('ansible.builtin.fileglob', 'tsw.fish') }}"
     mode: '0755'
+
+- name: Create .config/htop for current user
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/htop"
+    state: directory
+
+- name: Configure htop
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.config/htop/htoprc"
+    src: "{{ lookup('ansible.builtin.fileglob', 'htoprc') }}"
+    mode: '0644'
+    force: false
+
