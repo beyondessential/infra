@@ -84,3 +84,58 @@ new Role(
   },
   { parent: oidcProvider },
 );
+
+new Role(
+  'gha-tamanu-dbt-docs',
+  {
+    name: 'gha-dbt-docs-tamanu',
+    assumeRolePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'sts:AssumeRoleWithWebIdentity',
+          Principal: {
+            Federated: oidcProvider.arn,
+          },
+          Condition: oidcProvider.url.apply((url) => ({
+            StringEquals: {
+              [`${url}:aud`]: AWS_STS,
+            },
+            StringLike: {
+              [`${url}:sub`]: [
+                'repo:beyondessential/tamanu:ref:refs/heads/main',
+                'repo:beyondessential/tamanu:ref:refs/heads/release/*',
+                'repo:beyondessential/tamanu:ref:refs/tags/v*.*.*',
+              ],
+            },
+          })),
+        },
+      ],
+    },
+    inlinePolicies: [
+      {
+        name: 'TamanuDeploy',
+        policy: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: [
+                's3:GetObject',
+                's3:GetBucketLocation',
+                's3:ListBucket',
+                's3:PutObject',
+              ],
+              Resource: [
+                `arn:aws:s3:::${BUCKET}`,
+                `arn:aws:s3:::${BUCKET}/tamanu/*`,
+              ],
+            },
+          ],
+        }),
+      },
+    ],
+  },
+  { parent: oidcProvider },
+);
