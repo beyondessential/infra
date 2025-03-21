@@ -72,3 +72,25 @@ new k8s.apiextensions.CustomResource('mtls-admin-certificate', {
     },
   },
 });
+
+new k8s.apiextensions.CustomResource('mtls-releaser-certificate', {
+  apiVersion: 'cert-manager.io/v1',
+  kind: 'Certificate',
+  metadata: {
+    namespace,
+    name: 'mtls-releaser',
+  },
+  spec: {
+    commonName: `releaser.${normalizedStack}`,
+    secretName: 'mtls-releaser',
+    privateKey: {
+      algorithm: 'ECDSA',
+      size: 256,
+    },
+    issuerRef: {
+      name: caIssuer.metadata.name,
+      kind: caIssuer.kind,
+      group: 'cert-manager.io',
+    },
+  },
+});
