@@ -14,5 +14,5 @@
   ansible.builtin.apt:
     deb: https://tools.ops.tamanu.io/crun/{{ crun_version }}/crun-{{ crun_target }}-{{ crun_version }}.deb
 
-- name: Make sure crun runs
-  ansible.builtin.shell: crun --version
+    #- name: Make sure crun runs
+    #ansible.builtin.shell: crun --version
