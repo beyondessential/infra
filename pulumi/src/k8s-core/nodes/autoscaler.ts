@@ -317,7 +317,7 @@ new k8s.apps.v1.Deployment(
           ],
           containers: [
             {
-              image: 'registry.k8s.io/autoscaling/cluster-autoscaler:v1.28.0',
+              image: 'registry.k8s.io/autoscaling/cluster-autoscaler:v1.32.1',
               name: 'cluster-autoscaler',
               resources: {
                 limits: {
