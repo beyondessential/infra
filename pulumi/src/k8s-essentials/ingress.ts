@@ -13,7 +13,7 @@ new k8s.helm.v3.Release(
   'nginx-ingress',
   {
     chart: 'ingress-nginx',
-    version: '4.9.1',
+    version: '4.12.1',
     repositoryOpts: {
       repo: 'https://kubernetes.github.io/ingress-nginx',
     },
