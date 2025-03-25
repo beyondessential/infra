@@ -12,7 +12,7 @@ export const normalizedStack = getStack()
 
 // TODO: use k8score's/k8s-infra's base?
 export const domainBase =
-  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'internal.tamanu.io');
+  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'cd.tamanu.app');
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
