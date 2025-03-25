@@ -113,7 +113,7 @@ const rbacClusterRole = new k8s.rbac.v1.ClusterRole(
       {
         apiGroups: [''],
         resources: ['nodes'],
-        verbs: ['watch', 'list', 'get', 'update'],
+        verbs: ['watch', 'list', 'create', 'delete', 'get', 'update'],
       },
       {
         apiGroups: [''],
@@ -126,6 +126,16 @@ const rbacClusterRole = new k8s.rbac.v1.ClusterRole(
           'persistentvolumes',
         ],
         verbs: ['watch', 'list', 'get'],
+      },
+      {
+        apiGroups: ['batch'],
+        resources: ['jobs', 'cronjobs'],
+        verbs: ['watch', 'list', 'get'],
+      },
+      {
+        apiGroups: ['batch', 'extensions'],
+        resources: ['jobs'],
+        verbs: ['get', 'list', 'patch', 'watch'],
       },
       {
         apiGroups: ['extensions'],
@@ -144,13 +154,13 @@ const rbacClusterRole = new k8s.rbac.v1.ClusterRole(
       },
       {
         apiGroups: ['storage.k8s.io'],
-        resources: ['storageclasses', 'csinodes', 'csidrivers', 'csistoragecapacities'],
+        resources: ['storageclasses', 'csinodes', 'csidrivers', 'csistoragecapacities', 'volumeattachments'],
         verbs: ['watch', 'list', 'get'],
       },
       {
-        apiGroups: ['batch', 'extensions'],
-        resources: ['jobs'],
-        verbs: ['get', 'list', 'watch', 'patch'],
+        apiGroups: [''],
+        resources: ['configmaps'],
+        verbs: ['list', 'watch', 'get'],
       },
       {
         apiGroups: ['coordination.k8s.io'],
