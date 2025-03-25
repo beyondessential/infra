@@ -215,15 +215,14 @@ new k8s.apps.v1.Deployment(
           labels: labels('server'),
         },
         spec: spec('server', ['server', '--api-only'], {
-          /*
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
             periodSeconds: 1,
             failureThreshold: 60,
             httpGet: {
-              path: '/',
+              path: '/servers',
               port: 8000,
-              scheme: 'HTTPS',
+              scheme: 'HTTP',
             },
           },
           // ...then continuously check if it's up, and restart if it fails
@@ -231,12 +230,11 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 10,
             failureThreshold: 2,
             httpGet: {
-              path: '/',
+              path: '/servers',
               port: 8000,
-              scheme: 'HTTPS',
+              scheme: 'HTTP',
             },
           },
-          */
         }),
       },
     },
