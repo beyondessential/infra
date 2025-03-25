@@ -12,7 +12,7 @@ export const normalizedStack = `tamanu-meta-${getStack()}`
 
 export const domains: string[] =
   cfg.getObject('domains') ??
-  [truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'internal.tamanu.io')];
+  [truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'cd.tamanu.app')];
 
 export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
 export const replicas = cfg.getNumber('replicas') ?? 2;
