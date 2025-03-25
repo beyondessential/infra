@@ -89,23 +89,25 @@ export function runPostgres({
           },
         },
         backup: (syncWal || backupSchedule) ? {
-          barmanObjectStore: {
-            destinationPath: interpolate`s3://${backups.bucket}/cnpg.io/${namespace}/${name}/`,
-            s3Credentials: {
-              inheritFromIAMRole: true,
-            },
-            data: {
-              compression: 'bzip2',
-            },
-            wal: {
-              compression: 'bzip2',
-              maxParallel: 2,
-            },
-          },
-          // TODO: need the crds, see storage.ts
-          // volumeSnapshot: {
-          //   className: 'ebs-gp3',
+          // TODO: doesn't work
+          // barmanObjectStore: {
+          //   destinationPath: interpolate`s3://${backups.bucket}/cnpg.io/${namespace}/${name}/`,
+          //   s3Credentials: {
+          //     inheritFromIAMRole: true,
+          //   },
+          //   data: {
+          //     compression: 'bzip2',
+          //   },
+          //   wal: {
+          //     compression: 'bzip2',
+          //     maxParallel: 2,
+          //   },
           // },
+
+          // TODO: need the crds, see storage.ts
+          volumeSnapshot: {
+            className: 'ebs-gp3',
+          },
         } : {},
         // logLevel: 'trace',
       },
