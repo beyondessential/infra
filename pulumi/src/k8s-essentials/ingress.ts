@@ -61,9 +61,10 @@ new k8s.helm.v3.Release(
           'allow-snippet-annotations': 'false',
           'enable-brotli': 'true',
           'enable-real-ip': 'true',
-          'proxy-real-ip-cidr': '0.0.0.0/0,::/0',
-          'use-proxy-protocol': 'true',
           'proxy-body-size': '50m',
+          'proxy-real-ip-cidr': '0.0.0.0/0,::/0',
+          'use-http2': 'true',
+          'use-proxy-protocol': 'true',
         },
         publishService: { enabled: true },
         service: {
