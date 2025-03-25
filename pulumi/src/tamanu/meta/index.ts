@@ -21,7 +21,7 @@ const dbReady = runPostgres({
   replicas: 2,
   storage: dbStorage,
   timezone: 'Etc/UTC',
-  backupSchedule: true,
+  backupSchedule: false,
 });
 
 if (dbExpose) {
