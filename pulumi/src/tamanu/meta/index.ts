@@ -267,3 +267,31 @@ new k8s.apps.v1.Deployment(
   },
   { dependsOn: [migrator] },
 );
+
+new k8s.batch.v1.CronJob(
+  'prune',
+  {
+    metadata: {
+      labels: labels('prune'),
+      namespace,
+    },
+    spec: {
+      schedule: '@daily',
+      jobTemplate: {
+        metadata: {
+          labels: labels('prune'),
+        },
+        spec: {
+          backoffLimit: 5,
+          template: {
+            spec: {
+              ...spec('prune', ['prune_untrusted_devices']),
+              restartPolicy: 'Never',
+            },
+          },
+        },
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
