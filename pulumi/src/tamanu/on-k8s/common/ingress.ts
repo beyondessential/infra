@@ -51,7 +51,6 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
                 route('/', web),
                 route('/api', api),
                 route('/v1', api),
-                route('/socket.io', api),
               ]),
             },
           },
