@@ -1,0 +1,15 @@
+---
+- name: Set default netavark_target
+  set_fact:
+    netavark_target: "{{ ansible_architecture }}-unknown-linux-gnu"
+
+- name: Set netavark_target for 22.04 or bookworm
+  set_fact:
+    netavark_target: "{{ ansible_architecture }}-unknown-linux-gnu35"
+  when:
+    - (ansible_lsb.codename == 'jammy') or (ansible_lsb.codename == 'bookworm')
+
+- name: Install netavark {{ netavark_version }}
+  become: true
+  ansible.builtin.apt:
+    deb: https://tools.ops.tamanu.io/netavark/{{ netavark_version }}/netavark-{{ netavark_target }}-{{ netavark_version }}.deb

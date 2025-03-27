@@ -1,9 +1,4 @@
 ---
-- name: Install netavark
-  become: true
-  ansible.builtin.apt:
-    package: netavark
-
 - name: Set default podman_target
   set_fact:
     podman_target: "{{ ansible_architecture }}-unknown-linux-gnu"
@@ -36,6 +31,14 @@
     path: /etc/containers/containers.conf
     line: network_backend = "netavark"
     regexp: '^#?network_backend\\s*='
+
+- name: Use nftables for container networking
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    insertafter: '^\[network\]'
+    line: firewall_driver = "nftables"
+    regexp: '^#?firewall_driver\\s*='
 
 - name: Use host timezone by default for containers
   become: true

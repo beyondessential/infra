@@ -1,5 +1,6 @@
 ---
 - ansible.builtin.include_tasks: crun.yml
+- ansible.builtin.include_tasks: netavark.yml
 - ansible.builtin.include_tasks: podman.yml
 - ansible.builtin.include_tasks: network.yml
 - ansible.builtin.set_fact:
