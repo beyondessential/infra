@@ -116,6 +116,8 @@ export function runPostgres({
 
   if (backupSchedule) {
     if (backupSchedule === true) backupSchedule = '0 0 0 * * 1'; // weekly
+    // TODO: retention policy for snapshots when that lands
+    // https://github.com/cloudnative-pg/cloudnative-pg/issues/6009
     new k8s.apiextensions.CustomResource(
       `${name}-backup`,
       {
@@ -136,7 +138,7 @@ export function runPostgres({
           cluster: { name: `${name}-db` },
         },
       },
-      { parent },
+      { parent, ignoreChanges: ['spec.schedule'] },
     );
   }
 
