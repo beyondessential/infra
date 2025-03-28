@@ -38,6 +38,8 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
           // for websocket
           'nginx.ingress.kubernetes.io/proxy-read-timeout': '3600',
           'nginx.ingress.kubernetes.io/proxy-send-timeout': '3600',
+
+          'pulumi.com/patchForce': 'true',
         },
       },
       spec: {
