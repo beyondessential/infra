@@ -10,9 +10,14 @@ const ebsRole = eksServiceAccount('eks-ebs-csi', {
   managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy'],
 });
 
-const addon = addAddon('aws-ebs-csi-driver', {
+const addonStorage = addAddon('aws-ebs-csi-driver', {
   purpose: 'system',
   serviceAccountRoleArn: ebsRole.arn,
+  resolveConflicts: 'PRESERVE',
+});
+
+const addonSnapshot = addAddon('snapshot-controller', {
+  purpose: 'system',
   resolveConflicts: 'PRESERVE',
 });
 
@@ -30,7 +35,7 @@ new k8s.storage.v1.StorageClass(
     allowVolumeExpansion: true,
     volumeBindingMode: 'WaitForFirstConsumer',
   },
-  { dependsOn: addon, provider },
+  { dependsOn: addonStorage, provider },
 );
 
 new k8s.storage.v1.StorageClass(
@@ -47,7 +52,7 @@ new k8s.storage.v1.StorageClass(
     allowVolumeExpansion: true,
     volumeBindingMode: 'Immediate',
   },
-  { dependsOn: addon, provider },
+  { dependsOn: addonStorage, provider },
 );
 
 new k8s.storage.v1.StorageClass(
@@ -67,8 +72,35 @@ new k8s.storage.v1.StorageClass(
     allowVolumeExpansion: true,
     volumeBindingMode: 'WaitForFirstConsumer',
   },
-  { dependsOn: addon, provider },
+  { dependsOn: addonStorage, provider },
 );
 
-// TODO: https://github.com/kubernetes-csi/external-snapshotter/tree/master/client/config/crd
-// then reinstall the csi plugin?
+new k8s.apiextensions.CustomResource(
+  'snapshot-ebs',
+  {
+    apiVersion: 'snapshot.storage.k8s.io/v1',
+    kind: 'VolumeSnapshotClass',
+    metadata: {
+      name: 'ebs',
+    },
+    driver: 'ebs.csi.aws.com',
+    deletionPolicy: 'Delete',
+  },
+  { dependsOn: addonSnapshot, provider },
+);
+
+new k8s.apiextensions.CustomResource(
+  'snapshot-ebs-retain',
+  {
+    apiVersion: 'snapshot.storage.k8s.io/v1',
+    kind: 'VolumeSnapshotClass',
+    metadata: {
+      name: 'ebs-retain',
+    },
+    driver: 'ebs.csi.aws.com',
+    deletionPolicy: 'Retain',
+  },
+  { dependsOn: addonSnapshot, provider },
+);
+
+// TODO: https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/snapshot.md#fast-snapshot-restores

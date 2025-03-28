@@ -104,9 +104,8 @@ export function runPostgres({
           //   },
           // },
 
-          // TODO: need the crds, see storage.ts
           volumeSnapshot: {
-            className: 'ebs-gp3',
+            className: 'ebs',
           },
         } : {},
         // logLevel: 'trace',
@@ -132,6 +131,7 @@ export function runPostgres({
         },
         spec: {
           schedule: backupSchedule,
+          method: 'volumeSnapshot',
           backupOwnerReference: 'self',
           cluster: { name: `${name}-db` },
         },

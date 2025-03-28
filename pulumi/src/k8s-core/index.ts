@@ -14,6 +14,7 @@ export const oidcProviderArn = oidcProvider.arn;
 
 import './nodes/groups.js';
 import './nodes/autoscaler.js';
+import './nodes/monitor.js';
 import './loadbalancer/ingress.js';
 import './externalDns.js';
 import './cert-manager/controller.js';

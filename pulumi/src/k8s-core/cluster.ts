@@ -1,5 +1,5 @@
 import { Agent } from 'node:https';
-import { interpolate } from '@pulumi/pulumi';
+import { CustomResourceOptions, interpolate } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import * as awsClassic from '@pulumi/aws';
 import { AWS_STS } from '../constants/external.js';
@@ -50,10 +50,14 @@ export const cluster = new aws.eks.Cluster(
 export const clusterName = cluster.name.apply((n) => n!);
 
 // OIDC provider for the cluster
-export const oidcProvider = new aws.iam.OidcProvider('eks-oidc', {
-  clientIdList: [AWS_STS],
-  url: cluster.openIdConnectIssuerUrl,
-}, { ignoreChanges: ['thumbprintList'] });
+export const oidcProvider = new aws.iam.OidcProvider(
+  'eks-oidc',
+  {
+    clientIdList: [AWS_STS],
+    url: cluster.openIdConnectIssuerUrl,
+  },
+  { ignoreChanges: ['thumbprintList'] },
+);
 
 export function addAddon(
   addonName: string,
@@ -61,6 +65,7 @@ export function addAddon(
     purpose,
     ...args
   }: Omit<aws.eks.AddonArgs, 'clusterName' | 'addonName' | 'addonVersion'> & { purpose: string },
+  opts: CustomResourceOptions = {},
 ): aws.eks.Addon {
   const { version: addonVersion } = awsClassic.eks.getAddonVersionOutput({
     addonName,
@@ -80,12 +85,14 @@ export function addAddon(
       }),
     },
     {
+      ...opts,
+
       // /!\ inherits cluster's protect
       parent: cluster,
       // otherwise on replace, pulumi tries to delete the addon it just created like a dumbass
       deleteBeforeReplace: true,
       // for stability, don't update addon by default (comment if wanted)
-      ignoreChanges: ['addonVersion'],
+      ignoreChanges: ['addonVersion', ...(opts.ignoreChanges ?? [])],
     },
   );
 }
