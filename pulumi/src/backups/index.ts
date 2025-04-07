@@ -14,7 +14,7 @@ interface Export {
   kopiaRole: Output<string>;
 }
 
-const exports: { [string]: Export } = {};
+const exports: { [product: string]: Export } = {};
 for (const product of products) {
   const exp: Partial<Export> = {};
 
@@ -56,7 +56,7 @@ for (const product of products) {
       bucket: bucket.id,
       rule: {
         defaultRetention: {
-          mode: 'COMPLIANCE',
+          mode: 'GOVERNANCE',
           days: 30,
         },
       },
@@ -139,6 +139,23 @@ for (const product of products) {
     managedPolicyArns: [kopiaPolicy.arn],
   });
   exp.kopiaRole = kopiaRole.name;
+
+  new awsClassic.s3.BucketObjectv2(`${prefix}kopia-storageconfig`, {
+    bucket: bucket.bucket,
+    key: 'kopia/.storageconfig',
+    content: JSON.stringify(
+      {
+        blobOptions: [
+          { prefix: 'p', storageClass: 'INTELLIGENT_TIERING' },
+          { storageClass: 'STANDARD' }, // keep indexes etc in frequent access tier
+        ],
+      },
+      null,
+      2,
+    ),
+    contentType: 'application/json',
+    contentEncoding: 'utf-8',
+  });
 
   new awsClassic.iam.InstanceProfile(`${prefix}ec2-backups-instance`, {
     name: `EC2InstanceProfileFor${product.charAt(0).toUpperCase() + product.slice(1)}BackupsPush`,
