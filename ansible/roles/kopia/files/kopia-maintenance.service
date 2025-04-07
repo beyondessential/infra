@@ -1,0 +1,8 @@
+[Unit]
+Description=Kopia repository maintenance
+
+[Service]
+Type=oneshot
+User=kopia
+Group=kopia
+ExecStart=kopia maintenance run

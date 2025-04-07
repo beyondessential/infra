@@ -1,0 +1,26 @@
+---
+- name: Add kopia backup for caddy (service)
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-caddy.service') }}"
+    dest: /etc/systemd/system/kopia-backup-caddy.service
+
+- name: Add kopia expiry caddy (timer)
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-caddy.timer') }}"
+    dest: /etc/systemd/system/kopia-backup-caddy.timer
+
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    state: reloaded
+
+- name: Enable kopia backup for caddy
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-backup-caddy.timer
+    state: started
+    enabled: true

@@ -1,0 +1,26 @@
+---
+- name: Add kopia expiry service
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-expiry.service') }}"
+    dest: /etc/systemd/system/kopia-expiry.service
+
+- name: Add kopia expiry timer
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-expiry.timer') }}"
+    dest: /etc/systemd/system/kopia-expiry.timer
+
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    state: reloaded
+
+- name: Enable kopia expiry timer
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-expiry.timer
+    state: started
+    enabled: true

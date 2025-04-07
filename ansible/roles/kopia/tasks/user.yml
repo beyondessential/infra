@@ -1,0 +1,10 @@
+---
+- name: Create kopia user
+  become: true
+  ansible.builtin.user:
+    name: kopia
+    groups: kopia
+    system: true
+    append: true
+    create_home: true
+    home: /var/lib/kopia

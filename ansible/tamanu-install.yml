@@ -21,6 +21,8 @@
     - role: toolbox
       tags: [base, toolbox]
 
+    - role: kopia
+      tags: [base, kopia]
     - role: postgres
       tags: [base, postgres]
     - role: tailscale

@@ -1,0 +1,8 @@
+[Unit]
+Description=Expire old Kopia snapshots
+
+[Service]
+Type=oneshot
+User=kopia
+Group=kopia
+ExecStart=kopia snapshot expire

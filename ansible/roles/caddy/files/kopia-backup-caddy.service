@@ -1,0 +1,8 @@
+[Unit]
+Description=Take a snapshot of caddy config
+
+[Service]
+Type=oneshot
+User=kopia
+Group=kopia
+ExecStart=kopia snapshot create --description="%H Caddy config" /etc/caddy
