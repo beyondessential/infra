@@ -16,7 +16,7 @@ import {
   tailscaleTags,
   normalizedStack,
 } from './config.js';
-import { applyBackup } from './backup.js';
+import { applyBackup } from './backup/aws.js';
 import { sg } from './firewall.js';
 import { applyDNS } from './dns.js';
 import { region } from '../../common/awsAccount.js';
@@ -40,6 +40,8 @@ const backupResources: Output<string>[] = [];
 const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map();
 
 for (const [i, inst] of instances.entries()) {
+  if (inst.external) continue;
+
   const authKey = tailscaleKey(inst.id, {
     tags: tailscaleTags,
     expirySecs: 6 * 60 * 60, // excessive but it lets us deal with most problems eg. EIP quotas
@@ -49,7 +51,7 @@ for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
     inst.id,
     {
-      ami: region.apply(reg => UBUNTU_24_04_LTS_ARM64[reg]),
+      ami: region.apply((reg) => UBUNTU_24_04_LTS_ARM64[reg]),
       instanceType: inst.instance,
       disableApiTermination: !hardDelete,
       monitoring: true,

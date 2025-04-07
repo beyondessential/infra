@@ -44,9 +44,7 @@ export const tailscaleBase = zoneRoot.apply((root) => {
     return override;
   }
 
-  return ['tamanu', root, typeGuess]
-    .filter(Boolean)
-    .join('-');
+  return ['tamanu', root, typeGuess].filter(Boolean).join('-');
 });
 
 export const namePrefix = cfg.get('namePrefix') ?? '';
@@ -105,6 +103,7 @@ export interface Facility {
   instance?: string;
   disks?: Disks;
   tailscaleName?: Input<string>;
+  external?: boolean;
 }
 
 export interface Server extends Required<Facility> {
@@ -115,6 +114,7 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
   .map((facility: Facility) => {
     const id = facility.id.startsWith('facility-') ? facility.id : `facility-${facility.id}`;
     return {
+      external: false,
       subdomain: id,
       name: id,
       instance: 't4g.medium',
@@ -133,17 +133,18 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
   }));
 
 const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'> | false) ?? {};
-export const central: Server | false = cfgCentral === false ? false : {
+export const central: Server = {
+  external: cfgCentral === false,
   name: 'Central',
   subdomain: 'central',
   instance: 't4g.medium',
   tailscaleName: interpolate`${tailscaleBase}-central`,
   ...cfgCentral,
   id: 'central',
-  fqdn: interpolate`${cfgCentral.subdomain ?? 'central'}.${domainBase}`,
+  fqdn: interpolate`${(cfgCentral || null)?.subdomain ?? 'central'}.${domainBase}`,
   disks: {
     ...defaultDisks,
-    ...cfgCentral.disks,
+    ...((cfgCentral || null)?.disks ?? {}),
   },
 };
 

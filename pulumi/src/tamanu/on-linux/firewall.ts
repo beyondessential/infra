@@ -21,7 +21,6 @@ export const sg = new aws.ec2.SecurityGroup(
     },
   },
   {
-    parent: this,
     ignoreChanges: ['ingress', 'egress', 'description'],
   },
 );

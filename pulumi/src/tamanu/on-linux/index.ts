@@ -4,9 +4,11 @@ import { instances } from './config.js';
 import { failIfIncorrectAccount } from '../../common/coreRef.js';
 failIfIncorrectAccount();
 
-import './backup.js';
+import './backup/aws.js';
 import './firewall.js';
 import './instances.js';
+
+export { backupBucket, backupUsers } from './backup/kopia.js';
 
 export { tailscaleTags } from './config.js';
 export const urls = Object.fromEntries(
