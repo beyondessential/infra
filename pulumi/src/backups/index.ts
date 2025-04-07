@@ -155,6 +155,9 @@ for (const product of products) {
     ),
     contentType: 'application/json',
     contentEncoding: 'utf-8',
+    checksumAlgorithm: 'SHA256',
+  }, {
+    ignoreChanges: ['objectLockMode', 'objectLockRetainUntilDate'],
   });
 
   new awsClassic.iam.InstanceProfile(`${prefix}ec2-backups-instance`, {
