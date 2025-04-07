@@ -1,59 +1,31 @@
 import { Config, getStack, jsonStringify, Output } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
+import * as awsNative from '@pulumi/aws-native';
 import { AWS_EC2, AWS_S3_BACKUP_ACTIONS } from '../constants/external.js';
 
 import { failIfIncorrectAccount } from '../common/coreRef.js';
+import { nativeTags } from '../common/tags.js';
 failIfIncorrectAccount();
 
 const config = new Config();
-const products: string[] = config.getObject('buckets') ?? ['tamanu'];
+const bucketName: string = config.get('bucketName') ?? `bes-kopia-backups-${getStack()}`;
 
-interface Export {
-  name: string;
-  fullAccessRole: Output<string>;
-  kopiaRole: Output<string>;
-}
+const tags = {
+  Purpose: 'backups',
+  ...((config.getObject('tags') as object) ?? {}),
+};
 
-const exports: { [product: string]: Export } = {};
-for (const product of products) {
-  const exp: Partial<Export> = {};
-
-  const prefix = product === 'tamanu' ? '' : `${product}-`;
-
-  const BUCKET_NAME = `bes-${product}-${getStack()}-backups`;
-  exp.name = BUCKET_NAME;
-
-  const tags = {
-    Purpose: 'backups',
-    Product: product,
-  };
-
-  const bucket = new awsClassic.s3.BucketV2(
-    `${prefix}backups-bucket`,
-    {
-      bucket: BUCKET_NAME,
-      objectLockEnabled: true,
-      tags,
+const bucket = new awsNative.s3.Bucket(
+  'backups-bucket',
+  {
+    bucketName,
+    objectLockEnabled: true,
+    tags: nativeTags(tags),
+    versioningConfiguration: {
+      status: 'Enabled',
     },
-    { protect: true },
-  );
-
-  new awsClassic.s3.BucketVersioningV2(
-    `${prefix}backups-versions`,
-    {
-      bucket: bucket.id,
-      versioningConfiguration: {
-        status: 'Enabled',
-        // mfaDelete: 'Enabled',
-      },
-    },
-    { protect: true },
-  );
-
-  new awsClassic.s3.BucketObjectLockConfigurationV2(
-    `${prefix}backups-locks`,
-    {
-      bucket: bucket.id,
+    objectLockConfiguration: {
+      objectLockEnabled: 'Enabled',
       rule: {
         defaultRetention: {
           mode: 'GOVERNANCE',
@@ -61,87 +33,80 @@ for (const product of products) {
         },
       },
     },
-    {
-      protect: true,
-    },
-  );
+  },
+  { protect: true },
+);
 
-  const fullAccessPolicy = new awsClassic.iam.Policy(
-    `${prefix}backups-fullaccess-policy`,
-    {
-      policy: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: ['s3:*'],
-            Resource: [BUCKET_NAME].flatMap((bucket) => [
-              `arn:aws:s3:::${bucket}`,
-              `arn:aws:s3:::${bucket}/*`,
-            ]),
-          },
-        ],
-      }),
-    },
-    { dependsOn: [bucket] },
-  );
+const fullAccessPolicy = new awsNative.iam.ManagedPolicy('backups-fullaccess-policy', {
+  policyDocument: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: ['s3:*'],
+        Resource: bucket.bucketName.apply((bucket) => [
+          `arn:aws:s3:::${bucket}`,
+          `arn:aws:s3:::${bucket}/*`,
+        ]),
+      },
+    ],
+  }),
+});
 
-  const fullAccessRole = new awsClassic.iam.Role(`${prefix}backups-fullaccess-role`, {
-    assumeRolePolicy: {
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Effect: 'Allow',
-          Action: 'sts:AssumeRole',
-          Principal: {
-            Service: AWS_EC2,
-          },
+const fullAccessRole = new awsNative.iam.Role('backups-fullaccess-role', {
+  managedPolicyArns: [fullAccessPolicy.policyArn],
+  assumeRolePolicyDocument: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'sts:AssumeRole',
+        Principal: {
+          Service: AWS_EC2,
         },
-      ],
-    },
-    managedPolicyArns: [fullAccessPolicy.arn],
-  });
-  exp.fullAccessRole = fullAccessRole.name;
+      },
+    ],
+  }),
+});
+export const roleForFullAccess = fullAccessRole.roleName;
 
-  const kopiaPolicy = new awsClassic.iam.Policy(
-    `${prefix}backups-kopia-policy`,
-    {
-      policy: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: AWS_S3_BACKUP_ACTIONS,
-            Resource: [BUCKET_NAME].flatMap((bucket) => [
-              `arn:aws:s3:::${bucket}`,
-              `arn:aws:s3:::${bucket}/kopia/*`,
-            ]),
-          },
-        ],
-      }),
-    },
-    { dependsOn: [bucket] },
-  );
+const kopiaPolicy = new awsNative.iam.ManagedPolicy('backups-kopia-policy', {
+  policyDocument: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: AWS_S3_BACKUP_ACTIONS,
+        Resource: bucket.bucketName.apply((bucket) => [
+          `arn:aws:s3:::${bucket}`,
+          `arn:aws:s3:::${bucket}/*`,
+        ]),
+      },
+    ],
+  }),
+});
 
-  const kopiaRole = new awsClassic.iam.Role(`${prefix}backups-kopia-role`, {
-    assumeRolePolicy: {
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Effect: 'Allow',
-          Action: 'sts:AssumeRole',
-          Principal: {
-            Service: AWS_EC2,
-          },
+const kopiaRole = new awsNative.iam.Role(`backups-kopia-role`, {
+  managedPolicyArns: [kopiaPolicy.policyArn],
+  assumeRolePolicyDocument: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'sts:AssumeRole',
+        Principal: {
+          Service: AWS_EC2,
         },
-      ],
-    },
-    managedPolicyArns: [kopiaPolicy.arn],
-  });
-  exp.kopiaRole = kopiaRole.name;
+      },
+    ],
+  }),
+});
+export const roleForKopia = kopiaRole.roleName;
 
-  new awsClassic.s3.BucketObjectv2(`${prefix}kopia-storageconfig`, {
-    bucket: bucket.bucket,
+new awsClassic.s3.BucketObjectv2(
+  `kopia-storageconfig`,
+  {
+    bucket: bucket.bucketName.apply((name) => name!),
     key: 'kopia/.storageconfig',
     content: JSON.stringify(
       {
@@ -156,29 +121,20 @@ for (const product of products) {
     contentType: 'application/json',
     contentEncoding: 'utf-8',
     checksumAlgorithm: 'SHA256',
-  }, {
+  },
+  {
     ignoreChanges: ['objectLockMode', 'objectLockRetainUntilDate'],
-  });
+  },
+);
 
-  new awsClassic.iam.InstanceProfile(`${prefix}ec2-backups-instance`, {
-    name: `EC2InstanceProfileFor${product.charAt(0).toUpperCase() + product.slice(1)}BackupsPush`,
-    role: kopiaRole.name,
-  });
-
-  // Legacy: create individual machine users for individual servers instead
-  if (config.getBoolean('externalAccessUser')) {
-    const user = new awsClassic.iam.User(`${prefix}backups-user`, {
-      name: 'tamanu-backups',
-      tags,
-    });
-
-    new awsClassic.iam.UserPolicyAttachment(`${prefix}backups-user`, {
-      user: user.name,
-      policyArn: kopiaRole.arn,
-    });
-  }
-
-  exports[product] = exp as Export;
-}
-
-export const buckets = exports;
+export const backupUsers = ((config.getObject('users') as string[]) ?? []).map(
+  (name) =>
+    new awsNative.iam.User(
+      `kopia-backups-${name}`,
+      {
+        tags: nativeTags(tags),
+        managedPolicyArns: [kopiaPolicy.policyArn],
+      },
+      { parent: bucket },
+    ).userName,
+);
