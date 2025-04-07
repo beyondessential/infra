@@ -6,7 +6,7 @@ import { failIfIncorrectAccount } from '../common/coreRef.js';
 failIfIncorrectAccount();
 
 const config = new Config();
-const buckets: string[] = config.getObject('buckets') ?? ['tamanu'];
+const products: string[] = config.getObject('buckets') ?? ['tamanu'];
 
 interface Export {
   name: string;
@@ -14,8 +14,8 @@ interface Export {
   kopiaRole: Output<string>;
 }
 
-const exports: Export[] = [];
-for (const product of buckets) {
+const exports: { [string]: Export } = {};
+for (const product of products) {
   const exp: Partial<Export> = {};
 
   const prefix = product === 'tamanu' ? '' : `${product}-`;
@@ -158,5 +158,7 @@ for (const product of buckets) {
     });
   }
 
-  exports.push(exp as Export);
+  exports[product] = exp as Export;
 }
+
+export const buckets = exports;
