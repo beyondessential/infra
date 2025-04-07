@@ -48,6 +48,7 @@ export const AWS_S3_MULTIPART_ACTIONS = [
   's3:ListBucketMultipartUploads',
   's3:ListMultipartUploadParts',
 ];
+export const AWS_S3_BACKUP_ACTIONS = [...AWS_S3_MULTIPART_ACTIONS, 's3:DeleteObject'];
 
 export const AWS_BACKUP_DEFAULT_SERVICE_ROLE = 'role/service-role/AWSBackupDefaultServiceRole';
 

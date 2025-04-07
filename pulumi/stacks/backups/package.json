@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/backups",
   "type": "module",
-  "main": "../../../build/tamanu/backups/index.js"
+  "main": "../../build/backups/index.js"
 }
