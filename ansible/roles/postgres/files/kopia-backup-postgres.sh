@@ -18,11 +18,6 @@ touch $pout
 psql postgres < $pin | tee $pout &
 psql_pid=$!
 
-# prep for the last phase
-mountlow=$tmpdir/mount/low
-mountoverlay=$tmpdir/mount/overlay
-mkdir -p $mountlow $mountoverlay
-
 function cleanup {
   code=$?
   if [ $code -ne 0 ]; then
@@ -37,8 +32,6 @@ function cleanup {
   set -e
 
   kill $psql_pid || true
-  fusermount -u $mountlow || true
-  fusermount -u $mountoverlay || true
 
   # we don't really need to remove the files in /tmp, as this is running
   # with PrivateTmp=true, so all of it disappears when the service stops
@@ -101,45 +94,8 @@ fi
 
 cp $snap $metadir/kopia-snapshot.json
 
-# now this is the fun part:
-# we need to write the files parsed from the pg_backup_stop return value...
-# TO THE BACKUP WE JUST TOOK
-# this is obviously not possible because kopia snapshots are immutable
-#
-# so, we could do something easy, which makes restoring harder:
-# - write the files somewhere
-# - write a file with the snapshot ID or something
-# - take a snapshot of that
-#
-# or, we can do something insane, which makes restoring trivial:
-# - mount the snapshot as a read-only filesystem
-# - mount $metadir as an overlay on top of it
-# - have kopia take another snapshot of the whole thing
-# as kopia will have all but 3-4 small files already, this will be super fast
-# and the output will be a directory that can be restored directly
-
-: mount the snapshot
-kopia mount --fuse-allow-other $(jq -r .id $snap) $mountlow &
-mount_pid=$!
-while [ ! -f $mountlow/PG_VERSION ]; do sleep 1; done
-ls -shal $mountlow
-ls -shal $metadir
-
-: mount the overlay
-mkdir -p $tmpdir/mount/{up,work}
-echo fuse-overlayfs -o lowerdir=$mountlow:$metadir,upperdir=$tmpdir/mount/up,workdir=$tmpdir/mount/work $mountoverlay
-read
-fuse-overlayfs -o lowerdir=$mountlow:$metadir,upperdir=$tmpdir/mount/up,workdir=$tmpdir/mount/work $mountoverlay
-ls -shal $mountoverlay
-
-: take a snapshot of the overlay
-kopia snapshot create --description="$(hostname) Postgres" --json $mountoverlay
-
-: unmount
-kill -15 $mount_pid
-wait $mount_pid || true
-fusermount -u $mountlow || true
-fusermount -u $mountoverlay || true
+: take a snapshot of the metadata
+kopia snapshot create --description="$(hostname) Postgres (metadata)" $metadir
 
 : done
 true
