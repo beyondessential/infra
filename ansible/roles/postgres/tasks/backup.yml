@@ -1,4 +1,9 @@
 ---
+- name: Install fuse-overlayfs
+  become: true
+  ansible.builtin.apt:
+    name: fuse-overlayfs
+
 - name: Add kopia backup for postgres (script)
   become: true
   ansible.builtin.copy:
