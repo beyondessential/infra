@@ -8,7 +8,7 @@ import { nativeTags } from '../common/tags.js';
 failIfIncorrectAccount();
 
 const config = new Config();
-const bucketName: string = config.get('bucketName') ?? `bes-kopia-backups-${getStack()}`;
+export const bucketName: string = config.get('bucketName') ?? `bes-kopia-backups-${getStack()}`;
 
 const tags = {
   Purpose: 'backups',
@@ -107,7 +107,7 @@ new awsClassic.s3.BucketObjectv2(
   `kopia-storageconfig`,
   {
     bucket: bucket.bucketName.apply((name) => name!),
-    key: 'kopia/.storageconfig',
+    key: '.storageconfig',
     content: JSON.stringify(
       {
         blobOptions: [

@@ -1,0 +1,9 @@
+[Unit]
+Description=Take a snapshot of postgres
+
+[Service]
+Type=oneshot
+User=kopia
+Group=kopia
+ExecStart=/var/lib/kopia/backup-postgres.sh
+PrivateTmp=true

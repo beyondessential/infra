@@ -1,0 +1,34 @@
+---
+- name: Add kopia backup for postgres (script)
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.sh') }}"
+    dest: /var/lib/kopia/backup-postgres.sh
+    mode: "0755"
+
+- name: Add kopia backup for postgres (service)
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.service') }}"
+    dest: /etc/systemd/system/kopia-backup-postgres.service
+
+- name: Add kopia expiry postgres (timer)
+  become: true
+  ansible.builtin.copy:
+    state: present
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.timer') }}"
+    dest: /etc/systemd/system/kopia-backup-postgres.timer
+
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    state: reloaded
+
+- name: Enable kopia backup for postgres
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-backup-postgres.timer
+    state: started
+    enabled: true
