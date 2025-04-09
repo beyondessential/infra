@@ -135,7 +135,7 @@ cp $snap $metadir/kopia-snapshot.json
 # and the output will be a directory that can be restored directly
 
 : mount the snapshot
-~/code/go/kopia/kopia mount --fuse-allow-other $(jq -r .id $snap) $mountlow &
+kopia mount --fuse-allow-other $(jq -r .id $snap) $mountlow &
 mount_pid=$!
 while [ ! -f $mountlow/PG_VERSION ]; do sleep 1; done
 
