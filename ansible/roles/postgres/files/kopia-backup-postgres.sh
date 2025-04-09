@@ -149,6 +149,13 @@ ls -shal $mountoverlay
 : take a snapshot of the overlay
 kopia snapshot create --description="$(hostname) Postgres" --json $mountoverlay
 
+: unlist the data-only snapshot
+# deletes in kopia are just markers; in this case all we're doing is removing
+# the "(data only)" snapshot name from the list, but because all the data is
+# contained in the final overlay snapshot, including the original snapshot
+# metadata (the kopia-snapshot.json file), no data is lost.
+kopia snapshot delete $(jq -r .id $snap) --delete
+
 : unmount
 kill -15 $mount_pid
 wait $mount_pid || true
