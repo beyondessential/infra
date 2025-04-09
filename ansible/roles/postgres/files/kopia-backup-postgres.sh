@@ -2,7 +2,16 @@
 
 set -uxo pipefail
 
+# the pgdatadir MUST be *entirely* readable by the kopia user
+# this isn't usually the case: even when kopia is part of the postgres group,
+# pg writes its files group-unreadable. you can fix this using bindfs as root
+# before running the script, and setting PGDATA accordingly, e.g.
+# sudo bindfs -r -u kopia /var/lib/postgresql /path/to/kopia/pgdata
 pgdatadir=${PGDATA:-/var/lib/postgresql/current/main}
+
+# this is optimised for kernel 6.6+
+# see https://trapexit.github.io/mergerfs/quickstart/ for lower kernels
+mergerfs_opts="cache.files=off,category.create=pfrd,func.getattr=newest,dropcacheonclose=false"
 
 : prepare the environment
 tmpdir=/tmp/kopia-postgres
@@ -18,6 +27,11 @@ touch $pout
 psql postgres < $pin | tee $pout &
 psql_pid=$!
 
+# prep for the last phase
+mountlow=$tmpdir/mount/low
+mountoverlay=$tmpdir/mount/postgresql
+mkdir -p $mountlow $mountoverlay
+
 function cleanup {
   code=$?
   if [ $code -ne 0 ]; then
@@ -32,6 +46,8 @@ function cleanup {
   set -e
 
   kill $psql_pid || true
+  fusermount -u $mountlow || true
+  fusermount -u $mountoverlay || true
 
   # we don't really need to remove the files in /tmp, as this is running
   # with PrivateTmp=true, so all of it disappears when the service stops
@@ -59,10 +75,17 @@ echo "SELECT pg_backup_start(label => 'kopia_backup', fast => false);" > $pin
 : wait for the checkpoint to complete
 wait $wait_pid
 
+: bind mount pgdata to the final destination
+# this makes the paths better and also makes the second snapshot WAY faster
+bindfs $pgdatadir $mountoverlay
+
 : take a snapshot of postgres
 snap=$tmpdir/snapshot.json
-kopia snapshot create --description="$(hostname) Postgres (data only)" --json $pgdatadir > $snap
+kopia snapshot create --description="$(hostname) Postgres (data only)" --json $mountoverlay > $snap
 jq . $snap
+
+: unbind pgdata
+fusermount -u $mountoverlay
 
 : set await for the snapshot to complete
 inotifywait -e modify $pout &
@@ -94,8 +117,43 @@ fi
 
 cp $snap $metadir/kopia-snapshot.json
 
-: take a snapshot of the metadata
-kopia snapshot create --description="$(hostname) Postgres (metadata)" $metadir
+# now this is the fun part:
+# we need to write the files parsed from the pg_backup_stop return value...
+# TO THE BACKUP WE JUST TOOK
+# this is obviously not possible because kopia snapshots are immutable
+#
+# so, we could do something easy, which makes restoring harder:
+# - write the files somewhere
+# - write a file with the snapshot ID or something
+# - take a snapshot of that
+#
+# or, we can do something insane, which makes restoring trivial:
+# - mount the snapshot as a read-only filesystem
+# - mount $metadir as an overlay on top of it
+# - have kopia take another snapshot of the whole thing
+# as kopia will have all but 3-4 small files already, this will be super fast
+# and the output will be a directory that can be restored directly
+
+: mount the snapshot
+~/code/go/kopia/kopia mount --fuse-allow-other $(jq -r .id $snap) $mountlow &
+mount_pid=$!
+while [ ! -f $mountlow/PG_VERSION ]; do sleep 1; done
+
+ls -shal $mountlow
+ls -shal $metadir
+
+: mount the overlay
+mergerfs -o "$mergerfs_opts" $mountlow:$metadir $mountoverlay
+ls -shal $mountoverlay
+
+: take a snapshot of the overlay
+kopia snapshot create --description="$(hostname) Postgres" --json $mountoverlay
+
+: unmount
+kill -15 $mount_pid
+wait $mount_pid || true
+fusermount -u $mountoverlay || true
+fusermount -u $mountlow || true
 
 : done
 true
