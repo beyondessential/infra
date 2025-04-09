@@ -2,7 +2,6 @@
 - name: Add kopia apt key
   become: true
   ansible.builtin.copy:
-    state: present
     src: "{{ lookup('ansible.builtin.fileglob', 'apt.gpg') }}"
     dest: /etc/apt/keyrings/kopia-keyring.gpg
 
@@ -26,6 +25,5 @@
   become: true
   ansible.builtin.apt:
     name: kopia
-    state: present
   notify:
     - Update package facts

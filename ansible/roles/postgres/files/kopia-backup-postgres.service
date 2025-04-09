@@ -8,5 +8,5 @@ Group=kopia
 Environment=PGDATA=/var/lib/kopia/pgdata
 ExecStart=!/usr/bin/bindfs -r -u kopia /var/lib/postgresql/current $PGDATA
 ExecStart=/var/lib/kopia/backup-postgres.sh
-ExecStart=!/usr/bin/fusermount -u $PGDATA
+ExecStopPost=-!/usr/bin/fusermount -u $PGDATA
 PrivateTmp=true

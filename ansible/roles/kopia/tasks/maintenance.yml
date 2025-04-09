@@ -2,25 +2,19 @@
 - name: Add kopia maintenance service
   become: true
   ansible.builtin.copy:
-    state: present
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-maintenance.service') }}"
     dest: /etc/systemd/system/kopia-maintenance.service
 
 - name: Add kopia maintenance timer
   become: true
   ansible.builtin.copy:
-    state: present
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-maintenance.timer') }}"
     dest: /etc/systemd/system/kopia-maintenance.timer
-
-- name: Reload systemd
-  become: true
-  ansible.builtin.systemd:
-    state: reloaded
 
 - name: Enable kopia maintenance timer
   become: true
   ansible.builtin.systemd:
     name: kopia-maintenance.timer
+    daemon_reload: true
     state: started
     enabled: true
