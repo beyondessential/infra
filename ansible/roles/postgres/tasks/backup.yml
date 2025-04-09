@@ -1,8 +1,18 @@
 ---
-- name: Install fuse-overlayfs
+- name: Install mergerfs and bindfs
   become: true
   ansible.builtin.apt:
-    name: fuse-overlayfs
+    name:
+      - mergerfs
+      - bindfs
+
+- name: Create kopia pgdata mountpoint
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kopia/pgdata
+    state: directory
+    owner: kopia
+    group: kopia
 
 - name: Add kopia backup for postgres (script)
   become: true

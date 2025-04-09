@@ -46,6 +46,6 @@
 - name: Symlink current postgresql version data
   become: true
   ansible.builtin.file:
-    src: /var/lib/postgresql/{{ postgresql_version }}
+    src: /var/lib/postgresql/{{ postgresql_version }}/main
     dest: /var/lib/postgresql/current
     state: link
