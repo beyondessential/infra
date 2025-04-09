@@ -16,6 +16,12 @@
     owner: kopia
     group: kopia
 
+# - name: Set archive command
+#   become: true
+#   community.postgresql.postgresql_set:
+#     name: archive_command
+#     value: "/bin/true"
+
 - name: Add kopia backup for postgres (script)
   become: true
   ansible.builtin.copy:
@@ -29,7 +35,7 @@
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.service') }}"
     dest: /etc/systemd/system/kopia-backup-postgres.service
 
-- name: Add kopia expiry postgres (timer)
+- name: Add kopia backup for postgres (timer)
   become: true
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.timer') }}"
