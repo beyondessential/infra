@@ -1,0 +1,35 @@
+---
+- name: Set do-nothing archive command
+  become: true
+  become_user: postgres
+  when: kopia_enabled is not defined or kopia_enabled == false
+  notify:
+    - Restart postgres
+  community.postgresql.postgresql_set:
+    name: archive_command
+    value: "/bin/true"
+    # this essentially soft-disables archiving;
+    # wal files are still created but immediately
+    # discarded by the postgres server once unneeded
+    #
+    # when kopia is enabled, it may take over this setting
+
+- name: Set WAL expiry
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_set:
+    name: archive_timeout
+    value: "300"
+    # recommended to be no shorter than 1 minute
+    # this helps keep pg_wal size reasonable
+
+- name: Enable archive mode in postgres
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_set:
+    name: archive_mode
+    value: "on"
+    # this is mostly used for backup purposes
+    # but as it requires a restart, we enable it
+    # straightaway so when backups are enabled we
+    # don't have to restart postgres during load
