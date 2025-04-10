@@ -3,6 +3,8 @@
   when: "'central' in group_names"
   become: true
   become_user: kopia
+  environment:
+    KOPIA_PASSWORD: "{{ kopia_password }}"
   ansible.builtin.command:
     creates: /var/lib/kopia/.config/kopia/repository.config
     cmd: |
@@ -19,6 +21,8 @@
   when: "'central' not in group_names"
   become: true
   become_user: kopia
+  environment:
+    KOPIA_PASSWORD: "{{ kopia_password }}"
   ansible.builtin.command:
     creates: /var/lib/kopia/.config/kopia/repository.config
     cmd: >

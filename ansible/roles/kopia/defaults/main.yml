@@ -1,2 +1,2 @@
 ---
-kopia_enabled: kopia_s3_bucket is defined and kopia_s3_key is defined and kopia_s3_secret is defined
+kopia_enabled: kopia_s3_bucket is defined and kopia_s3_key is defined and kopia_s3_secret is defined and kopia_password is defined
