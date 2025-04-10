@@ -12,7 +12,7 @@
       when: ansible_system_vendor == 'Amazon EC2'
       volume: sdp
       mount: /var/lib/postgresql
-      fs_type: ext4
+      fs_type: btrfs
       mount_opts: defaults,noatime,discard
       tags: [base, volumes]
 
