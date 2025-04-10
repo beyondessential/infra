@@ -55,9 +55,6 @@ function cleanup {
   fusermount -u $mountlow || true
   fusermount -u $mountoverlay || true
 
-  # we don't really need to remove the files in /tmp, as this is running
-  # with PrivateTmp=true, so all of it disappears when the service stops
-  # but for local testing, let's get rid of the entire directory anyway.
   rm -rf $tmpdir || true
 
   # exit once we finish cleanup;
