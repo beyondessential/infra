@@ -6,13 +6,13 @@
   ansible.builtin.command:
     creates: /var/lib/kopia/.config/kopia/repository.config
     cmd: |
-      kopia repository create s3 \
-        --bucket={{ kopia_s3_bucket }} \
-        --access-key={{ kopia_s3_key }} \
-        --secret-access-key={{ kopia_s3_secret }} \
-        --ecc-overhead-percent=1 \
-        --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }} \
-        --retention-mode=GOVERNANCE \
+      kopia repository create s3
+        --bucket={{ kopia_s3_bucket }}
+        --access-key={{ kopia_s3_key }}
+        --secret-access-key={{ kopia_s3_secret }}
+        --ecc-overhead-percent=1
+        --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}
+        --retention-mode=GOVERNANCE
         --retention-period=30d
 
 - name: Connect to kopia repository
@@ -21,9 +21,9 @@
   become_user: kopia
   ansible.builtin.command:
     creates: /var/lib/kopia/.config/kopia/repository.config
-    cmd: |
-      kopia repository connect s3 \
-        --bucket={{ kopia_s3_bucket }} \
-        --access-key={{ kopia_s3_key }} \
-        --secret-access-key={{ kopia_s3_secret }} \
+    cmd: >
+      kopia repository connect s3
+        --bucket={{ kopia_s3_bucket }}
+        --access-key={{ kopia_s3_key }}
+        --secret-access-key={{ kopia_s3_secret }}
         --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}
