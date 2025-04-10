@@ -34,12 +34,16 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.service') }}"
     dest: /etc/systemd/system/kopia-backup-postgres.service
+  notify:
+    - Reload systemd
 
 - name: Add kopia backup for postgres (timer)
   become: true
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.timer') }}"
     dest: /etc/systemd/system/kopia-backup-postgres.timer
+  notify:
+    - Reload systemd
 
 - name: Enable kopia backup for postgres
   become: true

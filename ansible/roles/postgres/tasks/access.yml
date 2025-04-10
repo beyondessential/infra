@@ -7,14 +7,6 @@
     regexp: "^#?listen_addresses\\s*="
   notify: Restart postgres
 
-- name: Raise password hashing iterations
-  become: true
-  ansible.builtin.lineinfile:
-    path: /etc/postgresql/current/main/postgresql.conf
-    line: "scram_iterations = 50000"
-    regexp: "^#?scram_iterations\\s*="
-  notify: Reload postgres
-
 # TODO: PKI
 # - name: Allow postgres TLS connections
 #   become: true
@@ -33,3 +25,13 @@
     line: "ssl_ciphers = 'HIGH:!SSLv3:!TLSv1'"
     regexp: "^#?ssl_ciphers\\s*="
   notify: Reload postgres
+
+# lineinfile (postgresql.conf) settings are machine-local
+# postgresql_set settings are saved in backups
+
+- name: Raise password hashing iterations
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_set:
+    name: scram_iterations
+    value: "50000"
