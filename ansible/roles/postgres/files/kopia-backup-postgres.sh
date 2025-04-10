@@ -9,6 +9,12 @@ set -uxo pipefail
 # sudo bindfs -r -u kopia /var/lib/postgresql /path/to/kopia/pgdata
 pgdatadir=${PGDATA:-/var/lib/postgresql/current/main}
 
+ls $pgdatadir
+if [ ! -f "$pgdatadir/PG_VERSION" ]; then
+  echo PGDATA is not a postgresql data dir!
+  exit 1
+fi
+
 # this is optimised for kernel 6.6+
 # see https://trapexit.github.io/mergerfs/quickstart/ for lower kernels
 mergerfs_opts="cache.files=off,category.create=pfrd,func.getattr=newest,dropcacheonclose=false"
