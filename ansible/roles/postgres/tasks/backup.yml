@@ -1,12 +1,35 @@
 ---
-- name: Install mergerfs and bindfs
+- name: Install tools needed for postgres backup script
   become: true
   ansible.builtin.apt:
     name:
-      - mergerfs
       - bindfs
+      - inotify-tools
   notify:
     - Update package facts
+
+- name: Set mergerfs_architecture
+  set_fact:
+    mergerfs_architecture: |-
+      {{
+        "amd64" if ansible_architecture == "x86_64"
+        else (
+          "arm64" if ansible_architecture == "aarch64"
+          else ansible_architecture
+        )
+      }}
+
+- name: Install mergerfs {{ mergerfs_version }}
+  become: true
+  ansible.builtin.apt:
+    deb: https://github.com/trapexit/mergerfs/releases/download/{{ mergerfs_version }}/mergerfs_{{ mergerfs_version }}.{{ ansible_distribution | lower }}-{{ ansible_lsb.codename }}_{{ mergerfs_architecture }}.deb
+
+- name: Allow FUSE allow_other to be used by users
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/fuse.conf
+    regexp: "^user_allow_other"
+    line: user_allow_other
 
 - name: Create kopia pgdata mountpoint
   become: true
@@ -47,6 +70,8 @@
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.sh') }}"
     dest: /var/lib/kopia/backup-postgres.sh
     mode: "0755"
+    owner: kopia
+    group: kopia
 
 - name: Add kopia backup for postgres (service)
   become: true
