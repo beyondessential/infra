@@ -6,6 +6,10 @@ Type=oneshot
 User=kopia
 Group=kopia
 Environment=PGDATA=/var/lib/kopia/pgdata
+Environment=TMPDIR=/run/kopia
+ExecStart=!mkdir -p $TMPDIR
+ExecStart=!chown kopia:kopia $TMPDIR
 ExecStart=!/usr/bin/bindfs -r -u kopia /var/lib/postgresql/current $PGDATA
 ExecStart=/var/lib/kopia/backup-postgres.sh
 ExecStopPost=-!/usr/bin/fusermount -u $PGDATA
+ExecStopPost=-!rm -rf $TMPDIR

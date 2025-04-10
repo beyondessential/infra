@@ -20,7 +20,7 @@ fi
 mergerfs_opts="cache.files=off,category.create=pfrd,func.getattr=newest,dropcacheonclose=false"
 
 : prepare the environment
-tmpdir=/tmp/kopia-postgres
+tmpdir=${TMPDIR:-/tmp/kopia-postgres}
 rm -rf $tmpdir || true
 mkdir -p $tmpdir
 
