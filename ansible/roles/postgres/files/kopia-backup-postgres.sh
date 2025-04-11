@@ -142,12 +142,12 @@ kopia mount --fuse-allow-other $(jq -r .id $snap) $mountlow &
 mount_pid=$!
 while [ ! -f $mountlow/PG_VERSION ]; do sleep 1; done
 
-ls -shal $mountlow
-ls -shal $metadir
+ls -shall $mountlow
+ls -shall $metadir
 
 : mount the overlay
 mergerfs -o "$mergerfs_opts" $mountlow:$metadir $mountoverlay
-ls -shal $mountoverlay
+ls -shall $mountoverlay
 
 : take a snapshot of the overlay
 kopia snapshot create --description="$(hostname) Postgres" --json $mountoverlay
