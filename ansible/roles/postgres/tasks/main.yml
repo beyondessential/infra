@@ -1,5 +1,6 @@
 ---
 - ansible.builtin.include_tasks: packages.yml
+- ansible.builtin.include_tasks: psql.yml
 - ansible.builtin.include_tasks: access.yml
 - ansible.builtin.include_tasks: wal.yml
 - ansible.builtin.include_tasks: backup.yml
