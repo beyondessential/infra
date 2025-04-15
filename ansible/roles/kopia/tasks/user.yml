@@ -1,4 +1,11 @@
 ---
+- name: Create kopia group
+  become: true
+  ansible.builtin.group:
+    name: kopia
+    system: true
+    state: present
+
 - name: Create kopia user
   become: true
   ansible.builtin.user:
