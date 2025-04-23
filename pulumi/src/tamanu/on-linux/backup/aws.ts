@@ -52,6 +52,7 @@ const backup = new awsNative.backup.BackupPlan('backup-180days', {
 export function applyBackup(resources: Input<string>[]) {
   all(resources).apply(
     (resources) =>
+      resources.length > 0 &&
       new awsNative.backup.BackupSelection(
         'backup-resources',
         {
