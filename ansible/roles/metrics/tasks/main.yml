@@ -1,0 +1,38 @@
+---
+- name: Set otel_architecture
+  set_fact:
+    otel_architecture: |-
+      {{
+        "amd64" if ansible_architecture == "x86_64"
+        else (
+          "arm64" if ansible_architecture == "aarch64"
+          else ansible_architecture
+        )
+      }}
+
+- name: Install otel collector
+  become: true
+  ansible.builtin.apt:
+    deb: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{ otel_collector_version }}/otelcol_{{ otel_collector_version }}_linux_{{ otel_architecture }}.deb
+  notify:
+    - Update package facts
+    - Restart otelcol
+
+- name: Configure otel collector
+  become: true
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.fileglob', 'config.yml.j2') }}"
+    dest: /etc/otelcol/config.yaml
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Update package facts
+    - Restart otelcol
+
+- name: Enable otel collector
+  become: true
+  ansible.builtin.systemd:
+    name: otelcol
+    state: started
+    enabled: true

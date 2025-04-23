@@ -1,5 +1,8 @@
 - name: Common setup
   hosts: all
+  pre_tasks:
+    - when: ansible_system_vendor == 'Amazon EC2'
+      amazon.aws.ec2_metadata_facts:
   roles:
     - role: ebs-volume
       when: ansible_system_vendor == 'Amazon EC2'
@@ -23,6 +26,9 @@
 
     - role: kopia
       tags: [base, kopia]
+    # - role: metrics
+    #   tags: [base, metrics]
+
     - role: postgres
       tags: [base, postgres]
     - role: tailscale

@@ -1,0 +1,113 @@
+extensions:
+  zpages:
+    endpoint: localhost:55679
+  file_storage:
+  file_storage/otc:
+    directory: /var/log/otel
+    fsync: {{ "false" if ansible_system_vendor == 'Amazon EC2' else "true" }}
+    create_directory: true # for compaction.directory
+    compaction:
+      cleanup_on_start: true
+      on_start: true
+      on_rebound: true
+      directory: /tmp/otel
+{% if cloudwatch_enabled %}
+  sigv4auth:
+    region: "{{ cloudwatch_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}"
+    assume_role:
+      arn: "{{ cloudwatch_role_arn }}"
+{% endif %}
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: localhost:4317
+      http:
+        endpoint: localhost:4318
+  hostmetrics:
+    scrapers:
+      cpu:
+      disk:
+      filesystem:
+      load:
+      memory:
+      network:
+      process:
+      processes:
+      paging:
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1000
+  batch:
+    timeout: 5s
+    send_batch_max_size: 9900 # AWS maximum is 10k
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp/logs:
+    endpoint: {{ otlp_logs_endpoint }}
+    sending_queue:
+      storage: file_storage/otc
+      sizer: bytes
+      queue_size: 1000000000 # 1GB
+{% if cloudwatch_enabled %}
+    auth:
+      authenticator: sigv4auth
+{% endif %}
+  otlp/metrics:
+    endpoint: {{ otlp_metrics_endpoint }}
+    sending_queue:
+      storage: file_storage/otc
+      sizer: bytes
+      queue_size: 1000000000 # 1GB
+{% if cloudwatch_enabled %}
+    auth:
+      authenticator: sigv4auth
+{% endif %}
+  otlp/traces:
+    endpoint: {{ otlp_traces_endpoint }}
+    sending_queue:
+      storage: file_storage/otc
+      sizer: bytes
+      queue_size: 1000000000 # 1GB
+{% if cloudwatch_enabled %}
+    auth:
+      authenticator: sigv4auth
+{% endif %}
+
+service:
+  extensions: [zpages, file_storage, file_storage/otc]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters:
+{% if cloudwatch_enabled %}
+        - otlp/traces
+{% else %}
+        - debug
+{% endif %}
+
+    metrics:
+      receivers: [hostmetrics, otlp]
+      processors: [memory_limiter, batch]
+      exporters:
+{% if cloudwatch_enabled %}
+        - otlp/metrics
+{% else %}
+        - debug
+{% endif %}
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters:
+{% if cloudwatch_enabled %}
+        - otlp/logs
+{% else %}
+        - debug
+{% endif %}
