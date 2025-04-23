@@ -1,0 +1,9 @@
+[Unit]
+Description=Regularly take a snapshot of tamanu config
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -20,6 +20,7 @@
   ansible.builtin.user:
     group: caddy
     name: caddy
+    append: true
     shell: /usr/bin/false
     home: /var/lib/caddy
     create_home: true
@@ -42,7 +43,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/cron.weekly/apt-upgrade-tailscale
-    mode: '0755'
+    mode: "0755"
     content: |
       #!/bin/sh
       apt install -y tailscale

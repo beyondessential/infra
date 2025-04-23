@@ -1,0 +1,8 @@
+[Unit]
+Description=Take a snapshot of tamanu config
+
+[Service]
+Type=oneshot
+User=kopia
+Group=tamanu
+ExecStart=kopia snapshot create --description="%H Tamanu config" /etc/tamanu

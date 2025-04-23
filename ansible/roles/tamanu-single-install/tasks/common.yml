@@ -10,13 +10,15 @@
   ansible.builtin.user:
     group: tamanu
     name: tamanu
+    append: true
     shell: /usr/bin/false
 
 - name: Add login user to tamanu group
   become: true
   ansible.builtin.user:
-    name: "{{ ansible_user}}"
+    name: "{{ ansible_user }}"
     groups: tamanu
+    append: true
     append: yes
 
 - name: Add tamanu caddy config
@@ -32,7 +34,7 @@
   become: true
   ansible.builtin.file:
     path: /etc/tamanu
-    mode: '0775'
+    mode: "0775"
     owner: tamanu
     group: tamanu
     state: directory
@@ -76,4 +78,4 @@
   ansible.builtin.template:
     dest: /usr/local/bin/tamanu-run
     src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-run.j2') }}"
-    mode: '0755'
+    mode: "0755"

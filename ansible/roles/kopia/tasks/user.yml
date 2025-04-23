@@ -10,7 +10,8 @@
   become: true
   ansible.builtin.user:
     name: kopia
-    groups: kopia
+    group: kopia
+    append: true
     system: true
     append: true
     create_home: true
