@@ -35,3 +35,12 @@
     name: tailscaled
     state: started
     enabled: true
+
+- name: Set tailscale auto-upgrade
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.weekly/apt-upgrade-tailscale
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      apt install -y tailscale

@@ -44,4 +44,6 @@
     url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}.service
     dest: /etc/systemd/system/{{ item }}
     mode: a=r,u=rw
-  notify: Restart iti services
+  notify:
+    - Reload systemd
+    - Restart iti services
