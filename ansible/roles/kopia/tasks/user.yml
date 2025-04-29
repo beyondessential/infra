@@ -13,6 +13,5 @@
     group: kopia
     append: true
     system: true
-    append: true
     create_home: true
     home: /var/lib/kopia
