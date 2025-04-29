@@ -1,22 +1,42 @@
 ---
-- name: Set otel_architecture
-  set_fact:
-    otel_architecture: |-
-      {{
-        "amd64" if ansible_architecture == "x86_64"
-        else (
-          "arm64" if ansible_architecture == "aarch64"
-          else ansible_architecture
-        )
-      }}
-
-- name: Install otel collector
+- name: Download otelcol {{ otelcol_version }}
   become: true
-  ansible.builtin.apt:
-    deb: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{ otel_collector_version }}/otelcol_{{ otel_collector_version }}_linux_{{ otel_architecture }}.deb
+  ansible.builtin.get_url:
+    url: https://tools.ops.tamanu.io/otelcol/{{ otelcol_version }}/otelcol-{{ ansible_architecture }}-unknown-linux-gnu-{{ otelcol_version }}
+    dest: /usr/bin/otelcol
+    mode: a=rx,u=rwx
   notify:
-    - Update package facts
     - Restart otelcol
+
+- name: Add otelcol group
+  become: true
+  ansible.builtin.group:
+    name: otelcol
+    system: true
+
+- name: Add otelcol user
+  become: true
+  ansible.builtin.user:
+    group: otelcol
+    name: otelcol
+    append: true
+    shell: /usr/bin/false
+    home: /var/lib/otelcol
+    create_home: true
+
+- name: Add otelcol service file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/otelcol.service
+    src: "{{ lookup('ansible.builtin.fileglob', 'otelcol.service') }}"
+  notify:
+    - Reload systemd
+
+- name: Make otelcol config folder
+  become: true
+  ansible.builtin.file:
+    path: /etc/otelcol
+    state: directory
 
 - name: Configure otel collector
   become: true
