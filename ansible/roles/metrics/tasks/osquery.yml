@@ -45,3 +45,10 @@
     name: osqueryd
     state: started
     enabled: true
+
+- name: Mask systemd-journald-audit.socket
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-journald-audit.socket
+    state: masked
+    enabled: false
