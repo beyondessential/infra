@@ -10,6 +10,7 @@
   become: true
   ansible.builtin.apt_repository:
     repo: deb https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
+    filename: tailscale
     state: present
 
 - name: Prioritise tailscale repo
