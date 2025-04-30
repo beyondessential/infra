@@ -33,6 +33,7 @@
       tags: [base, postgres]
     - role: tailscale
       tags: [base, tailscale]
+      when: tailscale_name is defined
     - role: caddy
       tags: [base, caddy]
     - role: podman
