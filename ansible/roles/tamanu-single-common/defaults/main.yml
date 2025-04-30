@@ -17,4 +17,5 @@ tamanu_country_alpha3: UTO
 tamanu_ipv6: true
 tamanu_central_hostname: "{{ tamanu_central_canonical_url | urlsplit('hostname') }}"
 tamanu_cache_central_dns: true
+tamanu_caddy_tls: true
 tailnet: tail53aef
