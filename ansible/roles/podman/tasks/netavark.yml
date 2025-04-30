@@ -13,3 +13,8 @@
   become: true
   ansible.builtin.apt:
     deb: https://tools.ops.tamanu.io/netavark/{{ netavark_version }}/netavark-{{ netavark_target }}-{{ netavark_version }}.deb
+
+- name: Install aardvark-dns
+  become: true
+  ansible.builtin.apt:
+    name: aardvark-dns
