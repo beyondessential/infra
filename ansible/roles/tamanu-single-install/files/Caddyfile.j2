@@ -79,7 +79,7 @@
   import server
 }
 
-{% if not (public_hostname | regex_search('\\.local$')) %}
+{% if tamanu_caddy_tls and not (public_hostname | regex_search('\\.local$')) %}
 {{ public_hostname }} {
   import server
 }
