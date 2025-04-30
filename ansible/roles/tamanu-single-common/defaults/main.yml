@@ -18,3 +18,4 @@ tamanu_ipv6: true
 tamanu_central_hostname: "{{ tamanu_central_canonical_url | urlsplit('hostname') }}"
 tamanu_cache_central_dns: true
 tailnet: tail53aef
+dns_hard_caching: true
