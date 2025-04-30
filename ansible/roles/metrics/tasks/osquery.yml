@@ -12,9 +12,9 @@
 
 - name: Add osquery apt key
   become: true
-  ansible.builtin.file:
-    path: /etc/apt/keyrings/osquery.asc
-    content: "{{ lookup('ansible.builtin.file', 'osquery.asc') }}"
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'osquery.asc') }}"
+    dest: /etc/apt/keyrings/osquery.asc
 
 - name: Add osquery repo
   become: true

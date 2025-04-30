@@ -1,9 +1,9 @@
 ---
 - name: Add tailscale apt key
   become: true
-  ansible.builtin.file:
-    path: /etc/apt/keyrings/tailscale.asc
-    content: "{{ lookup('ansible.builtin.file', 'apt.asc') }}"
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'apt.asc') }}"
+    dest: /etc/apt/keyrings/tailscale.asc
 
 - name: Add tailscale repo
   become: true

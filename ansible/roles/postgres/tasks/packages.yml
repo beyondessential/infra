@@ -1,9 +1,9 @@
 ---
 - name: Add pgdg apt key
   become: true
-  ansible.builtin.file:
-    path: /etc/apt/keyrings/pgdg.asc
-    content: "{{ lookup('ansible.builtin.file', 'apt.asc') }}"
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'apt.asc') }}"
+    dest: /etc/apt/keyrings/pgdg.asc
 
 - name: Add pgdg repo
   become: true
