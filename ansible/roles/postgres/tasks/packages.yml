@@ -1,15 +1,15 @@
 ---
 - name: Add pgdg apt key
   become: true
-  ansible.builtin.apt_key:
-    id: ACCC4CF8
-    data: "{{ lookup('ansible.builtin.file', 'apt.asc') }}"
-    state: present
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/pgdg.asc
+    content: "{{ lookup('ansible.builtin.file', 'apt.asc') }}"
 
 - name: Add pgdg repo
   become: true
   ansible.builtin.apt_repository:
-    repo: deb https://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main
+    repo: deb [signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main
+    filename: apt_postgresql_org_pub_repos_apt
     state: present
 
 - name: Prioritise pgdg repo
