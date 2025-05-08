@@ -11,7 +11,6 @@
   ansible.builtin.user:
     name: kopia
     group: kopia
-    append: true
     system: true
     create_home: true
     home: /var/lib/kopia
