@@ -11,8 +11,8 @@
 
 - name: Allow reporting users access to postgres
   loop:
-    - reporting
-    - raw
+    - tamanu_reporting_user
+    - tamanu_raw_user
   become: true
   community.postgresql.postgresql_pg_hba:
     dest: /etc/postgresql/current/main/pg_hba.conf
@@ -27,8 +27,6 @@
   become: true
   loop:
     - /opt/tamanu-backup
-    - /opt/tamanu-backup/auto
-    - /opt/tamanu-backup/s3
   ansible.builtin.file:
     path: "{{ item }}"
     mode: "0770"
@@ -36,13 +34,7 @@
     group: "{{ ansible_user }}"
     state: directory
 
-- name: Unschedule backup cleanup
-  become: true
-  ansible.builtin.file:
-    path: /etc/tmpfiles.d/tamanu-backup.conf
-    state: absent
-
-- name: Schedule backup
+- name: Install logical backup timer but not enabled
   become: true
   loop:
     - tamanu-backup.timer
@@ -53,10 +45,3 @@
     mode: "0660"
     force: true
   notify: Reload systemd
-
-- name: Deactivate backup timer
-  become: true
-  ansible.builtin.systemd:
-    name: tamanu-backup.timer
-    enabled: false
-    state: stopped
