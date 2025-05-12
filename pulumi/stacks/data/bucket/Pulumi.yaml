@@ -1,0 +1,6 @@
+name: bucket
+description: Generic bucket and website in the data account
+runtime:
+  name: nodejs
+  options:
+    typescript: false

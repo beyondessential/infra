@@ -1,0 +1,5 @@
+{
+  "name": "@besdata/bucket",
+  "type": "module",
+  "main": "../../../build/data/bucket/index.js"
+}
