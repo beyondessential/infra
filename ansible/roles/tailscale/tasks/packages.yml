@@ -1,14 +1,17 @@
 ---
+# The key path here is different from convention elsewhere in this ansible repo,
+# but matches exactly that which set by the Tailscale setup script, so we don't
+# overwrite or conflict with that when Tailscale is already present from install.
 - name: Add tailscale apt key
   become: true
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'apt.asc') }}"
-    dest: /etc/apt/keyrings/tailscale.asc
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
 
 - name: Add tailscale repo
   become: true
   ansible.builtin.apt_repository:
-    repo: deb [signed-by=/etc/apt/keyrings/tailscale.asc] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
+    repo: deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
     filename: tailscale
     state: present
 
