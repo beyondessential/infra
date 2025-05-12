@@ -15,7 +15,7 @@
       when: ansible_system_vendor == 'Amazon EC2'
       volume: sdp
       mount: /var/lib/postgresql
-      fs_type: "{{ 'ext4' if aws_postgres_uses_ext4 else 'btrfs' }}"
+      fs_type: "{{ 'ext4' if (aws_postgres_uses_ext4 is defined and aws_postgres_uses_ext4) else 'btrfs' }}"
       mount_opts: defaults,noatime,discard
       tags: [base, volumes]
 
