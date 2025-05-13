@@ -11,8 +11,8 @@
 
 - name: Allow reporting users access to postgres
   loop:
-    - tamanu_reporting_user
-    - tamanu_raw_user
+    - reporting
+    - raw
   become: true
   community.postgresql.postgresql_pg_hba:
     dest: /etc/postgresql/current/main/pg_hba.conf
