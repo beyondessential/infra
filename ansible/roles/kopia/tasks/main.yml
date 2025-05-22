@@ -3,6 +3,7 @@
 - ansible.builtin.include_tasks: user.yml
 - ansible.builtin.include_tasks: repository.yml
   when: kopia_enabled
+- ansible.builtin.include_tasks: cache.yml
 - ansible.builtin.include_tasks: expiry.yml
 - ansible.builtin.include_tasks: maintenance.yml
   when: "'central' in group_names"

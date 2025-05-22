@@ -1,0 +1,8 @@
+[Unit]
+Description=Kopia cache cleanup
+
+[Service]
+Type=oneshot
+User=kopia
+Group=kopia
+ExecStart=kopia cache clear

@@ -1,0 +1,38 @@
+---
+- name: Add kopia cache-clean service
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-cache-clean.service') }}"
+    dest: /etc/systemd/system/kopia-cache-clean.service
+  notify:
+    - Reload systemd
+
+- name: Add kopia cache-clean timer
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-cache-clean.timer') }}"
+    dest: /etc/systemd/system/kopia-cache-clean.timer
+  notify:
+    - Reload systemd
+
+- name: Enable kopia cache-clean timer
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-cache-clean.timer
+    daemon_reload: true
+    state: started
+    enabled: true
+
+- name: Set cache contents limit (3GB)
+  when: ansible_system_vendor == 'Amazon EC2' # we only have a 10G disk here
+  become: true
+  become_user: kopia
+  ansible.builtin.command:
+    cmd: kopia cache set --content-cache-size-limit-mb=3000
+
+- name: Set cache metadata limit (1GB)
+  when: ansible_system_vendor == 'Amazon EC2' # we only have a 10G disk here
+  become: true
+  become_user: kopia
+  ansible.builtin.command:
+    cmd: kopia cache set --metadata-cache-size-limit-mb=1000
