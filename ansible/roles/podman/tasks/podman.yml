@@ -51,7 +51,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/cron.daily/podman-image-cleanup
-    mode: '0755'
+    mode: "0755"
     content: |
       #!/bin/sh
       podman image prune --all --filter until=24h --force
@@ -73,3 +73,27 @@
     src: /usr/local/bin/{{ item }}
     dest: /usr/bin/{{ item }}
     state: link
+
+- name: Add podman images pruning service
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'podman-images-clean.service') }}"
+    dest: /etc/systemd/system/podman-images-clean.service
+  notify:
+    - Reload systemd
+
+- name: Add podman images pruning timer
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'podman-images-clean.timer') }}"
+    dest: /etc/systemd/system/podman-images-clean.timer
+  notify:
+    - Reload systemd
+
+- name: Enable podman images pruning timer
+  become: true
+  ansible.builtin.systemd:
+    name: podman-images-clean.timer
+    daemon_reload: true
+    state: started
+    enabled: true
