@@ -1,12 +1,13 @@
 ---
-- name: Download otelcol {{ otelcol_version }}
+- name: Download otelcol {{ otel_collector_version }}
   become: true
   ansible.builtin.get_url:
-    url: https://tools.ops.tamanu.io/otelcol/{{ otelcol_version }}/otelcol-{{ ansible_architecture }}-unknown-linux-gnu-{{ otelcol_version }}
+    url: https://tools.ops.tamanu.io/otelcol/{{ otel_collector_version }}/otelcol-{{ ansible_architecture }}-unknown-linux-gnu-{{ otel_collector_version }}
     dest: /usr/bin/otelcol
     mode: a=rx,u=rwx
   notify:
     - Restart otelcol
+    - Regenerate otelcol completions
 
 - name: Add otelcol group
   become: true
@@ -19,7 +20,6 @@
   ansible.builtin.user:
     group: otelcol
     name: otelcol
-    append: true
     shell: /usr/bin/false
     home: /var/lib/otelcol
     create_home: true
@@ -38,11 +38,19 @@
     path: /etc/otelcol
     state: directory
 
+- name: Make otelcol storage folder
+  become: true
+  ansible.builtin.file:
+    path: /var/log/otel
+    state: directory
+    owner: otelcol
+    group: otelcol
+
 - name: Configure otel collector
   become: true
   ansible.builtin.template:
     src: "{{ lookup('ansible.builtin.fileglob', 'config.yml.j2') }}"
-    dest: /etc/otelcol/config.yaml
+    dest: /etc/otelcol/config.yml
     owner: root
     group: root
     mode: 0644

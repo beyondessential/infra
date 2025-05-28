@@ -4,3 +4,10 @@
   ansible.builtin.systemd:
     name: otelcol
     state: restarted
+
+- name: Regenerate otelcol completions
+  become: true
+  ansible.builtin.shell: |
+    otelcol completion bash > /usr/share/bash-completion/completions/otelcol
+    otelcol completion zsh > /usr/share/zsh/site-functions/_otelcol
+    otelcol completion fish > /usr/share/fish/vendor_completions.d/otelcol.fish

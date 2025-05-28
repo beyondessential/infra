@@ -1,7 +1,6 @@
 extensions:
   zpages:
     endpoint: localhost:55679
-  file_storage:
   file_storage/otc:
     directory: /var/log/otel
     fsync: {{ "false" if ansible_system_vendor == 'Amazon EC2' else "true" }}
@@ -48,46 +47,43 @@ processors:
 exporters:
   debug:
     verbosity: detailed
-  otlp/logs:
+  otlp{{ "http" if "http" in otlp_logs_endpoint else "" }}/logs:
     endpoint: {{ otlp_logs_endpoint }}
     sending_queue:
       storage: file_storage/otc
-      sizer: bytes
-      queue_size: 1000000000 # 1GB
+      queue_size: 100000
 {% if cloudwatch_enabled %}
     auth:
       authenticator: sigv4auth
 {% endif %}
-  otlp/metrics:
+  otlp{{ "http" if "http" in otlp_metrics_endpoint else "" }}/metrics:
     endpoint: {{ otlp_metrics_endpoint }}
     sending_queue:
       storage: file_storage/otc
-      sizer: bytes
-      queue_size: 1000000000 # 1GB
+      queue_size: 100000
 {% if cloudwatch_enabled %}
     auth:
       authenticator: sigv4auth
 {% endif %}
-  otlp/traces:
+  otlp{{ "http" if "http" in otlp_traces_endpoint else "" }}/traces:
     endpoint: {{ otlp_traces_endpoint }}
     sending_queue:
       storage: file_storage/otc
-      sizer: bytes
-      queue_size: 1000000000 # 1GB
+      queue_size: 100000
 {% if cloudwatch_enabled %}
     auth:
       authenticator: sigv4auth
 {% endif %}
 
 service:
-  extensions: [zpages, file_storage, file_storage/otc]
+  extensions: [zpages, file_storage/otc]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
-        - otlp/traces
+        - otlp{{ "http" if "http" in otlp_traces_endpoint else "" }}/traces
 {% else %}
         - debug
 {% endif %}
@@ -97,7 +93,7 @@ service:
       processors: [memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
-        - otlp/metrics
+        - otlp{{ "http" if "http" in otlp_metrics_endpoint else "" }}/metrics
 {% else %}
         - debug
 {% endif %}
@@ -107,7 +103,7 @@ service:
       processors: [memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
-        - otlp/logs
+        - otlp{{ "http" if "http" in otlp_logs_endpoint else "" }}/logs
 {% else %}
         - debug
 {% endif %}
