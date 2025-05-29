@@ -24,6 +24,7 @@
     shell: /usr/bin/false
     home: /var/lib/caddy
     create_home: true
+    system: true
 
 - name: Add caddy service file
   become: true
