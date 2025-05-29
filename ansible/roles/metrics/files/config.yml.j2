@@ -10,12 +10,6 @@ extensions:
       on_start: true
       on_rebound: true
       directory: /tmp/otel
-{% if cloudwatch_enabled %}
-  sigv4auth:
-    region: "{{ cloudwatch_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}"
-    assume_role:
-      arn: "{{ cloudwatch_role_arn }}"
-{% endif %}
 
 receivers:
   otlp:
@@ -43,36 +37,47 @@ processors:
   batch:
     timeout: 5s
     send_batch_max_size: 9900 # AWS maximum is 10k
+  resource:
+    attributes:
+{% if tailscale_name is defined %}
+      - key: deployment.tailscale
+        value: {{ tailscale_name }}
+        action: upsert
+{% endif %}
+{% if tamanu_version is defined %}
+      - key: deployment.purpose
+        value: tamanu
+        action: upsert
+{% endif %}
 
 exporters:
   debug:
     verbosity: detailed
+{% if otlp_logs_endpoint is defined and otlp_logs_endpoint %}
   otlp{{ "http" if "http" in otlp_logs_endpoint else "" }}/logs:
     endpoint: {{ otlp_logs_endpoint }}
     sending_queue:
       storage: file_storage/otc
       queue_size: 100000
-{% if cloudwatch_enabled %}
-    auth:
-      authenticator: sigv4auth
 {% endif %}
+{% if otlp_metrics_endpoint is defined and otlp_metrics_endpoint %}
   otlp{{ "http" if "http" in otlp_metrics_endpoint else "" }}/metrics:
     endpoint: {{ otlp_metrics_endpoint }}
     sending_queue:
       storage: file_storage/otc
       queue_size: 100000
-{% if cloudwatch_enabled %}
-    auth:
-      authenticator: sigv4auth
 {% endif %}
+{% if otlp_traces_endpoint is defined and otlp_traces_endpoint %}
   otlp{{ "http" if "http" in otlp_traces_endpoint else "" }}/traces:
     endpoint: {{ otlp_traces_endpoint }}
     sending_queue:
       storage: file_storage/otc
       queue_size: 100000
+{% endif %}
 {% if cloudwatch_enabled %}
-    auth:
-      authenticator: sigv4auth
+  awsxray:
+  awscloudwatchmetrics:
+  awscloudwatchlogs:
 {% endif %}
 
 service:
@@ -80,9 +85,11 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [resource, memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
+        - awsxray
+{% elif otlp_traces_endpoint is defined and otlp_traces_endpoint %}
         - otlp{{ "http" if "http" in otlp_traces_endpoint else "" }}/traces
 {% else %}
         - debug
@@ -90,9 +97,11 @@ service:
 
     metrics:
       receivers: [hostmetrics, otlp]
-      processors: [memory_limiter, batch]
+      processors: [resource, memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
+        - awscloudwatchmetrics
+{% elif otlp_metrics_endpoint is defined and otlp_metrics_endpoint %}
         - otlp{{ "http" if "http" in otlp_metrics_endpoint else "" }}/metrics
 {% else %}
         - debug
@@ -100,9 +109,11 @@ service:
 
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [resource, memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
+        - awscloudwatchlogs
+{% elif otlp_logs_endpoint is defined and otlp_logs_endpoint %}
         - otlp{{ "http" if "http" in otlp_logs_endpoint else "" }}/logs
 {% else %}
         - debug
