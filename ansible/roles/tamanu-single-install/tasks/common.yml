@@ -10,7 +10,6 @@
   ansible.builtin.user:
     group: tamanu
     name: tamanu
-    append: true
     shell: /usr/bin/false
 
 - name: Add login user to tamanu group
@@ -19,7 +18,6 @@
     name: "{{ ansible_user }}"
     groups: tamanu
     append: true
-    append: yes
 
 - name: Add tamanu caddy config
   become: true
