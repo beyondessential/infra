@@ -11,7 +11,7 @@
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ item }}  {{ tamanu_central_hostname }}"
-    state: "{{ tamanu_cache_central_dns | ternary('present', 'absent') }}"
+    state: "{{ 'absent' if tamanu_central_ip else (tamanu_cache_central_dns | ternary('present', 'absent')) }}"
 
 - name: AAAA record for tamanu central in /etc/hosts
   become: true
@@ -19,4 +19,11 @@
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ item }}  {{ tamanu_central_hostname }}"
-    state: "{{ tamanu_cache_central_dns | ternary('present', 'absent') }}"
+    state: "{{ 'absent' if tamanu_central_ip else (tamanu_cache_central_dns | ternary('present', 'absent')) }}"
+
+- name: Custom IP record for tamanu central in /etc/hosts
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ tamanu_central_ip }}  {{ tamanu_central_hostname }}"
+    state: "{{ tamanu_central_ip | ternary('present', 'absent') }}"
