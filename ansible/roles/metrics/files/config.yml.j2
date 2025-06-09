@@ -76,7 +76,13 @@ exporters:
 {% endif %}
 {% if cloudwatch_enabled %}
   awsxray:
-  awscloudwatchmetrics:
+  awsemf:
+    namespace: {{ cloudwatch_namespace | default('BES/Linux') }}
+    log_group_name: "/bes/linux/{{ tailscale_name | default(ansible_hostname) }}"
+    log_stream_name: "{BootId}"
+    resource_to_telemetry_conversion:
+      enabled: true
+    dimension_rollup_option: NoDimensionRollup
   awscloudwatchlogs:
 {% endif %}
 
@@ -100,7 +106,7 @@ service:
       processors: [resource, memory_limiter, batch]
       exporters:
 {% if cloudwatch_enabled %}
-        - awscloudwatchmetrics
+        - awsemf
 {% elif otlp_metrics_endpoint is defined and otlp_metrics_endpoint %}
         - otlp{{ "http" if "http" in otlp_metrics_endpoint else "" }}/metrics
 {% else %}

@@ -1,6 +1,6 @@
 ---
-otlp_traces_endpoint: https://xray.{{ ansible_ec2_placement_region | default('ap-southeast-2') }}.amazonaws.com/v1/traces
-otlp_logs_endpoint: https://logs.{{ ansible_ec2_placement_region | default('ap-southeast-2') }}.amazonaws.com/v1/logs
-otlp_metrics_endpoint: https://logs.{{ ansible_ec2_placement_region | default('ap-southeast-2') }}.amazonaws.com/v1/logs
 otel_collector_version: 0.125.0
-cloudwatch_enabled: "{{ cloudwatch_role_arn is defined }}"
+otlp_traces_endpoint: false
+otlp_logs_endpoint: false
+otlp_metrics_endpoint: false
+cloudwatch_enabled: false
