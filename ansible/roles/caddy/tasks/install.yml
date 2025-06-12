@@ -26,6 +26,18 @@
     create_home: true
     system: true
 
+- name: Check if we're installing caddy.socket for the first time
+  ansible.builtin.stat:
+    path: /etc/systemd/system/caddy.socket
+  register: socket_first_install
+
+- name: Stop caddy.service if we're about to switch to socket activation
+  become: true
+  when: not socket_first_install.stat.exists
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    state: stopped
+
 - name: Add caddy socket file
   become: true
   ansible.builtin.copy:
