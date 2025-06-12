@@ -38,26 +38,15 @@
     }
   }
 
-  header /v1/* Cache-Control no-store
-  reverse_proxy /v1/* {
-    dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
-      resolvers 10.100.0.1
-      {% if not tamanu_ipv6 %}
-      versions ipv4
-      {% endif %}
-    }
+  redir /v1/login /api/login 308
 
-    fail_duration 15s
-    lb_policy least_conn
-    health_uri /api/public/ping
-
-    transport http {
-      keepalive 65s
-    }
+  @api {
+    /v1/*
+    /api/*
   }
 
-  header /api/* Cache-Control no-store
-  reverse_proxy /api/* {
+  header @api Cache-Control no-store
+  reverse_proxy @api {
     dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
       resolvers 10.100.0.1
       {% if not tamanu_ipv6 %}
@@ -71,6 +60,28 @@
 
     transport http {
       keepalive 65s
+    }
+
+    rate_limit {
+      distributed
+      log_key
+      zone per_ip {
+        key {remote_host}
+        events 100
+        window 1s
+      }
+    }
+
+    route /api/login {
+      rate_limit {
+        distributed
+        log_key
+        zone auth_per_ip {
+          key {remote_host}
+          events 10
+          window 1s
+        }
+      }
     }
   }
 }
