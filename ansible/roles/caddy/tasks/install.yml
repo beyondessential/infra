@@ -20,7 +20,6 @@
   ansible.builtin.user:
     group: caddy
     name: caddy
-    append: true
     shell: /usr/bin/false
     home: /var/lib/caddy
     create_home: true
