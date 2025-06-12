@@ -41,8 +41,28 @@
   redir /v1/login /api/login 308
 
   @api {
-    /v1/*
-    /api/*
+    path /v1/*
+    path /api/*
+  }
+
+  rate_limit @api {
+    log_key
+    zone per_ip {
+      key {remote_host}
+      events 1000
+      window 1s
+    }
+  }
+
+  route /api/login {
+    rate_limit {
+      log_key
+      zone auth_per_ip {
+        key {remote_host}
+        events 10
+        window 1s
+      }
+    }
   }
 
   header @api Cache-Control no-store
@@ -60,28 +80,6 @@
 
     transport http {
       keepalive 65s
-    }
-
-    rate_limit {
-      distributed
-      log_key
-      zone per_ip {
-        key {remote_host}
-        events 1000
-        window 1s
-      }
-    }
-
-    route /api/login {
-      rate_limit {
-        distributed
-        log_key
-        zone auth_per_ip {
-          key {remote_host}
-          events 10
-          window 1s
-        }
-      }
     }
   }
 }
