@@ -93,6 +93,10 @@ http:// {
 {{ public_hostname }} {
   import server
 }
+http://{{ public_hostname }} {
+  import bind80
+  redir https://{host}{uri} 308
+}
 {% endif %}
 
 {% if tailscale_name is defined %}
@@ -101,5 +105,8 @@ http:// {
   tls {
     get_certificate tailscale
   }
+}
+http://{{ tailscale_name }}.{{ tailnet }}.ts.net {
+  import server
 }
 {% endif %}

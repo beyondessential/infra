@@ -9,6 +9,10 @@
 
   admin localhost:2019
 
+  # with socket activation, caddy attempts to redirect to port 0
+  # which obviously doesn't work. instead we redir manually.
+  auto_https disable_redirects
+
   storage file_system {
     root /var/lib/caddy
   }
