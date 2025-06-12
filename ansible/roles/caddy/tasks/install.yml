@@ -26,6 +26,14 @@
     create_home: true
     system: true
 
+- name: Add caddy socket file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.socket
+    src: "{{ lookup('ansible.builtin.fileglob', 'caddy.socket') }}"
+  notify:
+    - Reload systemd
+
 - name: Add caddy service file
   become: true
   ansible.builtin.copy:
@@ -34,10 +42,16 @@
   notify:
     - Reload systemd
 
-- name: Enable caddy
+- name: Enable caddy socket
   become: true
   ansible.builtin.systemd:
-    name: caddy
+    name: caddy.socket
     enabled: true
     daemon_reload: true
     state: started
+
+- name: Disable caddy service
+  become: true
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    enabled: false
