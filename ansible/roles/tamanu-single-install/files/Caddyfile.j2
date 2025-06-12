@@ -16,28 +16,6 @@
 
   encode zstd gzip
 
-  reverse_proxy /* {
-    header_up Host "localhost"
-
-    dynamic a frontend.tamanu.internal 3000 {
-      resolvers 10.100.0.1
-      {% if not tamanu_ipv6 %}
-      versions ipv4
-      {% endif %}
-    }
-
-    fail_duration 10s
-    lb_policy least_conn
-    health_uri /
-    health_headers {
-      Host "localhost"
-    }
-
-    transport http {
-      keepalive 65s
-    }
-  }
-
   redir /v1/login /api/login 308
 
   @api {
@@ -77,6 +55,28 @@
     fail_duration 15s
     lb_policy least_conn
     health_uri /api/public/ping
+
+    transport http {
+      keepalive 65s
+    }
+  }
+
+  reverse_proxy /* {
+    header_up Host "localhost"
+
+    dynamic a frontend.tamanu.internal 3000 {
+      resolvers 10.100.0.1
+      {% if not tamanu_ipv6 %}
+      versions ipv4
+      {% endif %}
+    }
+
+    fail_duration 10s
+    lb_policy least_conn
+    health_uri /
+    health_headers {
+      Host "localhost"
+    }
 
     transport http {
       keepalive 65s
