@@ -1,0 +1,6 @@
+name: drata
+description: Autopilot role for Drata
+runtime:
+  name: nodejs
+  options:
+    typescript: false
