@@ -1,6 +1,7 @@
 ---
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: bestool.yml
+- ansible.builtin.include_tasks: edit.yml
 - ansible.builtin.include_tasks: starship.yml
 - ansible.builtin.include_tasks: tmux.yml
 
