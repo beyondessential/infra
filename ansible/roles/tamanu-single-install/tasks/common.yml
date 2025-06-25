@@ -77,3 +77,23 @@
     dest: /usr/local/bin/tamanu-run
     src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-run.j2') }}"
     mode: "0755"
+
+- name: Install quadlet override for extra_certs
+  when: tamanu_extra_certs
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/{{ item | basename }}.d/host-ca-certs.conf
+    content: |
+      [Container]
+      Volume=/etc/ssl/certs:/host/etc/ssl/certs:ro
+      Environment=NODE_EXTRA_CA_CERTS=/host/etc/ssl/certs/ca-certificates.crt
+  notify: Reload systemd
+
+- name: Uninstall quadlet override for extra_certs
+  when: not tamanu_extra_certs
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d/host-ca-certs.conf
+    state: absent

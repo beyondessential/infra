@@ -19,4 +19,5 @@ tamanu_central_hostname: "{{ tamanu_central_canonical_url | urlsplit('hostname')
 tamanu_central_ip: false
 tamanu_cache_central_dns: true
 tamanu_caddy_tls: true
+tamanu_extra_certs: false # if true, the host's /etc/ssl/certs/ca-certificates.crt will be added to node inside the container
 tailnet: tail53aef
