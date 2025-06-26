@@ -26,8 +26,8 @@
 
     - role: kopia
       tags: [base, kopia]
-    - role: metrics
-      tags: [base, metrics]
+    #- role: metrics
+    #  tags: [base, metrics]
 
     - role: postgres
       tags: [base, postgres]
