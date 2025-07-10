@@ -109,4 +109,7 @@ export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
 export const domains = {
   central: `central.${domainBase}`,
   ...Object.fromEntries(facilityNames.map((name) => [name, `${name}.${domainBase}`])),
+  patientPortal: `portal.${domainBase}`,
 };
+
+export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2;

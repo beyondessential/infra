@@ -6,7 +6,7 @@ import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { architecture, nodeEnv } from '../config.js';
 import { ImageType, image, imageTag } from '../image.js';
 
-export type ServerType = Exclude<ImageType, 'frontend'>;
+export type ServerType = Exclude<ImageType, 'frontend' | 'patient-portal'>;
 
 export function appSelector(serverType: ServerType, instance?: string): { [key: string]: string } {
   const selector = {
@@ -28,7 +28,7 @@ export function appLabels(serverType: ServerType, instance?: string): { [key: st
   };
 }
 
-export function podSpecFactory(): PodSpecFactory {
+export function podSpecFactory(imageType: ImageType): PodSpecFactory {
   return ({
     podType,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
@@ -57,7 +57,7 @@ export function podSpecFactory(): PodSpecFactory {
     containers: [
       {
         name: podType,
-        image: image('frontend'),
+        image: image(imageType),
         imagePullPolicy: 'IfNotPresent',
         volumeMounts,
         env: compact([
