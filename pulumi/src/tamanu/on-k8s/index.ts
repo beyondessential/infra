@@ -27,7 +27,7 @@ for (const [i, name] of facilityNames.entries()) {
 }
 
 const patientPortal = new WebFrontend('patient-portal', {
-  serverType: 'central',
+  serverType: 'patient-portal',
   imageType: 'patient-portal',
   replicas: patientPortalReplicas,
 });

@@ -6,7 +6,7 @@ import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.js';
 import { architecture, nodeEnv } from '../config.js';
 import { ImageType, image, imageTag } from '../image.js';
 
-export type ServerType = Exclude<ImageType, 'frontend' | 'patient-portal'>;
+export type ServerType = Exclude<ImageType, 'frontend'>;
 
 export function appSelector(serverType: ServerType, instance?: string): { [key: string]: string } {
   const selector = {
