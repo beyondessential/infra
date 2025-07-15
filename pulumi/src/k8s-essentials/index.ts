@@ -7,7 +7,6 @@ import './metrics/prometheus.js';
 import './metrics/grafana.js';
 import './postgres.js';
 import './tailscale.js';
-import './redis.js';
 
 import './hnc/crds.js';
 import './hnc/roles.js';
