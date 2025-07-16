@@ -4,6 +4,9 @@ await failIfIncorrectCluster();
 failIfIncorrectAccount();
 
 import { ghaDagsterRole } from './github.ts';
-import './celery.ts';
-
 export const ghaDagsterRoleArn = ghaDagsterRole.arn;
+
+import { system } from './namespace.ts';
+import { CeleryQueue } from './celery.ts';
+
+new CeleryQueue('dagster', { namespace: system });
