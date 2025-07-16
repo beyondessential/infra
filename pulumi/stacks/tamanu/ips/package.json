@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/ips",
   "type": "module",
-  "main": "../../../src/tamanu/ips/index.ts"
+  "main": "./index.ts"
 }

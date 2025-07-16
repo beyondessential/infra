@@ -1,5 +1,5 @@
 {
   "name": "@besdata/bucket",
   "type": "module",
-  "main": "../../../src/data/bucket/index.ts"
+  "main": "./index.ts"
 }

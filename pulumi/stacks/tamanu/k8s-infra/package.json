@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/k8s-infra",
   "type": "module",
-  "main": "../../../src/tamanu/k8s-infra/index.ts"
+  "main": "./index.ts"
 }
