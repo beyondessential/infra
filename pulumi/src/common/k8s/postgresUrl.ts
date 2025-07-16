@@ -7,42 +7,58 @@ export interface PostgresUrlArgs {
   parent?: ComponentResource;
   namespace: Input<string>;
   name: Input<string>;
-  dbReady: Output<void | k8s.core.v1.Secret>,
+  dbReady: Output<void | k8s.core.v1.Secret>;
 }
 
-function dbPassword(dbReady: Output<void | k8s.core.v1.Secret>, namespace: Input<string>, name: Input<string>, user: string): Output<null | string> {
-  return secret(all([namespace, name, dbReady]).apply(async ([namespace, name]) => {
-    try {
-      const kc = k8sConfig();
-      const k8sApi = kc.makeApiClient(CoreV1Api);
+function dbPassword(
+  dbReady: Output<void | k8s.core.v1.Secret>,
+  namespace: Input<string>,
+  name: Input<string>,
+  user: string,
+): Output<null | string> {
+  return secret(
+    all([namespace, name, dbReady]).apply(async ([namespace, name]) => {
+      try {
+        const kc = k8sConfig();
+        const k8sApi = kc.makeApiClient(CoreV1Api);
 
-      const kSecret = await k8sApi.readNamespacedSecret({ name: `${name}-db-${user}`, namespace });
-      const hidden = kSecret.data?.['password'];
-      if (!hidden) {
+        const kSecret = await k8sApi.readNamespacedSecret({
+          name: `${name}-db-${user}`,
+          namespace,
+        });
+        const hidden = kSecret.data?.['password'];
+        if (!hidden) {
+          return null;
+        }
+
+        return Buffer.from(hidden, 'base64').toString('utf-8');
+      } catch (err) {
+        console.error(`Secret ${name}-db-${user} not found or not ready: ${err}`);
         return null;
       }
-
-      return Buffer.from(hidden, 'base64').toString('utf-8');
-    } catch (err) {
-      console.error(`Secret ${name}-db-${user} not found or not ready: ${err}`);
-      return null;
-    }
-  }));
+    }),
+  );
 }
 
-export enum PostgresUrlSecretKey {
-  AppPassword = 'app.password',
-  AppDbUrl = 'app.dburl',
-  AppRocket = 'app.rocket',
-  AppLocalDbUrl = 'app.localdburl',
-  AppLocalJdbc = 'app.localjdbc',
-  PostgresPassword = 'postgres.password',
-  PostgresDbUrl = 'postgres.dburl',
-  PostgresLocalDbUrl = 'postgres.localdburl',
-  PostgresLocalJdbc = 'postgres.localjdbc',
-}
+export const PostgresUrlSecretKey = {
+  AppPassword: 'app.password',
+  AppDbUrl: 'app.dburl',
+  AppRocket: 'app.rocket',
+  AppLocalDbUrl: 'app.localdburl',
+  AppLocalJdbc: 'app.localjdbc',
+  PostgresPassword: 'postgres.password',
+  PostgresDbUrl: 'postgres.dburl',
+  PostgresLocalDbUrl: 'postgres.localdburl',
+  PostgresLocalJdbc: 'postgres.localjdbc',
+};
+export type PostgresUrlSecretKey = keyof typeof PostgresUrlSecretKey;
 
-export function postgresUrlSecret({ parent, namespace, name, dbReady }: PostgresUrlArgs): k8s.core.v1.Secret {
+export function postgresUrlSecret({
+  parent,
+  namespace,
+  name,
+  dbReady,
+}: PostgresUrlArgs): k8s.core.v1.Secret {
   const appPassword = dbPassword(dbReady, namespace, name, 'app');
   const postgresPassword = dbPassword(dbReady, namespace, name, 'superuser');
 
