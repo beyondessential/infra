@@ -1,6 +1,6 @@
 import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/k8s/coreRef.ts';
-import { Architecture } from '../../common/k8s/affinities.ts';
+import type { Architecture } from '../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../common/dns.ts';
 
 export const normalizedStack = `tamanu-meta-${getStack()}`
@@ -10,9 +10,9 @@ export const normalizedStack = `tamanu-meta-${getStack()}`
   .slice(0, 63) // 63 is the max length of a k8s namespace
   .replace(/^-+|-+$/g, '');
 
-export const domains: string[] =
-  cfg.getObject('domains') ??
-  [truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'cd.tamanu.app')];
+export const domains: string[] = cfg.getObject('domains') ?? [
+  truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'cd.tamanu.app'),
+];
 
 export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
 export const replicas = cfg.getNumber('replicas') ?? 2;

@@ -1,4 +1,4 @@
-import { ComponentResource, ComponentResourceOptions, StackReference } from '@pulumi/pulumi';
+import { ComponentResource, type ComponentResourceOptions, StackReference } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import * as awsClassic from '@pulumi/aws';
 import { Endpoint } from './Endpoint.ts';

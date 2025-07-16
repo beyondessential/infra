@@ -2,15 +2,15 @@ import { createHash } from 'crypto';
 
 import {
   ComponentResource,
-  ComponentResourceOptions,
+  type ComponentResourceOptions,
   Config,
-  Output,
+  type Output,
   StackReference,
   all,
   jsonStringify,
 } from '@pulumi/pulumi';
 import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
-import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds/index.js';
+import { getInstanceOutput as getDatabase, type GetInstanceResult } from '@pulumi/aws/rds/index.js';
 import { Database, Extension, GrantRole, Role } from '@pulumi/postgresql';
 
 import { ValidCertificate } from '../../common/ValidCertificate.ts';

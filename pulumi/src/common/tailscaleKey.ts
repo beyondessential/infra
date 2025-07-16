@@ -1,4 +1,4 @@
-import { ResourceOptions, Input } from '@pulumi/pulumi';
+import type { ResourceOptions, Input } from '@pulumi/pulumi';
 import { TailnetKey } from '@pulumi/tailscale';
 
 export interface TailscaleKeyArgs {

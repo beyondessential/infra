@@ -1,4 +1,9 @@
-import { ComponentResource, ComponentResourceOptions, Input, Output } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  type ComponentResourceOptions,
+  type Input,
+  type Output,
+} from '@pulumi/pulumi';
 import { Listener, LoadBalancer as AwsLoadBalancer } from '@pulumi/aws/lb/index.js';
 import { Record } from '@pulumi/aws/route53/index.js';
 

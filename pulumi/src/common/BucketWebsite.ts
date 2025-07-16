@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { jsonStringify, ComponentResource, ComponentResourceOptions } from '@pulumi/pulumi';
+import { jsonStringify, ComponentResource, type ComponentResourceOptions } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { ValidCertificate } from './ValidCertificate.ts';
 

@@ -1,16 +1,16 @@
 import { readFileSync } from 'fs';
 import {
   ComponentResource,
-  ComponentResourceOptions,
-  Input,
-  Output,
+  type ComponentResourceOptions,
+  type Input,
+  type Output,
   StackReference,
 } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
 import { Service } from '@pulumi/aws/servicediscovery/index.js';
 import { Parameter } from '@pulumi/aws/ssm/index.js';
-import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam/index.js';
+import { Policy, PolicyAttachment, type PolicyStatement, Role } from '@pulumi/aws/iam/index.js';
 import { Endpoint } from './Endpoint.ts';
 import { cpuArchitecture } from './config.ts';
 

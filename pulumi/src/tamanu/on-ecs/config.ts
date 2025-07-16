@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { Config, getStack } from '@pulumi/pulumi';
-import { FacilityDef } from './Cluster.ts';
+import type { FacilityDef } from './Cluster.ts';
 
 export const cfg = new Config();
 export const infraStack = cfg.get('infraStack') ?? 'bes/tamanu-infra/main';

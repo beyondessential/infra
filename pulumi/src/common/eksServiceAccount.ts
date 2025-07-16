@@ -1,4 +1,4 @@
-import { ComponentResourceOptions, Input, all, output } from '@pulumi/pulumi';
+import { type ComponentResourceOptions, type Input, all, output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import { AWS_STS } from '../constants/external.ts';
 

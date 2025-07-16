@@ -1,5 +1,5 @@
 import * as awsNative from '@pulumi/aws-native';
-import { all, getStack, Input, interpolate } from '@pulumi/pulumi';
+import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
 import { accountId } from '../../../common/awsAccount.ts';
 import { AWS_BACKUP_DEFAULT_SERVICE_ROLE } from '../../../constants/external.ts';
 

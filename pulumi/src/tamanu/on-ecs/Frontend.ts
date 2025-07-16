@@ -1,4 +1,10 @@
-import { ComponentResource, ComponentResourceOptions, Output, StackReference, all } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  type ComponentResourceOptions,
+  type Output,
+  StackReference,
+  all,
+} from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import * as awsClassic from '@pulumi/aws';
 import { cpuArchitecture } from './config.ts';

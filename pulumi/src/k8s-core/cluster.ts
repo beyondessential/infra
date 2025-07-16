@@ -1,10 +1,8 @@
-import { Agent } from 'node:https';
-import { CustomResourceOptions, interpolate } from '@pulumi/pulumi';
+import type { CustomResourceOptions } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import * as awsClassic from '@pulumi/aws';
 import { AWS_STS } from '../constants/external.ts';
 import { $network, cfg, stackName } from '../common/coreRef.ts';
-import { dnsSuffix, region } from '../common/awsAccount.ts';
 import { nativeTags } from '../common/tags.ts';
 import { controlPlaneRole } from './roles.ts';
 

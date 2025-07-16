@@ -1,8 +1,8 @@
 import {
   ComponentResource,
-  ComponentResourceOptions,
-  Input,
-  Output,
+  type ComponentResourceOptions,
+  type Input,
+  type Output,
   all,
   output,
 } from '@pulumi/pulumi';

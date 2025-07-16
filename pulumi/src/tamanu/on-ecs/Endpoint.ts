@@ -1,9 +1,9 @@
 import { createHash } from 'crypto';
 import {
   ComponentResource,
-  ComponentResourceOptions,
-  Input,
-  Output,
+  type ComponentResourceOptions,
+  type Input,
+  type Output,
   StackReference,
   all,
 } from '@pulumi/pulumi';

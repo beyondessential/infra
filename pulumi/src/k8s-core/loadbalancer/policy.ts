@@ -1,7 +1,7 @@
 // From https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.7/docs/install/iam_policy.json
 // With parametrisation recommended by https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/deploy/installation/
 
-import { all, Input, Output } from '@pulumi/pulumi';
+import { all, type Input, type Output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { region, accountId } from '../../common/awsAccount.ts';
 
@@ -18,9 +18,8 @@ export function awsLbPolicy(vpcId: Input<string>): Output<aws.iam.PolicyDocument
           ) {
             statement.Condition ??= {};
             statement.Condition.ArnEquals ??= {};
-            statement.Condition.ArnEquals[
-              'ec2:Vpc'
-            ] = `arn:aws:ec2:${region}:${accountId}:vpc/${vpcId}`;
+            statement.Condition.ArnEquals['ec2:Vpc'] =
+              `arn:aws:ec2:${region}:${accountId}:vpc/${vpcId}`;
           }
 
           return statement;

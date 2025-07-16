@@ -1,8 +1,8 @@
 import {
   ComponentResource,
-  ComponentResourceOptions,
-  Input,
-  Output,
+  type ComponentResourceOptions,
+  type Input,
+  type Output,
   jsonStringify,
 } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
@@ -23,10 +23,14 @@ export class Secret extends ComponentResource {
     super('bes:common:AwsSecret', name, {}, opts);
     const { secretValue, namePrefix, ...metaArgs } = args;
 
-    const secretMeta = new aws.secretsmanager.Secret(name, {
-      namePrefix: namePrefix ? `${namePrefix}-${name}-` : `${name}-`,
-      ...metaArgs
-    }, { parent: this });
+    const secretMeta = new aws.secretsmanager.Secret(
+      name,
+      {
+        namePrefix: namePrefix ? `${namePrefix}-${name}-` : `${name}-`,
+        ...metaArgs,
+      },
+      { parent: this },
+    );
 
     const secretVersion = new aws.secretsmanager.SecretVersion(
       name,
