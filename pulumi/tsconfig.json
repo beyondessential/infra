@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": ["src/**/*.ts"],
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "module": "nodenext",
+    "target": "esnext",
+    "moduleResolution": "nodenext",
+    "rootDir": "./src",
+    "outDir": "./build",
+    "erasableSyntaxOnly": true
+  }
+}
