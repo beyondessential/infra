@@ -1,10 +1,10 @@
 import { ComponentResource, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import JSON5 from 'json5';
-import { templatedConfig } from '../common/templatedConfig.js';
-import { namespace } from '../namespace.js';
-import { PodSpecFactory } from '../common/specFactory.js';
-import { timezone } from '../config.js';
+import { templatedConfig } from '../common/templatedConfig.ts';
+import { namespace } from '../namespace.ts';
+import { PodSpecFactory } from '../common/specFactory.ts';
+import { timezone } from '../config.ts';
 
 export interface MigratorArgs {
   parent: ComponentResource;

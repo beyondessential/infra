@@ -3,7 +3,7 @@
 
 import { all, Input, Output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
-import { region, accountId } from '../../common/awsAccount.js';
+import { region, accountId } from '../../common/awsAccount.ts';
 
 export function awsLbPolicy(vpcId: Input<string>): Output<aws.iam.PolicyDocument> {
   return all([AWS_LB_POLICY, vpcId, region, accountId]).apply(

@@ -1,9 +1,9 @@
 import { ComponentResource, ComponentResourceOptions, StackReference } from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import * as awsClassic from '@pulumi/aws';
-import { Endpoint } from './Endpoint.js';
-import { Frontend } from './Frontend.js';
-import { cpuArchitecture } from './config.js';
+import { Endpoint } from './Endpoint.ts';
+import { Frontend } from './Frontend.ts';
+import { cpuArchitecture } from './config.ts';
 
 export interface RouterArgs {
   ecs: awsClassic.ecs.Cluster;

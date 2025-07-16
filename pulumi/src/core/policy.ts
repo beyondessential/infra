@@ -1,6 +1,6 @@
 import * as awsClassic from '@pulumi/aws';
 
-import { forEksCluster, v6 } from './config.js';
+import { forEksCluster, v6 } from './config.ts';
 
 // https://docs.aws.amazon.com/eks/latest/userguide/cni-iam-role.html#cni-iam-role-create-ipv6-policy
 export const eksCniV6Policy =

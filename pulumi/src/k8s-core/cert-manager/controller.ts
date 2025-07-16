@@ -1,9 +1,9 @@
 import * as k8s from '@pulumi/kubernetes';
-import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.js';
-import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.js';
-import { namespace } from './namespace.js';
-import { sa } from './policy.js';
-import { provider } from '../kubeconfig.js';
+import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
+import { namespace } from './namespace.ts';
+import { sa } from './policy.ts';
+import { provider } from '../kubeconfig.ts';
 
 export const certManager = new k8s.helm.v3.Release('cert-manager', {
   chart: 'cert-manager',

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { jsonStringify, ComponentResource, ComponentResourceOptions } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { ValidCertificate } from './ValidCertificate.js';
+import { ValidCertificate } from './ValidCertificate.ts';
 
 export interface BucketWebsiteArgs {
   domain: string;

@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { failIfIncorrectCluster } from '../common/k8s/coreRef.js';
+import { failIfIncorrectCluster } from '../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
 const ns = new k8s.core.v1.Namespace('bestool-proxy', {

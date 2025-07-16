@@ -1,8 +1,8 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from '../namespace.js';
-import { ServerType, appLabels, appSelector } from './specs.js';
-import { PodSpecFactory } from '../common/specFactory.js';
+import { namespace } from '../namespace.ts';
+import { ServerType, appLabels, appSelector } from './specs.ts';
+import { PodSpecFactory } from '../common/specFactory.ts';
 
 export interface RunWebArgs {
   parent: ComponentResource;

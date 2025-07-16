@@ -2,7 +2,7 @@ import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
+import { namespace } from './namespace.ts';
 
 function readConfig(
   template: string,

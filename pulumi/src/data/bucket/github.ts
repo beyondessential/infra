@@ -1,8 +1,8 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import { Role } from '@pulumi/aws/iam/index.js';
-import { ghaOidc } from '../../common/coreRef.js';
-import { AWS_STS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.js';
-import { BUCKET, ROLE_NAME, GHA_CLAIMS } from './config.js';
+import { ghaOidc } from '../../common/coreRef.ts';
+import { AWS_STS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
+import { BUCKET, ROLE_NAME, GHA_CLAIMS } from './config.ts';
 
 export const role = new Role('github-actions-deploy', {
   name: ROLE_NAME,

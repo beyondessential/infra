@@ -1,15 +1,15 @@
-import { failIfIncorrectCluster, clusterName, oidcProvider } from '../../common/k8s/coreRef.js';
+import { failIfIncorrectCluster, clusterName, oidcProvider } from '../../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { interpolate, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { BucketWebsite } from '../../common/BucketWebsite.js';
-import { AWS_STS } from '../../constants/external.js';
-import { LOGS_BUCKETS } from '../../constants/internal.js';
-import { BUCKET_NAME, ZONE_ID } from './constants.js';
-import { eksServiceAccount } from '../../common/eksServiceAccount.js';
+import { BucketWebsite } from '../../common/BucketWebsite.ts';
+import { AWS_STS } from '../../constants/external.ts';
+import { LOGS_BUCKETS } from '../../constants/internal.ts';
+import { BUCKET_NAME, ZONE_ID } from './constants.ts';
+import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 
 const SERVICE_ACCOUNT_NAME = 'ips-bucket';
 

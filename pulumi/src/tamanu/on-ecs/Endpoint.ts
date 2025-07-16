@@ -10,8 +10,8 @@ import {
 import { Service } from '@pulumi/aws/servicediscovery/index.js';
 import { ListenerCertificate, ListenerRule, TargetGroup } from '@pulumi/aws/lb/index.js';
 import { Record } from '@pulumi/aws/route53/index.js';
-import { ValidCertificate } from '../../common/ValidCertificate.js';
-import { truncateDomainIfNeeded } from '../../common/dns.js';
+import { ValidCertificate } from '../../common/ValidCertificate.ts';
+import { truncateDomainIfNeeded } from '../../common/dns.ts';
 
 export interface EndpointArgs {
   clusterName: string;

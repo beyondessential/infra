@@ -1,7 +1,7 @@
 import * as aws from '@pulumi/aws';
-import { normalizedStack, namePrefix } from './config.js';
-import { $network } from '../../common/coreRef.js';
-import * as securityGroupRules from '../../common/securityGroupRules.js';
+import { normalizedStack, namePrefix } from './config.ts';
+import { $network } from '../../common/coreRef.ts';
+import * as securityGroupRules from '../../common/securityGroupRules.ts';
 
 export const sg = new aws.ec2.SecurityGroup(
   normalizedStack,

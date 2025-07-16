@@ -11,8 +11,8 @@ import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
 import { Service } from '@pulumi/aws/servicediscovery/index.js';
 import { Parameter } from '@pulumi/aws/ssm/index.js';
 import { Policy, PolicyAttachment, PolicyStatement, Role } from '@pulumi/aws/iam/index.js';
-import { Endpoint } from './Endpoint.js';
-import { cpuArchitecture } from './config.js';
+import { Endpoint } from './Endpoint.ts';
+import { cpuArchitecture } from './config.ts';
 
 export interface ServerArgs {
   ecs: ECSCluster;

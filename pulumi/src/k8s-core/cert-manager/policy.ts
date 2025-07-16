@@ -1,11 +1,11 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { eksServiceAccount } from '../../common/eksServiceAccount.js';
-import { clusterName, oidcProvider } from '../cluster.js';
-import { provider } from '../kubeconfig.js';
-import { namespace } from './namespace.js';
-import { externalDnsZoneIds } from '../externalDns.js';
+import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
+import { clusterName, oidcProvider } from '../cluster.ts';
+import { provider } from '../kubeconfig.ts';
+import { namespace } from './namespace.ts';
+import { externalDnsZoneIds } from '../externalDns.ts';
 
 const SERVICE_ACCOUNT_NAME = 'awslbc';
 

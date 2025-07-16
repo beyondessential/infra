@@ -1,11 +1,11 @@
 import { ComponentResource, Input, interpolate, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
-import { k8sWaitFor } from './waitFor.js';
-import { CAN_RUN_ON_SPOT } from './tolerations.js';
-import { RUN_ON_SPOT } from './affinities.js';
-import { postgresUrlSecret } from './postgresUrl.js';
-import { backups } from './coreRef.js';
+import { k8sWaitFor } from './waitFor.ts';
+import { CAN_RUN_ON_SPOT } from './tolerations.ts';
+import { RUN_ON_SPOT } from './affinities.ts';
+import { postgresUrlSecret } from './postgresUrl.ts';
+import { backups } from './coreRef.ts';
 
 export interface PostgresArgs {
   parent?: ComponentResource;

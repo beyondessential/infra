@@ -1,6 +1,6 @@
 import { Input, Output, Unwrap, all, log, output, runtime } from '@pulumi/pulumi';
 import * as k8s from '@kubernetes/client-node';
-import { k8sConfig } from './client.js';
+import { k8sConfig } from './client.ts';
 
 export interface K8sWaitForOptions {
   kubeconfig?: Input<string>;

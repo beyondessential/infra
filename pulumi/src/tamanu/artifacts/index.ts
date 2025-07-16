@@ -1,5 +1,5 @@
-import { failIfIncorrectAccount } from '../../common/coreRef.js';
+import { failIfIncorrectAccount } from '../../common/coreRef.ts';
 failIfIncorrectAccount();
 
-import './buckets.js';
-import './github.js';
+import './buckets.ts';
+import './github.ts';

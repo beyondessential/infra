@@ -1,7 +1,7 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { compact } from 'lodash-es';
-import { namespace } from '../namespace.js';
+import { namespace } from '../namespace.ts';
 
 export interface IngressArgs {
   name: string;

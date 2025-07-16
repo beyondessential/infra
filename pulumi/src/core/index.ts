@@ -1,10 +1,10 @@
-import { v4, v6 as ipv6 } from './config.js';
+import { v4, v6 as ipv6 } from './config.ts';
 const ipv4 = Boolean(v4);
 export { ipv4, ipv6 };
 
-export { accountId } from '../common/awsAccount.js';
-export { tags, domain as zoneName } from './config.js';
-export { ghaOidc } from './oidc.js';
-export { eksCniV6Policy } from './policy.js';
-export { network, dbSubnetGroup } from './network.js';
-export { zoneId, zoneNS, zoneMgmtPolicy } from './zone.js';
+export { accountId } from '../common/awsAccount.ts';
+export { tags, domain as zoneName } from './config.ts';
+export { ghaOidc } from './oidc.ts';
+export { eksCniV6Policy } from './policy.ts';
+export { network, dbSubnetGroup } from './network.ts';
+export { zoneId, zoneNS, zoneMgmtPolicy } from './zone.ts';

@@ -1,9 +1,9 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
-import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../common/k8s/affinities.js';
-import { metricsScrape } from '../common/k8s/annotations.js';
-import { cfg } from '../common/k8s/coreRef.js';
+import { namespace } from './namespace.ts';
+import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
+import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../common/k8s/affinities.ts';
+import { metricsScrape } from '../common/k8s/annotations.ts';
+import { cfg } from '../common/k8s/coreRef.ts';
 
 if (cfg.getSecret('uptimerobotApiKey')) {
   const labels = {

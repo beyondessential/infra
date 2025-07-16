@@ -1,5 +1,5 @@
-import { NetworkOutputs } from './Network.js';
-import { CrossStackNetwork } from './CrossStack.js';
+import { NetworkOutputs } from './Network.ts';
+import { CrossStackNetwork } from './CrossStack.ts';
 
 export const all = {
   fromPort: 0,

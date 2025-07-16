@@ -1,12 +1,12 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { eksServiceAccount } from '../common/eksServiceAccount.js';
-import { clusterName, oidcProvider } from './cluster.js';
-import { provider } from './kubeconfig.js';
-import { cfg } from '../common/coreRef.js';
-import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
-import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.js';
+import { eksServiceAccount } from '../common/eksServiceAccount.ts';
+import { clusterName, oidcProvider } from './cluster.ts';
+import { provider } from './kubeconfig.ts';
+import { cfg } from '../common/coreRef.ts';
+import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
+import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.ts';
 
 const externalDnsZones: { [domain: string]: string } = cfg.requireObject('externalDnsZones');
 export const externalDnsZoneDomains = Object.keys(externalDnsZones);

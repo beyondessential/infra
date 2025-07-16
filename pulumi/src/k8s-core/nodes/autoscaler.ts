@@ -2,10 +2,10 @@ import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
 import YAML from 'yaml';
-import { pascalStackName } from '../../common/coreRef.js';
-import { eksServiceAccount } from '../../common/eksServiceAccount.js';
-import { provider } from '../kubeconfig.js';
-import { clusterName, oidcProvider } from '../cluster.js';
+import { pascalStackName } from '../../common/coreRef.ts';
+import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
+import { provider } from '../kubeconfig.ts';
+import { clusterName, oidcProvider } from '../cluster.ts';
 
 const SERVICE_ACCOUNT_NAME = 'autoscaler';
 const namespace = 'kube-system';

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
+import { namespace } from './namespace.ts';
 
 const adminSecret = new k8s.core.v1.Secret(
   'grafana-admin',

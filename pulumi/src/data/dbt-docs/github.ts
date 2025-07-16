@@ -1,7 +1,7 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import { OpenIdConnectProvider, Role } from '@pulumi/aws/iam/index.js';
-import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../../constants/external.js';
-import { BUCKET, DB_SECRET_ARNS } from './constants.js';
+import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../../constants/external.ts';
+import { BUCKET, DB_SECRET_ARNS } from './constants.ts';
 
 // Github Actions OIDC roles for CD
 // https://github.com/aws-actions/configure-aws-credentials#sample-iam-oidc-cloudformation-template

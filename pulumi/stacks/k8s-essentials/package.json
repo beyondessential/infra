@@ -1,5 +1,5 @@
 {
   "name": "@bes/k8s-essentials",
   "type": "module",
-  "main": "../../build/k8s-essentials/index.js"
+  "main": "../../src/k8s-essentials/index.ts"
 }

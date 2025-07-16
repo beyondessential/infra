@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
-import { ValidCertificate } from '../../common/ValidCertificate.js';
-import { BUCKET, DOMAIN, ZONE_ID, LOGS_BUCKET } from './config.js';
+import { ValidCertificate } from '../../common/ValidCertificate.ts';
+import { BUCKET, DOMAIN, ZONE_ID, LOGS_BUCKET } from './config.ts';
 
 const bucket = new aws.s3.BucketV2(
   'bucket',

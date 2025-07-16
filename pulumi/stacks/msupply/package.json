@@ -1,5 +1,5 @@
 {
   "name": "@bes/msupply",
   "type": "module",
-  "main": "../../build/msupply/index.js"
+  "main": "../../src/msupply/index.ts"
 }

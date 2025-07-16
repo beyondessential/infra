@@ -1,9 +1,9 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
-import { region } from '../../common/awsAccount.js';
-import { provider } from '../kubeconfig.js';
-import { cfg } from '../../common/coreRef.js';
-import { certManager } from './controller.js';
+import { namespace } from './namespace.ts';
+import { region } from '../../common/awsAccount.ts';
+import { provider } from '../kubeconfig.ts';
+import { cfg } from '../../common/coreRef.ts';
+import { certManager } from './controller.ts';
 
 const kid = cfg.require('zerosslEabKid');
 const key = cfg.requireSecret('zerosslEabKey');

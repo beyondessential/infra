@@ -1,6 +1,6 @@
 import { Config } from '@pulumi/pulumi';
-import { CrossStack } from '../CrossStack.js';
-import { k8sConfig } from './client.js';
+import { CrossStack } from '../CrossStack.ts';
+import { k8sConfig } from './client.ts';
 
 export const cfg = new Config();
 

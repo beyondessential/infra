@@ -2,7 +2,7 @@ import { ComponentResource, ComponentResourceOptions, Input, Output } from '@pul
 import { Listener, LoadBalancer as AwsLoadBalancer } from '@pulumi/aws/lb/index.js';
 import { Record } from '@pulumi/aws/route53/index.js';
 
-import { ValidCertificate } from './ValidCertificate.js';
+import { ValidCertificate } from './ValidCertificate.ts';
 
 export interface LoadBalancerArgs {
   subnetIds: Input<Input<string>[]>;

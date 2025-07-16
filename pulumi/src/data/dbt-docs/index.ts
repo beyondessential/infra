@@ -1,2 +1,2 @@
-import './website.js';
-import './github.js';
+import './website.ts';
+import './github.ts';

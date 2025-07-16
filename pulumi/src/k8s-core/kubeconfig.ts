@@ -1,7 +1,7 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { Provider } from '@pulumi/kubernetes';
-import { cluster, clusterName } from './cluster.js';
+import { cluster, clusterName } from './cluster.ts';
 
 const auth = awsClassic.eks.getClusterAuthOutput({
   name: clusterName,

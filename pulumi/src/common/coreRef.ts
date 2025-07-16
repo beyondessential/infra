@@ -1,8 +1,8 @@
 import { camelCase, upperFirst } from 'lodash-es';
 import { all, Config, getStack, Output } from '@pulumi/pulumi';
-import { CrossStack } from './CrossStack.js';
-import { nativeTags as tagsToNative } from './tags.js';
-import { accountId } from './awsAccount.js';
+import { CrossStack } from './CrossStack.ts';
+import { nativeTags as tagsToNative } from './tags.ts';
+import { accountId } from './awsAccount.ts';
 
 export const cfg = new Config();
 

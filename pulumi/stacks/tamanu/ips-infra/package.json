@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/ips-infra",
   "type": "module",
-  "main": "../../../build/tamanu/ips-infra/index.js"
+  "main": "../../../src/tamanu/ips-infra/index.ts"
 }

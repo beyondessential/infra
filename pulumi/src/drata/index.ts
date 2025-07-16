@@ -1,6 +1,6 @@
 import { Config, jsonStringify } from '@pulumi/pulumi';
 import * as awsNative from '@pulumi/aws-native';
-import { nativeTags } from '../common/tags.js';
+import { nativeTags } from '../common/tags.ts';
 
 const config = new Config();
 const drataExternalId = config.requireSecret('drataExternalId');

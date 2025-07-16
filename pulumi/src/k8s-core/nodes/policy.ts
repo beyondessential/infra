@@ -1,5 +1,5 @@
 import * as awsClassic from '@pulumi/aws';
-import { pascalStackName, stackName } from '../../common/coreRef.js';
+import { pascalStackName, stackName } from '../../common/coreRef.ts';
 
 // https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/CA_with_AWS_IAM_OIDC.md
 export const autoscalerPolicy = new awsClassic.iam.Policy('autoscaler-instance-policy', {

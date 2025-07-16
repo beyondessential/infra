@@ -1,4 +1,4 @@
-import { cfg } from '../../common/k8s/coreRef.js';
+import { cfg } from '../../common/k8s/coreRef.ts';
 
 export type ImageType = 'central' | 'facility' | 'frontend';
 

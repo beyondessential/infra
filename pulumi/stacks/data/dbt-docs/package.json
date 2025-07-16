@@ -1,5 +1,5 @@
 {
   "name": "@besdata/dbt-docs",
   "type": "module",
-  "main": "../../../build/data/dbt-docs/index.js"
+  "main": "../../../src/data/dbt-docs/index.ts"
 }

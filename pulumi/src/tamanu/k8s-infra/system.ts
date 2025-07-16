@@ -1,4 +1,4 @@
-import './system/namespace.js';
-import './system/configs.js';
-import './system/roles.js';
-import './system/secrets.js';
+import './system/namespace.ts';
+import './system/configs.ts';
+import './system/roles.ts';
+import './system/secrets.ts';

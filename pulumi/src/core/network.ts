@@ -1,7 +1,7 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { accountId, region } from '../common/awsAccount.js';
-import { Network } from '../common/Network.js';
+import { accountId, region } from '../common/awsAccount.ts';
+import { Network } from '../common/Network.ts';
 
 import {
   forEksCluster,
@@ -11,7 +11,7 @@ import {
   v4,
   v6,
   withEndpoints,
-} from './config.js';
+} from './config.ts';
 
 const $network = accountId.apply((id) => {
   const ipv4Cidr = v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;

@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/on-ecs",
   "type": "module",
-  "main": "../../../build/tamanu/on-ecs/index.js"
+  "main": "../../../src/tamanu/on-ecs/index.ts"
 }

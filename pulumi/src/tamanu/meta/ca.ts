@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
-import { normalizedStack } from './config.js';
+import { namespace } from './namespace.ts';
+import { normalizedStack } from './config.ts';
 
 const caRootIssuer = new k8s.apiextensions.CustomResource('ca-root-issuer', {
   apiVersion: 'cert-manager.io/v1',

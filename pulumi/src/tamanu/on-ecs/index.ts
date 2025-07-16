@@ -1,6 +1,6 @@
 import { getStack } from '@pulumi/pulumi';
-import { Cluster } from './Cluster.js';
-import { cfg, facilities, imageTag, infraStack, initialUsers, superdomain } from './config.js';
+import { Cluster } from './Cluster.ts';
+import { cfg, facilities, imageTag, infraStack, initialUsers, superdomain } from './config.ts';
 
 export { imageTag };
 

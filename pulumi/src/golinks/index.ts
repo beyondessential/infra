@@ -1,9 +1,9 @@
 import * as k8s from '@pulumi/kubernetes';
 import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
-import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../common/k8s/affinities.js';
-import { failIfIncorrectCluster } from '../common/k8s/coreRef.js';
-import { tailscaleKey } from '../common/tailscaleKey.js';
+import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
+import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../common/k8s/affinities.ts';
+import { failIfIncorrectCluster } from '../common/k8s/coreRef.ts';
+import { tailscaleKey } from '../common/tailscaleKey.ts';
 await failIfIncorrectCluster();
 
 const ns = new k8s.core.v1.Namespace('golinks', {

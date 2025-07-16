@@ -1,10 +1,10 @@
-export { coreStackName } from '../common/coreRef.js';
-import { failIfIncorrectAccount } from '../common/coreRef.js';
+export { coreStackName } from '../common/coreRef.ts';
+import { failIfIncorrectAccount } from '../common/coreRef.ts';
 failIfIncorrectAccount();
 
-import { cluster, oidcProvider } from './cluster.js';
-export { clusterName as name, tags, version } from './cluster.js';
-import { bucket as backupsBucketObj, role as backupsRole } from './backups.js';
+import { cluster, oidcProvider } from './cluster.ts';
+export { clusterName as name, tags, version } from './cluster.ts';
+import { bucket as backupsBucketObj, role as backupsRole } from './backups.ts';
 export const arn = cluster.arn;
 export const endpoint = cluster.endpoint;
 export const ca = cluster.certificateAuthorityData;
@@ -12,12 +12,12 @@ export const backupsBucket = backupsBucketObj.bucket;
 export const backupsServiceAccountArn = backupsRole.arn;
 export const oidcProviderArn = oidcProvider.arn;
 
-import './nodes/groups.js';
-import './nodes/autoscaler.js';
-import './nodes/monitor.js';
-import './loadbalancer/ingress.js';
-import './externalDns.js';
-import './cert-manager/controller.js';
-import './cert-manager/letsencrypt.js';
-import './cert-manager/zerossl.js';
-import './storage.js';
+import './nodes/groups.ts';
+import './nodes/autoscaler.ts';
+import './nodes/monitor.ts';
+import './loadbalancer/ingress.ts';
+import './externalDns.ts';
+import './cert-manager/controller.ts';
+import './cert-manager/letsencrypt.ts';
+import './cert-manager/zerossl.ts';
+import './storage.ts';

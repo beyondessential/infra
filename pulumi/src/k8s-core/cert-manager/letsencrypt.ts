@@ -1,8 +1,8 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
-import { region } from '../../common/awsAccount.js';
-import { provider } from '../kubeconfig.js';
-import { certManager } from './controller.js';
+import { namespace } from './namespace.ts';
+import { region } from '../../common/awsAccount.ts';
+import { provider } from '../kubeconfig.ts';
+import { certManager } from './controller.ts';
 
 new k8s.apiextensions.CustomResource('letsencrypt', {
   apiVersion: 'cert-manager.io/v1',

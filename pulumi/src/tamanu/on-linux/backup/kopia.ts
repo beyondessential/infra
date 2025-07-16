@@ -1,8 +1,8 @@
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { getStack, jsonStringify } from '@pulumi/pulumi';
-import { AWS_S3_BACKUP_ACTIONS, AWS_EC2 } from '../../../constants/external.js';
-import { instances } from '../config.js';
+import { AWS_S3_BACKUP_ACTIONS, AWS_EC2 } from '../../../constants/external.ts';
+import { instances } from '../config.ts';
 
 const tags = [
   {

@@ -1,8 +1,8 @@
 import { compact } from 'lodash-es';
 import * as awsClassic from '@pulumi/aws';
-import { AWS_EC2, AWS_EKS } from '../constants/external.js';
-import { pascalStackName, $core, tags, stackName } from '../common/coreRef.js';
-import { autoscalerPolicy } from './nodes/policy.js';
+import { AWS_EC2, AWS_EKS } from '../constants/external.ts';
+import { pascalStackName, $core, tags, stackName } from '../common/coreRef.ts';
+import { autoscalerPolicy } from './nodes/policy.ts';
 
 export const controlPlaneRole = new awsClassic.iam.Role('control-plane', {
   namePrefix: `EKS${pascalStackName}ControlPlane-`,

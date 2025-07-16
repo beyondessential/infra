@@ -1,6 +1,6 @@
 import { ComponentResourceOptions, Input, all, output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
-import { AWS_STS } from '../constants/external.js';
+import { AWS_STS } from '../constants/external.ts';
 
 export interface EksServiceAccountArgs {
   roleName?: Input<string>;

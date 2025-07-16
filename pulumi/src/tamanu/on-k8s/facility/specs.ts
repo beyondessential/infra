@@ -1,11 +1,11 @@
 import { Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { PostgresReady } from '../../../common/k8s/postgres.js';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.js';
-import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.js';
-import { PodSpecFactory, PodSpecArgs } from '../common/specFactory.js';
-import { architecture, nodeEnv } from '../config.js';
-import { image, imageTag } from '../image.js';
+import { PostgresReady } from '../../../common/k8s/postgres.ts';
+import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
+import { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
+import { architecture, nodeEnv } from '../config.ts';
+import { image, imageTag } from '../image.ts';
 import { compact } from 'lodash-es';
 
 export function appSelector(component: string, deviceId: string): { [key: string]: string } {

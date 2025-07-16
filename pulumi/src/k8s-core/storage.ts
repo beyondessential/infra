@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
-import { eksServiceAccount } from '../common/eksServiceAccount.js';
-import { addAddon, oidcProvider } from './cluster.js';
-import { provider } from './kubeconfig.js';
+import { eksServiceAccount } from '../common/eksServiceAccount.ts';
+import { addAddon, oidcProvider } from './cluster.ts';
+import { provider } from './kubeconfig.ts';
 
 const ebsRole = eksServiceAccount('eks-ebs-csi', {
   serviceAccountName: 'ebs-csi-controller-sa',

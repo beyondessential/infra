@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
-import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.js';
-import { RUN_ON_SPOT } from '../common/k8s/affinities.js';
-import { clusterName } from '../common/k8s/coreRef.js';
+import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
+import { RUN_ON_SPOT } from '../common/k8s/affinities.ts';
+import { clusterName } from '../common/k8s/coreRef.ts';
 
 const ns = new k8s.core.v1.Namespace('ingress-system', {
   metadata: {

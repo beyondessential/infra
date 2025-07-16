@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BucketWebsite } from '../../common/BucketWebsite.js';
-import { LOGS_BUCKETS } from '../../constants/internal.js';
+import { BucketWebsite } from '../../common/BucketWebsite.ts';
+import { LOGS_BUCKETS } from '../../constants/internal.ts';
 import * as awsClassic from '@pulumi/aws';
 
 const zoneId = 'Z07118832KOZ96U06G6JA';

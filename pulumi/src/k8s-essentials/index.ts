@@ -1,14 +1,14 @@
-import { failIfIncorrectCluster } from '../common/k8s/coreRef.js';
+import { failIfIncorrectCluster } from '../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
-import './gatewayApi.js';
-import './ingress.js';
-import './metrics/prometheus.js';
-import './metrics/grafana.js';
-import './postgres.js';
-import './tailscale.js';
+import './gatewayApi.ts';
+import './ingress.ts';
+import './metrics/prometheus.ts';
+import './metrics/grafana.ts';
+import './postgres.ts';
+import './tailscale.ts';
 
-import './hnc/crds.js';
-import './hnc/roles.js';
-import './hnc/manager.js';
-import './hnc/webhooks.js';
+import './hnc/crds.ts';
+import './hnc/roles.ts';
+import './hnc/manager.ts';
+import './hnc/webhooks.ts';

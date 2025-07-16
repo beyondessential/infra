@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/artifacts",
   "type": "module",
-  "main": "../../../build/tamanu/artifacts/index.js"
+  "main": "../../../src/tamanu/artifacts/index.ts"
 }

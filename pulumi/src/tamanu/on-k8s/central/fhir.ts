@@ -1,8 +1,8 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from '../namespace.js';
-import { appLabels, appSelector } from './specs.js';
-import { PodSpecFactory } from '../common/specFactory.js';
+import { namespace } from '../namespace.ts';
+import { appLabels, appSelector } from './specs.ts';
+import { PodSpecFactory } from '../common/specFactory.ts';
 
 export interface RunFhirWorkerArgs {
   parent: ComponentResource;

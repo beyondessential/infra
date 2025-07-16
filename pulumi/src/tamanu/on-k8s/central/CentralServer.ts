@@ -1,17 +1,17 @@
 import { ComponentResource, ComponentResourceOptions, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { migrator } from '../common/migrator.js';
-import { runPostgres } from '../../../common/k8s/postgres.js';
-import { templatedConfig } from '../common/templatedConfig.js';
-import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
-import { Provisioning, provisioner } from './provisioner.js';
-import { runTasks } from './tasks.js';
-import { runApi } from './api.js';
-import { runFhirWorker } from './fhir.js';
-import { WebFrontend } from '../web/WebFrontend.js';
-import { ingress } from '../common/ingress.js';
-import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.js';
-import { namespace } from '../namespace.js';
+import { migrator } from '../common/migrator.ts';
+import { runPostgres } from '../../../common/k8s/postgres.ts';
+import { templatedConfig } from '../common/templatedConfig.ts';
+import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
+import { Provisioning, provisioner } from './provisioner.ts';
+import { runTasks } from './tasks.ts';
+import { runApi } from './api.ts';
+import { runFhirWorker } from './fhir.ts';
+import { WebFrontend } from '../web/WebFrontend.ts';
+import { ingress } from '../common/ingress.ts';
+import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
+import { namespace } from '../namespace.ts';
 
 export interface CentralServerArgs {
   fqdn: string;

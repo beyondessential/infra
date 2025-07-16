@@ -1,7 +1,7 @@
 import { ComponentResource, Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from '../namespace.js';
-import { PodSpecFactory } from './specFactory.js';
+import { namespace } from '../namespace.ts';
+import { PodSpecFactory } from './specFactory.ts';
 
 export interface MigratorArgs {
   parent: ComponentResource;

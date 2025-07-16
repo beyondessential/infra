@@ -1,8 +1,8 @@
 import { getStack, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { BUCKET_NAME } from '../ips-infra/constants.js';
-import { AWS_EC2, AWS_S3_WRITE_ACTIONS } from '../../constants/external.js';
-import { AWS_TAMANU_INTERNAL_CERTBOT_POLICY } from '../../constants/internal.js';
+import { BUCKET_NAME } from '../ips-infra/constants.ts';
+import { AWS_EC2, AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
+import { AWS_TAMANU_INTERNAL_CERTBOT_POLICY } from '../../constants/internal.ts';
 
 new awsClassic.iam.InstanceProfile('ec2-ips-s3', {
   name: `EC2InstanceProfileForIPSDataPush-${getStack()}`,

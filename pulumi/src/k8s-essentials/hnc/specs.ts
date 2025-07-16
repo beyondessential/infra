@@ -1,9 +1,9 @@
 // Converted from HNC v1.1.0 default-cm.yaml
 import * as k8s from '@pulumi/kubernetes';
-import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.js';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../common/k8s/affinities.js';
-import { HNC_VERSION } from './namespace.js';
-import { SERVING_CERT_SECRET_NAME } from './cert.js';
+import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../common/k8s/affinities.ts';
+import { HNC_VERSION } from './namespace.ts';
+import { SERVING_CERT_SECRET_NAME } from './cert.ts';
 
 export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: string }): k8s.types.input.core.v1.PodSpec {
   return {

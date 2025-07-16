@@ -1,7 +1,7 @@
 import { getStack } from '@pulumi/pulumi';
-import { cfg } from '../../common/k8s/coreRef.js';
-import { Architecture } from '../../common/k8s/affinities.js';
-import { truncateDomainIfNeeded } from '../../common/dns.js';
+import { cfg } from '../../common/k8s/coreRef.ts';
+import { Architecture } from '../../common/k8s/affinities.ts';
+import { truncateDomainIfNeeded } from '../../common/dns.ts';
 
 export const normalizedStack = getStack()
   .toLowerCase()

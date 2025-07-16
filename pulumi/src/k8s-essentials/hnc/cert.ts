@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace, ns } from './namespace.js';
+import { namespace, ns } from './namespace.ts';
 
 const issuer = new k8s.apiextensions.CustomResource(
   'hnc-issuer',

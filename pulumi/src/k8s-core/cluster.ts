@@ -2,11 +2,11 @@ import { Agent } from 'node:https';
 import { CustomResourceOptions, interpolate } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import * as awsClassic from '@pulumi/aws';
-import { AWS_STS } from '../constants/external.js';
-import { $network, cfg, stackName } from '../common/coreRef.js';
-import { dnsSuffix, region } from '../common/awsAccount.js';
-import { nativeTags } from '../common/tags.js';
-import { controlPlaneRole } from './roles.js';
+import { AWS_STS } from '../constants/external.ts';
+import { $network, cfg, stackName } from '../common/coreRef.ts';
+import { dnsSuffix, region } from '../common/awsAccount.ts';
+import { nativeTags } from '../common/tags.ts';
+import { controlPlaneRole } from './roles.ts';
 
 export const version = cfg.require('version');
 if (parseInt(version.split('.')?.[1]) < 21) {

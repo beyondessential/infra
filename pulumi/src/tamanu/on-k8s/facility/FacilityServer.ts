@@ -1,16 +1,16 @@
 import { ComponentResource, ComponentResourceOptions, Input, Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { runPostgres } from '../../../common/k8s/postgres.js';
-import { templatedConfig } from '../common/templatedConfig.js';
-import { migrator } from '../common/migrator.js';
-import { CONFIG_FROM_ENV, podSpecFactory } from './specs.js';
-import { runServer } from './server.js';
-import { ingress } from '../common/ingress.js';
-import { WebFrontend } from '../web/WebFrontend.js';
-import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.js';
-import { runTasks } from './tasks.js';
-import { Provisioning } from '../central/provisioner.js';
-import { namespace } from '../namespace.js';
+import { runPostgres } from '../../../common/k8s/postgres.ts';
+import { templatedConfig } from '../common/templatedConfig.ts';
+import { migrator } from '../common/migrator.ts';
+import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
+import { runServer } from './server.ts';
+import { ingress } from '../common/ingress.ts';
+import { WebFrontend } from '../web/WebFrontend.ts';
+import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
+import { runTasks } from './tasks.ts';
+import { Provisioning } from '../central/provisioner.ts';
+import { namespace } from '../namespace.ts';
 
 export interface FacilityServerArgs {
   fqdn: string;

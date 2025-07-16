@@ -1,5 +1,5 @@
 {
   "name": "@bes/drata",
   "type": "module",
-  "main": "../../build/drata/index.js"
+  "main": "../../src/drata/index.ts"
 }

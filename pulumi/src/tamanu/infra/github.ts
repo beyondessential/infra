@@ -1,8 +1,8 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import { Role, PolicyAttachment } from '@pulumi/aws/iam/index.js';
-import { AWS_STS } from '../../constants/external.js';
-import { ghaOidc } from '../../common/coreRef.js';
-import { pushToRepoPolicy, pullFromRepoPolicy } from './repos.js';
+import { AWS_STS } from '../../constants/external.ts';
+import { ghaOidc } from '../../common/coreRef.ts';
+import { pushToRepoPolicy, pullFromRepoPolicy } from './repos.ts';
 
 const imagePushRole = new Role('github-actions-image-push', {
   name: 'gha-image-push',

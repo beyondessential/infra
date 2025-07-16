@@ -1,15 +1,15 @@
 import * as k8s from '@pulumi/kubernetes';
-import { failIfIncorrectCluster } from '../../common/k8s/coreRef.js';
-import { architecture, dbExpose, dbStorage, domains, normalizedStack, replicas } from './config.js';
-import { runPostgres } from '../../common/k8s/postgres.js';
-import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.js';
-import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.js';
-import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.js';
+import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
+import { architecture, dbExpose, dbStorage, domains, normalizedStack, replicas } from './config.ts';
+import { runPostgres } from '../../common/k8s/postgres.ts';
+import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.ts';
 
-import { namespace } from './namespace.js';
-import { image } from './image.js';
-import './ca.js';
-import { caRootCert } from './ca.js';
+import { namespace } from './namespace.ts';
+import { image } from './image.ts';
+import './ca.ts';
+import { caRootCert } from './ca.ts';
 import { interpolate } from '@pulumi/pulumi';
 await failIfIncorrectCluster();
 

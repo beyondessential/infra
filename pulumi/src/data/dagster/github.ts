@@ -1,8 +1,8 @@
 import { jsonStringify, interpolate } from '@pulumi/pulumi';
 import { Role, ManagedPolicy } from '@pulumi/aws-native/iam/index.js';
-import { AWS_STS } from '../../constants/external.js';
-import { ghaOidc } from '../../common/coreRef.js';
-import { accountId } from '../../common/awsAccount.js';
+import { AWS_STS } from '../../constants/external.ts';
+import { ghaOidc } from '../../common/coreRef.ts';
+import { accountId } from '../../common/awsAccount.ts';
 
 const dagsterDeployPolicy = new ManagedPolicy('gha-dagster-deploy-policy', {
   managedPolicyName: 'DagsterDeployPolicy',

@@ -1,6 +1,6 @@
 import { getStack } from '@pulumi/pulumi';
-import { cfg } from '../../common/coreRef.js';
-import { LOGS_BUCKETS } from '../../constants/internal.js';
+import { cfg } from '../../common/coreRef.ts';
+import { LOGS_BUCKETS } from '../../constants/internal.ts';
 
 const normalizedStack = getStack()
   .toLowerCase()

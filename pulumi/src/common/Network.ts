@@ -1,7 +1,7 @@
 import { Netmask } from 'netmask';
 import {
   ComponentResource,
-  ComponentResourceOptions,
+  type ComponentResourceOptions,
   Output,
   StackReference,
   interpolate,
@@ -212,7 +212,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
-    const region = output(import('./awsAccount.js').then(a => a.region));
+    const region = output(import('./awsAccount.js').then((a) => a.region));
 
     const subnet = new Subnet(
       name,
@@ -290,7 +290,8 @@ export class Network extends ComponentResource {
         { parent: routes },
       );
 
-    this.#args.v6 && this.ingw &&
+    this.#args.v6 &&
+      this.ingw &&
       new Route(
         `${name}-out6`,
         {
@@ -334,7 +335,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
-    const region = output(import('./awsAccount.js').then(a => a.region));
+    const region = output(import('./awsAccount.js').then((a) => a.region));
 
     const subnet = new Subnet(
       name,
@@ -444,7 +445,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
-    const region = output(import('./awsAccount.js').then(a => a.region));
+    const region = output(import('./awsAccount.js').then((a) => a.region));
 
     const subnet = new Subnet(
       name,

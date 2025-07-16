@@ -1,8 +1,8 @@
 // Converted from HNC v1.1.0 default-cm.yaml
 import * as k8s from '@pulumi/kubernetes';
-import { controlPlaneLabels, namespace, ns } from './namespace.js';
-import { servingCert } from './cert.js';
-import { hncSpec } from './specs.js';
+import { controlPlaneLabels, namespace, ns } from './namespace.ts';
+import { servingCert } from './cert.ts';
+import { hncSpec } from './specs.ts';
 
 new k8s.core.v1.Service(
   'hnc-controller-manager-metrics-service',

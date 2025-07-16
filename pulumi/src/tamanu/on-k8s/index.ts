@@ -1,12 +1,12 @@
 import * as k8s from '@pulumi/kubernetes';
-import { failIfIncorrectCluster } from '../../common/k8s/coreRef.js';
-import { CentralServer } from './central/CentralServer.js';
-import { FacilityServer } from './facility/FacilityServer.js';
-import { namespace } from './namespace.js';
-import { domainBase, domains, facilityNames, replicas } from './config.js';
+import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
+import { CentralServer } from './central/CentralServer.ts';
+import { FacilityServer } from './facility/FacilityServer.ts';
+import { namespace } from './namespace.ts';
+import { domainBase, domains, facilityNames, replicas } from './config.ts';
 await failIfIncorrectCluster();
 
-import './secrets.js';
+import './secrets.ts';
 
 const central = new CentralServer('central', {
   fqdn: domains.central,

@@ -13,16 +13,16 @@ import { Cluster as ECSCluster } from '@pulumi/aws/ecs/index.js';
 import { getInstanceOutput as getDatabase, GetInstanceResult } from '@pulumi/aws/rds/index.js';
 import { Database, Extension, GrantRole, Role } from '@pulumi/postgresql';
 
-import { ValidCertificate } from '../../common/ValidCertificate.js';
-import * as securityGroupRules from '../../common/securityGroupRules.js';
-import { Secret } from '../../common/Secret.js';
-import { Endpoint } from './Endpoint.js';
-import { Server } from './Server.js';
+import { ValidCertificate } from '../../common/ValidCertificate.ts';
+import * as securityGroupRules from '../../common/securityGroupRules.ts';
+import { Secret } from '../../common/Secret.ts';
+import { Endpoint } from './Endpoint.ts';
+import { Server } from './Server.ts';
 import { SecurityGroup } from '@pulumi/aws/ec2/index.js';
-import { LoadBalancer } from '../../common/LoadBalancer.js';
-import { truncateDomainIfNeeded } from '../../common/dns.js';
-import { Frontend } from './Frontend.js';
-import { Router } from './Router.js';
+import { LoadBalancer } from '../../common/LoadBalancer.ts';
+import { truncateDomainIfNeeded } from '../../common/dns.ts';
+import { Frontend } from './Frontend.ts';
+import { Router } from './Router.ts';
 
 export interface FacilityDef {
   facilityId: string;

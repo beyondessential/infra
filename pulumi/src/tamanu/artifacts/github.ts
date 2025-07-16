@@ -1,8 +1,8 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { ghaOidc } from '../../common/coreRef.js';
-import { AWS_STS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.js';
-import { dbDumps, tools, translations } from './buckets.js';
+import { ghaOidc } from '../../common/coreRef.ts';
+import { AWS_STS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
+import { dbDumps, tools, translations } from './buckets.ts';
 
 new awsClassic.iam.Role('gha-tamanu-test-data-snapshots-s3', {
   name: 'gha-tamanu-test-data-snapshots-s3',

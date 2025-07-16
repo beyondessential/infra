@@ -1,11 +1,11 @@
 import { Repository, RepositoryImageTagMutability } from '@pulumi/aws-native/ecr/index.js';
 import { Policy, getPolicyDocumentOutput } from '@pulumi/aws/iam/index.js';
-import { AWS_ORG_ID } from '../../constants/internal.js';
+import { AWS_ORG_ID } from '../../constants/internal.ts';
 import {
   AWS_ECR_AUTH_ACTIONS,
   AWS_ECR_PULL_ACTIONS,
   AWS_ECR_PUSH_ACTIONS,
-} from '../../constants/external.js';
+} from '../../constants/external.ts';
 
 export const repositories = [
   'central',

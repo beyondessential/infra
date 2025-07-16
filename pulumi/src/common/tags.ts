@@ -1,4 +1,4 @@
-import { Input, Output, all, output } from '@pulumi/pulumi';
+import { type Input, type Output, all, output } from '@pulumi/pulumi';
 
 export interface ClassicTagInput {
   [key: string]: Input<string>;

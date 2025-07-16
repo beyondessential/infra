@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
-import { cfg } from '../../common/k8s/coreRef.js';
-import { normalizedStack } from './config.js';
+import { cfg } from '../../common/k8s/coreRef.ts';
+import { normalizedStack } from './config.ts';
 
 const name = cfg.get('namespace') ?? `tamanu-${normalizedStack}`;
 if (name === 'system' || name === 'super') {

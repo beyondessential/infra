@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 import * as aws from '@pulumi/aws';
 import { all, Output, secret } from '@pulumi/pulumi';
 
-import { $network } from '../../common/coreRef.js';
-import { tailscaleKey } from '../../common/tailscaleKey.js';
+import { $network } from '../../common/coreRef.ts';
+import { tailscaleKey } from '../../common/tailscaleKey.ts';
 
 import {
   instances,
@@ -15,11 +15,11 @@ import {
   sshKey,
   tailscaleTags,
   normalizedStack,
-} from './config.js';
-import { applyBackup } from './backup/aws.js';
-import { sg } from './firewall.js';
-import { applyDNS } from './dns.js';
-import { region } from '../../common/awsAccount.js';
+} from './config.ts';
+import { applyBackup } from './backup/aws.ts';
+import { sg } from './firewall.ts';
+import { applyDNS } from './dns.ts';
+import { region } from '../../common/awsAccount.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

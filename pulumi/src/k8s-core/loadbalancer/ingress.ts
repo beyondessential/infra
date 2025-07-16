@@ -1,13 +1,13 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { $network } from '../../common/coreRef.js';
-import { eksServiceAccount } from '../../common/eksServiceAccount.js';
-import { clusterName, oidcProvider } from '../cluster.js';
-import { provider } from '../kubeconfig.js';
-import { awsLbPolicy } from './policy.js';
-import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.js';
-import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.js';
+import { $network } from '../../common/coreRef.ts';
+import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
+import { clusterName, oidcProvider } from '../cluster.ts';
+import { provider } from '../kubeconfig.ts';
+import { awsLbPolicy } from './policy.ts';
+import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 
 const SERVICE_ACCOUNT_NAME = 'awslbc';
 

@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
-import { k8sClient } from '../../common/k8s/client.js';
-import { namespace } from './namespace.js';
+import { k8sClient } from '../../common/k8s/client.ts';
+import { namespace } from './namespace.ts';
 
 const k8sApi = k8sClient(CoreV1Api);
 

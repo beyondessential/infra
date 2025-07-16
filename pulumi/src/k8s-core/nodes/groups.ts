@@ -1,15 +1,15 @@
 import * as aws from '@pulumi/aws-native';
-import { $network, cfg } from '../../common/coreRef.js';
-import { nodeRole } from '../roles.js';
-import { clusterName, tags } from '../cluster.js';
-import { region } from '../../common/awsAccount.js';
+import { $network, cfg } from '../../common/coreRef.ts';
+import { nodeRole } from '../roles.ts';
+import { clusterName, tags } from '../cluster.ts';
+import { region } from '../../common/awsAccount.ts';
 import {
   upToMonthly,
   spotWithinOnDemandPrice,
   nonBurst,
   onlyBurst,
   instancesSizedAtLeast,
-} from '../../common/k8s/instanceTypeGroups.js';
+} from '../../common/k8s/instanceTypeGroups.ts';
 import { Output } from '@pulumi/pulumi';
 
 // Create a standard set of initially-empty node groups for workload autoscaling:

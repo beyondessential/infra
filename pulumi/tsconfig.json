@@ -9,6 +9,7 @@
     "moduleResolution": "nodenext",
     "rootDir": "./src",
     "outDir": "./build",
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true
   }
 }

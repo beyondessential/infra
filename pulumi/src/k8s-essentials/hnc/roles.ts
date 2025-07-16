@@ -1,6 +1,6 @@
 // Converted from HNC v1.1.0 default-cm.yaml
 import * as k8s from '@pulumi/kubernetes';
-import { namespace, ns } from './namespace.js';
+import { namespace, ns } from './namespace.ts';
 
 const leaderElectionRole = new k8s.rbac.v1.Role(
   'hnc-leader-election-role',

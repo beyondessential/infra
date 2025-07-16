@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
-import { serviceAccount } from './config.js';
-import { namespace } from './namespace.js';
+import { serviceAccount } from './config.ts';
+import { namespace } from './namespace.ts';
 
 export const sa = serviceAccount
   ? new k8s.core.v1.ServiceAccount('app-sa', {

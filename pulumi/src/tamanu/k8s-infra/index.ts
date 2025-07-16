@@ -1,5 +1,5 @@
-import { failIfIncorrectCluster } from '../../common/k8s/coreRef.js';
+import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
-import './system.js';
-import './superns.js';
+import './system.ts';
+import './superns.ts';

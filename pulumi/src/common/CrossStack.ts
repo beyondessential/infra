@@ -1,5 +1,5 @@
-import { Output, StackReference, all } from '@pulumi/pulumi';
-import { NetworkOutputs, fromStackReference as networkFromStackReference } from './Network.js';
+import { type Output, StackReference, all } from '@pulumi/pulumi';
+import { type NetworkOutputs, fromStackReference as networkFromStackReference } from './Network.ts';
 
 export type CrossStackNetwork = Omit<
   NetworkOutputs,

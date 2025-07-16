@@ -1,7 +1,7 @@
 import * as awsNative from '@pulumi/aws-native';
 import { all, getStack, Input, interpolate } from '@pulumi/pulumi';
-import { accountId } from '../../../common/awsAccount.js';
-import { AWS_BACKUP_DEFAULT_SERVICE_ROLE } from '../../../constants/external.js';
+import { accountId } from '../../../common/awsAccount.ts';
+import { AWS_BACKUP_DEFAULT_SERVICE_ROLE } from '../../../constants/external.ts';
 
 const vault = new awsNative.backup.BackupVault('backup', {
   backupVaultName: interpolate`tamanu-on-linux-${getStack()}`,

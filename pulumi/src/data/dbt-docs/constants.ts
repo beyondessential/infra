@@ -1,4 +1,4 @@
-import { LOGS_BUCKETS } from '../../constants/internal.js';
+import { LOGS_BUCKETS } from '../../constants/internal.ts';
 
 export const BUCKET = 'bes-data-docs';
 export const DOMAIN = 'docs.data.bes.au';

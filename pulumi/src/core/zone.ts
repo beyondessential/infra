@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws-native';
-import { domain, zoneImport } from './config.js';
+import { domain, zoneImport } from './config.ts';
 import { interpolate } from '@pulumi/pulumi';
 
 let zone: aws.route53.HostedZone | undefined;

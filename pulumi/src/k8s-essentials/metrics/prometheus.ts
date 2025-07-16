@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.js';
+import { namespace } from './namespace.ts';
 
 new k8s.helm.v3.Release(
   'prometheus',

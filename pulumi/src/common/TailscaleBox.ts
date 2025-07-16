@@ -13,8 +13,8 @@ import {
 import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
 import { Instance, InstanceArgs } from '@pulumi/aws/ec2/index.js';
 
-import { alpineAmi } from '../constants/external.js';
-import { TAILNET_DOMAIN } from '../constants/internal.js';
+import { alpineAmi } from '../constants/external.ts';
+import { TAILNET_DOMAIN } from '../constants/internal.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
