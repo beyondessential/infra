@@ -2,13 +2,13 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "include": ["stacks/**/*.ts"],
   "compilerOptions": {
+    "noEmit": true,
     "declaration": true,
     "declarationMap": true,
     "module": "nodenext",
     "target": "esnext",
     "moduleResolution": "nodenext",
-    "rootDir": "./src",
-    "outDir": "./build",
+    "rootDir": "./stacks",
     "erasableSyntaxOnly": true,
     "allowImportingTsExtensions": true
   }
