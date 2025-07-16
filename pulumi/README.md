@@ -24,20 +24,6 @@ You should use `aws-sso`.
 
 ## Usage
 
-Each Pulumi project is its own set of directories.
-
-- The `src` directory contains the TypeScript source code for all projects.
-- The `stacks` directory contains the Pulumi stack configuration for each
-  project, along with any other files needed to deploy, like templates, scripts,
-  default configs, etc.
-
-Each of these three top-level directories contain a similar structure. Currently
-we have:
-
-- `tamanu/` for grouping Tamanu-related projects
-  - `tamanu/infra/` for common infrastructure
-  - `tamanu/on-k8s/` for the "Auto Deploys" on Kubernetes
-
 ### Setup
 
 0. Install NodeJS 24 or higher
@@ -46,7 +32,7 @@ we have:
 
 ### Deploy
 
-1. Change into the desired project directory: `cd stacks/tamanu/on-ecs`
+1. Change into the desired project directory: `cd stacks/tamanu/on-k8s`
 2. Run your desired Pulumi command, e.g. `pulumi up`
 
 ### Stacks
