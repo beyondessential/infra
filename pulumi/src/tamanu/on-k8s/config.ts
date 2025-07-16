@@ -1,6 +1,6 @@
 import { getStack } from '@pulumi/pulumi';
 import { cfg } from '../../common/k8s/coreRef.ts';
-import { Architecture } from '../../common/k8s/affinities.ts';
+import type { Architecture } from '../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../common/dns.ts';
 
 export const normalizedStack = getStack()

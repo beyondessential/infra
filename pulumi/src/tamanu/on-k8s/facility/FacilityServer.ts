@@ -1,4 +1,4 @@
-import { ComponentResource, ComponentResourceOptions, Input, Output } from '@pulumi/pulumi';
+import { ComponentResource, type ComponentResourceOptions, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { runPostgres } from '../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
@@ -7,9 +7,9 @@ import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
 import { runServer } from './server.ts';
 import { ingress } from '../common/ingress.ts';
 import { WebFrontend } from '../web/WebFrontend.ts';
-import { ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
+import { type ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
 import { runTasks } from './tasks.ts';
-import { Provisioning } from '../central/provisioner.ts';
+import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
 
 export interface FacilityServerArgs {

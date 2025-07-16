@@ -2,7 +2,7 @@ import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
 import { appLabels, appSelector } from './specs.ts';
-import { PodSpecFactory } from '../common/specFactory.ts';
+import type { PodSpecFactory } from '../common/specFactory.ts';
 
 export interface RunApiArgs {
   parent: ComponentResource;

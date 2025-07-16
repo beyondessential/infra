@@ -2,9 +2,9 @@ import { compact } from 'lodash-es';
 import * as k8s from '@pulumi/kubernetes';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
-import { PodSpecArgs, PodSpecFactory } from '../common/specFactory.ts';
+import type { PodSpecArgs, PodSpecFactory } from '../common/specFactory.ts';
 import { architecture, nodeEnv } from '../config.ts';
-import { ImageType, image, imageTag } from '../image.ts';
+import { type ImageType, image, imageTag } from '../image.ts';
 
 export type ServerType = Exclude<ImageType, 'frontend'>;
 

@@ -1,4 +1,11 @@
-import { ComponentResource, Input, Output, all, interpolate, secret } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  type Input,
+  type Output,
+  all,
+  interpolate,
+  secret,
+} from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sConfig } from './client.ts';

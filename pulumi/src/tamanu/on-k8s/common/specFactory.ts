@@ -1,4 +1,4 @@
-import { Input } from '@pulumi/pulumi';
+import type { Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 
 export interface PodSpecArgs {

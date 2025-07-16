@@ -1,4 +1,4 @@
-import { Input, Output, Unwrap, all, log, output, runtime } from '@pulumi/pulumi';
+import { type Input, type Output, type Unwrap, all, log, output, runtime } from '@pulumi/pulumi';
 import * as k8s from '@kubernetes/client-node';
 import { k8sConfig } from './client.ts';
 

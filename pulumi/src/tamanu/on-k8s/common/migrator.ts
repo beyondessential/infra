@@ -1,7 +1,7 @@
-import { ComponentResource, Input } from '@pulumi/pulumi';
+import { ComponentResource, type Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
-import { PodSpecFactory } from './specFactory.ts';
+import type { PodSpecFactory } from './specFactory.ts';
 
 export interface MigratorArgs {
   parent: ComponentResource;
