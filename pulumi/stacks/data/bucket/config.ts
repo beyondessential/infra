@@ -17,3 +17,6 @@ export const GHA_CLAIMS: string[] = cfg.getObject('ghaClaims') ?? [];
 
 export const ZONE_ID = 'Z07801321MEVDI0D1XE18';
 export const LOGS_BUCKET = LOGS_BUCKETS.DATA;
+
+export const externalAccountsWrite: string[] = cfg.getObject('externalAccountsWrite') ?? [];
+export const externalAccountsRead: string[] = cfg.getObject('externalAccountsRead') ?? [];

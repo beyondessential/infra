@@ -2,35 +2,8 @@ import { readFileSync } from 'fs';
 import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { ValidCertificate } from '../../common/ValidCertificate.ts';
-import { BUCKET, DOMAIN, ZONE_ID, LOGS_BUCKET } from './config.ts';
-
-const bucket = new aws.s3.BucketV2(
-  'bucket',
-  {
-    bucket: BUCKET,
-  },
-  { protect: true },
-);
-
-const bucketOwnership = new aws.s3.BucketOwnershipControls(
-  'bucket-ownership',
-  {
-    bucket: bucket.id,
-    rule: {
-      objectOwnership: 'BucketOwnerPreferred',
-    },
-  },
-  { parent: bucket },
-);
-
-new aws.s3.BucketAclV2(
-  'bucket-acl',
-  {
-    bucket: bucket.id,
-    acl: 'private',
-  },
-  { parent: bucket, dependsOn: [bucketOwnership] },
-);
+import { DOMAIN, ZONE_ID, LOGS_BUCKET } from './config.ts';
+import { bucket } from './bucket.ts';
 
 const errorDocument = new aws.s3.BucketObjectv2(
   'bucket-errordoc',
@@ -41,7 +14,7 @@ const errorDocument = new aws.s3.BucketObjectv2(
     content:
       '<!DOCTYPE html><title>Tamanu Reporting | 404 Not Found</title><h1>404</h1><p>Not Found</p>',
   },
-  { parent: bucket },
+  { parent: bucket, protect: false },
 );
 
 const certificate = new ValidCertificate('certificate', {
@@ -134,7 +107,7 @@ const distribution = new aws.cloudfront.Distribution(
 );
 
 new aws.s3.BucketPolicy(
-  'bucket-policy',
+  'bucket-distribution',
   {
     bucket: bucket.bucket,
     policy: jsonStringify({
