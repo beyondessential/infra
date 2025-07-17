@@ -1,13 +1,19 @@
-import { ComponentResource, type ComponentResourceOptions, type Output } from '@pulumi/pulumi';
+import {
+  ComponentResource,
+  interpolate,
+  type ComponentResourceOptions,
+  type Output,
+} from '@pulumi/pulumi';
 import YAML from 'yaml';
 import * as k8s from '@pulumi/kubernetes';
 import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
 import { dagsterVersion, HOME } from './config.ts';
 import { appLabels, appSelector } from './labels.ts';
-import { sa } from '../serviceAccount.ts';
+import { sa } from './serviceAccount.ts';
 import { commonConfig } from './commonConfig.ts';
 import { volumeMounts, volumes } from './storage.ts';
+import { redis } from './redis.ts';
 
 export interface CeleryQueueArgs {
   replicas?: number;
@@ -37,12 +43,8 @@ export class CeleryQueue extends ComponentResource {
             // https://docs.dagster.io/api/libraries/dagster-celery-k8s#dagster_celery_k8s.celery_k8s_job_executor
             execution: {
               celery: {
-                broker: {
-                  env: 'DAGSTER_CELERY_BROKER_URL',
-                },
-                backend: {
-                  env: 'DAGSTER_CELERY_BACKEND_URL',
-                },
+                broker: interpolate`redis://${redis.metadata.name}/0`,
+                backend: interpolate`redis://${redis.metadata.name}/1`,
               },
             },
           }),

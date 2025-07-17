@@ -3,6 +3,8 @@ import YAML from 'yaml';
 import { system } from './namespace.ts';
 import { appLabels } from './labels.ts';
 import { HOME } from './config.ts';
+import { redis } from './redis.ts';
+import { interpolate } from '@pulumi/pulumi';
 
 export const commonConfig = new k8s.core.v1.ConfigMap('dagster-common', {
   metadata: {
@@ -53,12 +55,8 @@ export const commonConfig = new k8s.core.v1.ConfigMap('dagster-common', {
             env: 'DAGSTER_COMMON_CONFIG_MAP',
           },
           postgres_password_secret: 'TODO',
-          broker: {
-            env: 'DAGSTER_CELERY_BROKER_URL',
-          },
-          backend: {
-            env: 'DAGSTER_CELERY_BACKEND_URL',
-          },
+          broker: interpolate`redis://${redis.metadata.name}/0`,
+          backend: interpolate`redis://${redis.metadata.name}/1`,
         },
       },
     }),
