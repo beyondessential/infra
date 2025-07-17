@@ -20,4 +20,5 @@ import './externalDns.ts';
 import './cert-manager/controller.ts';
 import './cert-manager/letsencrypt.ts';
 import './cert-manager/zerossl.ts';
-import './storage.ts';
+import './storage/ebs.ts';
+import './storage/s3.ts';
