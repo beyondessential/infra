@@ -94,6 +94,11 @@ export class CrossStack {
     };
   }
 
+  // from core
+  region(): Output<string> {
+    return this.get('region');
+  }
+
   // from k8s-core
   async k8sCore(): Promise<CrossStackK8sCore> {
     return {

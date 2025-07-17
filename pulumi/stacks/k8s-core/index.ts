@@ -1,4 +1,4 @@
-export { coreStackName } from '../common/coreRef.ts';
+export { coreStackName, region } from '../common/coreRef.ts';
 import { failIfIncorrectAccount } from '../common/coreRef.ts';
 failIfIncorrectAccount();
 
