@@ -1,5 +1,5 @@
 import { getStack } from '@pulumi/pulumi';
-import { cfg } from '../../common/k8s/coreRef.ts';
+import { cfg } from '../../../common/k8s/coreRef.ts';
 
 export const normalizedStack = getStack()
   .toLowerCase()
@@ -14,4 +14,6 @@ if (name === 'dagster-system' || name === 'dagster-super') {
 }
 
 export const dagsterVersion = cfg.get('dagsterVersion') ?? 'latest';
+export const s3bucket = cfg.require('s3bucket');
+
 export const HOME = '/opt/dagster/dagster_home';

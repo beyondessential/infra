@@ -1,11 +1,13 @@
 import { ComponentResource, type ComponentResourceOptions, type Output } from '@pulumi/pulumi';
 import YAML from 'yaml';
 import * as k8s from '@pulumi/kubernetes';
-import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
 import { dagsterVersion, HOME } from './config.ts';
 import { appLabels, appSelector } from './labels.ts';
-import { sa } from './serviceAccount.ts';
+import { sa } from '../serviceAccount.ts';
+import { commonConfig } from './commonConfig.ts';
+import { volumeMounts, volumes } from './storage.ts';
 
 export interface CeleryQueueArgs {
   replicas?: number;
@@ -32,6 +34,7 @@ export class CeleryQueue extends ComponentResource {
         },
         data: {
           'celery.yaml': YAML.stringify({
+            // https://docs.dagster.io/api/libraries/dagster-celery-k8s#dagster_celery_k8s.celery_k8s_job_executor
             execution: {
               celery: {
                 broker: {
@@ -86,10 +89,11 @@ export class CeleryQueue extends ComponentResource {
               },
             },
             volumes: [
+              ...volumes,
               {
                 name: 'instance',
                 configMap: {
-                  name: dagsterConfig.metadata.name,
+                  name: commonConfig.metadata.name,
                 },
               },
               {
@@ -117,6 +121,7 @@ export class CeleryQueue extends ComponentResource {
                 ],
                 // TODO: env from secrets for postgres (DAGSTER_PG_PASSWORD) and redis (see configmap)
                 volumeMounts: [
+                  ...volumeMounts,
                   {
                     name: 'instance',
                     mountPath: `${HOME}/dagster.yaml`,

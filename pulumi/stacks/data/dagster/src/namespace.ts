@@ -13,7 +13,7 @@ const superNs = new k8s.core.v1.Namespace(
 const superNamespace = superNs.metadata.name;
 
 const others = new Map();
-for (const sub of ['system']) {
+for (const sub of ['system', 'workers']) {
   const nsName = `${name}-${sub}`;
   const ns = new k8s.core.v1.Namespace(
     nsName,
@@ -45,3 +45,4 @@ for (const sub of ['system']) {
 }
 
 export const system = others.get('system');
+export const workers = others.get('workers');
