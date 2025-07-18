@@ -13,7 +13,7 @@ const superNs = new k8s.core.v1.Namespace(
 const superNamespace = superNs.metadata.name;
 
 const others = new Map();
-for (const sub of ['system', 'workers']) {
+for (const sub of ['system']) {
   const nsName = `${name}-${sub}`;
   const ns = new k8s.core.v1.Namespace(
     nsName,
@@ -22,13 +22,13 @@ for (const sub of ['system', 'workers']) {
         name: nsName,
       },
     },
-    { ignoreChanges: ['metadata.name'] },
+    { parent: superNs, ignoreChanges: ['metadata.name'] },
   );
   const namespace = ns.metadata.name;
-  others.set(nsName, namespace);
+  others.set(sub, namespace);
 
   new k8s.apiextensions.CustomResource(
-    'parent-ns',
+    `${name}-${sub}-parent`,
     {
       apiVersion: 'hnc.x-k8s.io/v1alpha2',
       kind: 'HierarchyConfiguration',
@@ -40,9 +40,8 @@ for (const sub of ['system', 'workers']) {
         parent: superNamespace,
       },
     },
-    { parent: superNs },
+    { parent: ns },
   );
 }
 
 export const system = others.get('system');
-export const workers = others.get('workers');

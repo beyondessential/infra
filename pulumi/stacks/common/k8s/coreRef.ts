@@ -16,10 +16,10 @@ export const backups = {
   sa: $core.backupsServiceAccountArn,
 };
 export const oidcProvider = $core.oidcProviderArn;
+export const region = core.region();
 
 const upperCore = $core.coreStack.apply((name) => new CrossStack(`bes/core/${name}`));
 export const $network = upperCore.apply((core) => core.network());
-export const region = upperCore.apply((core) => core.region());
 
 export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void> {
   const kc = k8sConfig(kubeconfig);

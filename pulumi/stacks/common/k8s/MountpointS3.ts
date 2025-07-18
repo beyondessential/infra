@@ -29,55 +29,58 @@ export class MountpointS3 extends ComponentResource {
   ) {
     super('bes:common:MountpointS3', name, {}, opts);
 
-    this.pv = new k8s.core.v1.PersistentVolume(`s3-pv-${name}`, {
-      metadata: {
-        name: `s3-pv-${name}`,
-        namespace,
-      },
-      spec: {
-        capacity: {
-          storage: '1200Gi', // ignored, required
-        },
-        accessModes: [mode],
-        storageClassName: '', // required to be empty
-        claimRef: {
-          // binds this PV to the PVC, so it can be rebound
+    this.pv = new k8s.core.v1.PersistentVolume(
+      `s3-pv-${name}`,
+      {
+        metadata: {
           namespace,
-          name: `s3-pvc-${name}`,
         },
-        mountOptions: all([region, prefix]).apply(([region, prefix]) =>
-          compact([
-            mode === 'ReadOnlyMany' ? null : 'allow-delete',
-            `region ${region}`,
-            prefix && `prefix ${prefix}`,
-          ]),
-        ),
-        csi: {
-          driver: 's3.csi.aws.com', // Required
-          volumeHandle: interpolate`s3-csi-driver-volume-${namespace}-${name}`, // Must be unique
-          volumeAttributes: {
-            bucketName: bucket,
-          },
-        },
-      },
-    });
-
-    this.pvc = new k8s.core.v1.PersistentVolumeClaim(`s3-pvc-${name}`, {
-      metadata: {
-        name: `s3-pvc-${name}`,
-        namespace,
-      },
-      spec: {
-        accessModes: [mode],
-        storageClassName: '', // required to be empty
-        volumeName: this.pv.metadata.name,
-        resources: {
-          requests: {
+        spec: {
+          capacity: {
             storage: '1200Gi', // ignored, required
           },
+          accessModes: [mode],
+          storageClassName: '', // required to be empty
+          mountOptions: all([region, prefix]).apply(([region, prefix]) =>
+            compact([
+              mode === 'ReadOnlyMany' ? null : 'allow-delete',
+              `region ${region}`,
+              prefix && `prefix ${prefix}`,
+            ]),
+          ),
+          csi: {
+            driver: 's3.csi.aws.com', // Required
+            volumeHandle: interpolate`s3-csi-driver-volume-${namespace}-${name}`, // Must be unique
+            volumeAttributes: {
+              bucketName: bucket,
+              stsRegion: 'us-east-1',
+              authenticationSource: 'driver',
+            },
+          },
         },
       },
-    });
+      { parent: this },
+    );
+
+    this.pvc = new k8s.core.v1.PersistentVolumeClaim(
+      `s3-pvc-${name}`,
+      {
+        metadata: {
+          namespace,
+        },
+        spec: {
+          accessModes: [mode],
+          storageClassName: '', // required to be empty
+          volumeName: this.pv.metadata.name,
+          resources: {
+            requests: {
+              storage: '1200Gi', // ignored, required
+            },
+          },
+        },
+      },
+      { parent: this },
+    );
 
     this.claim = this.pvc.metadata.name;
   }

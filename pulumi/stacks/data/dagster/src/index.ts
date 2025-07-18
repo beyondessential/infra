@@ -9,4 +9,4 @@ export const ghaDagsterRoleArn = ghaDagsterRole.arn;
 import { system } from './namespace.ts';
 import { CeleryQueue } from './celery.ts';
 
-new CeleryQueue('dagster', { namespace: system });
+// new CeleryQueue('dagster', { namespace: system });
