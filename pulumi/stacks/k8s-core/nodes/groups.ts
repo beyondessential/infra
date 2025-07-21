@@ -34,6 +34,8 @@ export interface NodeGroup {
   minPerAz?: number;
   maxPerAz: number;
   initial?: number;
+  amiType?: string;
+  diskSize?: number;
 }
 
 const standardGroups: NodeGroup[] =
@@ -65,46 +67,30 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 30,
         },
         {
-          groupName: 'workload-arm-spot-small-v1',
-          purpose: 'workload',
-          schedule: 'spot',
-          arch: 'arm64',
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-                'linux',
-              ),
-              'linux',
-              'spot',
-              50,
-            ).map((i) => i.instance_type),
-          ),
-          maxPerAz: 30,
-        },
-        {
-          groupName: 'workload-x86-spot-small-v1',
-          purpose: 'workload',
-          schedule: 'spot',
-          arch: 'amd64',
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
-                'linux',
-              ),
-              'linux',
-              'spot',
-              40,
-            ).map((i) => i.instance_type),
-          ),
-          maxPerAz: 30,
-        },
-        {
           groupName: 'workload-arm-spot-large-v1',
           purpose: 'workload',
           schedule: 'spot',
           arch: 'arm64',
+          instanceTypes: region.apply((region) =>
+            upToMonthly(
+              spotWithinOnDemandPrice(
+                nonBurst(instancesSizedAtLeast(region, 'arm64', 8, 16)),
+                'linux',
+              ),
+              'linux',
+              'spot',
+              100,
+            ).map((i) => i.instance_type),
+          ),
+          maxPerAz: 30,
+        },
+        {
+          groupName: 'workload-arm-spot-large-v2',
+          purpose: 'workload',
+          schedule: 'spot',
+          arch: 'arm64',
+          amiType: 'BOTTLEROCKET_ARM_64',
+          diskSize: 50,
           instanceTypes: region.apply((region) =>
             upToMonthly(
               spotWithinOnDemandPrice(
@@ -212,6 +198,8 @@ for (const {
   minPerAz = 0,
   maxPerAz,
   initial,
+  amiType = null,
+  diskSize = 100,
 } of [...standardGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
   const subnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
   subnets.apply((subnets) =>
@@ -224,9 +212,12 @@ for (const {
           nodeRole: nodeRole.arn,
           subnets: [subnet],
           capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
-          amiType: arch === 'arm64' ? 'AL2_ARM_64' : 'AL2_x86_64',
+          amiType: amiType ?? (arch === 'arm64' ? 'AL2_ARM_64' : 'AL2_x86_64'),
           instanceTypes,
-          diskSize: 100,
+          diskSize,
+          nodeRepairConfig: {
+            enabled: true,
+          },
           scalingConfig: {
             minSize: minPerAz,
             desiredSize: initial ?? minPerAz,
