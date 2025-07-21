@@ -9,7 +9,7 @@ const namespace = new k8s.core.v1.Namespace('cnpg-system', {
 const cnpg = new k8s.helm.v3.Chart('cloudnative-pg', {
   repo: 'cnpg',
   chart: 'cloudnative-pg',
-  version: '0.23.2',
+  version: '0.24.0',
   fetchOpts: {
     repo: 'https://cloudnative-pg.github.io/charts',
   },
