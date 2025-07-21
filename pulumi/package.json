@@ -29,8 +29,7 @@
     "yaml": "^2.8.0"
   },
   "scripts": {
-    "build": "rm -rf build && mkdir -p build && cp -r src/* build && rm build/**/*.ts && tsc",
-    "watch": "npm run build -- --watch",
-    "postinstall": "npm run build"
+    "check": "tsc",
+    "postinstall": "tsc"
   }
 }

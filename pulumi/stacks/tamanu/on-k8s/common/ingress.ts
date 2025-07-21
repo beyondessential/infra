@@ -1,0 +1,64 @@
+import { ComponentResource } from '@pulumi/pulumi';
+import * as k8s from '@pulumi/kubernetes';
+import { compact } from 'lodash-es';
+import { namespace } from '../namespace.ts';
+
+export interface IngressArgs {
+  name: string;
+  parent: ComponentResource;
+  host: string;
+  api: k8s.core.v1.Service;
+  web: k8s.core.v1.Service;
+}
+
+export function ingress({ name, host, api, web, parent }: IngressArgs) {
+  const route = (path: string, backend: k8s.core.v1.Service): k8s.types.input.networking.v1.HTTPIngressPath => ({
+    path,
+    pathType: 'Prefix',
+    backend: {
+      service: {
+        name: backend.metadata.name,
+        port: {
+          name: 'http',
+        },
+      },
+    },
+  });
+
+  return new k8s.networking.v1.Ingress(
+    name,
+    {
+      metadata: {
+        namespace,
+        name,
+        annotations: {
+          'cert-manager.io/cluster-issuer': 'letsencrypt',
+          'cert-manager.io/private-key-algorithm': 'ECDSA',
+
+          // for websocket
+          'nginx.ingress.kubernetes.io/proxy-read-timeout': '3600',
+          'nginx.ingress.kubernetes.io/proxy-send-timeout': '3600',
+
+          'pulumi.com/patchForce': 'true',
+        },
+      },
+      spec: {
+        ingressClassName: 'nginx',
+        tls: [{ hosts: [host], secretName: `${name}-tls` }],
+        rules: [
+          {
+            host,
+            http: {
+              paths: compact([
+                route('/', web),
+                route('/api', api),
+                route('/v1', api),
+              ]),
+            },
+          },
+        ],
+      },
+    },
+    { parent },
+  );
+}

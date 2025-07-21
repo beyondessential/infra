@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/on-k8s",
   "type": "module",
-  "main": "../../../build/tamanu/on-k8s/index.js"
+  "main": "./index.ts"
 }

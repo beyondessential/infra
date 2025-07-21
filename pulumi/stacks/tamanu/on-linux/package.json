@@ -1,5 +1,5 @@
 {
   "name": "@tamanu/on-linux",
   "type": "module",
-  "main": "../../../build/tamanu/on-linux/index.js"
+  "main": "./index.ts"
 }

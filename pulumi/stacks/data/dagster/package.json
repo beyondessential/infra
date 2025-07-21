@@ -1,5 +1,5 @@
 {
   "name": "@besdata/dagster",
   "type": "module",
-  "main": "../../../build/data/dagster/index.js"
+  "main": "./index.ts"
 }

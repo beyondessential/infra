@@ -24,30 +24,15 @@ You should use `aws-sso`.
 
 ## Usage
 
-Each Pulumi project is its own set of directories.
-
-- The `src` directory contains the TypeScript source code for all projects.
-- The `build` directory is generated from `src` by SWC.
-- The `stacks` directory contains the Pulumi stack configuration for each
-  project, along with any other files needed to deploy, like templates, scripts,
-  default configs, etc.
-
-Each of these three top-level directories contain a similar structure. Currently
-we have:
-
-- `tamanu/` for grouping Tamanu-related projects
-  - `tamanu/infra/` for common infrastructure
-  - `tamanu/on-ecs/` for the "Auto Deploys" on ECS
-
 ### Setup
 
+0. Install NodeJS 24 or higher
 1. Change into the `pulumi` directory: `cd pulumi`
 2. Install dependencies: `npm install`
-3. Open a terminal tab/pane and run `npm run watch` to auto-compile source
 
 ### Deploy
 
-1. Change into the desired project directory: `cd stacks/tamanu/on-ecs`
+1. Change into the desired project directory: `cd stacks/tamanu/on-k8s`
 2. Run your desired Pulumi command, e.g. `pulumi up`
 
 ### Stacks
@@ -78,4 +63,3 @@ $ pulumi stack rm opsdev-felix
 
 (\* In Pulumi, "destroy" means to remove the actual resources in the cloud, and
 "delete" means to remove the stack configuration itself from the Pulumi state.)
-

@@ -1,5 +1,5 @@
 {
   "name": "@bes/k8s-core",
   "type": "module",
-  "main": "../../build/k8s-core/index.js"
+  "main": "./index.ts"
 }

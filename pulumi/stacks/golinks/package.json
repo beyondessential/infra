@@ -1,5 +1,5 @@
 {
   "name": "@bes/golinks",
   "type": "module",
-  "main": "../../build/golinks/index.js"
+  "main": "./index.ts"
 }
