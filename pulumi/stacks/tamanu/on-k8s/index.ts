@@ -1,14 +1,14 @@
 import * as k8s from '@pulumi/kubernetes';
-import { failIfIncorrectCluster } from '../../common/k8s/coreRef.js';
-import { CentralServer } from './central/CentralServer.js';
-import { FacilityServer } from './facility/FacilityServer.js';
-import { WebFrontend } from './web/WebFrontend.js';
-import { namespace } from './namespace.js';
-import { domainBase, domains, facilityNames, patientPortalReplicas, replicas } from './config.js';
-import { ingress } from './common/ingress.js';
+import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
+import { CentralServer } from './central/CentralServer.ts';
+import { FacilityServer } from './facility/FacilityServer.ts';
+import { WebFrontend } from './web/WebFrontend.ts';
+import { namespace } from './namespace.ts';
+import { domainBase, domains, facilityNames, patientPortalReplicas, replicas } from './config.ts';
+import { ingress } from './common/ingress.ts';
 await failIfIncorrectCluster();
 
-import './secrets.js';
+import './secrets.ts';
 
 const central = new CentralServer('central', {
   fqdn: domains.central,

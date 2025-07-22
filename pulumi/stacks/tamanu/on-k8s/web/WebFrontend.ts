@@ -1,8 +1,8 @@
 import { ComponentResource, type ComponentResourceOptions } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { type ServerType, podSpecFactory } from './specs.js';
-import { runWeb } from './frontend.js';
-import { ImageType } from '../image.js';
+import { type ServerType, podSpecFactory } from './specs.ts';
+import { runWeb } from './frontend.ts';
+import { ImageType } from '../image.ts';
 
 export interface WebFrontendArgs {
   serverType: ServerType;
