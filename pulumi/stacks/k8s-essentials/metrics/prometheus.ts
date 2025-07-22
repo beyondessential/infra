@@ -29,6 +29,16 @@ new k8s.helm.v3.Release(
         persistentVolume: {
           size: '50Gi',
         },
+        resources: {
+          requests: {
+            cpu: '1000m',
+            memory: '2000Mi',
+          },
+          limits: {
+            cpu: '2000m',
+            memory: '5000Mi',
+          },
+        },
         affinity: {
           nodeAffinity: {
             requiredDuringSchedulingIgnoredDuringExecution: {
