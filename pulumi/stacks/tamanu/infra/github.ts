@@ -3,7 +3,7 @@ import { Role, PolicyAttachment } from '@pulumi/aws/iam/index.js';
 import { AWS_STS } from '../../constants/external.ts';
 import { ghaOidc } from '../../common/coreRef.ts';
 
-// deprecated
+// used for client artifacts, which were previously just the (long gone) desktop app
 new Role('github-actions-desktop-s3', {
   name: 'gha-desktop-s3',
   assumeRolePolicy: {
