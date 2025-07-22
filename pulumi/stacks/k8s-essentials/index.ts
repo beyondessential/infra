@@ -4,7 +4,7 @@ await failIfIncorrectCluster();
 import './gatewayApi.ts';
 import './ingress.ts';
 import './metrics/prometheus.ts';
-import './metrics/grafana.ts';
+//import './metrics/grafana.ts';
 import './postgres.ts';
 import './tailscale.ts';
 
