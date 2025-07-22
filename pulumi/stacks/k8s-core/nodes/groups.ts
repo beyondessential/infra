@@ -245,7 +245,7 @@ for (const {
 
             'k8s.io/cluster-autoscaler/enabled': 'true', // for autodiscovery (value doesn't matter)
             'k8s.io/cluster-autoscaler/cluster': clusterName, // for autodiscovery
-            'k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage': '100G',
+            'k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage': `${Math.max(5, diskSize - 5)}G`,
 
             ...(schedule === 'ondemand'
               ? {}
