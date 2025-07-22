@@ -43,10 +43,12 @@ const standardGroups: NodeGroup[] =
     ? []
     : [
         {
-          groupName: 'workload-arm-ondemand-small-v1',
+          groupName: 'workload-arm-ondemand-small-v2',
           purpose: 'workload',
           schedule: 'ondemand',
           arch: 'arm64',
+          amiType: 'BOTTLEROCKET_ARM_64',
+          diskSize: 25,
           instanceTypes: region.apply((region) =>
             upToMonthly(instancesSizedAtLeast(region, 'arm64', 2, 4), 'linux', 'ondemand', 75).map(
               (i) => i.instance_type,
@@ -55,32 +57,16 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 30,
         },
         {
-          groupName: 'workload-x86-ondemand-small-v1',
+          groupName: 'workload-x86-ondemand-small-v2',
           purpose: 'workload',
           schedule: 'ondemand',
           arch: 'amd64',
+          amiType: 'BOTTLEROCKET_x86_64',
+          diskSize: 25,
           instanceTypes: region.apply((region) =>
             upToMonthly(instancesSizedAtLeast(region, 'x86_64', 2, 4), 'linux', 'ondemand', 75).map(
               (i) => i.instance_type,
             ),
-          ),
-          maxPerAz: 30,
-        },
-        {
-          groupName: 'workload-arm-spot-large-v1',
-          purpose: 'workload',
-          schedule: 'spot',
-          arch: 'arm64',
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'arm64', 8, 16)),
-                'linux',
-              ),
-              'linux',
-              'spot',
-              100,
-            ).map((i) => i.instance_type),
           ),
           maxPerAz: 30,
         },
@@ -105,10 +91,12 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 30,
         },
         {
-          groupName: 'workload-x86-spot-large-v1',
+          groupName: 'workload-x86-spot-large-v2',
           purpose: 'workload',
           schedule: 'spot',
           arch: 'amd64',
+          amiType: 'BOTTLEROCKET_x86_64',
+          diskSize: 50,
           instanceTypes: region.apply((region) =>
             upToMonthly(
               spotWithinOnDemandPrice(
@@ -123,10 +111,12 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 30,
         },
         {
-          groupName: 'ingress-arm-spot-v1',
+          groupName: 'ingress-arm-spot-v2',
           purpose: 'ingress',
           schedule: 'spot',
           arch: 'arm64',
+          amiType: 'BOTTLEROCKET_ARM_64',
+          diskSize: 25,
           instanceTypes: region.apply((region) =>
             upToMonthly(
               spotWithinOnDemandPrice(
@@ -141,10 +131,12 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 10,
         },
         {
-          groupName: 'ingress-arm-ondemand-v2',
+          groupName: 'ingress-arm-ondemand-v3',
           purpose: 'ingress',
           schedule: 'ondemand',
           arch: 'arm64',
+          amiType: 'BOTTLEROCKET_ARM_64',
+          diskSize: 25,
           instanceTypes: region.apply((region) =>
             upToMonthly(instancesSizedAtLeast(region, 'arm64', 2, 8), 'linux', 'ondemand', 100).map(
               (i) => i.instance_type,
@@ -153,10 +145,12 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 10,
         },
         {
-          groupName: 'system-arm-v1',
+          groupName: 'system-arm-v2',
           purpose: 'system',
           schedule: 'ondemand',
           arch: 'arm64',
+          amiType: 'BOTTLEROCKET_ARM_64',
+          diskSize: 25,
           instanceTypes: region.apply((region) =>
             upToMonthly(
               onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
@@ -169,10 +163,12 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 10,
         },
         {
-          groupName: 'system-x86-v1',
+          groupName: 'system-x86-v2',
           purpose: 'system',
           schedule: 'spot',
           arch: 'amd64',
+          amiType: 'BOTTLEROCKET_x86_64',
+          diskSize: 25,
           instanceTypes: region.apply((region) =>
             upToMonthly(
               spotWithinOnDemandPrice(
