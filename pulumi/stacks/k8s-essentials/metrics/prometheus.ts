@@ -45,7 +45,7 @@ new k8s.helm.v3.Release(
               nodeSelectorTerms: [
                 {
                   matchExpressions: [
-                    { key: 'bes.node.purpose', operator: 'In', values: ['system'] },
+                    { key: 'bes.node.purpose', operator: 'In', values: ['workload'] },
                   ],
                 },
               ],
