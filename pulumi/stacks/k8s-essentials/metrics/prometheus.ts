@@ -6,7 +6,7 @@ new k8s.helm.v3.Release(
   {
     name: 'prometheus',
     chart: 'prometheus',
-    version: '25.27.0',
+    version: '27.28.0',
     repositoryOpts: {
       repo: 'https://prometheus-community.github.io/helm-charts',
     },
@@ -19,6 +19,9 @@ new k8s.helm.v3.Release(
         enabled: false,
       },
       server: {
+        // This MUST be 1 in the current setup!
+        // 2+ means that stats are duplicated, which makes the metrics
+        // display as doubled in e.g. headlamp or other monitors.
         replicaCount: 1,
         statefulSet: {
           enabled: true,
