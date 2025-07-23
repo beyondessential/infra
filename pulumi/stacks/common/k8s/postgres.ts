@@ -18,6 +18,22 @@ export interface PostgresArgs {
   backupSchedule?: Input<string | boolean>;
   majorVersion?: Input<number>;
   postgis?: boolean;
+  roles?: Input<Input<ManagedRole>[]>;
+}
+
+// https://cloudnative-pg.io/documentation/1.26/cloudnative-pg.v1/#postgresql-cnpg-io-v1-RoleConfiguration
+export interface ManagedRole {
+  name: Input<string>;
+  passwordSecret?: Input<LocalObjectReference>;
+  inRoles?: Input<Input<string>[]>;
+  disablePassword?: Input<boolean>;
+  createdb?: Input<boolean>;
+  createrole?: Input<boolean>;
+  login?: Input<boolean>;
+}
+
+export interface LocalObjectReference {
+  name: Input<string>;
 }
 
 export type PostgresReady = Output<k8s.core.v1.Secret>;
@@ -33,6 +49,7 @@ export function runPostgres({
   backupSchedule,
   majorVersion = 17,
   postgis = false,
+  roles = [],
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -79,6 +96,9 @@ export function runPostgres({
             // should be about 25% of requested memory
             shared_buffers: '200MB',
           },
+        },
+        managed: {
+          roles,
         },
         affinity: {
           nodeSelector: {
