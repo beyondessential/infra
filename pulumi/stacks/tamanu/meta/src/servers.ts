@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { domains, replicas } from './config.ts';
+import { domains, normalizedStack, replicas } from './config.ts';
 
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
@@ -8,7 +8,7 @@ import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 
-const http = new k8s.core.v1.Service(
+const publicSvc = new k8s.core.v1.Service(
   'http',
   {
     metadata: {
@@ -23,7 +23,7 @@ const http = new k8s.core.v1.Service(
           name: 'http',
         },
       ],
-      selector: labels('server'),
+      selector: labels('public'),
     },
   },
   { replaceOnChanges: ['clusterIP'] },
@@ -53,7 +53,7 @@ new k8s.networking.v1.Ingress('http', {
             pathType: 'Prefix',
             backend: {
               service: {
-                name: http.metadata.name,
+                name: publicSvc.metadata.name,
                 port: {
                   name: 'http',
                 },
@@ -67,22 +67,22 @@ new k8s.networking.v1.Ingress('http', {
 });
 
 new k8s.apps.v1.Deployment(
-  'server',
+  'public-server',
   {
     metadata: {
-      labels: labels('server'),
+      labels: labels('public'),
       namespace,
     },
     spec: {
       replicas,
       selector: {
-        matchLabels: labels('server'),
+        matchLabels: labels('public'),
       },
       template: {
         metadata: {
-          labels: labels('server'),
+          labels: labels('public'),
         },
-        spec: spec('server', ['server', '--api-only'], {
+        spec: spec('server', ['public_server'], {
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
             periodSeconds: 1,
@@ -99,6 +99,114 @@ new k8s.apps.v1.Deployment(
             failureThreshold: 2,
             httpGet: {
               path: '/servers',
+              port: 8000,
+              scheme: 'HTTP',
+            },
+          },
+        }),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
+
+const privateSvc = new k8s.core.v1.Service('private-server', {
+  metadata: {
+    namespace,
+  },
+  spec: {
+    selector: labels('private'),
+    ports: [
+      {
+        protocol: 'TCP',
+        port: 80,
+        targetPort: 'http',
+        name: 'http',
+      },
+    ],
+  },
+});
+
+new k8s.networking.v1.Ingress('tailscale-server', {
+  metadata: {
+    namespace,
+    annotations: {
+      'tailscale.com/hostname': normalizedStack,
+      'tailscale.com/tags': 'tag:tools,tag:server,tag:server-tamanu,tag:server-tamanu-meta',
+    },
+  },
+  spec: {
+    ingressClassName: 'tailscale',
+    tls: [{ hosts: [normalizedStack] }],
+    rules: [
+      {
+        host: normalizedStack,
+        http: {
+          paths: [
+            {
+              path: '/',
+              pathType: 'Prefix',
+              backend: {
+                service: {
+                  name: publicSvc.metadata.name,
+                  port: {
+                    name: 'http',
+                  },
+                },
+              },
+            },
+            {
+              path: '/_',
+              pathType: 'Prefix',
+              backend: {
+                service: {
+                  name: privateSvc.metadata.name,
+                  port: {
+                    name: 'http',
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ],
+  },
+});
+
+new k8s.apps.v1.Deployment(
+  'private-server',
+  {
+    metadata: {
+      labels: labels('private'),
+      namespace,
+    },
+    spec: {
+      replicas,
+      selector: {
+        matchLabels: labels('private'),
+      },
+      template: {
+        metadata: {
+          labels: labels('private'),
+        },
+        spec: spec('server', ['private_server'], {
+          // Wait up to 60 seconds for the server to start...
+          startupProbe: {
+            periodSeconds: 1,
+            failureThreshold: 60,
+            httpGet: {
+              path: '/status',
+              port: 8000,
+              scheme: 'HTTP',
+            },
+          },
+          // ...then continuously check if it's up, and restart if it fails
+          livenessProbe: {
+            periodSeconds: 10,
+            failureThreshold: 2,
+            httpGet: {
+              path: '/status',
               port: 8000,
               scheme: 'HTTP',
             },
