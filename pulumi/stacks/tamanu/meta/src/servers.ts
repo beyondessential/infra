@@ -9,7 +9,7 @@ import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 
 const publicSvc = new k8s.core.v1.Service(
-  'http',
+  'public-server',
   {
     metadata: {
       namespace,
@@ -156,7 +156,7 @@ new k8s.networking.v1.Ingress('tailscale-server', {
               },
             },
             {
-              path: '/_',
+              path: '/$',
               pathType: 'Prefix',
               backend: {
                 service: {
