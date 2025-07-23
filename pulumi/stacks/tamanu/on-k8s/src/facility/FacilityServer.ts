@@ -1,6 +1,6 @@
 import { ComponentResource, type ComponentResourceOptions, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { runPostgres } from '../../../common/k8s/postgres.ts';
+import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
 import { migrator } from '../common/migrator.ts';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';

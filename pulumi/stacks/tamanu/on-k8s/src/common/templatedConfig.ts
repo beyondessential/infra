@@ -3,10 +3,10 @@ import { ComponentResource, Output, all, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api, V1ConfigMap } from '@kubernetes/client-node';
 import nunjucks from 'nunjucks';
-import { k8sClient } from '../../../common/k8s/client.ts';
+import { k8sClient } from '../../../../common/k8s/client.ts';
 import { namespace } from '../namespace.ts';
 import { DEFAULT_CONFIG_TEMPLATE, configTemplate } from '../config.ts';
-import { $network } from '../../../common/k8s/coreRef.ts';
+import { $network } from '../../../../common/k8s/coreRef.ts';
 
 export interface TemplatedConfigArgs {
   parent: ComponentResource;

@@ -1,8 +1,8 @@
 import { type Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import type { PostgresReady } from '../../../common/k8s/postgres.ts';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
+import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
+import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
 import type { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
 import { architecture, nodeEnv } from '../config.ts';
 import { image, imageTag } from '../image.ts';
