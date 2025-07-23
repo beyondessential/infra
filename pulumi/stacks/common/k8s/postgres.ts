@@ -16,6 +16,8 @@ export interface PostgresArgs {
   timezone: Input<string>;
   syncWal?: Input<boolean>;
   backupSchedule?: Input<string | boolean>;
+  majorVersion?: Input<number>;
+  postgis?: boolean;
 }
 
 export type PostgresReady = Output<k8s.core.v1.Secret>;
@@ -29,6 +31,8 @@ export function runPostgres({
   timezone,
   syncWal = false,
   backupSchedule,
+  majorVersion = 17,
+  postgis = false,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -44,6 +48,12 @@ export function runPostgres({
         },
       },
       spec: {
+        imageCatalogRef: {
+          apiGroup: 'postgresql.cnpg.io',
+          kind: 'ClusterImageCatalog',
+          name: postgis ? 'postgis' : 'postgresql',
+          major: majorVersion,
+        },
         instances: replicas,
         primaryUpdateStrategy: 'unsupervised',
         storage: {
