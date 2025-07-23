@@ -46,6 +46,9 @@ export function runPostgres({
           'app.kubernetes.io/name': name,
           'app.kubernetes.io/component': 'database',
         },
+        annotations: {
+          'pulumi.com/patchForce': 'true',
+        },
       },
       spec: {
         imageCatalogRef: {
