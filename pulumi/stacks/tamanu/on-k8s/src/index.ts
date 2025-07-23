@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
+import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
 import { CentralServer } from './central/CentralServer.ts';
 import { FacilityServer } from './facility/FacilityServer.ts';
 import { namespace } from './namespace.ts';
