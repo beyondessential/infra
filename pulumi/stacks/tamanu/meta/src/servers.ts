@@ -7,6 +7,7 @@ import { interpolate } from '@pulumi/pulumi';
 import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
+import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -83,6 +84,12 @@ new k8s.apps.v1.Deployment(
           labels: labels('public'),
         },
         spec: spec('server', ['public_server'], {
+          env: [
+            {
+              name: 'STATUS_PAGE_URL',
+              value: `https://${normalizedStack}.${TAILNET_DOMAIN}/$/status`,
+            },
+          ],
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
             periodSeconds: 1,

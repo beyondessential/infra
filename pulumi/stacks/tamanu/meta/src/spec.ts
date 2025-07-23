@@ -7,6 +7,7 @@ import { PostgresUrlSecretKey } from '../../../common/k8s/postgresUrl.ts';
 import { image } from './image.ts';
 import './ca.ts';
 import { dbReady } from './db.ts';
+import { all } from '@pulumi/pulumi';
 
 export function spec(
   name: string,
@@ -14,6 +15,7 @@ export function spec(
   containerArgs: Partial<k8s.types.input.core.v1.Container> = {},
 ): k8s.types.input.core.v1.PodSpec {
   return {
+    ...containerArgs,
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
       nodeAffinity: {
@@ -44,7 +46,7 @@ export function spec(
             name: 'http',
           },
         ],
-        env: [
+        env: all([containerArgs.env]).apply(([extraEnv]) => [
           {
             name: 'ROCKET_PORT',
             value: '8000',
@@ -62,14 +64,14 @@ export function spec(
               })),
             },
           },
-        ],
+          ...(extraEnv ?? []),
+        ]),
         resources: {
           requests: {
             cpu: '2m',
             memory: '10Mi',
           },
         },
-        ...containerArgs,
       },
     ],
   };
