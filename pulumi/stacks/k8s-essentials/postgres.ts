@@ -42,3 +42,10 @@ new k8s.core.v1.ConfigMap(
   },
   { dependsOn: [cnpg] },
 );
+
+new k8s.yaml.v2.ConfigFile('catalog-postgres', {
+  file: 'https://raw.githubusercontent.com/cloudnative-pg/postgres-containers/main/Debian/ClusterImageCatalog-bookworm.yaml',
+});
+new k8s.yaml.v2.ConfigFile('catalog-postgis', {
+  file: 'https://raw.githubusercontent.com/cloudnative-pg/postgis-containers/main/PostGIS/ClusterImageCatalog.yaml',
+});
