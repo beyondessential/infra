@@ -88,7 +88,7 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 1,
             failureThreshold: 60,
             httpGet: {
-              path: '/servers',
+              path: '/readyz',
               port: 8000,
               scheme: 'HTTP',
             },
@@ -98,7 +98,7 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 10,
             failureThreshold: 2,
             httpGet: {
-              path: '/servers',
+              path: '/livez',
               port: 8000,
               scheme: 'HTTP',
             },
@@ -196,7 +196,7 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 1,
             failureThreshold: 60,
             httpGet: {
-              path: '/status',
+              path: '/$/readyz',
               port: 8000,
               scheme: 'HTTP',
             },
@@ -206,7 +206,7 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 10,
             failureThreshold: 2,
             httpGet: {
-              path: '/status',
+              path: '/$/livez',
               port: 8000,
               scheme: 'HTTP',
             },
