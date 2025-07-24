@@ -14,7 +14,6 @@ export interface PostgresArgs {
   replicas: Input<number>;
   storage: Input<string>;
   timezone: Input<string>;
-  syncWal?: Input<boolean>;
   backupSchedule?: Input<string | boolean>;
   majorVersion?: Input<number>;
   postgis?: boolean;
@@ -45,7 +44,6 @@ export function runPostgres({
   replicas,
   storage,
   timezone,
-  syncWal = false,
   backupSchedule,
   majorVersion = 17,
   postgis = false,
@@ -121,29 +119,13 @@ export function runPostgres({
             },
           },
         },
-        backup:
-          syncWal || backupSchedule
-            ? {
-                // TODO: doesn't work
-                // barmanObjectStore: {
-                //   destinationPath: interpolate`s3://${backups.bucket}/cnpg.io/${namespace}/${name}/`,
-                //   s3Credentials: {
-                //     inheritFromIAMRole: true,
-                //   },
-                //   data: {
-                //     compression: 'bzip2',
-                //   },
-                //   wal: {
-                //     compression: 'bzip2',
-                //     maxParallel: 2,
-                //   },
-                // },
-
-                volumeSnapshot: {
-                  className: 'ebs',
-                },
-              }
-            : {},
+        backup: backupSchedule
+          ? {
+              volumeSnapshot: {
+                className: 'ebs',
+              },
+            }
+          : {},
         // logLevel: 'trace',
       },
     },
