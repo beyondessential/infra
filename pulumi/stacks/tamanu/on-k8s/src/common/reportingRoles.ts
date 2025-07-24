@@ -2,7 +2,7 @@ import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
 import { dbRoleSecret } from '../../../../common/k8s/dbRoleSecret.ts';
-import { ManagedRole } from '../../../../common/k8s/postgres.ts';
+import type { ManagedRole } from '../../../../common/k8s/postgres.ts';
 
 export interface ReportingRolesArgs {
   parent: ComponentResource;
