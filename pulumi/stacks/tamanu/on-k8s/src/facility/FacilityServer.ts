@@ -11,6 +11,7 @@ import { type ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts
 import { runTasks } from './tasks.ts';
 import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
+import { reportingRoles } from '../common/reportingRoles.ts';
 
 export interface FacilityServerArgs {
   fqdn: string;
@@ -31,6 +32,11 @@ export class FacilityServer extends ComponentResource {
   ) {
     super('bes:tamanu:FacilityServer', name, {}, opts);
 
+    const { roles, initSql } = reportingRoles({
+      parent: this,
+      server: `facility-${name}`,
+    });
+
     const dbReady = runPostgres({
       parent: this,
       namespace,
@@ -39,6 +45,8 @@ export class FacilityServer extends ComponentResource {
       storage: dbStorage,
       timezone,
       backupSchedule: dbBackups,
+      roles,
+      initSql,
     });
 
     const appConfig = provisioning.apply((provisioning) =>

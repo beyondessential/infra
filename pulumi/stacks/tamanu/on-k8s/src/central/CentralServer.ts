@@ -12,6 +12,7 @@ import { WebFrontend } from '../web/WebFrontend.ts';
 import { ingress } from '../common/ingress.ts';
 import { type ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
 import { namespace } from '../namespace.ts';
+import { reportingRoles } from '../common/reportingRoles.ts';
 
 export interface CentralServerArgs {
   fqdn: string;
@@ -31,6 +32,11 @@ export class CentralServer extends ComponentResource {
     super('bes:tamanu:CentralServer', name, {}, opts);
     this.fqdn = fqdn;
 
+    const { roles, initSql } = reportingRoles({
+      parent: this,
+      server: 'central',
+    });
+
     const dbReady = runPostgres({
       parent: this,
       namespace,
@@ -39,6 +45,8 @@ export class CentralServer extends ComponentResource {
       storage: dbStorage,
       timezone,
       backupSchedule: dbBackups,
+      roles,
+      initSql,
     });
 
     const appConfig = templatedConfig({
