@@ -32,7 +32,7 @@ export class FacilityServer extends ComponentResource {
   ) {
     super('bes:tamanu:FacilityServer', name, {}, opts);
 
-    const { roles, initSql } = reportingRoles({
+    const roles = reportingRoles({
       parent: this,
       server: `facility-${name}`,
     });
@@ -45,8 +45,8 @@ export class FacilityServer extends ComponentResource {
       storage: dbStorage,
       timezone,
       backupSchedule: dbBackups,
-      roles,
-      initSql,
+      roles: roles.roles,
+      initSql: roles.initSql,
     });
 
     const appConfig = provisioning.apply((provisioning) =>
@@ -76,6 +76,8 @@ export class FacilityServer extends ComponentResource {
       timezone,
       appConfig: appConfig.metadata.name,
       dbReady,
+      rawSecret: roles.raw,
+      reportingSecret: roles.reporting,
     });
 
     const migratorJob = migrator(`facility-${name}`, {

@@ -32,7 +32,7 @@ export class CentralServer extends ComponentResource {
     super('bes:tamanu:CentralServer', name, {}, opts);
     this.fqdn = fqdn;
 
-    const { roles, initSql } = reportingRoles({
+    const roles = reportingRoles({
       parent: this,
       server: 'central',
     });
@@ -45,8 +45,8 @@ export class CentralServer extends ComponentResource {
       storage: dbStorage,
       timezone,
       backupSchedule: dbBackups,
-      roles,
-      initSql,
+      roles: roles.roles,
+      initSql: roles.initSql,
     });
 
     const appConfig = templatedConfig({
@@ -66,6 +66,8 @@ export class CentralServer extends ComponentResource {
       timezone,
       appConfig: appConfig.metadata.name,
       dbReady,
+      rawSecret: roles.raw,
+      reportingSecret: roles.reporting,
     });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });

@@ -27,12 +27,16 @@ export interface PodSpecFactoryArgs {
   timezone: string;
   appConfig: Output<string>;
   dbReady: PostgresReady;
+  rawSecret: k8s.core.v1.Secret;
+  reportingSecret: k8s.core.v1.Secret;
 }
 
 export function podSpecFactory({
   timezone,
   appConfig,
   dbReady,
+  rawSecret,
+  reportingSecret,
 }: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
@@ -182,6 +186,42 @@ export function podSpecFactory({
                 },
               },
             },
+            {
+              name: 'DB_RAW_USERNAME',
+              valueFrom: {
+                secretKeyRef: {
+                  name: rawSecret.metadata.name,
+                  key: 'username',
+                },
+              },
+            },
+            {
+              name: 'DB_RAW_PASSWORD',
+              valueFrom: {
+                secretKeyRef: {
+                  name: rawSecret.metadata.name,
+                  key: 'password',
+                },
+              },
+            },
+            {
+              name: 'DB_REPORTING_USERNAME',
+              valueFrom: {
+                secretKeyRef: {
+                  name: reportingSecret.metadata.name,
+                  key: 'username',
+                },
+              },
+            },
+            {
+              name: 'DB_REPORTING_PASSWORD',
+              valueFrom: {
+                secretKeyRef: {
+                  name: reportingSecret.metadata.name,
+                  key: 'password',
+                },
+              },
+            },
           ]),
           resources: {
             requests: {
@@ -202,6 +242,18 @@ export const CONFIG_FROM_ENV = {
     username: 'DB_USERNAME',
     password: 'DB_PASSWORD',
     name: 'DB_NAME',
+    reportSchemas: {
+      connections: {
+        raw: {
+          username: 'DB_RAW_USERNAME',
+          password: 'DB_RAW_PASSWORD',
+        },
+        reporting: {
+          username: 'DB_REPORTING_USERNAME',
+          password: 'DB_REPORTING_PASSWORD',
+        },
+      },
+    },
   },
   countryTimeZone: 'TZ',
   localisation: {
