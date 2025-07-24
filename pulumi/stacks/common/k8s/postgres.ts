@@ -18,6 +18,7 @@ export interface PostgresArgs {
   majorVersion?: Input<number>;
   postgis?: boolean;
   roles?: Input<Input<ManagedRole>[]>;
+  initSql?: Input<string>;
 }
 
 // https://cloudnative-pg.io/documentation/1.26/cloudnative-pg.v1/#postgresql-cnpg-io-v1-RoleConfiguration
@@ -48,6 +49,7 @@ export function runPostgres({
   majorVersion = 17,
   postgis = false,
   roles = [],
+  initSql,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -98,6 +100,13 @@ export function runPostgres({
         managed: {
           roles,
         },
+        bootstrap: initSql
+          ? {
+              initdb: {
+                postInitApplicationSQL: [initSql],
+              },
+            }
+          : {},
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
