@@ -49,6 +49,9 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
         login: true,
       },
     ],
+    // initsql runs before the roles are created/updated by the above
+    // and also before anything is migrated by the application, so
+    // the reporting schema is not available.
     initSql: `
       CREATE ROLE raw LOGIN;
       CREATE ROLE reporting LOGIN;
