@@ -54,6 +54,7 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
       CREATE ROLE reporting LOGIN;
       GRANT USAGE ON SCHEMA public TO raw;
       GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+      CREATE SCHEMA reporting;
       GRANT USAGE ON SCHEMA reporting TO reporting;
       GRANT SELECT ON ALL TABLES IN SCHEMA reporting TO reporting;
       ALTER ROLE reporting SET search_path TO reporting;
