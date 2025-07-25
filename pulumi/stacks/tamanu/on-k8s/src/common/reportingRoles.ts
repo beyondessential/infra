@@ -50,6 +50,8 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
       },
     ],
     initSql: `
+      CREATE ROLE raw LOGIN;
+      CREATE ROLE reporting LOGIN;
       GRANT USAGE ON SCHEMA public TO raw;
       GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
       GRANT USAGE ON SCHEMA reporting TO reporting;
