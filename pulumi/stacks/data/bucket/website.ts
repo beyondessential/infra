@@ -3,7 +3,7 @@ import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { ValidCertificate } from '../../common/ValidCertificate.ts';
 import { DOMAIN, ZONE_ID, LOGS_BUCKET } from './config.ts';
-import { bucket } from './bucket.ts';
+import { bucket, bucketPolicy } from './bucket.ts';
 
 const errorDocument = new aws.s3.BucketObjectv2(
   'bucket-errordoc',
@@ -106,13 +106,7 @@ const distribution = new aws.cloudfront.Distribution(
   { deleteBeforeReplace: true, ignoreChanges: ['origins'] },
 );
 
-new aws.s3.BucketPolicy(
-  'bucket-distribution',
-  {
-    bucket: bucket.bucket,
-    policy: jsonStringify({
-      Version: '2012-10-17',
-      Statement: [
+bucketPolicy.push(
         {
           Effect: 'Allow',
           Principal: {
@@ -126,10 +120,6 @@ new aws.s3.BucketPolicy(
             },
           },
         },
-      ],
-    }),
-  },
-  { parent: bucket },
 );
 
 new aws.route53.Record('domain-ipv4', {

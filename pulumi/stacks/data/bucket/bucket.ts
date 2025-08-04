@@ -32,15 +32,11 @@ new aws.s3.BucketAclV2(
   { parent: bucket, dependsOn: [bucketOwnership] },
 );
 
-if (externalAccountsRead.length > 0 || externalAccountsWrite.length > 0) {
-  new aws.s3.BucketPolicy(
-    'bucket-external-access',
-    {
-      bucket: bucket.bucket,
-      policy: jsonStringify({
-        Version: '2012-10-17',
-        Statement: compact([
-          externalAccountsRead.length > 0 && {
+export const bucketPolicy = [];
+
+if (externalAccountsRead.length > 0) {
+      bucketPolicy.push(
+          {
             Effect: 'Allow',
             Principal: {
               AWS: externalAccountsRead.map((account) => `arn:aws:iam::${account}:root`),
@@ -50,8 +46,10 @@ if (externalAccountsRead.length > 0 || externalAccountsWrite.length > 0) {
               `arn:aws:s3:::${name}`,
               `arn:aws:s3:::${name}/*`,
             ]),
-          },
-          externalAccountsWrite.length > 0 && {
+          });
+}
+if (externalAccountsWrite.length > 0) {
+      bucketPolicy.push({
             Effect: 'Allow',
             Principal: {
               AWS: externalAccountsWrite.map((account) => `arn:aws:iam::${account}:root`),
@@ -62,8 +60,19 @@ if (externalAccountsRead.length > 0 || externalAccountsWrite.length > 0) {
               `arn:aws:s3:::${name}/*`,
             ]),
           },
-        ]),
-      }),
+  );
+}
+
+export function applyBucketPolicy() {
+  if (bucketPolicy.length === 0) return;
+  new aws.s3.BucketPolicy(
+    'bucket-policy',
+    {
+      bucket: bucket.bucket,
+      policy: {
+        Version: '2012-10-17',
+        Statement: bucketPolicy,
+      },
     },
     { parent: bucket },
   );

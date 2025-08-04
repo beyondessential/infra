@@ -4,7 +4,7 @@ import { accountId, region } from '../../common/awsAccount.ts';
 import { cfg, failIfIncorrectAccount } from '../../common/coreRef.ts';
 failIfIncorrectAccount();
 
-import './bucket.ts';
+import { applyBucketPolicy } from './bucket.ts';
 import './github.ts';
 
 if (cfg.getBoolean('website')) {
@@ -14,3 +14,5 @@ if (cfg.getBoolean('website')) {
 export const awsRegion = region;
 export const bucket = BUCKET;
 export const roleToAssume = interpolate`arn:aws:iam::${accountId}:role/${ROLE_NAME}`;
+
+applyBucketPolicy();
