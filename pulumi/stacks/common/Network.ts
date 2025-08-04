@@ -212,7 +212,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
-    const region = output(import('./awsAccount.js').then((a) => a.region));
+    const region = output(import('./awsAccount.ts').then((a) => a.region));
 
     const subnet = new Subnet(
       name,
@@ -335,7 +335,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
-    const region = output(import('./awsAccount.js').then((a) => a.region));
+    const region = output(import('./awsAccount.ts').then((a) => a.region));
 
     const subnet = new Subnet(
       name,
@@ -445,7 +445,7 @@ export class Network extends ComponentResource {
     };
 
     const ipv6Only = !!(!ipv4Block && ipv6Block);
-    const region = output(import('./awsAccount.js').then((a) => a.region));
+    const region = output(import('./awsAccount.ts').then((a) => a.region));
 
     const subnet = new Subnet(
       name,

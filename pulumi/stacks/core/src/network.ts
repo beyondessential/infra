@@ -1,7 +1,7 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
-import { accountId, region } from '../common/awsAccount.ts';
-import { Network } from '../common/Network.ts';
+import { accountId, region } from '../../common/awsAccount.ts';
+import { Network } from '../../common/Network.ts';
 
 import {
   forEksCluster,
