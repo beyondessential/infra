@@ -15,6 +15,19 @@
     filename: tailscale
     state: present
 
+- name: Remove duplicate tailscale repo
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pkgs_tailscale_com_stable_ubuntu.list
+    state: absent
+
+- name: Remove duplicate tailscale apt source line
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/tailscale.list
+    line: "deb [signed-by=/etc/apt/keyrings/tailscale.asc] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main"
+    state: absent
+
 - name: Prioritise tailscale repo
   become: true
   ansible.builtin.copy:

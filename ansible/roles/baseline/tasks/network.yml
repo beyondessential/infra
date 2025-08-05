@@ -18,6 +18,12 @@
       - systemd-resolved
   notify: Restart systemd-resolved
 
+- name: Create resolved override directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/systemd-resolved.service.d
+    state: directory
+
 - name: Limit resolved CPU usage
   become: true
   ansible.builtin.copy:
