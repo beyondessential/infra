@@ -49,11 +49,12 @@ const standardGroups: NodeGroup[] =
           arch: 'arm64',
           amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(instancesSizedAtLeast(region, 'arm64', 2, 4), 'linux', 'ondemand', 75).map(
-              (i) => i.instance_type,
-            ),
-          ),
+          instanceTypes: upToMonthly(
+            instancesSizedAtLeast(region, 'arm64', 2, 4),
+            'linux',
+            'ondemand',
+            75,
+          ).map((i) => i.instance_type),
           maxPerAz: 30,
         },
         {
@@ -63,11 +64,12 @@ const standardGroups: NodeGroup[] =
           arch: 'amd64',
           amiType: 'BOTTLEROCKET_x86_64',
           diskSize: 25,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(instancesSizedAtLeast(region, 'x86_64', 2, 4), 'linux', 'ondemand', 75).map(
-              (i) => i.instance_type,
-            ),
-          ),
+          instanceTypes: upToMonthly(
+            instancesSizedAtLeast(region, 'x86_64', 2, 4),
+            'linux',
+            'ondemand',
+            75,
+          ).map((i) => i.instance_type),
           maxPerAz: 30,
         },
         {
@@ -77,17 +79,15 @@ const standardGroups: NodeGroup[] =
           arch: 'arm64',
           amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 50,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'arm64', 8, 16)),
-                'linux',
-              ),
+          instanceTypes: upToMonthly(
+            spotWithinOnDemandPrice(
+              nonBurst(instancesSizedAtLeast(region, 'arm64', 8, 16)),
               'linux',
-              'spot',
-              100,
-            ).map((i) => i.instance_type),
-          ),
+            ),
+            'linux',
+            'spot',
+            100,
+          ).map((i) => i.instance_type),
           maxPerAz: 30,
         },
         {
@@ -97,17 +97,15 @@ const standardGroups: NodeGroup[] =
           arch: 'amd64',
           amiType: 'BOTTLEROCKET_x86_64',
           diskSize: 50,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)),
-                'linux',
-              ),
+          instanceTypes: upToMonthly(
+            spotWithinOnDemandPrice(
+              nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)),
               'linux',
-              'spot',
-              75,
-            ).map((i) => i.instance_type),
-          ),
+            ),
+            'linux',
+            'spot',
+            75,
+          ).map((i) => i.instance_type),
           maxPerAz: 30,
         },
         {
@@ -117,17 +115,15 @@ const standardGroups: NodeGroup[] =
           arch: 'arm64',
           amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-                'linux',
-              ),
+          instanceTypes: upToMonthly(
+            spotWithinOnDemandPrice(
+              nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
               'linux',
-              'spot',
-              50,
-            ).map((i) => i.instance_type),
-          ),
+            ),
+            'linux',
+            'spot',
+            50,
+          ).map((i) => i.instance_type),
           maxPerAz: 10,
         },
         {
@@ -137,11 +133,12 @@ const standardGroups: NodeGroup[] =
           arch: 'arm64',
           amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(instancesSizedAtLeast(region, 'arm64', 2, 8), 'linux', 'ondemand', 100).map(
-              (i) => i.instance_type,
-            ),
-          ),
+          instanceTypes: upToMonthly(
+            instancesSizedAtLeast(region, 'arm64', 2, 8),
+            'linux',
+            'ondemand',
+            100,
+          ).map((i) => i.instance_type),
           maxPerAz: 10,
         },
         {
@@ -151,14 +148,12 @@ const standardGroups: NodeGroup[] =
           arch: 'arm64',
           amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-              'linux',
-              'ondemand',
-              100,
-            ).map((i) => i.instance_type),
-          ),
+          instanceTypes: upToMonthly(
+            onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+            'linux',
+            'ondemand',
+            100,
+          ).map((i) => i.instance_type),
           minPerAz: 1,
           maxPerAz: 10,
         },
@@ -169,17 +164,15 @@ const standardGroups: NodeGroup[] =
           arch: 'amd64',
           amiType: 'BOTTLEROCKET_x86_64',
           diskSize: 25,
-          instanceTypes: region.apply((region) =>
-            upToMonthly(
-              spotWithinOnDemandPrice(
-                nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
-                'linux',
-              ),
+          instanceTypes: upToMonthly(
+            spotWithinOnDemandPrice(
+              nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
               'linux',
-              'spot',
-              40,
-            ).map((i) => i.instance_type),
-          ),
+            ),
+            'linux',
+            'spot',
+            40,
+          ).map((i) => i.instance_type),
           minPerAz: 0,
           maxPerAz: 10,
         },

@@ -51,7 +51,7 @@ for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
     inst.id,
     {
-      ami: region.apply((reg) => UBUNTU_24_04_LTS_ARM64[reg]),
+      ami: UBUNTU_24_04_LTS_ARM64[region],
       instanceType: inst.instance,
       disableApiTermination: !hardDelete,
       monitoring: true,
