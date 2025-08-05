@@ -18,6 +18,18 @@
       - systemd-resolved
   notify: Restart systemd-resolved
 
+- name: Limit resolved CPU usage
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/systemd-resolved.service.d/90-cpu-limit.conf
+    content: |
+      [Service]
+      CPUWeight=20
+      CPUQuota=30%
+  notify:
+    - Reload systemd
+    - Restart systemd-resolved
+
 - name: Enable resolved
   become: true
   ansible.builtin.systemd:
