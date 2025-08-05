@@ -1,6 +1,9 @@
 import * as aws from '@pulumi/aws';
+import { getStack } from '@pulumi/pulumi';
 
-export const topic = new aws.sns.Topic('workload-alerts');
+export const topic = new aws.sns.Topic('workload-alerts', {
+  displayName: `[${getStack()}] Workload Alerts`,
+});
 
 new aws.sns.TopicSubscription(
   'send-to-devlead',
@@ -14,8 +17,7 @@ new aws.sns.TopicSubscription(
 
 new aws.cloudwatch.MetricAlarm('overall-high-cpu', {
   name: 'OverallHighCPU',
-  alarmDescription:
-    'When any EC2 instance in the account exceeds 80% CPU utilization for more than 4 hours',
+  alarmDescription: `[${getStack()}] When any EC2 instance exceeds 80% CPU utilization for more than 4 hours`,
   namespace: 'AWS/EC2',
   metricName: 'CPUUtilization',
   statistic: 'Maximum',
@@ -28,8 +30,7 @@ new aws.cloudwatch.MetricAlarm('overall-high-cpu', {
 
 new aws.cloudwatch.MetricAlarm('cpu-credits-charged', {
   name: 'CPUCreditsCharged',
-  alarmDescription:
-    'When T-family instances exceed their burst credit for more than a cumulative 60 cpu-minutes per day over the entire account',
+  alarmDescription: `[${getStack()}] When any T-family instance exceeds its burst credit for more than an account-wide-cumulative 60 cpu-minutes per day`,
   namespace: 'AWS/EC2',
   metricName: 'CPUSurplusCreditsCharged',
   statistic: 'Sum',
