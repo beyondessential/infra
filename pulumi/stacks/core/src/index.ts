@@ -1,4 +1,6 @@
 import './passwords.ts';
+import './alerts.ts';
+
 import { v4, v6 as ipv6 } from './config.ts';
 const ipv4 = Boolean(v4);
 export { ipv4, ipv6 };

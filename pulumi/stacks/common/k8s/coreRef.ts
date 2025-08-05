@@ -1,8 +1,7 @@
-import { Config } from '@pulumi/pulumi';
 import { CrossStack } from '../CrossStack.ts';
 import { k8sConfig } from './client.ts';
-
-export const cfg = new Config();
+import { cfg } from '../cfg.ts';
+export { cfg };
 
 const core = new CrossStack(cfg.require('k8s-core'));
 export const $core = core.k8sCoreOutput();

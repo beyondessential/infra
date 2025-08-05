@@ -1,10 +1,10 @@
 import { camelCase, upperFirst } from 'lodash-es';
-import { all, Config, getStack, Output } from '@pulumi/pulumi';
+import { all, getStack } from '@pulumi/pulumi';
 import { CrossStack } from './CrossStack.ts';
 import { nativeTags as tagsToNative } from './tags.ts';
 import { accountId } from './awsAccount.ts';
-
-export const cfg = new Config();
+import { cfg } from './cfg.ts';
+export { cfg };
 
 export const $core = new CrossStack(cfg.require('core'));
 export const $network = $core.network();
