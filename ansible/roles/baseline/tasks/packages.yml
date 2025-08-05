@@ -12,6 +12,25 @@
     clean: true
     upgrade: dist
     autoremove: true
+  async: 1000
+  poll: 0
+  register: apt_update
+
+- name: Wait until apt update is finished
+  become: true
+  async_status:
+    jid: "{{ apt_update.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 1000
+  delay: 10
+
+- name: Clean up async file
+  become: true
+  ignore_errors: true
+  ansible.builtin.async_status:
+    jid: "{{ apt_update.ansible_job_id }}"
+    mode: cleanup
 
 - name: Install basic tooling
   become: true
@@ -33,7 +52,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/cron.daily/apt-update
-    mode: '0755'
+    mode: "0755"
     content: |
       #!/bin/sh
       apt update
@@ -42,7 +61,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/cron.weekly/apt-upgrade-ssh
-    mode: '0755'
+    mode: "0755"
     content: |
       #!/bin/sh
       apt install -y openssh-server
