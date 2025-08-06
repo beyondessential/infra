@@ -25,7 +25,8 @@ function handler(event) {
   }
 
   // https://host/path -> redirect to https://host/path/
-  if (!uri.includes('.')) {
+  // https://host/path/v1.2.3 -> redirect to https://host/path/v1.2.3/
+  if (!uri.includes('.') || /\/v\d+[.]\d+[.]\d+$/.test(uri)) {
     return {
       statusCode: 307,
       statusDescription: 'Temporary Redirect',
