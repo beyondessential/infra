@@ -35,6 +35,8 @@ if (!domain) {
   } else {
     domain = cfg.require('domain');
   }
+} else if (domain === 'false') {
+  domain = undefined;
 }
 
 export { domain };
