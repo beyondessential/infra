@@ -48,19 +48,15 @@ export function spec(
         ],
         env: all([containerArgs.env]).apply(([extraEnv]) => [
           {
-            name: 'ROCKET_PORT',
-            value: '8000',
+            name: 'BIND_ADDRESS',
+            value: '[::]:8000',
           },
           {
-            name: 'ROCKET_LOG_LEVEL',
-            value: 'normal',
-          },
-          {
-            name: 'ROCKET_DATABASES',
+            name: 'DATABASE_URL',
             valueFrom: {
               secretKeyRef: dbReady.apply((url) => ({
                 name: url.metadata.name,
-                key: PostgresUrlSecretKey.AppRocket,
+                key: PostgresUrlSecretKey.AppDbUrl,
               })),
             },
           },

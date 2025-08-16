@@ -89,6 +89,10 @@ new k8s.apps.v1.Deployment(
               name: 'STATUS_PAGE_URL',
               value: `https://${normalizedStack}.${TAILNET_DOMAIN}/$/status`,
             },
+            {
+              name: 'CLIENT_IP_SOURCE',
+              value: 'RightmostXForwardedFor',
+            },
           ],
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
@@ -198,6 +202,12 @@ new k8s.apps.v1.Deployment(
           labels: labels('private'),
         },
         spec: spec('server', ['private_server'], {
+          env: [
+            {
+              name: 'CLIENT_IP_SOURCE',
+              value: 'ConnectInfo',
+            },
+          ],
           // Wait up to 60 seconds for the server to start...
           startupProbe: {
             periodSeconds: 1,
