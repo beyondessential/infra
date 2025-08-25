@@ -66,6 +66,7 @@ if (tailscaleEnabled) {
     },
   });
 
+  const exitNodeName = cfg.get('tailscaleExitNodeName');
   new k8s.apiextensions.CustomResource('exit-node', {
     metadata: {
       namespace: ns.metadata.name,
@@ -73,7 +74,7 @@ if (tailscaleEnabled) {
     apiVersion: 'tailscale.com/v1alpha1',
     kind: 'Connector',
     spec: {
-      hostname: interpolate`exit-k8s-${clusterFullName}`,
+      hostname: exitNodeName ?? interpolate`exit-k8s-${clusterFullName}`,
       tags: ['tag:server'],
       exitNode: true,
     },
