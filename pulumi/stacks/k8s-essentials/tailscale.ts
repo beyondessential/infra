@@ -66,6 +66,11 @@ if (tailscaleEnabled) {
     },
   });
 
+  // After renaming, you need to go into the Tailscale admin console,
+  // open the machine, go to change the machine name, switch off the
+  // "auto generate from hostname" switch, don't actually change the
+  // name, save, refresh the page, then go switch it back to generated
+  // again, and that should pick up the new hostname defined here.
   const exitNodeName = cfg.get('tailscaleExitNodeName');
   new k8s.apiextensions.CustomResource('exit-node', {
     metadata: {
