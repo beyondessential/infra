@@ -84,24 +84,16 @@ export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   return defaultTags;
 });
 
-export interface Disks {
-  root?: number;
-  logs?: number;
-  data?: number;
-}
-
-const defaultDisks: Disks = {
-  root: cfg.getNumber('disks.root') ?? 10,
-  logs: cfg.getNumber('disks.logs') ?? 10,
-  data: cfg.getNumber('disks.data') ?? 50,
-};
+const defaultDisk: number = cfg.getNumber('disk') ?? cfg.getNumber('disks.root') ?? 50;
+const legacyDisk = cfg.getBoolean('legacyDisk') ?? true;
 
 export interface Facility {
   id: string;
   name?: string;
   subdomain?: string;
   instance?: string;
-  disks?: Disks;
+  disk?: number;
+  legacyDisk?: boolean;
   tailscaleName?: Input<string>;
   external?: boolean;
 }
@@ -119,12 +111,10 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
       name: id,
       instance: 't4g.medium',
       tailscaleName: interpolate`${tailscaleBase}-facility-${id.replace(/^facility-/, '')}`,
+      legacyDisk,
+      disk: defaultDisk,
       ...facility,
       id,
-      disks: {
-        ...defaultDisks,
-        ...facility.disks,
-      },
     };
   })
   .map((facility) => ({
@@ -139,13 +129,11 @@ export const central: Server = {
   subdomain: 'central',
   instance: 't4g.medium',
   tailscaleName: interpolate`${tailscaleBase}-central`,
+  legacyDisk,
+  disk: defaultDisk,
   ...cfgCentral,
   id: 'central',
   fqdn: interpolate`${(cfgCentral || null)?.subdomain ?? 'central'}.${domainBase}`,
-  disks: {
-    ...defaultDisks,
-    ...((cfgCentral || null)?.disks ?? {}),
-  },
 };
 
 export const instances: Server[] = [...(central ? [central] : []), ...facilities];

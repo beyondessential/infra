@@ -17,11 +17,18 @@ import { region } from '../../common/awsAccount.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const DEVICE_NAMES = {
-  root: '/dev/root',
-  logs: '/dev/sdl',
-  data: '/dev/sdp', // p for postgres
-};
+const LEGACY_DISKS = [
+  {
+    name: 'logs',
+    device: '/dev/sdl',
+    size: 10,
+  },
+  {
+    name: 'data',
+    device: '/dev/sdp',
+    size: 50,
+  },
+];
 
 const backupResources: Output<string>[] = [];
 const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map();
@@ -43,7 +50,7 @@ for (const [i, inst] of instances.entries()) {
       disableApiTermination: !hardDelete,
       monitoring: true,
       rootBlockDevice: {
-        volumeSize: inst.disks.root,
+        volumeSize: inst.disk,
         volumeType: 'gp3',
         encrypted: true,
       },
@@ -76,34 +83,35 @@ for (const [i, inst] of instances.entries()) {
 
   backupResources.push(vm.arn);
 
-  for (const [name, size] of Object.entries(inst.disks)) {
-    if (name === 'root') continue;
-    const volume = new aws.ebs.Volume(
-      `${inst.id}-${name}`,
-      {
-        availabilityZone: vm.availabilityZone,
-        size,
-        type: 'gp3',
-        finalSnapshot: true,
-        encrypted: true,
-        tags: {
-          Name: `${namePrefix}${inst.name} ${name}`,
+  if (inst.legacyDisk) {
+    for (const { name, size, device } of LEGACY_DISKS) {
+      const volume = new aws.ebs.Volume(
+        `${inst.id}-${name}`,
+        {
+          availabilityZone: vm.availabilityZone,
+          size,
+          type: 'gp3',
+          finalSnapshot: true,
+          encrypted: true,
+          tags: {
+            Name: `${namePrefix}${inst.name} ${name}`,
+          },
         },
-      },
-      { deleteBeforeReplace: true },
-    );
+        { deleteBeforeReplace: true },
+      );
 
-    backupResources.push(volume.arn);
+      backupResources.push(volume.arn);
 
-    new aws.ec2.VolumeAttachment(
-      `${inst.id}-${name}`,
-      {
-        deviceName: DEVICE_NAMES[name],
-        volumeId: volume.id,
-        instanceId: vm.id,
-      },
-      { deleteBeforeReplace: true },
-    );
+      new aws.ec2.VolumeAttachment(
+        `${inst.id}-${name}`,
+        {
+          deviceName: device,
+          volumeId: volume.id,
+          instanceId: vm.id,
+        },
+        { deleteBeforeReplace: true },
+      );
+    }
   }
 
   const ip = new aws.ec2.Eip(inst.id, {
