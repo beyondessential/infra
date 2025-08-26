@@ -13,8 +13,7 @@ import {
 import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
 import { Instance, InstanceArgs } from '@pulumi/aws/ec2/index.js';
 
-import { alpineAmi } from '../constants/external.ts';
-import { TAILNET_DOMAIN } from '../constants/internal.ts';
+import { AMI_UBUNTU_ARM64, TAILNET_DOMAIN } from '../constants/internal.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,8 +48,6 @@ export class TailscaleBox extends ComponentResource {
       ...args,
     };
 
-    const alpine = alpineAmi();
-
     const authKey = new TailnetKey(
       this.#name,
       {
@@ -74,10 +71,10 @@ export class TailscaleBox extends ComponentResource {
       {
         keyName: 'ops',
         ...this.#args.instanceArgs,
-        ami: alpine.id,
+        ami: AMI_UBUNTU_ARM64,
         userData: all([authKey.key, output(this.#args.tailscaleName)]).apply(([key, name]) =>
           secret(
-            readFileSync(join(__dirname, 'tailscalebox-init.sh'), 'utf-8')
+            readFileSync(join(__dirname, 'TailscaleBox.yml'), 'utf-8')
               .replace(/%TAILSCALE_AUTH_KEY%/g, key)
               .replace(/%TAILSCALE_NAME%/g, name),
           ),
@@ -89,7 +86,7 @@ export class TailscaleBox extends ComponentResource {
       },
       {
         parent: authKey,
-        // don't redeploy when Alpine's AMI updates
+        // don't redeploy when our AMI updates
         ignoreChanges: ['ami'],
       },
     );

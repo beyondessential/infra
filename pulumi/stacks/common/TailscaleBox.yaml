@@ -1,0 +1,20 @@
+#cloud-config
+runcmd:
+  # set up tailscale
+  - ["hostnamectl", "set-hostname", "%TAILSCALE_NAME%"]
+  - ["sh", "-c", "curl -fsSL https://tailscale.com/install.sh | sh"]
+  - ["useradd", "--user-group", "--create-home", "--home-dir", "/var/lib/caddy", "--shell", "/usr/bin/false", "caddy"]
+  - ["sh", "-c", "echo TS_PERMIT_CERT_UID=caddy >> /etc/default/tailscaled"]
+  - [
+      "tailscale",
+      "up",
+      "--auth-key=%TAILSCALE_AUTH_KEY%",
+      "--hostname=%TAILSCALE_NAME%",
+      "--ssh",
+      "--operator=ubuntu",
+    ]
+  - ["systemctl", "enable", "tailscaled"]
+
+  # pop an emergency key in for access if tailscale fails
+  - ["mkdir", "-p", "/home/ubuntu/.ssh"]
+  - ["sh", "-c", "echo ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u emergency@tamanu >> /home/ubuntu/.ssh/authorized_keys"]

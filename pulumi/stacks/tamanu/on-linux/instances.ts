@@ -7,28 +7,15 @@ import { all, Output, secret } from '@pulumi/pulumi';
 
 import { $network } from '../../common/coreRef.ts';
 import { tailscaleKey } from '../../common/tailscaleKey.ts';
+import { AMI_UBUNTU_ARM64 } from '../../constants/internal.ts';
 
-import {
-  instances,
-  namePrefix,
-  hardDelete,
-  sshKey,
-  tailscaleTags,
-  normalizedStack,
-} from './config.ts';
+import { instances, namePrefix, hardDelete, tailscaleTags, normalizedStack } from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
 import { applyDNS } from './dns.ts';
 import { region } from '../../common/awsAccount.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// https://cloud-images.ubuntu.com/locator/ec2/
-// search for `ap-southeast-2 24.04 arm`
-const UBUNTU_24_04_LTS_ARM64 = {
-  'ap-southeast-2': 'ami-0fae8bcb3f3621e32',
-  'eu-central-2': 'ami-00f2dffdfea591a60',
-};
 
 const DEVICE_NAMES = {
   root: '/dev/root',
@@ -51,7 +38,7 @@ for (const [i, inst] of instances.entries()) {
   const vm = new aws.ec2.Instance(
     inst.id,
     {
-      ami: UBUNTU_24_04_LTS_ARM64[region],
+      ami: AMI_UBUNTU_ARM64[region],
       instanceType: inst.instance,
       disableApiTermination: !hardDelete,
       monitoring: true,
