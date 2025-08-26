@@ -3,8 +3,6 @@ runcmd:
   # set up tailscale
   - ["hostnamectl", "set-hostname", "%TAILSCALE_NAME%"]
   - ["sh", "-c", "curl -fsSL https://tailscale.com/install.sh | sh"]
-  - ["useradd", "--user-group", "--create-home", "--home-dir", "/var/lib/caddy", "--shell", "/usr/bin/false", "caddy"]
-  - ["sh", "-c", "echo TS_PERMIT_CERT_UID=caddy >> /etc/default/tailscaled"]
   - [
       "tailscale",
       "up",
