@@ -14,6 +14,7 @@ import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
 import { Instance, InstanceArgs } from '@pulumi/aws/ec2/index.js';
 
 import { AMI_UBUNTU_ARM64, TAILNET_DOMAIN } from '../constants/internal.ts';
+import { region } from './awsAccount.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -71,7 +72,7 @@ export class TailscaleBox extends ComponentResource {
       {
         keyName: 'ops',
         ...this.#args.instanceArgs,
-        ami: AMI_UBUNTU_ARM64,
+        ami: AMI_UBUNTU_ARM64[region],
         userData: all([authKey.key, output(this.#args.tailscaleName)]).apply(([key, name]) =>
           secret(
             readFileSync(join(__dirname, 'TailscaleBox.yml'), 'utf-8')
