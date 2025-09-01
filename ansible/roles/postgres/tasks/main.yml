@@ -2,6 +2,8 @@
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: psql.yml
 - ansible.builtin.include_tasks: access.yml
+- ansible.builtin.include_tasks: btrfs-tune.yml
+  when: not (aws_postgres_uses_ext4 is defined and aws_postgres_uses_ext4)
 - ansible.builtin.include_tasks: wal.yml
 - ansible.builtin.include_tasks: backup.yml
   when: kopia_enabled is defined and kopia_enabled
