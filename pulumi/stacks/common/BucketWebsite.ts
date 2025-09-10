@@ -83,7 +83,7 @@ export class BucketWebsite extends ComponentResource {
       {
         key: '404.html',
         bucket: this.bucket.id,
-        contentType: 'text/html',
+        contentType: 'text/html; charset=utf-8',
         content: notFoundPage,
         tags,
       },

@@ -14,5 +14,13 @@ function handler(event) {
     headers['access-control-allow-methods'] = { value: 'HEAD, OPTIONS' };
   }
 
+  if (
+    headers['content-type'] &&
+    headers['content-type'].value.startsWith('text/') &&
+    !headers['content-type'].value.includes('charset')
+  ) {
+    headers['content-type'].value += '; charset=utf-8';
+  }
+
   return response;
 }
