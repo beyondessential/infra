@@ -1,0 +1,20 @@
+---
+# Tuning for BTRFS with CoW enabled
+
+- name: Set wal_init_zero to off
+  become: true
+  become_user: postgres
+  notify:
+    - Restart postgres
+  community.postgresql.postgresql_set:
+    name: wal_init_zero
+    value: "off"
+
+- name: Set wal_recycle to off
+  become: true
+  become_user: postgres
+  notify:
+    - Restart postgres
+  community.postgresql.postgresql_set:
+    name: wal_recycle
+    value: "off"
