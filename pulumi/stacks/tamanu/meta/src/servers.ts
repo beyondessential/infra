@@ -83,11 +83,11 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: labels('public'),
         },
-        spec: spec('server', ['public_server'], {
+        spec: spec('server', ['public-server'], {
           env: [
             {
               name: 'STATUS_PAGE_URL',
-              value: `https://${normalizedStack}.${TAILNET_DOMAIN}/$/status`,
+              value: `https://${normalizedStack}.${TAILNET_DOMAIN}/$/`,
             },
             {
               name: 'CLIENT_IP_SOURCE',
@@ -201,11 +201,15 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: labels('private'),
         },
-        spec: spec('server', ['private_server'], {
+        spec: spec('server', ['private-server'], {
           env: [
             {
               name: 'CLIENT_IP_SOURCE',
               value: 'ConnectInfo',
+            },
+            {
+              name: 'LEPTOS_OUTPUT_NAME',
+              value: 'private-server',
             },
           ],
           // Wait up to 60 seconds for the server to start...
