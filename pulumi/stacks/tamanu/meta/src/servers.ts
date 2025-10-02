@@ -87,7 +87,7 @@ new k8s.apps.v1.Deployment(
           env: [
             {
               name: 'STATUS_PAGE_URL',
-              value: `https://${normalizedStack}.${TAILNET_DOMAIN}/$/`,
+              value: `https://${normalizedStack}.${TAILNET_DOMAIN}/`,
             },
             {
               name: 'CLIENT_IP_SOURCE',
@@ -159,18 +159,6 @@ new k8s.networking.v1.Ingress('tailscale-server', {
               pathType: 'Prefix',
               backend: {
                 service: {
-                  name: publicSvc.metadata.name,
-                  port: {
-                    name: 'http',
-                  },
-                },
-              },
-            },
-            {
-              path: '/$',
-              pathType: 'Prefix',
-              backend: {
-                service: {
                   name: privateSvc.metadata.name,
                   port: {
                     name: 'http',
@@ -217,7 +205,7 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 1,
             failureThreshold: 60,
             httpGet: {
-              path: '/$/readyz',
+              path: '/readyz',
               port: 8000,
               scheme: 'HTTP',
             },
@@ -227,7 +215,7 @@ new k8s.apps.v1.Deployment(
             periodSeconds: 10,
             failureThreshold: 2,
             httpGet: {
-              path: '/$/livez',
+              path: '/livez',
               port: 8000,
               scheme: 'HTTP',
             },
