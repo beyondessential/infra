@@ -192,6 +192,10 @@ new k8s.apps.v1.Deployment(
         spec: spec('server', ['private-server'], {
           env: [
             {
+              name: 'PUBLIC_URL',
+              value: `https://${domains[0]}/`,
+            },
+            {
               name: 'CLIENT_IP_SOURCE',
               value: 'ConnectInfo',
             },
