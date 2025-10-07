@@ -60,6 +60,14 @@
     path: /etc/containers/systemd/{{ item | basename }}.d
     state: directory
 
+- name: Enable IPv6 for quadlets
+  when: tamanu_ipv6
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d/noipv6.conf
+    state: absent
+
 - name: Disable IPv6 for quadlets
   when: not tamanu_ipv6
   become: true
