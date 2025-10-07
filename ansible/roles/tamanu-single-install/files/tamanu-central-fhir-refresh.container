@@ -1,10 +1,10 @@
 [Unit]
-Description=Tamanu Central server scheduled tasks
+Description=Tamanu Central FHIR worker (refresh)
 
 [Container]
 EnvironmentFile=/etc/tamanu/env
 Image=ghcr.io/beyondessential/tamanu-central:${TAMANU_VERSION}
-Exec=startFhirWorker
+Exec=startFhirWorker --topics=fhir.refresh.allFromUpstream,fhir.refresh.entireResource,fhir.refresh.fromUpstream
 Volume=/etc/tamanu/${TAMANU_VERSION}:/config
 Volume=/var/run/postgresql:/var/run/postgresql
 Sysctl=net.ipv4.tcp_slow_start_after_idle=0
