@@ -37,6 +37,13 @@
     group: tamanu
     state: directory
 
+- name: Add tamanu-run script
+  become: true
+  ansible.builtin.template:
+    dest: /usr/local/bin/tamanu-run
+    src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-run.j2') }}"
+    mode: "0755"
+
 - name: Install common container quadlets
   become: true
   with_fileglob: tamanu-frontend@.container
@@ -55,43 +62,41 @@
 
 - name: Create drop-in directory for quadlets
   become: true
-  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
   ansible.builtin.file:
-    path: /etc/containers/systemd/{{ item | basename }}.d
+    path: /etc/containers/systemd/tamanu-.container.d
     state: directory
 
 - name: Enable IPv6 for quadlets
   when: tamanu_ipv6
   become: true
-  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
   ansible.builtin.file:
-    path: /etc/containers/systemd/{{ item | basename }}.d/noipv6.conf
+    path: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
     state: absent
+  notify: Reload systemd
 
 - name: Disable IPv6 for quadlets
   when: not tamanu_ipv6
   become: true
-  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
   ansible.builtin.copy:
-    dest: /etc/containers/systemd/{{ item | basename }}.d/noipv6.conf
+    dest: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
     content: |
       [Container]
       Sysctl=net.ipv6.conf.all.disable_ipv6=1
   notify: Reload systemd
 
-- name: Add tamanu-run script
+- name: Remove old container-specific noipv6.conf files
   become: true
-  ansible.builtin.template:
-    dest: /usr/local/bin/tamanu-run
-    src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-run.j2') }}"
-    mode: "0755"
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d/noipv6.conf
+    state: absent
+  notify: Reload systemd
 
 - name: Install quadlet override for extra_certs
   when: tamanu_extra_certs
   become: true
-  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
   ansible.builtin.copy:
-    dest: /etc/containers/systemd/{{ item | basename }}.d/host-ca-certs.conf
+    dest: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf
     content: |
       [Container]
       Volume=/etc/ssl/certs:/host/etc/ssl/certs:ro
@@ -101,7 +106,22 @@
 - name: Uninstall quadlet override for extra_certs
   when: not tamanu_extra_certs
   become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Remove old container-specific host-ca-certs.conf files
+  become: true
   with_fileglob: tamanu-{{ tamanu_server_type }}*.container
   ansible.builtin.file:
     path: /etc/containers/systemd/{{ item | basename }}.d/host-ca-certs.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Remove old container-specific override directory
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d
     state: absent
