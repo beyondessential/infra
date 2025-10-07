@@ -28,12 +28,34 @@
   {% endif %}
 
 	cert_issuer acme
+
+	order coraza_waf first
 }
 
 (bind80) {
   bind fd/3 {
 		protocols h1
 	}
+}
+
+(waf) {
+  coraza_waf {
+    load_owasp_crs
+    directives `
+      Include @coraza.conf-recommended
+      Include @crs-setup.conf.example
+      Include @owasp_crs/*.conf
+
+      {% if caddy_waf_enforce %}
+      SecRuleEngine On
+      {% else %}
+      SecRuleEngine DetectionOnly
+      {% endif %}
+
+      SecRequestBodyLimit 104857600
+      SecResponseBodyMimeType text/plain text/html text/xml application/json
+    `
+  }
 }
 
 import /etc/caddy/servers/*
