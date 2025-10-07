@@ -17,6 +17,7 @@
   encode zstd gzip
   import waf*
   redir /v1/login /api/login 308
+  rewrite /socket.io* /api/socket.io?{query}
 
   @api {
     path /v1/*
