@@ -1,7 +1,31 @@
+import * as aws from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
-import { accountId } from '../../../common/awsAccount.ts';
-import { AWS_BACKUP_DEFAULT_SERVICE_ROLE } from '../../../constants/external.ts';
+
+const backupRole = new aws.iam.Role('backup-service-role', {
+  name: 'AWSBackupDefaultServiceRole',
+  path: '/service-role/',
+  assumeRolePolicy: JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: {
+          Service: 'backup.amazonaws.com',
+        },
+        Action: 'sts:AssumeRole',
+      },
+    ],
+  }),
+  managedPolicyArns: [
+    'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup',
+    'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores',
+  ],
+  tags: {
+    Purpose: 'backup',
+    ManagedBy: 'pulumi',
+  },
+});
 
 const vault = new awsNative.backup.BackupVault('backup', {
   backupVaultName: interpolate`tamanu-on-linux-${getStack()}`,
@@ -59,7 +83,7 @@ export function applyBackup(resources: Input<string>[]) {
           backupPlanId: backup.backupPlanId,
           backupSelection: {
             selectionName: interpolate`tamanu-on-linux-${getStack()}`,
-            iamRoleArn: interpolate`arn:aws:iam::${accountId}:${AWS_BACKUP_DEFAULT_SERVICE_ROLE}`,
+            iamRoleArn: backupRole.arn,
             resources,
           },
         },
