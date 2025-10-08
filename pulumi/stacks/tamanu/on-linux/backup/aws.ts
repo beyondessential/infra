@@ -3,7 +3,7 @@ import * as awsNative from '@pulumi/aws-native';
 import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
 
 const backupRole = new aws.iam.Role('backup-service-role', {
-  name: 'AWSBackupDefaultServiceRole',
+  namePrefix: `${getStack()}-backup-`,
   path: '/service-role/',
   assumeRolePolicy: JSON.stringify({
     Version: '2012-10-17',

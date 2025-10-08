@@ -51,8 +51,6 @@ export const AWS_S3_MULTIPART_ACTIONS = [
 export const AWS_S3_DELETE_ACTIONS = [...AWS_S3_MULTIPART_ACTIONS, 's3:DeleteObject'];
 export const AWS_S3_BACKUP_ACTIONS = [...AWS_S3_DELETE_ACTIONS, 's3:PutObjectRetention'];
 
-export const AWS_BACKUP_DEFAULT_SERVICE_ROLE = 'role/service-role/AWSBackupDefaultServiceRole';
-
 export function alpineAmi(
   version: string = '3.*',
   arch: string = 'aarch64',

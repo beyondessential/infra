@@ -33,6 +33,30 @@ const bucket = new awsNative.s3.Bucket(
 );
 export const backupBucket = bucket.bucketName;
 
+new awsClassic.s3.BucketPolicy('backups-bucket-policy', {
+  bucket: bucket.bucketName,
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'DenyInsecureTransport',
+        Effect: 'Deny',
+        Principal: '*',
+        Action: 's3:*',
+        Resource: bucket.bucketName.apply((name) => [
+          `arn:aws:s3:::${name}`,
+          `arn:aws:s3:::${name}/*`,
+        ]),
+        Condition: {
+          Bool: {
+            'aws:SecureTransport': 'false',
+          },
+        },
+      },
+    ],
+  }),
+});
+
 const kopiaPolicy = new awsNative.iam.ManagedPolicy(
   'backups-kopia-policy',
   {
