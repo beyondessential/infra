@@ -5,81 +5,87 @@ import { eventBusArn } from './central.ts';
 import { nativeTitlecaseTags } from '../../common/tags.ts';
 import { AWS_ROOT_ID } from '../../constants/internal.ts';
 
-const stackSetTemplate = eventBusArn.apply((busArn) =>
-  jsonStringify({
-    AWSTemplateFormatVersion: '2010-09-09',
-    Description: 'AWS Backup failure monitoring - forwards backup failures to central event bus',
-    Resources: {
-      BackupFailureEventRule: {
-        Type: 'AWS::Events::Rule',
-        Properties: {
-          Name: 'backup-failure-notifications',
-          Description: 'Detect AWS Backup job failures and forward to central event bus',
-          State: 'ENABLED',
-          EventPattern: {
-            source: ['aws.backup'],
-            'detail-type': ['Backup Job State Change'],
-            detail: {
-              state: ['FAILED', 'ABORTED', 'EXPIRED'],
-            },
-          },
-          Targets: [
-            {
-              Arn: busArn,
-              Id: 'CentralEventBus',
-              RoleArn: { 'Fn::GetAtt': ['BackupFailureEventRole', 'Arn'] },
-            },
-          ],
-        },
-      },
-      BackupFailureEventRole: {
-        Type: 'AWS::IAM::Role',
-        Properties: {
-          RoleName: 'BackupFailureEventBridgeRole',
-          Description: 'Allows EventBridge to send backup failure events to central event bus',
-          AssumeRolePolicyDocument: {
-            Version: '2012-10-17',
-            Statement: [
-              {
-                Effect: 'Allow',
-                Principal: {
-                  Service: 'events.amazonaws.com',
-                },
-                Action: 'sts:AssumeRole',
-              },
-            ],
-          },
-          Policies: [
-            {
-              PolicyName: 'PutEventsTocentral',
-              PolicyDocument: {
-                Version: '2012-10-17',
-                Statement: [
-                  {
-                    Effect: 'Allow',
-                    Action: 'events:PutEvents',
-                    Resource: busArn,
-                  },
-                ],
-              },
-            },
-          ],
-          Tags: nativeTitlecaseTags(tags),
-        },
-      },
-    },
-    Outputs: {
-      EventRuleName: {
-        Description: 'Name of the backup failure EventBridge rule',
-        Value: { Ref: 'BackupFailureEventRule' },
-      },
-      EventRuleArn: {
-        Description: 'ARN of the backup failure EventBridge rule',
-        Value: { 'Fn::GetAtt': ['BackupFailureEventRule', 'Arn'] },
-      },
-    },
-  }),
+const organizationalUnits = aws.organizations.getOrganizationalUnitsOutput({
+  parentId: AWS_ROOT_ID,
+});
+
+const orgUnitIds = organizationalUnits.children.apply((children) =>
+  children.filter((child) => /archive/i.test(child.name)).map((child) => child.id),
 );
+
+const stackSetTemplate = jsonStringify({
+  AWSTemplateFormatVersion: '2010-09-09',
+  Description: 'AWS Backup failure monitoring - forwards backup failures to central event bus',
+  Resources: {
+    BackupFailureEventRule: {
+      Type: 'AWS::Events::Rule',
+      Properties: {
+        Name: 'backup-failure-notifications',
+        Description: 'Detect AWS Backup job failures and forward to central event bus',
+        State: 'ENABLED',
+        EventPattern: {
+          source: ['aws.backup'],
+          'detail-type': ['Backup Job State Change'],
+          detail: {
+            state: ['FAILED', 'ABORTED', 'EXPIRED'],
+          },
+        },
+        Targets: [
+          {
+            Arn: eventBusArn,
+            Id: 'CentralEventBus',
+            RoleArn: { 'Fn::GetAtt': ['BackupFailureEventRole', 'Arn'] },
+          },
+        ],
+      },
+    },
+    BackupFailureEventRole: {
+      Type: 'AWS::IAM::Role',
+      Properties: {
+        RoleName: 'BackupFailureEventBridgeRole',
+        Description: 'Allows EventBridge to send backup failure events to central event bus',
+        AssumeRolePolicyDocument: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: {
+                Service: 'events.amazonaws.com',
+              },
+              Action: 'sts:AssumeRole',
+            },
+          ],
+        },
+        Policies: [
+          {
+            PolicyName: 'PutEventsTocentral',
+            PolicyDocument: {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: 'events:PutEvents',
+                  Resource: eventBusArn,
+                },
+              ],
+            },
+          },
+        ],
+        Tags: nativeTitlecaseTags(tags),
+      },
+    },
+  },
+  Outputs: {
+    EventRuleName: {
+      Description: 'Name of the backup failure EventBridge rule',
+      Value: { Ref: 'BackupFailureEventRule' },
+    },
+    EventRuleArn: {
+      Description: 'ARN of the backup failure EventBridge rule',
+      Value: { 'Fn::GetAtt': ['BackupFailureEventRule', 'Arn'] },
+    },
+  },
+});
 
 const backupMonitoringStackSet = new aws.cloudformation.StackSet(
   'backup-monitoring-member-accounts',
@@ -98,7 +104,6 @@ const backupMonitoringStackSet = new aws.cloudformation.StackSet(
       failureToleranceCount: 5,
       regionConcurrencyType: 'PARALLEL',
     },
-    callAs: 'SELF',
   },
 );
 
@@ -107,7 +112,7 @@ new aws.cloudformation.StackSetInstance(
   {
     stackSetName: backupMonitoringStackSet.name,
     deploymentTargets: {
-      organizationalUnitIds: [AWS_ROOT_ID],
+      organizationalUnitIds: orgUnitIds,
     },
     region: 'ap-southeast-2',
     operationPreferences: {
@@ -115,7 +120,6 @@ new aws.cloudformation.StackSetInstance(
       failureToleranceCount: 5,
       regionConcurrencyType: 'PARALLEL',
     },
-    callAs: 'SELF',
   },
   {
     dependsOn: [backupMonitoringStackSet],
@@ -128,6 +132,8 @@ if (euCentral2Accounts.length > 0) {
     {
       stackSetName: backupMonitoringStackSet.name,
       deploymentTargets: {
+        accountFilterType: 'INTERSECTION',
+        organizationalUnitIds: orgUnitIds,
         accounts: euCentral2Accounts,
       },
       region: 'eu-central-2',
@@ -136,7 +142,6 @@ if (euCentral2Accounts.length > 0) {
         failureToleranceCount: 5,
         regionConcurrencyType: 'PARALLEL',
       },
-      callAs: 'SELF',
     },
     {
       dependsOn: [backupMonitoringStackSet],

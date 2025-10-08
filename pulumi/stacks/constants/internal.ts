@@ -1,6 +1,13 @@
 export const AWS_ORG_ID = 'o-asiuh5s5mc';
 export const AWS_ROOT_ID = 'r-veli';
 
+export const AWS_ORG_UNIT_IDS = [
+  'ou-veli-62et2351', // Senaite
+  'ou-veli-kkh8uuat', // Tupaia
+  'ou-veli-l2108vpm', // Data
+  'ou-veli-ndz6kbyb', // Tamanu
+];
+
 // ubuntu-24.04-arm64-btrfs-20250821 in the _Internal Tamanu account, shared with the Organisation
 export const AMI_UBUNTU_ARM64 = {
   'ap-southeast-2': 'ami-0a89f7d66c5868569',
