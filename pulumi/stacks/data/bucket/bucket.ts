@@ -35,33 +35,38 @@ new aws.s3.BucketAclV2(
 export const bucketPolicy = [];
 
 if (externalAccountsRead.length > 0) {
-      bucketPolicy.push(
-          {
-            Effect: 'Allow',
-            Principal: {
-              AWS: externalAccountsRead.map((account) => `arn:aws:iam::${account}:root`),
-            },
-            Action: [...AWS_S3_READ_ACTIONS, 's3:GetLifecycleConfiguration'],
-            Resource: bucket.bucket.apply((name) => [
-              `arn:aws:s3:::${name}`,
-              `arn:aws:s3:::${name}/*`,
-            ]),
-          });
+  bucketPolicy.push({
+    Effect: 'Allow',
+    Principal: {
+      AWS: externalAccountsRead.map((account) => `arn:aws:iam::${account}:root`),
+    },
+    Action: [...AWS_S3_READ_ACTIONS, 's3:GetLifecycleConfiguration'],
+    Resource: bucket.bucket.apply((name) => [`arn:aws:s3:::${name}`, `arn:aws:s3:::${name}/*`]),
+  });
 }
 if (externalAccountsWrite.length > 0) {
-      bucketPolicy.push({
-            Effect: 'Allow',
-            Principal: {
-              AWS: externalAccountsWrite.map((account) => `arn:aws:iam::${account}:root`),
-            },
-            Action: [...AWS_S3_DELETE_ACTIONS, 's3:GetLifecycleConfiguration'],
-            Resource: bucket.bucket.apply((name) => [
-              `arn:aws:s3:::${name}`,
-              `arn:aws:s3:::${name}/*`,
-            ]),
-          },
-  );
+  bucketPolicy.push({
+    Effect: 'Allow',
+    Principal: {
+      AWS: externalAccountsWrite.map((account) => `arn:aws:iam::${account}:root`),
+    },
+    Action: [...AWS_S3_DELETE_ACTIONS, 's3:GetLifecycleConfiguration'],
+    Resource: bucket.bucket.apply((name) => [`arn:aws:s3:::${name}`, `arn:aws:s3:::${name}/*`]),
+  });
 }
+
+bucketPolicy.push({
+  Sid: 'DenyInsecureTransport',
+  Effect: 'Deny',
+  Principal: '*',
+  Action: 's3:*',
+  Resource: bucket.bucket.apply((name) => [`arn:aws:s3:::${name}`, `arn:aws:s3:::${name}/*`]),
+  Condition: {
+    Bool: {
+      'aws:SecureTransport': 'false',
+    },
+  },
+});
 
 export function applyBucketPolicy() {
   if (bucketPolicy.length === 0) return;

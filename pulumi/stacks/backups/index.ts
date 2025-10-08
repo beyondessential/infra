@@ -37,6 +37,30 @@ const bucket = new awsNative.s3.Bucket(
   { protect: true },
 );
 
+new awsClassic.s3.BucketPolicy('backups-bucket-policy', {
+  bucket: bucket.bucketName,
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'DenyInsecureTransport',
+        Effect: 'Deny',
+        Principal: '*',
+        Action: 's3:*',
+        Resource: bucket.bucketName.apply((name) => [
+          `arn:aws:s3:::${name}`,
+          `arn:aws:s3:::${name}/*`,
+        ]),
+        Condition: {
+          Bool: {
+            'aws:SecureTransport': 'false',
+          },
+        },
+      },
+    ],
+  }),
+});
+
 const fullAccessPolicy = new awsNative.iam.ManagedPolicy('backups-fullaccess-policy', {
   policyDocument: jsonStringify({
     Version: '2012-10-17',

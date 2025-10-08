@@ -245,6 +245,21 @@ export class BucketWebsite extends ComponentResource {
               Action: 's3:GetObject',
               Resource: this.bucket.bucket.apply((name) => `arn:aws:s3:::${name}/*`),
             },
+            {
+              Sid: 'DenyInsecureTransport',
+              Effect: 'Deny',
+              Principal: '*',
+              Action: 's3:*',
+              Resource: [
+                this.bucket.bucket.apply((name) => `arn:aws:s3:::${name}`),
+                this.bucket.bucket.apply((name) => `arn:aws:s3:::${name}/*`),
+              ],
+              Condition: {
+                Bool: {
+                  'aws:SecureTransport': 'false',
+                },
+              },
+            },
           ].filter(Boolean),
         }),
       },

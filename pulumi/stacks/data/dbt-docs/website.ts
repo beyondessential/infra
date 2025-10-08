@@ -152,6 +152,21 @@ new aws.s3.BucketPolicy(
             },
           },
         },
+        {
+          Sid: 'DenyInsecureTransport',
+          Effect: 'Deny',
+          Principal: '*',
+          Action: 's3:*',
+          Resource: [
+            bucket.bucket.apply((name) => `arn:aws:s3:::${name}`),
+            bucket.bucket.apply((name) => `arn:aws:s3:::${name}/*`),
+          ],
+          Condition: {
+            Bool: {
+              'aws:SecureTransport': 'false',
+            },
+          },
+        },
       ],
     }),
   },

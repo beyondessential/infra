@@ -70,6 +70,18 @@ export function publicReadPolicyForBucket(bucketName: string): string {
         Action: ['s3:GetObject'],
         Resource: [`arn:aws:s3:::${bucketName}/*`],
       },
+      {
+        Sid: 'DenyInsecureTransport',
+        Effect: 'Deny',
+        Principal: '*',
+        Action: 's3:*',
+        Resource: [`arn:aws:s3:::${bucketName}`, `arn:aws:s3:::${bucketName}/*`],
+        Condition: {
+          Bool: {
+            'aws:SecureTransport': 'false',
+          },
+        },
+      },
     ],
   });
 }
