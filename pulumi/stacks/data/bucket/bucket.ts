@@ -4,7 +4,7 @@ import { jsonStringify } from '@pulumi/pulumi';
 import { AWS_S3_DELETE_ACTIONS, AWS_S3_READ_ACTIONS } from '../../constants/external.ts';
 import { compact } from 'lodash-es';
 
-export const bucket = new aws.s3.BucketV2(
+export const bucket = new aws.s3.Bucket(
   'bucket',
   {
     bucket: BUCKET,
@@ -23,7 +23,7 @@ const bucketOwnership = new aws.s3.BucketOwnershipControls(
   { parent: bucket },
 );
 
-new aws.s3.BucketAclV2(
+new aws.s3.BucketAcl(
   'bucket-acl',
   {
     bucket: bucket.id,

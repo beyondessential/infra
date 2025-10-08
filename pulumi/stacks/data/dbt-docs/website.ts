@@ -4,7 +4,7 @@ import * as aws from '@pulumi/aws';
 import { ValidCertificate } from '../../common/ValidCertificate.ts';
 import { BUCKET, DOMAIN, ZONE_ID, LOGS_BUCKET } from './constants.ts';
 
-const bucket = new aws.s3.BucketV2(
+const bucket = new aws.s3.Bucket(
   'bucket',
   {
     bucket: BUCKET,
@@ -23,7 +23,7 @@ const bucketOwnership = new aws.s3.BucketOwnershipControls(
   { parent: bucket },
 );
 
-new aws.s3.BucketAclV2(
+new aws.s3.BucketAcl(
   'bucket-acl',
   {
     bucket: bucket.id,
