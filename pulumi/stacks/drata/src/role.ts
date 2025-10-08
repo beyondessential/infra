@@ -1,32 +1,31 @@
-import { Config, jsonStringify } from '@pulumi/pulumi';
+import { jsonStringify } from '@pulumi/pulumi';
 import * as awsNative from '@pulumi/aws-native';
-import { nativeTags } from '../common/tags.ts';
+import { nativeTags } from '../../common/tags.ts';
+import { DRATA_AWS_ACCOUNT_ARN, drataExternalId, tags } from './config.ts';
 
-const config = new Config();
-const drataExternalId = config.requireSecret('drataExternalId');
-const DRATA_AWS_ACCOUNT_ARN = 'arn:aws:iam::269135526815:root';
-
-const tags = {
-  Purpose: 'audit',
-  ...((config.getObject('tags') as object) ?? {}),
+export const policy = {
+  Version: '2012-10-17',
+  Statement: [
+    {
+      Effect: 'Allow',
+      Action: ['backup:ListBackupJobs', 'backup:ListRecoveryPointsByResource'],
+      Resource: '*',
+    },
+    {
+      Effect: 'Allow',
+      Action: ['organizations:Describe*', 'organizations:List*'],
+      Resource: '*',
+    },
+  ],
 };
 
-const additionalPermissions = new awsNative.iam.ManagedPolicy('additional-permissions', {
+export const additionalPermissions = new awsNative.iam.ManagedPolicy('additional-permissions', {
   managedPolicyName: 'DrataAdditionalPermissions',
   description: 'Custom policy for permissions in addition to the SecurityAudit policy',
-  policyDocument: jsonStringify({
-    Version: '2012-10-17',
-    Statement: [
-      {
-        Effect: 'Allow',
-        Action: ['backup:ListBackupJobs', 'backup:ListRecoveryPointsByResource'],
-        Resource: '*',
-      },
-    ],
-  }),
+  policyDocument: jsonStringify(policy),
 });
 
-const assumeRole = new awsNative.iam.Role('assume-role', {
+export const assumeRole = new awsNative.iam.Role('assume-role', {
   roleName: 'DrataAutopilotRole',
   path: '/',
   description: 'Cross-account read-only access for Drata Autopilot',
@@ -50,5 +49,6 @@ const assumeRole = new awsNative.iam.Role('assume-role', {
     ],
   }),
 });
+
 export const assumeRoleName = assumeRole.roleName;
 export const assumeRoleArn = assumeRole.arn;

@@ -18,11 +18,27 @@ export interface NativeTagOutput {
   value: Output<string>;
 }
 
+export interface NativeTitlecaseTagOutput {
+  Key: Output<string>;
+  Value: Output<string>;
+}
+
 export function nativeTags(...manyTags: Input<ClassicTagInput>[]): Output<NativeTagOutput[]> {
   return all(manyTags).apply((manyTags) => {
     return Object.entries(Object.assign({}, ...manyTags)).map(([key, value]) => ({
       key: output(key),
       value: output(value as string),
+    }));
+  });
+}
+
+export function nativeTitlecaseTags(
+  ...manyTags: Input<ClassicTagInput>[]
+): Output<NativeTitlecaseTagOutput[]> {
+  return all(manyTags).apply((manyTags) => {
+    return Object.entries(Object.assign({}, ...manyTags)).map(([key, value]) => ({
+      Key: output(key),
+      Value: output(value as string),
     }));
   });
 }
