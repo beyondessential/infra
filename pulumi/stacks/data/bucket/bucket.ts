@@ -32,6 +32,17 @@ new aws.s3.BucketAcl(
   { parent: bucket, dependsOn: [bucketOwnership] },
 );
 
+new aws.s3.BucketVersioningV2(
+  'bucket-versioning',
+  {
+    bucket: bucket.id,
+    versioningConfiguration: {
+      status: 'Enabled',
+    },
+  },
+  { parent: bucket },
+);
+
 export const bucketPolicy = [];
 
 if (externalAccountsRead.length > 0) {
