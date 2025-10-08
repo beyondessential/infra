@@ -1,4 +1,5 @@
 export const AWS_ORG_ID = 'o-asiuh5s5mc';
+export const AWS_ROOT_ID = 'r-veli';
 
 // ubuntu-24.04-arm64-btrfs-20250821 in the _Internal Tamanu account, shared with the Organisation
 export const AMI_UBUNTU_ARM64 = {

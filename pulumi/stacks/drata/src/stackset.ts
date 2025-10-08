@@ -1,8 +1,9 @@
-import * as aws from '@pulumi/aws';
-import { DRATA_AWS_ACCOUNT_ARN, drataExternalId, ROOT_ID, tags } from './config.ts';
-import { additionalPermissions, assumeRole, policy } from './role.ts';
 import { jsonStringify } from '@pulumi/pulumi';
+import * as aws from '@pulumi/aws';
+import { DRATA_AWS_ACCOUNT_ARN, drataExternalId, tags } from './config.ts';
+import { additionalPermissions, assumeRole, policy } from './role.ts';
 import { nativeTitlecaseTags } from '../../common/tags.ts';
+import { AWS_ROOT_ID } from '../../constants/internal.ts';
 
 const stackSetTemplate = jsonStringify({
   AWSTemplateFormatVersion: '2010-09-09',
@@ -79,7 +80,7 @@ const drataStackSet = new aws.cloudformation.StackSet(
     callAs: 'SELF',
   },
   {
-    // Ensure management account role is created first
+    // Ensures management account role is created first
     dependsOn: [assumeRole],
   },
 );
@@ -89,9 +90,9 @@ new aws.cloudformation.StackSetInstance(
   {
     stackSetName: drataStackSet.name,
     deploymentTargets: {
-      organizationalUnitIds: [ROOT_ID], // Deploys to root OU (all accounts)
+      organizationalUnitIds: [AWS_ROOT_ID], // Deploys to root OU (all accounts)
     },
-    regions: ['ap-southeast-2'], // Must match the region where old stacks were deployed
+    region: 'ap-southeast-2',
     operationPreferences: {
       maxConcurrentCount: 10,
       failureToleranceCount: 5,

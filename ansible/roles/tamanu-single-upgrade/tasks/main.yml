@@ -75,5 +75,7 @@
     enabled: true
   notify: Reload caddy
 
+# TODO: start the new fhir services
+
 - name: Reload caddy
   meta: flush_handlers
