@@ -1,4 +1,4 @@
-import { Config, getStack, jsonStringify, Output } from '@pulumi/pulumi';
+import { Config, getStack, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { AWS_EC2, AWS_S3_BACKUP_ACTIONS } from '../constants/external.ts';
