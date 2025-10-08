@@ -2,7 +2,8 @@ import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { nativeTags } from '../../common/tags.ts';
-import { monitoringEmail, tags, AWS_ORG_ID } from './config.ts';
+import { AWS_ORG_ID } from '../../constants/internal.ts';
+import { monitoringEmail, tags } from './config.ts';
 
 const centralEventBus = new aws.cloudwatch.EventBus('backup-failures', {
   name: 'backup-failures',
