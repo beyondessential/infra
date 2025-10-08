@@ -26,7 +26,7 @@ export interface BucketWebsiteArgs {
 const DEFAULT_404 = '<!DOCTYPE html><title>404 Not Found</title><h1>404</h1><p>Not Found</p>';
 
 export class BucketWebsite extends ComponentResource {
-  readonly bucket: awsClassic.s3.BucketV2;
+  readonly bucket: awsClassic.s3.Bucket;
   readonly distribution: awsClassic.cloudfront.Distribution;
 
   constructor(
@@ -49,7 +49,7 @@ export class BucketWebsite extends ComponentResource {
   ) {
     super('bes:common:AwsBucketWebsite', name, {}, opts);
 
-    this.bucket = new awsClassic.s3.BucketV2(
+    this.bucket = new awsClassic.s3.Bucket(
       `${name}-bucket`,
       {
         bucket: bucketName,
@@ -69,7 +69,7 @@ export class BucketWebsite extends ComponentResource {
       { parent: this },
     );
 
-    new awsClassic.s3.BucketAclV2(
+    new awsClassic.s3.BucketAcl(
       `${name}-bucket-acl`,
       {
         bucket: this.bucket.id,

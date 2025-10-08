@@ -54,11 +54,11 @@ export const translations = new BucketWebsite('translations', {
   },
 });
 
-export const dbDumps = new awsClassic.s3.BucketV2('bes-tamanu-test-data-snapshots-bucket', {
+export const dbDumps = new awsClassic.s3.Bucket('bes-tamanu-test-data-snapshots-bucket', {
   bucket: 'bes-tamanu-test-data-snapshots',
 });
 
-new awsClassic.s3.BucketLifecycleConfigurationV2(
+new awsClassic.s3.BucketLifecycleConfiguration(
   'data-snapshots-lifecycle',
   {
     bucket: dbDumps.bucket,
