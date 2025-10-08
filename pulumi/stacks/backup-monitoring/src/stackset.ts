@@ -1,6 +1,6 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
-import { tags } from './config.ts';
+import { tags, euCentral2Accounts } from './config.ts';
 import { eventBusArn } from './central.ts';
 import { nativeTitlecaseTags } from '../../common/tags.ts';
 import { AWS_ROOT_ID } from '../../constants/internal.ts';
@@ -122,25 +122,27 @@ new aws.cloudformation.StackSetInstance(
   },
 );
 
-new aws.cloudformation.StackSetInstance(
-  'backup-monitoring-org-instances-eucentral2',
-  {
-    stackSetName: backupMonitoringStackSet.name,
-    deploymentTargets: {
-      organizationalUnitIds: [AWS_ROOT_ID],
+if (euCentral2Accounts.length > 0) {
+  new aws.cloudformation.StackSetInstance(
+    'backup-monitoring-org-instances-eucentral2',
+    {
+      stackSetName: backupMonitoringStackSet.name,
+      deploymentTargets: {
+        accounts: euCentral2Accounts,
+      },
+      region: 'eu-central-2',
+      operationPreferences: {
+        maxConcurrentCount: 10,
+        failureToleranceCount: 5,
+        regionConcurrencyType: 'PARALLEL',
+      },
+      callAs: 'SELF',
     },
-    region: 'eu-central-2',
-    operationPreferences: {
-      maxConcurrentCount: 10,
-      failureToleranceCount: 5,
-      regionConcurrencyType: 'PARALLEL',
+    {
+      dependsOn: [backupMonitoringStackSet],
     },
-    callAs: 'SELF',
-  },
-  {
-    dependsOn: [backupMonitoringStackSet],
-  },
-);
+  );
+}
 
 export const stackSetName = backupMonitoringStackSet.name;
 export const stackSetId = backupMonitoringStackSet.stackSetId;
