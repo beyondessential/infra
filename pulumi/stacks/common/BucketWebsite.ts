@@ -17,6 +17,7 @@ export interface BucketWebsiteArgs {
     Partial<awsClassic.types.input.cloudfront.DistributionDefaultCacheBehavior>,
     'targetOriginId' | 'allowedMethods' | 'cachedMethods' | 'compress' | 'viewerProtocolPolicy'
   >;
+  cachePolicy?: awsClassic.cloudfront.CachePolicy;
   requestFunctionSourceFile?: string;
   responseFunctionSourceFile?: string;
   unprotectBucket?: boolean;
@@ -40,6 +41,7 @@ export class BucketWebsite extends ComponentResource {
       importBucket,
       notFoundPage = DEFAULT_404,
       cacheBehaviour = {},
+      cachePolicy,
       requestFunctionSourceFile,
       responseFunctionSourceFile,
       unprotectBucket = false,
@@ -174,17 +176,21 @@ export class BucketWebsite extends ComponentResource {
         aliases: [domain],
         httpVersion: 'http2and3',
         defaultCacheBehavior: {
-          forwardedValues: {
-            queryString: true,
-            cookies: {
-              forward: 'none',
-            },
-          },
-          minTtl: 0,
-          defaultTtl: 3600,
-          maxTtl: 86400,
+          ...(cachePolicy
+            ? { cachePolicyId: cachePolicy.id }
+            : {
+                forwardedValues: {
+                  queryString: true,
+                  cookies: {
+                    forward: 'none',
+                  },
+                },
+                minTtl: 0,
+                defaultTtl: 3600,
+                maxTtl: 86400,
+                compress: true,
+              }),
           ...cacheBehaviour,
-          compress: true,
           viewerProtocolPolicy: 'redirect-to-https',
           allowedMethods: ['GET', 'HEAD'],
           cachedMethods: ['GET', 'HEAD'],

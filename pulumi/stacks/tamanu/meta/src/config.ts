@@ -23,3 +23,4 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 }
 
 export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
+export const publicServerVersionsSecret = cfg.requireSecret('publicServerVersionsSecret');

@@ -6,11 +6,33 @@ import * as awsClassic from '@pulumi/aws';
 
 const zoneId = 'Z07118832KOZ96U06G6JA';
 
+const toolsCachePolicy = new awsClassic.cloudfront.CachePolicy('tools-cache-policy', {
+  name: 'bes-ops-tools-cache-policy',
+  comment: 'Cache policy with compression enabled for binary downloads',
+  defaultTtl: 3600,
+  minTtl: 0,
+  maxTtl: 86400,
+  parametersInCacheKeyAndForwardedToOrigin: {
+    enableAcceptEncodingGzip: true,
+    enableAcceptEncodingBrotli: true,
+    cookiesConfig: {
+      cookieBehavior: 'none',
+    },
+    headersConfig: {
+      headerBehavior: 'none',
+    },
+    queryStringsConfig: {
+      queryStringBehavior: 'all',
+    },
+  },
+});
+
 export const tools = new BucketWebsite('tools', {
   domain: 'tools.ops.tamanu.io',
   bucketName: 'bes-ops-tools',
   zoneId,
   logsBucket: LOGS_BUCKETS.TAMANU,
+  cachePolicy: toolsCachePolicy,
   requestFunctionSourceFile: join(
     dirname(fileURLToPath(import.meta.url)),
     'bucket-tools-request-function.js',

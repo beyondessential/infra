@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { domains, normalizedStack, replicas } from './config.ts';
+import { domains, normalizedStack, publicServerVersionsSecret, replicas } from './config.ts';
 
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
@@ -92,6 +92,10 @@ new k8s.apps.v1.Deployment(
             {
               name: 'CLIENT_IP_SOURCE',
               value: 'RightmostXForwardedFor',
+            },
+            {
+              name: 'SERVER_VERSIONS_SECRET',
+              value: publicServerVersionsSecret,
             },
           ],
           // Wait up to 60 seconds for the server to start...
