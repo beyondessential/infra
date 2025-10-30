@@ -75,6 +75,16 @@
     enabled: true
   notify: Reload caddy
 
+- name: Start the new facility API services
+  when: tamanu_server_type == 'facility'
+  loop: "[1, 2]"
+  become: true
+  ansible.builtin.systemd:
+    name: "tamanu-facility-api@{{ item }}"
+    state: started
+    enabled: true
+  notify: Reload caddy
+
 # TODO: start the new fhir services
 
 - name: Reload caddy

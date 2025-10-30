@@ -1,13 +1,11 @@
 [Unit]
-Description=Tamanu Facility server API
+Description=Tamanu Facility tasks
 
 [Container]
 EnvironmentFile=/etc/tamanu/env
 Image=ghcr.io/beyondessential/tamanu-facility:${TAMANU_VERSION}
 Volume=/etc/tamanu/${TAMANU_VERSION}:/config
 Volume=/var/run/postgresql:/var/run/postgresql
-NetworkAlias=api.facility.tamanu.internal
-NetworkAlias=${TAMANU_VERSION_DOMAIN}.api.facility.tamanu.internal
 Sysctl=net.ipv4.tcp_slow_start_after_idle=0
 
 [Service]
