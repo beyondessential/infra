@@ -77,15 +77,27 @@
 
 - name: Start the new facility API services
   when: tamanu_server_type == 'facility'
-  loop: "[1, 2]"
+  loop:
+    - "1"
+    - "2"
   become: true
   ansible.builtin.systemd:
-    name: "tamanu-facility-api@{{ item }}"
+    name: "tamanu-facility-api@{{ item }}.service"
     state: started
     enabled: true
   notify: Reload caddy
 
-# TODO: start the new fhir services
+- name: Start the new central FHIR services
+  when: tamanu_server_type == 'central'
+  loop:
+    - fhir-refresh
+    - fhir-resolve
+  become: true
+  ansible.builtin.systemd:
+    name: "tamanu-central-{{ item }}.service"
+    state: started
+    enabled: true
+  notify: Reload caddy
 
 - name: Reload caddy
   meta: flush_handlers
