@@ -197,7 +197,7 @@ new k8s.apps.v1.Deployment(
           env: [
             {
               name: 'PUBLIC_URL',
-              value: `https://${domains[0]}/`,
+              value: `https://${domains[0]}`,
             },
             {
               name: 'CLIENT_IP_SOURCE',
@@ -206,6 +206,10 @@ new k8s.apps.v1.Deployment(
             {
               name: 'LEPTOS_OUTPUT_NAME',
               value: 'private-server',
+            },
+            {
+              name: 'SERVER_VERSIONS_SECRET',
+              value: publicServerVersionsSecret,
             },
           ],
           // Wait up to 60 seconds for the server to start...
