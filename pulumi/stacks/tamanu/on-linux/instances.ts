@@ -1,21 +1,23 @@
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
-
 import * as aws from '@pulumi/aws';
 import { all, Output, secret } from '@pulumi/pulumi';
 
 import { $network } from '../../common/coreRef.ts';
 import { tailscaleKey } from '../../common/tailscaleKey.ts';
 import { AMI_UBUNTU_ARM64 } from '../../constants/internal.ts';
+import {
+  cloudInitYaml,
+  hostnameCommands,
+  tailscaleInstallCommands,
+  tailscaleUpCommands,
+  caddyUserCommands,
+  emergencySshKeyCommands,
+} from '../../common/cloudInit.ts';
 
 import { instances, namePrefix, hardDelete, tailscaleTags, normalizedStack } from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
 import { applyDNS } from './dns.ts';
 import { region } from '../../common/awsAccount.ts';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const LEGACY_DISKS = [
   {
@@ -64,11 +66,13 @@ for (const [i, inst] of instances.entries()) {
       userData: all([authKey.key, tailscaleTags, inst.tailscaleName, inst.fqdn]).apply(
         ([key, tags, name, fqdn]) =>
           secret(
-            readFileSync(join(__dirname, 'cloud-config.yaml'), 'utf-8')
-              .replace(/%TAILSCALE_AUTH_KEY%/g, key)
-              .replace(/%TAILSCALE_TAGS%/g, tags.join(','))
-              .replace(/%TAILSCALE_NAME%/g, name)
-              .replace(/%HOSTNAME%/g, fqdn),
+            cloudInitYaml([
+              ...hostnameCommands(fqdn),
+              ...tailscaleInstallCommands(),
+              ...caddyUserCommands(),
+              ...tailscaleUpCommands({ authKey: key, hostname: name, advertiseTags: tags }),
+              ...emergencySshKeyCommands(),
+            ]),
           ),
       ),
       tags: {

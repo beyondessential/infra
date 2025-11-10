@@ -1,0 +1,5 @@
+{
+  "name": "@bes/ts-relay",
+  "type": "module",
+  "main": "./index.ts"
+}

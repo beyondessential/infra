@@ -16,3 +16,6 @@ export const LOGS_BUCKETS = {
   DATA: 'bes-data-logs',
   TUPAIA: 'bes-tupaia-logs',
 };
+
+export const EMERGENCY_SSH_KEY =
+  'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u emergency@tamanu';

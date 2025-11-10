@@ -1,7 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import {
   ComponentResource,
   ComponentResourceOptions,
@@ -15,8 +11,13 @@ import { Instance, InstanceArgs } from '@pulumi/aws/ec2/index.js';
 
 import { AMI_UBUNTU_ARM64, TAILNET_DOMAIN } from '../constants/internal.ts';
 import { region } from './awsAccount.ts';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import {
+  cloudInitYaml,
+  hostnameCommands,
+  tailscaleInstallCommands,
+  tailscaleUpCommands,
+  emergencySshKeyCommands,
+} from './cloudInit.ts';
 
 export interface TailscaleBoxArgs {
   tailscaleTags: Input<Input<string>[]>;
@@ -75,9 +76,12 @@ export class TailscaleBox extends ComponentResource {
         ami: AMI_UBUNTU_ARM64[region],
         userData: all([authKey.key, output(this.#args.tailscaleName)]).apply(([key, name]) =>
           secret(
-            readFileSync(join(__dirname, 'TailscaleBox.yml'), 'utf-8')
-              .replace(/%TAILSCALE_AUTH_KEY%/g, key)
-              .replace(/%TAILSCALE_NAME%/g, name),
+            cloudInitYaml([
+              ...hostnameCommands(name),
+              ...tailscaleInstallCommands(),
+              ...tailscaleUpCommands({ authKey: key, hostname: name }),
+              ...emergencySshKeyCommands(),
+            ]),
           ),
         ),
         tags: {
