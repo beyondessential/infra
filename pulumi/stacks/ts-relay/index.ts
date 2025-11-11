@@ -12,6 +12,7 @@ import {
   tailscaleInstallCommands,
   tailscaleUpCommands,
   emergencySshKeyCommands,
+  btrfsSwapFileCommands,
 } from '../common/cloudInit.ts';
 
 import { core, relayPort, relayName, nodeName, tailscaleTags, instanceType } from './config.ts';
@@ -21,7 +22,6 @@ const $network = $core.network();
 const tags = {
   Name: nodeName,
   Purpose: 'Tailscale',
-  ...$core.tags(),
 };
 
 const tailscaleName = `ts-relay-${relayName}`;
@@ -50,7 +50,7 @@ const authKey = new TailnetKey('ts-relay', {
   reusable: false,
   preauthorized: true,
   tags: tailscaleTags,
-});
+}, { ignoreChanges: ['tags'] });
 
 const box = new aws.ec2.Instance(
   'ts-relay',
@@ -75,6 +75,7 @@ const box = new aws.ec2.Instance(
         secret(
           cloudInitYaml([
             ...hostnameCommands(hostname),
+            ...btrfsSwapFileCommands(),
             ...tailscaleInstallCommands(),
             ...tailscaleUpCommands({ authKey, hostname }),
             ['tailscale', 'set', `--relay-server-port=${port}`],
