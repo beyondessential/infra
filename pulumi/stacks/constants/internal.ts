@@ -5,6 +5,7 @@ export const AWS_ROOT_ID = 'r-veli';
 export const AMI_UBUNTU_ARM64 = {
   'ap-southeast-2': 'ami-0a89f7d66c5868569',
   'eu-central-2': 'ami-021d350cd38d78d8b',
+  'ap-south-1': 'ami-07d3602af60bc7ac5',
 };
 
 export const AWS_TAMANU_INTERNAL_CERTBOT_POLICY = 'arn:aws:iam::143295493206:policy/CertbotRenewal';
