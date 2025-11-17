@@ -64,21 +64,9 @@
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
 
-# this assumes the service facts haven't changed,
-# so we're starting exactly the original service loadout
-# we exclude the old facility service which doesn't exist anymore
-- name: Start the application services
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') | reject('match', '^tamanu-facility.service$') }}"
-  become: true
-  ansible.builtin.systemd:
-    name: "{{ item }}"
-    state: started
-    enabled: true
-  notify: Reload caddy
-
-# we then ensure that the standard loadout is up
-# in essence, you can start more scaled services and they'll keep,
-# but if you kill essential services, they'll be restarted here
+# we ensure that the standard loadout is up
+# we used to restore all services as they
+# existed on the machine, but that led to drift
 
 - name: Start the standard facility services
   when: tamanu_server_type == 'facility'
