@@ -3,6 +3,4 @@ Description=Podman images cleanup
 
 [Service]
 Type=oneshot
-User=kopia
-Group=kopia
-ExecStart=podman image prune --all
+ExecStart=podman image prune --all --force
