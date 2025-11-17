@@ -66,8 +66,9 @@
 
 # this assumes the service facts haven't changed,
 # so we're starting exactly the original service loadout
+# we exclude the old facility service which doesn't exist anymore
 - name: Start the application services
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') | reject('match', '^tamanu-facility.service$') }}"
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -75,21 +76,30 @@
     enabled: true
   notify: Reload caddy
 
-- name: Start the new facility API services
+# we then ensure that the standard loadout is up
+# in essence, you can start more scaled services and they'll keep,
+# but if you kill essential services, they'll be restarted here
+
+- name: Start the standard facility services
   when: tamanu_server_type == 'facility'
   loop:
-    - "1"
-    - "2"
+    - "api@1"
+    - "api@2"
+    - tasks
+    - sync
   become: true
   ansible.builtin.systemd:
-    name: "tamanu-facility-api@{{ item }}.service"
+    name: "tamanu-facility-{{ item }}.service"
     state: started
     enabled: true
   notify: Reload caddy
 
-- name: Start the new central FHIR services
+- name: Start the standard central services
   when: tamanu_server_type == 'central'
   loop:
+    - "api@1"
+    - "api@2"
+    - tasks
     - fhir-refresh
     - fhir-resolve
   become: true

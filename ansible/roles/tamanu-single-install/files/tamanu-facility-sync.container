@@ -1,0 +1,19 @@
+[Unit]
+Description=Tamanu Facility sync
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-facility:${TAMANU_VERSION}
+Exec=startSync
+Volume=/etc/tamanu/${TAMANU_VERSION}:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=syncapi.facility.tamanu.internal
+Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
