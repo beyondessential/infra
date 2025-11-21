@@ -57,6 +57,7 @@ for (const [i, inst] of instances.entries()) {
     FQDN: inst.fqdn,
     TailscaleName: inst.tailscaleName,
     Partitioning: inst.legacyDisk ? 'split-data-logs' : 'single-btrfs',
+    TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
   };
 
   if (patientPortalDomain && inst.id === 'central') {
