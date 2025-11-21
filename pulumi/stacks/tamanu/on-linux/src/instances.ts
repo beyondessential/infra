@@ -118,7 +118,7 @@ for (const [i, inst] of instances.entries()) {
             Name: `${namePrefix}${inst.name} ${name}`,
           },
         },
-        { deleteBeforeReplace: true },
+        { deleteBeforeReplace: true, ignoreChanges: ['size'] },
       );
 
       backupResources.push(volume.arn);
