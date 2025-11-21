@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { all, Output, secret } from '@pulumi/pulumi';
+import { all, type Input, interpolate, type Output, secret } from '@pulumi/pulumi';
 
 import { $network } from '../../../common/coreRef.ts';
 import { tailscaleKey } from '../../../common/tailscaleKey.ts';
@@ -13,7 +13,15 @@ import {
   emergencySshKeyCommands,
 } from '../../../common/cloudInit.ts';
 
-import { instances, namePrefix, hardDelete, tailscaleTags, normalizedStack } from './config.ts';
+import {
+  instances,
+  domainBase,
+  namePrefix,
+  hardDelete,
+  tailscaleTags,
+  normalizedStack,
+  patientPortalDomain,
+} from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
 import { applyDNS } from './dns.ts';
@@ -43,6 +51,17 @@ for (const [i, inst] of instances.entries()) {
     expirySecs: 6 * 60 * 60, // excessive but it lets us deal with most problems eg. EIP quotas
     description: `tamanu ${normalizedStack} ${inst.id}`.substring(0, 50),
   });
+
+  const tags: { [key: string]: Input<string> } = {
+    Name: `${namePrefix}${inst.name}`,
+    FQDN: inst.fqdn,
+    TailscaleName: inst.tailscaleName,
+    Partitioning: inst.legacyDisk ? 'split-data-logs' : 'single-btrfs',
+  };
+
+  if (patientPortalDomain && inst.id === 'central') {
+    tags.PatientPortalDomain = patientPortalDomain;
+  }
 
   const vm = new aws.ec2.Instance(
     inst.id,
@@ -75,9 +94,7 @@ for (const [i, inst] of instances.entries()) {
             ]),
           ),
       ),
-      tags: {
-        Name: `${namePrefix}${inst.name}`,
-      },
+      tags,
     },
     {
       ignoreChanges: ['ami', 'rootBlockDevice', 'userData'],
@@ -140,6 +157,15 @@ for (const [i, inst] of instances.entries()) {
       ttl: 300,
       records: [vm.ipv6Addresses[0]],
     });
+
+  if (patientPortalDomain && inst.id === 'central') {
+    records.set('patient-portal-cname', {
+      name: interpolate`${patientPortalDomain}.${domainBase}`,
+      type: aws.route53.RecordType.CNAME,
+      ttl: 300,
+      records: [inst.fqdn],
+    });
+  }
 }
 
 applyBackup(backupResources);
