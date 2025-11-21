@@ -22,24 +22,44 @@
   ignore_errors: true
 
 - name: Create snapshot directory for old PostgreSQL version
-  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  when: postgresql_filesystem_type.stdout == 'btrfs'
   become: true
   ansible.builtin.file:
     path: /.snapshot/postgres-{{ installed_postgresql_version }}
     state: directory
     mode: "0755"
 
-- name: Create read-only btrfs snapshot of old PostgreSQL version
+- name: Create read-only btrfs snapshot of old PostgreSQL subvolume
   when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
   become: true
   ansible.builtin.command:
-    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date }}{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
-  register: btrfs_snapshot
+    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshot/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date }}{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
+  register: btrfs_snapshot_subvolume
 
-- name: Display snapshot information
+- name: Find btrfs subvolume containing /var/lib/postgresql
+  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0
+  become: true
+  ansible.builtin.shell:
+    cmd: btrfs subvolume show /var/lib/postgresql | head -1 | awk '{print $1}'
+  register: postgres_parent_subvolume
+  changed_when: false
+
+- name: Create read-only btrfs snapshot of parent subvolume
+  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0
+  become: true
+  ansible.builtin.command:
+    cmd: btrfs subvolume snapshot -r /{{ postgres_parent_subvolume.stdout }} /.snapshot/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date }}{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
+  register: btrfs_snapshot_parent
+
+- name: Display snapshot information (subvolume)
   when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
   ansible.builtin.debug:
-    msg: "Created read-only snapshot: {{ btrfs_snapshot.cmd | join(' ') }}"
+    msg: "Created read-only snapshot of PostgreSQL {{ installed_postgresql_version }} subvolume: {{ btrfs_snapshot_subvolume.cmd | join(' ') }}"
+
+- name: Display snapshot information (parent)
+  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0
+  ansible.builtin.debug:
+    msg: "Created read-only snapshot of parent subvolume {{ postgres_parent_subvolume.stdout }}: {{ btrfs_snapshot_parent.cmd | join(' ') }}"
 
 - name: Install new PostgreSQL version
   become: true
