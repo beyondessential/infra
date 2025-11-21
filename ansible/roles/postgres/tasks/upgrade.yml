@@ -34,6 +34,35 @@
   ansible.builtin.debug:
     msg: "PostgreSQL upgrade needed from version {{ installed_postgresql_version }} to {{ postgresql_version }}"
 
+- name: Check if old PostgreSQL directory is a btrfs subvolume
+  when: postgresql_upgrade_needed and postgresql_filesystem_type.stdout == 'btrfs'
+  become: true
+  ansible.builtin.shell:
+    cmd: btrfs subvolume show /var/lib/postgresql/{{ installed_postgresql_version }} >/dev/null 2>&1
+  register: old_is_subvolume
+  changed_when: false
+  ignore_errors: true
+
+- name: Create snapshot directory for old PostgreSQL version
+  when: postgresql_upgrade_needed and postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  become: true
+  ansible.builtin.file:
+    path: /.snapshot/postgres-{{ installed_postgresql_version }}
+    state: directory
+    mode: "0755"
+
+- name: Create read-only btrfs snapshot of old PostgreSQL version
+  when: postgresql_upgrade_needed and postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  become: true
+  ansible.builtin.command:
+    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date }}{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
+  register: btrfs_snapshot
+
+- name: Display snapshot information
+  when: postgresql_upgrade_needed and postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  ansible.builtin.debug:
+    msg: "Created read-only snapshot: {{ btrfs_snapshot.cmd | join(' ') }}"
+
 - name: Install new PostgreSQL version
   when: postgresql_upgrade_needed
   become: true
