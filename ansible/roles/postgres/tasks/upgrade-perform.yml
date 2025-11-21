@@ -1,0 +1,291 @@
+---
+- name: Detect filesystem type for PostgreSQL data directory
+  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  register: postgresql_filesystem_type
+  changed_when: false
+
+- name: Set pg_upgrade method based on filesystem
+  ansible.builtin.set_fact:
+    pg_upgrade_method: "{{ '--clone' if postgresql_filesystem_type.stdout == 'btrfs' else '--link' }}"
+
+- name: Display upgrade method
+  ansible.builtin.debug:
+    msg: "Using pg_upgrade method: {{ pg_upgrade_method }} (filesystem: {{ postgresql_filesystem_type.stdout }})"
+
+- name: Check if old PostgreSQL directory is a btrfs subvolume
+  when: postgresql_filesystem_type.stdout == 'btrfs'
+  become: true
+  ansible.builtin.shell:
+    cmd: btrfs subvolume show /var/lib/postgresql/{{ installed_postgresql_version }} >/dev/null 2>&1
+  register: old_is_subvolume
+  changed_when: false
+  ignore_errors: true
+
+- name: Create snapshot directory for old PostgreSQL version
+  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  become: true
+  ansible.builtin.file:
+    path: /.snapshot/postgres-{{ installed_postgresql_version }}
+    state: directory
+    mode: "0755"
+
+- name: Create read-only btrfs snapshot of old PostgreSQL version
+  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  become: true
+  ansible.builtin.command:
+    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date }}{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
+  register: btrfs_snapshot
+
+- name: Display snapshot information
+  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+  ansible.builtin.debug:
+    msg: "Created read-only snapshot: {{ btrfs_snapshot.cmd | join(' ') }}"
+
+- name: Install new PostgreSQL version
+  become: true
+  ansible.builtin.apt:
+    name: postgresql-{{ postgresql_version }}
+    state: present
+    update_cache: true
+
+- name: Create btrfs subvolume for new PostgreSQL version
+  when: postgresql_filesystem_type.stdout == 'btrfs'
+  become: true
+  ansible.builtin.command:
+    cmd: btrfs subvolume create /var/lib/postgresql/{{ postgresql_version }}
+    creates: /var/lib/postgresql/{{ postgresql_version }}
+
+- name: Create new PostgreSQL version directory (non-btrfs)
+  when: postgresql_filesystem_type.stdout != 'btrfs'
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/postgresql/{{ postgresql_version }}
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0755"
+
+- name: Ensure new PostgreSQL version directory has correct ownership
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/postgresql/{{ postgresql_version }}
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0755"
+
+- name: Stop new PostgreSQL service (if auto-started)
+  become: true
+  ansible.builtin.systemd:
+    name: "postgresql@{{ postgresql_version }}-main"
+    state: stopped
+  ignore_errors: true
+
+- name: Check if new cluster was auto-initialized
+  become: true
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION
+  register: new_cluster_exists
+
+- name: Remove auto-initialized new cluster
+  when: new_cluster_exists.stat.exists
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/postgresql/{{ postgresql_version }}/main
+    state: absent
+
+- name: Create new PostgreSQL configuration directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/postgresql/{{ postgresql_version }}/main
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0755"
+
+- name: Copy PostgreSQL configuration files from old version
+  become: true
+  ansible.builtin.copy:
+    remote_src: true
+    src: /etc/postgresql/{{ installed_postgresql_version }}/main/
+    dest: /etc/postgresql/{{ postgresql_version }}/main/
+    owner: postgres
+    group: postgres
+
+- name: Update data_directory in new PostgreSQL config
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    regexp: "^data_directory\\s*="
+    line: "data_directory = '/var/lib/postgresql/{{ postgresql_version }}/main'"
+
+- name: Update cluster_name in new PostgreSQL config
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    regexp: "^cluster_name\\s*="
+    line: "cluster_name = '{{ postgresql_version }}/main'"
+
+- name: Update external_pid_file in new PostgreSQL config
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    regexp: "^external_pid_file\\s*="
+    line: "external_pid_file = '/var/run/postgresql/{{ postgresql_version }}-main.pid'"
+
+- name: Update hba_file in new PostgreSQL config
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    regexp: "^hba_file\\s*="
+    line: "hba_file = '/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf'"
+
+- name: Update ident_file in new PostgreSQL config
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    regexp: "^ident_file\\s*="
+    line: "ident_file = '/etc/postgresql/{{ postgresql_version }}/main/pg_ident.conf'"
+
+- name: Ensure new PostgreSQL data directory is empty
+  become: true
+  ansible.builtin.shell:
+    cmd: rm -rf /var/lib/postgresql/{{ postgresql_version }}/main/* /var/lib/postgresql/{{ postgresql_version }}/main/.[!.]* 2>/dev/null || true
+
+- name: Initialize new PostgreSQL cluster
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: /usr/lib/postgresql/{{ postgresql_version }}/bin/initdb -D /var/lib/postgresql/{{ postgresql_version }}/main
+  register: initdb_result
+
+- name: Stop all PostgreSQL services
+  become: true
+  ansible.builtin.systemd:
+    name: "postgresql@{{ installed_postgresql_version }}-main"
+    state: stopped
+
+- name: Stop new PostgreSQL service
+  become: true
+  ansible.builtin.systemd:
+    name: "postgresql@{{ postgresql_version }}-main"
+    state: stopped
+
+- name: Check upgrade compatibility
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: >
+      /usr/lib/postgresql/{{ postgresql_version }}/bin/pg_upgrade
+      --old-bindir=/usr/lib/postgresql/{{ installed_postgresql_version }}/bin
+      --new-bindir=/usr/lib/postgresql/{{ postgresql_version }}/bin
+      --old-datadir=/var/lib/postgresql/{{ installed_postgresql_version }}/main
+      --new-datadir=/var/lib/postgresql/{{ postgresql_version }}/main
+      --old-options="-c config_file=/etc/postgresql/{{ installed_postgresql_version }}/main/postgresql.conf"
+      --new-options="-c config_file=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+      --socketdir=/tmp
+      --check
+    chdir: /var/lib/postgresql
+  register: pg_upgrade_check
+  changed_when: false
+  ignore_errors: true
+
+- name: Get pg_upgrade server log contents
+  when: pg_upgrade_check.rc != 0
+  become: true
+  ansible.builtin.shell:
+    cmd: find /var/lib/postgresql/{{ postgresql_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null || echo "No log file found"
+  register: pg_upgrade_log_content
+  changed_when: false
+
+- name: Show pg_upgrade log contents
+  when: pg_upgrade_check.rc != 0
+  ansible.builtin.debug:
+    msg: "{{ pg_upgrade_log_content.stdout_lines }}"
+
+- name: Fail if pg_upgrade check failed
+  when: pg_upgrade_check.rc != 0
+  ansible.builtin.fail:
+    msg: "pg_upgrade --check failed. See log output above for details."
+
+- name: Display upgrade check results
+  ansible.builtin.debug:
+    var: pg_upgrade_check.stdout_lines
+
+- name: Perform PostgreSQL upgrade
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: >
+      /usr/lib/postgresql/{{ postgresql_version }}/bin/pg_upgrade
+      --old-bindir=/usr/lib/postgresql/{{ installed_postgresql_version }}/bin
+      --new-bindir=/usr/lib/postgresql/{{ postgresql_version }}/bin
+      --old-datadir=/var/lib/postgresql/{{ installed_postgresql_version }}/main
+      --new-datadir=/var/lib/postgresql/{{ postgresql_version }}/main
+      --old-options="-c config_file=/etc/postgresql/{{ installed_postgresql_version }}/main/postgresql.conf"
+      --new-options="-c config_file=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+      --socketdir=/tmp
+      {{ pg_upgrade_method }}
+    chdir: /var/lib/postgresql
+  register: pg_upgrade_result
+
+- name: Display upgrade results
+  ansible.builtin.debug:
+    var: pg_upgrade_result.stdout_lines
+
+- name: Start new PostgreSQL service
+  become: true
+  ansible.builtin.systemd:
+    name: "postgresql@{{ postgresql_version }}-main"
+    state: started
+    enabled: true
+
+- name: Update PostgreSQL configuration symlink
+  become: true
+  ansible.builtin.file:
+    src: /etc/postgresql/{{ postgresql_version }}
+    dest: /etc/postgresql/current
+    state: link
+    force: true
+
+- name: Update PostgreSQL data symlink
+  become: true
+  ansible.builtin.file:
+    src: /var/lib/postgresql/{{ postgresql_version }}/main
+    dest: /var/lib/postgresql/current
+    state: link
+    force: true
+
+- name: Run vacuumdb after upgrade
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: /usr/lib/postgresql/{{ postgresql_version }}/bin/vacuumdb --all --analyze-in-stages
+  async: 3600
+  poll: 0
+  register: vacuumdb_job
+
+- name: Delete old PostgreSQL cluster
+  when: postgresql_cleanup_old_cluster is defined and postgresql_cleanup_old_cluster
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: /var/lib/postgresql/delete_old_cluster.sh
+    chdir: /var/lib/postgresql
+  register: delete_old_cluster
+
+- name: Delete upgrade scripts
+  become: true
+  ansible.builtin.file:
+    path: "/var/lib/postgresql/{{ item }}"
+    state: absent
+  loop:
+    - analyze_new_cluster.sh
+    - delete_old_cluster.sh
+
+- name: Remove old PostgreSQL package
+  become: true
+  ansible.builtin.apt:
+    name: postgresql-{{ installed_postgresql_version }}
+    state: absent
+    autoremove: true

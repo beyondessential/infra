@@ -1,0 +1,35 @@
+---
+- name: Check if PostgreSQL current symlink exists
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/current
+  register: postgresql_current_symlink
+
+- name: Detect installed PostgreSQL version from symlink
+  when: postgresql_current_symlink.stat.exists and postgresql_current_symlink.stat.islnk
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_current_symlink.stat.lnk_source | dirname | basename }}"
+
+- name: Set upgrade needed flag
+  ansible.builtin.set_fact:
+    postgresql_upgrade_needed: "{{ postgresql_current_symlink.stat.exists and installed_postgresql_version is defined and installed_postgresql_version != postgresql_version }}"
+
+- name: Detect filesystem type for PostgreSQL data directory
+  when: postgresql_upgrade_needed
+  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  register: postgresql_filesystem_type
+  changed_when: false
+
+- name: Set upgrade allowed flag (requires btrfs)
+  when: postgresql_upgrade_needed
+  ansible.builtin.set_fact:
+    postgresql_upgrade_allowed: "{{ postgresql_filesystem_type.stdout == 'btrfs' }}"
+
+- name: Display upgrade status
+  when: postgresql_upgrade_needed and postgresql_upgrade_allowed
+  ansible.builtin.debug:
+    msg: "PostgreSQL upgrade will proceed from version {{ installed_postgresql_version }} to {{ postgresql_version }} on btrfs"
+
+- name: Skip upgrade if not on btrfs
+  when: postgresql_upgrade_needed and not postgresql_upgrade_allowed
+  ansible.builtin.debug:
+    msg: "PostgreSQL upgrade skipped - filesystem is {{ postgresql_filesystem_type.stdout }}, but btrfs is required"
