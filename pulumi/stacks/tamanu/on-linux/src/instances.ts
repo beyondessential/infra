@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { all, type Input, interpolate, type Output, secret } from '@pulumi/pulumi';
+import { all, type Input, type Output, secret } from '@pulumi/pulumi';
 
 import { $network } from '../../../common/coreRef.ts';
 import { tailscaleKey } from '../../../common/tailscaleKey.ts';

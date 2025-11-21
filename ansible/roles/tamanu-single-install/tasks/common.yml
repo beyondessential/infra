@@ -1,4 +1,30 @@
 ---
+- name: Get IMDSv2 token
+  when: ansible_system_vendor == 'Amazon EC2' and tamanu_server_type == 'central'
+  ansible.builtin.uri:
+    url: http://169.254.169.254/latest/api/token
+    method: PUT
+    headers:
+      X-aws-ec2-metadata-token-ttl-seconds: "60"
+    return_content: true
+  register: imds_token
+
+- name: Fetch PatientPortalFQDN tag from EC2 metadata service
+  when: ansible_system_vendor == 'Amazon EC2' and tamanu_server_type == 'central'
+  ansible.builtin.uri:
+    url: http://169.254.169.254/latest/meta-data/tags/instance/PatientPortalFQDN
+    headers:
+      X-aws-ec2-metadata-token: "{{ imds_token.content }}"
+    return_content: true
+    status_code: [200, 404]
+  register: ec2_patient_portal_fqdn_tag
+  failed_when: false
+
+- name: Set PatientPortalFQDN fact from EC2 tag
+  when: ansible_system_vendor == 'Amazon EC2' and tamanu_server_type == 'central' and ec2_patient_portal_fqdn_tag.status == 200
+  ansible.builtin.set_fact:
+    ansible_ec2_tag_PatientPortalFQDN: "{{ ec2_patient_portal_fqdn_tag.content }}"
+
 - name: Set patient portal enabled fact
   ansible.builtin.set_fact:
     patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_system_vendor == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"

@@ -14,9 +14,6 @@
 
 - name: Central pre-upgrade (if needed)
   hosts: central
-  pre_tasks:
-    - when: ansible_system_vendor == 'Amazon EC2'
-      amazon.aws.ec2_metadata_facts:
   roles:
     - role: tamanu-single-install
       type: central
@@ -25,9 +22,6 @@
 
 - name: Facility pre-upgrade  (if needed)
   hosts: facility
-  pre_tasks:
-    - when: ansible_system_vendor == 'Amazon EC2'
-      amazon.aws.ec2_metadata_facts:
   roles:
     - role: tamanu-single-install
       type: facility
@@ -36,9 +30,6 @@
 
 - name: Central upgrade
   hosts: central
-  pre_tasks:
-    - when: ansible_system_vendor == 'Amazon EC2'
-      amazon.aws.ec2_metadata_facts:
   roles:
     - role: tamanu-single-upgrade
       type: central
@@ -46,9 +37,6 @@
 
 - name: Facility upgrade
   hosts: facility
-  pre_tasks:
-    - when: ansible_system_vendor == 'Amazon EC2'
-      amazon.aws.ec2_metadata_facts:
   roles:
     - role: tamanu-single-upgrade
       type: facility
