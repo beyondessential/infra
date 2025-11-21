@@ -13,6 +13,11 @@
   ansible.builtin.set_fact:
     postgresql_upgrade_needed: "{{ postgresql_current_symlink.stat.exists and installed_postgresql_version is defined and installed_postgresql_version != postgresql_version }}"
 
+- name: Check for downgrade attempt
+  when: postgresql_upgrade_needed and (installed_postgresql_version | int) > (postgresql_version | int)
+  ansible.builtin.fail:
+    msg: "Downgrade detected! Cannot downgrade from PostgreSQL {{ installed_postgresql_version }} to {{ postgresql_version }}. This is not supported."
+
 - name: Detect filesystem type for PostgreSQL data directory
   when: postgresql_upgrade_needed
   ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
@@ -27,9 +32,9 @@
 - name: Display upgrade status
   when: postgresql_upgrade_needed and postgresql_upgrade_allowed
   ansible.builtin.debug:
-    msg: "PostgreSQL upgrade will proceed from version {{ installed_postgresql_version }} to {{ postgresql_version }} on btrfs"
+    msg: "PostgreSQL upgrade will proceed from version {{ installed_postgresql_version }} to {{ postgresql_version }}"
 
-- name: Skip upgrade if not on btrfs
+- name: Skip upgrade
   when: postgresql_upgrade_needed and not postgresql_upgrade_allowed
   ansible.builtin.debug:
-    msg: "PostgreSQL upgrade skipped - filesystem is {{ postgresql_filesystem_type.stdout }}, but btrfs is required"
+    msg: "PostgreSQL upgrade needed but disallowed on this filesystem ({{ postgresql_filesystem_type.stdout }})"
