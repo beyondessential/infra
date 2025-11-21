@@ -55,13 +55,15 @@ for (const [i, inst] of instances.entries()) {
   const tags: { [key: string]: Input<string> } = {
     Name: `${namePrefix}${inst.name}`,
     FQDN: inst.fqdn,
-    TailscaleName: inst.tailscaleName,
     Partitioning: inst.legacyDisk ? 'split-data-logs' : 'single-btrfs',
+    TailscaleName: inst.tailscaleName,
+    TamanuServerID: inst.id,
+    TamanuServerName: inst.name,
     TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
   };
 
   if (patientPortalDomain && inst.id === 'central') {
-    tags.PatientPortalDomain = patientPortalDomain;
+    tags.PatientPortalFQDN = patientPortalDomain;
   }
 
   const vm = new aws.ec2.Instance(
@@ -161,7 +163,7 @@ for (const [i, inst] of instances.entries()) {
 
   if (patientPortalDomain && inst.id === 'central') {
     records.set('patient-portal-cname', {
-      name: interpolate`${patientPortalDomain}.${domainBase}`,
+      name: patientPortalDomain,
       type: aws.route53.RecordType.CNAME,
       ttl: 300,
       records: [inst.fqdn],

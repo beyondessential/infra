@@ -26,7 +26,7 @@ export const urls = Object.fromEntries(
             [
               'Patient Portal',
               {
-                public: output(interpolate`https://${patientPortalDomain}.${domainBase}`),
+                public: interpolate`https://${patientPortalDomain}`,
                 tailscale: '(central)',
               },
             ],

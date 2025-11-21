@@ -50,7 +50,10 @@ export const tailscaleBase = zoneRoot.apply((root) => {
 export const namePrefix = cfg.get('namePrefix') ?? '';
 export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
-export const patientPortalDomain = cfg.get('patientPortalDomain') ?? 'patient';
+
+const patientPortalDomainName = cfg.get('patientPortalDomain') ?? 'patient';
+export const patientPortalDomain =
+  patientPortalDomainName && interpolate`${patientPortalDomainName}.${domainBase}`;
 
 const typeGuess = (() => {
   if (normalizedStack.includes('demo')) {
