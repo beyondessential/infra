@@ -41,6 +41,9 @@
 
 - name: Central server setup
   hosts: central
+  pre_tasks:
+    - when: ansible_system_vendor == 'Amazon EC2'
+      amazon.aws.ec2_metadata_facts:
   roles:
     - role: postgres-database
       dbname: tamanu
