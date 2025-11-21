@@ -60,6 +60,8 @@ for (const [i, inst] of instances.entries()) {
     TamanuServerID: inst.id,
     TamanuServerName: inst.name,
     TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
+    Purpose: 'tamanu-server',
+    ManagedBy: 'pulumi',
   };
 
   if (patientPortalDomain && inst.id === 'central') {
@@ -119,6 +121,8 @@ for (const [i, inst] of instances.entries()) {
           encrypted: true,
           tags: {
             Name: `${namePrefix}${inst.name} ${name}`,
+            Purpose: 'tamanu-server',
+            ManagedBy: 'pulumi',
           },
         },
         { deleteBeforeReplace: true, ignoreChanges: ['size'] },
@@ -143,6 +147,9 @@ for (const [i, inst] of instances.entries()) {
     domain: 'vpc',
     tags: {
       Name: `${namePrefix}${inst.name}`,
+      ManagedBy: 'pulumi',
+      Purpose: 'tamanu-server',
+      FQDN: inst.fqdn,
     },
   });
 

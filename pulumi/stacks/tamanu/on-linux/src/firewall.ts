@@ -17,7 +17,8 @@ export const sg = new aws.ec2.SecurityGroup(
     egress: [securityGroupRules.all],
     tags: {
       Name: `${namePrefix}${normalizedStack}`,
-      Purpose: 'workload',
+      ManagedBy: 'pulumi',
+      Purpose: 'tamanu-server',
     },
   },
   {

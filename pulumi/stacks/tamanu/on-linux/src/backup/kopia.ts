@@ -7,7 +7,11 @@ import { instances } from '../config.ts';
 const tags = [
   {
     key: 'Purpose',
-    value: 'backups',
+    value: 'tamanu-backups',
+  },
+  {
+    key: 'ManagedBy',
+    value: 'pulumi',
   },
 ];
 

@@ -22,7 +22,7 @@ const backupRole = new aws.iam.Role('backup-service-role', {
     'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores',
   ],
   tags: {
-    Purpose: 'backup',
+    Purpose: 'tamanu-backups',
     ManagedBy: 'pulumi',
   },
 });
@@ -30,7 +30,8 @@ const backupRole = new aws.iam.Role('backup-service-role', {
 const vault = new awsNative.backup.BackupVault('backup', {
   backupVaultName: interpolate`tamanu-on-linux-${getStack()}`,
   backupVaultTags: {
-    Purpose: 'Backup',
+    Purpose: 'tamanu-backups',
+    ManagedBy: 'pulumi',
     Name: getStack(),
   },
 });
@@ -68,7 +69,8 @@ const backup = new awsNative.backup.BackupPlan('backup-180days', {
     ],
   },
   backupPlanTags: {
-    Purpose: 'Backup',
+    Purpose: 'tamanu-backups',
+    ManagedBy: 'pulumi',
     Name: getStack(),
   },
 });
