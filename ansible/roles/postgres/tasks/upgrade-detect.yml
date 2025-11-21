@@ -38,3 +38,8 @@
   when: postgresql_upgrade_needed and not postgresql_upgrade_allowed
   ansible.builtin.debug:
     msg: "PostgreSQL upgrade needed but disallowed on this filesystem ({{ postgresql_filesystem_type.stdout }})"
+
+- name: Use installed version when not upgrading
+  when: not postgresql_upgrade_needed or (postgresql_upgrade_needed and not postgresql_upgrade_allowed)
+  ansible.builtin.set_fact:
+    postgresql_version: "{{ installed_postgresql_version }}"
