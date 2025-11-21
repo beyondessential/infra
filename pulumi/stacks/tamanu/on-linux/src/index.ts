@@ -1,7 +1,7 @@
 import { interpolate } from '@pulumi/pulumi';
 
 import { instances } from './config.ts';
-import { failIfIncorrectAccount } from '../../common/coreRef.ts';
+import { failIfIncorrectAccount } from '../../../common/coreRef.ts';
 failIfIncorrectAccount();
 
 import './backup/aws.ts';

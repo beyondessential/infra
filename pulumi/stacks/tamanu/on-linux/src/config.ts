@@ -1,5 +1,5 @@
 import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
-import { cfg, zone } from '../../common/coreRef.ts';
+import { cfg, zone } from '../../../common/coreRef.ts';
 
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined;
 

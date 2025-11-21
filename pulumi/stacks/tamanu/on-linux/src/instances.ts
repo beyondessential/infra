@@ -1,9 +1,9 @@
 import * as aws from '@pulumi/aws';
 import { all, Output, secret } from '@pulumi/pulumi';
 
-import { $network } from '../../common/coreRef.ts';
-import { tailscaleKey } from '../../common/tailscaleKey.ts';
-import { AMI_UBUNTU_ARM64 } from '../../constants/internal.ts';
+import { $network } from '../../../common/coreRef.ts';
+import { tailscaleKey } from '../../../common/tailscaleKey.ts';
+import { AMI_UBUNTU_ARM64 } from '../../../constants/internal.ts';
 import {
   cloudInitYaml,
   hostnameCommands,
@@ -11,13 +11,13 @@ import {
   tailscaleUpCommands,
   caddyUserCommands,
   emergencySshKeyCommands,
-} from '../../common/cloudInit.ts';
+} from '../../../common/cloudInit.ts';
 
 import { instances, namePrefix, hardDelete, tailscaleTags, normalizedStack } from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
 import { applyDNS } from './dns.ts';
-import { region } from '../../common/awsAccount.ts';
+import { region } from '../../../common/awsAccount.ts';
 
 const LEGACY_DISKS = [
   {
