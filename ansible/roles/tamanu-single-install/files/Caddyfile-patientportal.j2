@@ -1,0 +1,57 @@
+(patient_portal_server) {
+  log {
+    output stdout
+  }
+
+  header / Cache-Control no-cache
+  header /manifest.json Cache-Control no-cache
+
+  handle_errors {
+    @custom_err file /resources/errors/{err.status_code}.html
+    handle @custom_err {
+      rewrite * {file_match.relative}
+      file_server
+    }
+  }
+
+  encode zstd gzip
+  import waf*
+
+  reverse_proxy /* {
+    header_up Host "localhost"
+
+    dynamic a patientportal.tamanu.internal 3000 {
+      resolvers 10.100.0.1
+      {% if not tamanu_ipv6 %}
+      versions ipv4
+      {% endif %}
+    }
+
+    fail_duration 10s
+    lb_policy least_conn
+    health_uri /
+    health_headers {
+      Host "localhost"
+    }
+
+    transport http {
+      keepalive 65s
+      compression false
+    }
+  }
+}
+
+{% if tamanu_caddy_tls and not (patient_portal_fqdn | regex_search('\\.local$')) %}
+https://{{ patient_portal_fqdn }} {
+  import patient_portal_server
+}
+http://{{ patient_portal_fqdn }} {
+  import bind80
+  redir https://{host}{uri} 308
+}
+{% else %}
+http://{{ patient_portal_fqdn }} {
+  import bind80
+  import patient_portal_server
+}
+{% endif %}

@@ -89,8 +89,6 @@
 
 - name: Pull the Tamanu images
   become: true
-  loop:
-    - "{{ tamanu_image_server }}"
-    - "{{ tamanu_image_frontend }}"
+  loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"
   containers.podman.podman_image:
     name: "{{ item }}"

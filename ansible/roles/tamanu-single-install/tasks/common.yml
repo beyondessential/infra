@@ -1,4 +1,13 @@
 ---
+- name: Set patient portal enabled fact
+  ansible.builtin.set_fact:
+    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_system_vendor == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
+
+- name: Set patient portal FQDN fact
+  when: patient_portal_enabled
+  ansible.builtin.set_fact:
+    patient_portal_fqdn: "{{ ansible_ec2_tag_PatientPortalFQDN | default(patient_portal_fqdn) }}"
+
 - name: Add tamanu group
   become: true
   ansible.builtin.group:
@@ -28,6 +37,16 @@
     group: tamanu
   notify: Reload caddy
 
+- name: Add tamanu patient portal caddy config
+  when: patient_portal_enabled
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/servers/tamanu-patientportal
+    src: "{{ lookup('ansible.builtin.fileglob', 'Caddyfile-patientportal.j2') }}"
+    owner: tamanu
+    group: tamanu
+  notify: Reload caddy
+
 - name: Create tamanu config directory
   become: true
   ansible.builtin.file:
@@ -47,6 +66,15 @@
 - name: Install common container quadlets
   become: true
   with_fileglob: tamanu-frontend@.container
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/containers/systemd/{{ item | basename }}
+  notify: Reload systemd
+
+- name: Install patient portal container quadlet
+  when: patient_portal_enabled
+  become: true
+  with_fileglob: tamanu-patientportal.container
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: /etc/containers/systemd/{{ item | basename }}
