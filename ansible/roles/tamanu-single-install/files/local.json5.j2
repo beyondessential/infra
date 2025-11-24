@@ -35,6 +35,11 @@
   disk: {
     diskPath: '/var/lib/postgresql',
   },
+  {% if patient_portal_enabled %}
+  patientPortal: {
+    portalUrl: "{{ patient_portal_fqdn }}",
+  },
+  {% endif %}
   {% else %}
   sync: {
     syncApiConnection: {
