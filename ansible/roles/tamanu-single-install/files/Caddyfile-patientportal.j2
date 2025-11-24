@@ -17,6 +17,50 @@
   encode zstd gzip
   import waf*
 
+  @api {
+    path /v1/*
+    path /api/*
+  }
+
+  rate_limit @api {
+    log_key
+    zone per_ip {
+      key {remote_host}
+      events 1000
+      window 1s
+    }
+  }
+
+  route /api/login {
+    rate_limit {
+      log_key
+      zone auth_per_ip {
+        key {remote_host}
+        events 10
+        window 1s
+      }
+    }
+  }
+
+  header @api Cache-Control no-store
+  reverse_proxy @api {
+    dynamic a api.central.tamanu.internal 3000 {
+      resolvers 10.100.0.1
+      {% if not tamanu_ipv6 %}
+      versions ipv4
+      {% endif %}
+    }
+
+    fail_duration 15s
+    lb_policy least_conn
+    health_uri /api/public/ping
+
+    transport http {
+      keepalive 65s
+      compression false
+    }
+  }
+
   reverse_proxy /* {
     header_up Host "localhost"
 
