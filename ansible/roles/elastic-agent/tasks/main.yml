@@ -20,7 +20,7 @@
     - name: Remove Elastic agent data
       become: true
       ansible.builtin.file:
-        path: /opt/Elastic/Agent
+        path: /opt/Elastic
         state: absent
 
 - name: Install Elastic security agent
@@ -73,7 +73,7 @@
           elastic-agent enroll
           --url={{ elastic_agent_fleet_url }}
           --enrollment-token={{ elastic_agent_enrollment_token }}
-        creates: /opt/Elastic/Agent/data/elastic-agent.yml
+        creates: /etc/elastic-agent/fleet.enc
       when: elastic_agent_fleet_url
 
     - name: Enable Elastic agent
