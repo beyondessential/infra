@@ -1,0 +1,3 @@
+---
+elastic_agent_enrollment_token: false
+elastic_agent_fleet_url: https://a85a913fbe684a55a889edcdb2dfd4bd.fleet.australiaeast.azure.elastic.cloud:443

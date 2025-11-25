@@ -1,0 +1,84 @@
+---
+- name: Uninstall Elastic security agent
+  when: not elastic_agent_enrollment_token
+  block:
+    - name: Stop Elastic agent
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Uninstall Elastic agent
+      become: true
+      ansible.builtin.apt:
+        name: elastic-agent
+        state: absent
+        purge: true
+
+    - name: Remove Elastic agent data
+      become: true
+      ansible.builtin.file:
+        path: /opt/Elastic/Agent
+        state: absent
+
+- name: Install Elastic security agent
+  when: elastic_agent_enrollment_token
+  block:
+    - name: Set elastic_architecture
+      set_fact:
+        elastic_architecture: |-
+          {{
+            "amd64" if ansible_architecture == "x86_64"
+            else (
+              "arm64" if ansible_architecture == "aarch64"
+              else ansible_architecture
+            )
+          }}
+
+    - name: Add Elastic apt key
+      become: true
+      ansible.builtin.copy:
+        src: "{{ lookup('ansible.builtin.fileglob', 'elasticsearch.asc') }}"
+        dest: /etc/apt/keyrings/elasticsearch.asc
+
+    - name: Add Elastic repo
+      become: true
+      ansible.builtin.apt_repository:
+        repo: deb [signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
+        state: present
+        filename: elastic
+
+    - name: Prioritise Elastic repo
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/99-elastic
+        content: |
+          Package: *
+          Pin: release o=artifacts.elastic.co
+          Pin-Priority: 900
+
+    - name: Install Elastic agent
+      become: true
+      ansible.builtin.apt:
+        name: elastic-agent
+        state: present
+        update_cache: true
+
+    - name: Enroll Elastic agent
+      become: true
+      ansible.builtin.command:
+        cmd: >
+          elastic-agent enroll
+          --url={{ elastic_agent_fleet_url }}
+          --enrollment-token={{ elastic_agent_enrollment_token }}
+        creates: /opt/Elastic/Agent/data/elastic-agent.yml
+      when: elastic_agent_fleet_url
+
+    - name: Enable Elastic agent
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: started
+        enabled: true

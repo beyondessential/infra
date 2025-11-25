@@ -1,0 +1,6 @@
+---
+- name: Restart elastic-agent
+  become: true
+  ansible.builtin.systemd:
+    name: elastic-agent
+    state: restarted

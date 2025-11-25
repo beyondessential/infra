@@ -30,6 +30,8 @@
 
     - role: kopia
       tags: [base, kopia]
+    - role: elastic-agent
+      tags: [base, elastic]
     #- role: metrics
     #  tags: [base, metrics]
 
