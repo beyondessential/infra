@@ -73,30 +73,32 @@ new k8s.apps.v1.Deployment(
   { dependsOn: [migrator] },
 );
 
-postgresCronJob(
-  'prune',
-  {
-    namespace,
-    schedule: '@daily',
-    command: 'SELECT prune_untrusted_devices();',
-    dbReady,
-    dbService: 'meta-db-rw',
-    architecture,
-    labels: labels('prune'),
-  },
-  { dependsOn: [migrator] },
-);
+postgresCronJob('prune', {
+  namespace,
+  schedule: '@daily',
+  command: 'SELECT prune_untrusted_devices();',
+  dbReady,
+  dbService: 'meta-db-rw',
+  architecture,
+  labels: labels('prune'),
+});
 
-postgresCronJob(
-  'db-statuses-partition',
-  {
-    namespace,
-    schedule: '@daily',
-    command: 'SELECT create_statuses_partitions(2);',
-    dbReady,
-    dbService: 'meta-db-rw',
-    architecture,
-    labels: labels('db-statuses-partition'),
-  },
-  { dependsOn: [migrator] },
-);
+postgresCronJob('partition-statuses', {
+  namespace,
+  schedule: '@daily',
+  command: 'SELECT create_statuses_partitions(2);',
+  dbReady,
+  dbService: 'meta-db-rw',
+  architecture,
+  labels: labels('partition-statuses'),
+});
+
+postgresCronJob('partition-device-connections', {
+  namespace,
+  schedule: '@daily',
+  command: 'SELECT create_device_connections_partitions(2);',
+  dbReady,
+  dbService: 'meta-db-rw',
+  architecture,
+  labels: labels('partition-device-connections'),
+});
