@@ -20,3 +20,5 @@ export const LOGS_BUCKETS = {
 
 export const EMERGENCY_SSH_KEY =
   'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u emergency@tamanu';
+
+export const DEFAULT_POSTGRES_VERSION = 17;

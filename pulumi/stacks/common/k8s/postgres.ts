@@ -6,6 +6,7 @@ import { CAN_RUN_ON_SPOT } from './tolerations.ts';
 import { RUN_ON_SPOT } from './affinities.ts';
 import { postgresUrlSecret } from './postgresUrl.ts';
 import { backups } from './coreRef.ts';
+import { DEFAULT_POSTGRES_VERSION } from '../../constants/internal.ts';
 
 export interface PostgresArgs {
   parent?: ComponentResource;
@@ -46,7 +47,7 @@ export function runPostgres({
   storage,
   timezone,
   backupSchedule,
-  majorVersion = 17,
+  majorVersion = DEFAULT_POSTGRES_VERSION,
   postgis = false,
   roles = [],
   initSql,
