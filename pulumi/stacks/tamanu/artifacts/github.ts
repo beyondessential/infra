@@ -1,7 +1,7 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { ghaOidc } from '../../common/coreRef.ts';
-import { AWS_STS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
+import { AWS_STS, AWS_S3_DELETE_ACTIONS, AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
 import { dbDumps, tools, translations } from './buckets.ts';
 
 new awsClassic.iam.Role('gha-tamanu-test-data-snapshots-s3', {
@@ -121,7 +121,7 @@ new awsClassic.iam.Role('gha-tamanu-tools-upload', {
         Statement: [
           {
             Effect: 'Allow',
-            Action: AWS_S3_WRITE_ACTIONS,
+            Action: AWS_S3_DELETE_ACTIONS,
             Resource: tools.bucket.bucket.apply((bucket) => [
               `arn:aws:s3:::${bucket}`,
               `arn:aws:s3:::${bucket}/*`,
