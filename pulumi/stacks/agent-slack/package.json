@@ -1,0 +1,5 @@
+{
+  "name": "@bes/agent-slack",
+  "type": "module",
+  "main": "src/index.ts"
+}
