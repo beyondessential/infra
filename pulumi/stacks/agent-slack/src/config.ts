@@ -17,6 +17,8 @@ export const askAiChannelId = cfg.require('askAiChannelId');
 export const anthropicApiKey = cfg.requireSecret('anthropicApiKey');
 export const googleDriveDocsFolderId = cfg.require('googleDriveDocsFolderId');
 export const googleDriveLogsFolderId = cfg.require('googleDriveLogsFolderId');
+export const googleDriveCredentialsJson = cfg.requireSecret('googleDriveCredentialsJson');
+export const googleDriveTokenJson = cfg.requireSecret('googleDriveTokenJson');
 
 // Optional configuration
 export const image = cfg.get('image') ?? 'ghcr.io/beyondessential/agent-slack:latest';

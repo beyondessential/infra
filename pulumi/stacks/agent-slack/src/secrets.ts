@@ -9,6 +9,8 @@ import {
   anthropicApiKey,
   googleDriveDocsFolderId,
   googleDriveLogsFolderId,
+  googleDriveCredentialsJson,
+  googleDriveTokenJson,
 } from './config.ts';
 
 export const secret = new k8s.core.v1.Secret('agent-slack-secrets', {
@@ -24,5 +26,16 @@ export const secret = new k8s.core.v1.Secret('agent-slack-secrets', {
     ANTHROPIC_API_KEY: anthropicApiKey,
     GOOGLE_DRIVE_DOCS_FOLDER_ID: googleDriveDocsFolderId,
     GOOGLE_DRIVE_LOGS_FOLDER_ID: googleDriveLogsFolderId,
+  },
+});
+
+export const credentialsSecret = new k8s.core.v1.Secret('google-drive-credentials', {
+  metadata: {
+    namespace,
+    name: 'google-drive-credentials',
+  },
+  stringData: {
+    'credentials.json': googleDriveCredentialsJson,
+    'token.json': googleDriveTokenJson,
   },
 });
