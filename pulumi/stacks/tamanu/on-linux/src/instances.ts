@@ -9,7 +9,6 @@ import {
   hostnameCommands,
   tailscaleInstallCommands,
   tailscaleUpCommands,
-  caddyUserCommands,
   emergencySshKeyCommands,
 } from '../../../common/cloudInit.ts';
 
@@ -93,7 +92,6 @@ for (const [i, inst] of instances.entries()) {
             cloudInitYaml([
               ...hostnameCommands(fqdn),
               ...tailscaleInstallCommands(),
-              ...caddyUserCommands(),
               ...tailscaleUpCommands({ authKey: key, hostname: name, advertiseTags: tags }),
               ...emergencySshKeyCommands(),
             ]),

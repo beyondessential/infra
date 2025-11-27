@@ -1,20 +1,25 @@
 ---
-- name: Set default netavark_target
-  set_fact:
-    netavark_target: "{{ ansible_architecture }}-unknown-linux-gnu"
+- name: Check if netavark is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/netavark ] && ! dpkg -S /usr/local/bin/netavark 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: netavark_install_type
+  changed_when: false
 
-- name: Set netavark_target for 22.04 or bookworm
-  set_fact:
-    netavark_target: "{{ ansible_architecture }}-unknown-linux-gnu35"
-  when:
-    - (ansible_lsb.codename == 'jammy') or (ansible_lsb.codename == 'bookworm')
+- name: Remove old netavark binary (migration only)
+  become: true
+  when: netavark_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/local/bin/netavark
+    state: absent
 
-- name: Install netavark {{ netavark_version }}
+- name: Install netavark and aardvark-dns
   become: true
   ansible.builtin.apt:
-    deb: https://tools.ops.tamanu.io/netavark/{{ netavark_version }}/netavark-{{ netavark_target }}-{{ netavark_version }}.deb
-
-- name: Install aardvark-dns
-  become: true
-  ansible.builtin.apt:
-    name: aardvark-dns
+    name:
+      - aardvark-dns
+      - netavark
+    state: present

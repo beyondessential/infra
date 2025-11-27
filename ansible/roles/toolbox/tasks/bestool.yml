@@ -1,20 +1,35 @@
 ---
-- name: Download bestool
+- name: Check if bestool is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/bestool ] && ! dpkg -S /usr/local/bin/bestool 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: bestool_install_type
+  changed_when: false
+
+- name: Remove old bestool binary (migration only)
   become: true
-  ansible.builtin.get_url:
-    url: https://tools.ops.tamanu.io/bestool/{{ bestool_version }}/{{ ansible_architecture }}-unknown-linux-musl/bestool
-    dest: /usr/local/bin/bestool
-    mode: a=rx,u=rwx
+  when: bestool_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/local/bin/bestool
+    state: absent
+
+- name: Install bestool from bes-tools repo
+  become: true
+  ansible.builtin.apt:
+    name: bestool
+    state: present
   notify:
     - Regenerate bestool completions
     - Restart iti services
 
-- name: Add tb alias
+- name: Remove old tb symlink
   become: true
   ansible.builtin.file:
-    src: /usr/local/bin/bestool
-    dest: /usr/local/bin/tb
-    state: link
+    path: /usr/local/bin/tb
+    state: absent
 
 - when: ansible_user == 'iti'
   name: Update iti LCD scripts

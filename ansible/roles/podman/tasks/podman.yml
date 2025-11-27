@@ -1,18 +1,35 @@
 ---
-- name: Set default podman_target
-  set_fact:
-    podman_target: "{{ ansible_architecture }}-unknown-linux-gnu"
+- name: Check if podman is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/podman ] && ! dpkg -S /usr/local/bin/podman 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: podman_install_type
+  changed_when: false
 
-- name: Set podman_target for 22.04 or bookworm
-  set_fact:
-    podman_target: "{{ ansible_architecture }}-unknown-linux-gnu35"
-  when:
-    - (ansible_lsb.codename == 'jammy') or (ansible_lsb.codename == 'bookworm')
+- name: Remove old podman binaries (migration only)
+  become: true
+  when: podman_install_type.stdout == "custom"
+  loop:
+    - /usr/local/bin/podman
+    - /usr/local/bin/podman-remote
+    - /usr/local/bin/podmansh
+    - /usr/bin/podman
+    - /usr/bin/podman-remote
+    - /usr/bin/podmansh
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  ignore_errors: true
 
-- name: Install podman {{ podman_version }}
+- name: Install podman from bes-tools repo
   become: true
   ansible.builtin.apt:
-    deb: https://tools.ops.tamanu.io/podman/{{ podman_version }}/podman-{{ podman_target }}-{{ podman_version }}.deb
+    name: podman
+    state: present
+    update_cache: true
 
 - name: Make sure podman runs
   ansible.builtin.shell: podman --version
@@ -30,7 +47,7 @@
   ansible.builtin.lineinfile:
     path: /etc/containers/containers.conf
     line: network_backend = "netavark"
-    regexp: '^#?network_backend\\s*='
+    regexp: '^#?network_backend\s*='
 
 - name: Use nftables for container networking
   become: true
@@ -38,14 +55,14 @@
     path: /etc/containers/containers.conf
     insertafter: '^\[network\]'
     line: firewall_driver = "nftables"
-    regexp: '^#?firewall_driver\\s*='
+    regexp: '^#?firewall_driver\s*='
 
 - name: Use host timezone by default for containers
   become: true
   ansible.builtin.lineinfile:
     path: /etc/containers/containers.conf
     line: tz = "local"
-    regexp: '^#?tz\\s*='
+    regexp: '^#?tz\s*='
 
 - name: Set podman image auto-cleanup
   become: true
@@ -61,18 +78,6 @@
   ansible.builtin.file:
     path: /etc/containers/systemd
     state: directory
-
-# For quadlet compatibility
-- name: Symlink podman binaries into /usr/bin
-  loop:
-    - podman
-    - podman-remote
-    - podmansh
-  become: true
-  ansible.builtin.file:
-    src: /usr/local/bin/{{ item }}
-    dest: /usr/bin/{{ item }}
-    state: link
 
 - name: Add podman images pruning service
   become: true

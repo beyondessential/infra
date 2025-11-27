@@ -1,18 +1,24 @@
 ---
-- name: Set default crun_target
-  set_fact:
-    crun_target: "{{ ansible_architecture }}-unknown-linux-gnu"
+- name: Check if crun is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/crun ] && ! dpkg -S /usr/local/bin/crun 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: crun_install_type
+  changed_when: false
 
-- name: Set crun_target for 22.04 or bookworm
-  set_fact:
-    crun_target: "{{ ansible_architecture }}-unknown-linux-gnu35"
-  when:
-    - (ansible_lsb.codename == 'jammy') or (ansible_lsb.codename == 'bookworm')
+- name: Remove old crun binary (migration only)
+  become: true
+  when: crun_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/local/bin/crun
+    state: absent
 
-- name: Install crun {{ crun_version }}
+- name: Install crun from bes-tools repo
   become: true
   ansible.builtin.apt:
-    deb: https://tools.ops.tamanu.io/crun/{{ crun_version }}/crun-{{ crun_target }}-{{ crun_version }}.deb
-
-    #- name: Make sure crun runs
-    #ansible.builtin.shell: crun --version
+    name: crun
+    state: present
+    update_cache: true

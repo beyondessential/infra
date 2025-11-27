@@ -1,58 +1,92 @@
 ---
-- name: Download caddy {{ caddy_version }}
+- name: Check if caddy is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/bin/caddy ] && ! dpkg -S /usr/bin/caddy 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: caddy_install_type
+  changed_when: false
+
+- name: Stop caddy service if running (migration only)
   become: true
-  ansible.builtin.get_url:
-    url: https://tools.ops.tamanu.io/caddy/{{ caddy_version }}/caddy-{{ ansible_architecture }}-unknown-linux-gnu
-    dest: /usr/bin/caddy
-    mode: a=rx,u=rwx
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    state: stopped
+  ignore_errors: true
+
+- name: Stop caddy socket if running (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.systemd_service:
+    name: caddy.socket
+    state: stopped
+  ignore_errors: true
+
+- name: Remove old caddy binary (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/bin/caddy
+    state: absent
+
+- name: Remove old caddy systemd files (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  loop:
+    - /etc/systemd/system/caddy.service
+    - /etc/systemd/system/caddy.socket
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+
+- name: Remove caddy config except servers (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.shell: |
+    if [ -d /etc/caddy ]; then
+      find /etc/caddy -mindepth 1 -maxdepth 1 ! -name servers -exec rm -rf {} +
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Remove old caddy user (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.user:
+    name: caddy
+    state: absent
+    remove: true
+  ignore_errors: true
+
+- name: Remove old caddy group (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.group:
+    name: caddy
+    state: absent
+  ignore_errors: true
+
+- name: Install caddy from bes-tools repo
+  become: true
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
   notify:
+    - Reload systemd
     - Regenerate caddy manpages
     - Regenerate caddy completions
     - Restart caddy
 
-- name: Add caddy group
+- name: Ensure tailscale environment variable for caddy
   become: true
-  ansible.builtin.group:
-    name: caddy
-    system: true
-
-- name: Add caddy user
-  become: true
-  ansible.builtin.user:
-    group: caddy
-    name: caddy
-    shell: /usr/bin/false
-    home: /var/lib/caddy
-    create_home: true
-    system: true
-
-- name: Check if we're installing caddy.socket for the first time
-  ansible.builtin.stat:
-    path: /etc/systemd/system/caddy.socket
-  register: socket_first_install
-
-- name: Stop caddy.service if we're about to switch to socket activation
-  become: true
-  when: not socket_first_install.stat.exists
-  ansible.builtin.systemd_service:
-    name: caddy.service
-    state: stopped
-
-- name: Add caddy socket file
-  become: true
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/caddy.socket
-    src: "{{ lookup('ansible.builtin.fileglob', 'caddy.socket') }}"
-  notify:
-    - Reload systemd
-
-- name: Add caddy service file
-  become: true
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/caddy.service
-    src: "{{ lookup('ansible.builtin.fileglob', 'caddy.service') }}"
-  notify:
-    - Reload systemd
+  ansible.builtin.lineinfile:
+    path: /etc/default/tailscaled
+    line: TS_PERMIT_CERT_UID=caddy
+    create: true
 
 - name: Enable caddy socket
   become: true

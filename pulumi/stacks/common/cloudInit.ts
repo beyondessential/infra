@@ -20,12 +20,7 @@ export interface TailscaleUpOptions {
 export function tailscaleUpCommands(options: TailscaleUpOptions): string[][] {
   const { authKey, hostname, advertiseTags, ssh = true, operator = 'ubuntu' } = options;
 
-  const args = [
-    'tailscale',
-    'up',
-    `--auth-key=${authKey}`,
-    `--hostname=${hostname}`,
-  ];
+  const args = ['tailscale', 'up', `--auth-key=${authKey}`, `--hostname=${hostname}`];
 
   if (advertiseTags && advertiseTags.length > 0) {
     args.push(`--advertise-tags=${advertiseTags.join(',')}`);
@@ -46,22 +41,6 @@ export function emergencySshKeyCommands(sshKey: string = EMERGENCY_SSH_KEY): str
   return [
     ['mkdir', '-p', '/home/ubuntu/.ssh'],
     ['sh', '-c', `echo ${sshKey} >> /home/ubuntu/.ssh/authorized_keys`],
-  ];
-}
-
-export function caddyUserCommands(): string[][] {
-  return [
-    [
-      'useradd',
-      '--user-group',
-      '--create-home',
-      '--home-dir',
-      '/var/lib/caddy',
-      '--shell',
-      '/usr/bin/false',
-      'caddy',
-    ],
-    ['sh', '-c', 'echo TS_PERMIT_CERT_UID=caddy >> /etc/default/tailscaled'],
   ];
 }
 
