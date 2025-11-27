@@ -1,6 +1,7 @@
 ---
 - ansible.builtin.include_tasks: locale.yml
 - ansible.builtin.include_tasks: timezone.yml
+- ansible.builtin.include_tasks: bes-repo.yml
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: network.yml
 - ansible.builtin.include_tasks: accounting.yml
