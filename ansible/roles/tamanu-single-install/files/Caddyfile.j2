@@ -46,16 +46,13 @@
 
   header @api Cache-Control no-store
   reverse_proxy @api {
-    dynamic a api.{{ tamanu_server_type }}.tamanu.internal 3000 {
-      resolvers 10.100.0.1
-      {% if not tamanu_ipv6 %}
-      versions ipv4
-      {% endif %}
-    }
+    to http://api-1.{{ tamanu_server_type }}.tamanu.internal:3000
+    to http://api-2.{{ tamanu_server_type }}.tamanu.internal:3000
 
     fail_duration 15s
     lb_policy least_conn
     lb_retries 2
+    lb_try_duration 5s
     health_uri /api/public/ping
 
     transport http {
@@ -66,17 +63,13 @@
 
   reverse_proxy /* {
     header_up Host "localhost"
-
-    dynamic a frontend.tamanu.internal 3000 {
-      resolvers 10.100.0.1
-      {% if not tamanu_ipv6 %}
-      versions ipv4
-      {% endif %}
-    }
+    to http://frontend-a.tamanu.internal:3000
+    to http://frontend-b.tamanu.internal:3000
 
     fail_duration 10s
     lb_policy least_conn
     lb_retries 2
+    lb_try_duration 5s
     health_uri /
     health_headers {
       Host "localhost"
