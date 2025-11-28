@@ -25,6 +25,15 @@
     - Regenerate bestool completions
     - Restart iti services
 
+- name: Set up bestool auto-update
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.daily/apt-upgrade-bestool
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      apt install -y bestool
+
 - name: Remove old tb symlink
   become: true
   ansible.builtin.file:

@@ -1,5 +1,5 @@
 ---
-- ansible.builtin.include_tasks: tasks.yml
+- ansible.builtin.include_tasks: facts.yml
 - ansible.builtin.include_tasks: user.yml
 - ansible.builtin.include_tasks: config.yml
 - ansible.builtin.include_tasks: quadlets.yml
