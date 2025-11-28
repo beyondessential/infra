@@ -1,0 +1,52 @@
+---
+- name: Stop and disable osquery service
+  become: true
+  ansible.builtin.systemd:
+    name: osqueryd
+    state: stopped
+    enabled: false
+  ignore_errors: true
+
+- name: Unmask systemd-journald-audit.socket
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/systemd-journald-audit.socket
+    state: absent
+
+- name: Uninstall osquery package
+  become: true
+  ansible.builtin.apt:
+    name: osquery
+    state: absent
+    purge: true
+    autoremove: true
+
+- name: Remove osquery apt preferences
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/preferences.d/99-osquery
+    state: absent
+
+- name: Remove osquery apt repository
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb [arch={{ osquery_architecture | default('amd64') }} signed-by=/etc/apt/keyrings/osquery.asc] https://pkg.osquery.io/deb deb main
+    state: absent
+
+- name: Remove osquery apt key
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/osquery.asc
+    state: absent
+
+- name: Remove osquery configuration directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/osquery
+    state: absent
+
+- name: Remove osquery data directory
+  become: true
+  ansible.builtin.file:
+    path: /var/osquery
+    state: absent

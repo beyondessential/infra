@@ -1,6 +1,0 @@
----
-otel_collector_version: 0.125.0
-otlp_traces_endpoint: false
-otlp_logs_endpoint: false
-otlp_metrics_endpoint: false
-cloudwatch_enabled: false

@@ -32,8 +32,8 @@
       tags: [base, kopia]
     - role: elastic-agent
       tags: [base, elastic]
-    #- role: metrics
-    #  tags: [base, metrics]
+    - role: metrics-cleanup
+      tags: [base, metrics]
 
     - role: postgres
       tags: [base, postgres]
