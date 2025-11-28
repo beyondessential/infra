@@ -1,6 +1,7 @@
 ---
 - ansible.builtin.include_tasks: repo.yml
 - ansible.builtin.include_tasks: upgrade.yml
+  when: postgresql_upgrade_enabled
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: psql.yml
 - ansible.builtin.include_tasks: access.yml

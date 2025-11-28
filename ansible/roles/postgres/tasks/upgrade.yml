@@ -1,4 +1,4 @@
 ---
 - ansible.builtin.include_tasks: upgrade-detect.yml
 - ansible.builtin.include_tasks: upgrade-perform.yml
-  when: postgresql_upgrade_needed and postgresql_upgrade_allowed
+  when: postgresql_upgrade_needed and postgresql_upgrade_allowed and not postgresql_upgrade_detect_only

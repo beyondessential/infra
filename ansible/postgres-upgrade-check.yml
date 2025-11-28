@@ -1,0 +1,41 @@
+---
+- name: PostgreSQL Upgrade Detection
+  hosts: all
+  gather_facts: true
+  vars:
+    postgresql_upgrade_enabled: true
+    postgresql_upgrade_detect_only: true
+  tasks:
+    - name: Include PostgreSQL upgrade detection tasks
+      ansible.builtin.include_role:
+        name: postgres
+        tasks_from: upgrade-detect.yml
+
+    - name: Create upgrade status summary
+      ansible.builtin.set_fact:
+        upgrade_status: >-
+          {% if not postgresql_current_symlink.stat.exists -%}
+          NO_POSTGRES
+          {%- elif not postgresql_upgrade_needed -%}
+          NO_UPGRADE_NEEDED
+          {%- elif postgresql_upgrade_needed and postgresql_upgrade_allowed -%}
+          WILL_UPGRADE
+          {%- elif postgresql_upgrade_needed and not postgresql_upgrade_allowed -%}
+          UPGRADE_BLOCKED
+          {%- else -%}
+          UNKNOWN
+          {%- endif %}
+
+    - name: Display upgrade decision
+      ansible.builtin.debug:
+        msg: >
+          {{ upgrade_status }}
+          {% if postgresql_current_symlink.stat.exists and installed_postgresql_version is defined %}
+          current={{ installed_postgresql_version }}
+          {% endif %}
+          {% if postgresql_version is defined %}
+          target={{ postgresql_version }}
+          {% endif %}
+          {% if postgresql_upgrade_needed and not postgresql_upgrade_allowed %}
+          fs={{ postgresql_filesystem_type.stdout }}
+          {% endif %}
