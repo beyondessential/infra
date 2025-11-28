@@ -9,19 +9,19 @@
   register: caddy_install_type
   changed_when: false
 
-- name: Stop caddy service if running (migration only)
-  become: true
-  when: caddy_install_type.stdout == "custom"
-  ansible.builtin.systemd_service:
-    name: caddy.service
-    state: stopped
-  ignore_errors: true
-
 - name: Stop caddy socket if running (migration only)
   become: true
   when: caddy_install_type.stdout == "custom"
   ansible.builtin.systemd_service:
     name: caddy.socket
+    state: stopped
+  ignore_errors: true
+
+- name: Stop caddy service if running (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.systemd_service:
+    name: caddy.service
     state: stopped
   ignore_errors: true
 

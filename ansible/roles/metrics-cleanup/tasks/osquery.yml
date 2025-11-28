@@ -39,6 +39,12 @@
     path: /etc/apt/keyrings/osquery.asc
     state: absent
 
+- name: Remove osquery apt source
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pkg_osquery_io_deb.list
+    state: absent
+
 - name: Remove osquery configuration directory
   become: true
   ansible.builtin.file:
