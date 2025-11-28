@@ -1,0 +1,29 @@
+---
+- name: Add pgdg apt key
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'apt.asc') }}"
+    dest: /etc/apt/keyrings/pgdg.asc
+
+- name: Add pgdg repo
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main
+    filename: apt_postgresql_org_pub_repos_apt
+    state: present
+
+- name: Remove duplicate postgres apt source line
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/apt_postgresql_org_pub_repos_apt.list
+    line: "deb https://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    state: absent
+
+- name: Prioritise pgdg repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99-pgdg
+    content: |
+      Package: *
+      Pin: release o=apt.postgresql.org
+      Pin-Priority: 900
