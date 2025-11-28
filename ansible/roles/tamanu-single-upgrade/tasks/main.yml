@@ -17,6 +17,15 @@
     state: stopped
   notify: Reload caddy
 
+- name: Stop old single facility service
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-facility
+    state: stopped
+    enabled: false
+  notify: Reload caddy
+
 - name: Reload caddy
   meta: flush_handlers
 

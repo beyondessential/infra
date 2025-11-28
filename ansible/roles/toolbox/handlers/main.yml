@@ -1,11 +1,4 @@
 ---
-- name: Regenerate bestool completions
-  become: true
-  ansible.builtin.shell: |
-    bestool completions --shell bash > /usr/share/bash-completion/completions/bestool
-    bestool completions --shell zsh > /usr/share/zsh/site-functions/_bestool
-    bestool completions --shell fish > /usr/share/fish/vendor_completions.d/bestool.fish
-
 - name: Regenerate starship completions
   become: true
   ansible.builtin.shell: |

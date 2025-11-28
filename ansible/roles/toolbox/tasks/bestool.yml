@@ -22,7 +22,6 @@
     name: bestool
     state: present
   notify:
-    - Regenerate bestool completions
     - Restart iti services
 
 - name: Set up bestool auto-update
