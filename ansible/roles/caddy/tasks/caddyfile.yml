@@ -1,13 +1,13 @@
 ---
-- name: Add caddy config directories
+- name: Reset Caddyfile
   become: true
-  ansible.builtin.file:
-    path: /etc/caddy/servers
-    state: directory
+  ansible.builtin.get_url:
+    url: https://github.com/beyondessential/third-party-builds/raw/refs/heads/main/caddy-files/Caddyfile
+    dest: /etc/caddy/Caddyfile
 
-- name: Add base caddy config
+- name: Add issuer config
   become: true
   ansible.builtin.template:
-    dest: /etc/caddy/Caddyfile
-    src: "{{ lookup('ansible.builtin.fileglob', 'Caddyfile.j2') }}"
+    dest: /etc/caddy/config/issuer
+    src: "{{ lookup('ansible.builtin.fileglob', 'issuer.j2') }}"
   notify: Restart caddy
