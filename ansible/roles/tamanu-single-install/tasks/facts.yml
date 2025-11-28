@@ -1,0 +1,15 @@
+---
+- name: Fetch PatientPortalFQDN EC2 tag
+  when: tamanu_server_type == 'central'
+  ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
+  vars:
+    ec2_tag_name: PatientPortalFQDN
+
+- name: Set patient portal enabled fact
+  ansible.builtin.set_fact:
+    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_system_vendor == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
+
+- name: Set patient portal FQDN fact
+  when: patient_portal_enabled
+  ansible.builtin.set_fact:
+    patient_portal_fqdn: "{{ ansible_ec2_tag_PatientPortalFQDN | default(patient_portal_fqdn) }}"

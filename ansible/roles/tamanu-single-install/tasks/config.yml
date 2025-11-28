@@ -1,0 +1,38 @@
+---
+- name: Create tamanu config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu
+    mode: "0775"
+    owner: tamanu
+    group: tamanu
+    state: directory
+
+- name: Add tamanu-run script
+  become: true
+  ansible.builtin.template:
+    dest: /usr/local/bin/tamanu-run
+    src: "{{ lookup('ansible.builtin.fileglob', 'tamanu-run.j2') }}"
+    mode: "0755"
+
+- name: Add upstream snippet
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/snippets/tamanu-upstreams
+    src: "{{ lookup('ansible.builtin.fileglob', 'caddy/upstreams.j2') }}"
+  notify: Reload caddy
+
+- name: Add tamanu server
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/servers/tamanu
+    src: "{{ lookup('ansible.builtin.fileglob', 'caddy/tamanu.j2') }}"
+  notify: Reload caddy
+
+- name: Add patientportal server
+  when: patient_portal_enabled
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/servers/tamanu-patientportal
+    src: "{{ lookup('ansible.builtin.fileglob', 'caddy/patientportal.j2') }}"
+  notify: Reload caddy

@@ -3,8 +3,8 @@
     output stdout
   }
 
-  header / Cache-Control no-cache
-  header /manifest.json Cache-Control no-cache
+  @root_only path /
+  header @root_only Cache-Control no-cache
 
   handle_errors {
     @custom_err file /resources/errors/{err.status_code}.html
@@ -44,29 +44,11 @@
 
   header @api Cache-Control no-store
   reverse_proxy @api {
-    to http://api-1.central.tamanu.internal:3000
-    to http://api-2.central.tamanu.internal:3000
-
-    fail_duration 15s
-    lb_policy least_conn
-    lb_retries 2
-    lb_try_duration 5s
-    health_uri /api/public/ping
-
-    transport http {
-      keepalive 65s
-      compression false
-    }
+    import upstream_api
   }
 
   reverse_proxy /* {
-    header_up Host "localhost"
-    to http://patientportal.tamanu.internal:3000
-
-    transport http {
-      keepalive 65s
-      compression false
-    }
+    import upstream_patientportal
   }
 }
 
