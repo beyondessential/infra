@@ -1,10 +1,4 @@
 ---
-- name: Reset Caddyfile
-  become: true
-  ansible.builtin.get_url:
-    url: https://github.com/beyondessential/third-party-builds/raw/refs/heads/main/caddy-files/Caddyfile
-    dest: /etc/caddy/Caddyfile
-
 - name: Add issuer config
   become: true
   ansible.builtin.template:
