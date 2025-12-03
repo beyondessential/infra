@@ -40,6 +40,14 @@
     state: absent
 
 - when: ansible_user == 'iti'
+  name: Download bestool for iti
+  become: true
+  ansible.builtin.get_url:
+    url: https://tools.ops.tamanu.io/bestool/{{ bestool_version }}/aarch64-unknown-linux-musl/bestool
+    dest: /var/lib/bestool-iti
+    mode: a=rx,u=rwx
+
+- when: ansible_user == 'iti'
   name: Update iti LCD scripts
   become: true
   loop:
@@ -70,3 +78,20 @@
   notify:
     - Reload systemd
     - Restart iti services
+
+- when: ansible_user == 'iti'
+  name: Re-path iti LCD services
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: "/usr/bin/local/bestool"
+    replace: "/var/lib/bestool-iti"
+
