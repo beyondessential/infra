@@ -73,6 +73,29 @@ new k8s.apps.v1.Deployment(
   { dependsOn: [migrator] },
 );
 
+new k8s.batch.v1.CronJob('chrome-versions', {
+  metadata: {
+    namespace,
+  },
+  spec: {
+    schedule: '@daily',
+    jobTemplate: {
+      metadata: {
+        labels: labels('pingtask'),
+      },
+      spec: {
+        backoffLimit: 5,
+        template: {
+          spec: {
+            ...spec('chrome-versions', ['chrome_versions']),
+            restartPolicy: 'Never',
+          },
+        },
+      },
+    },
+  },
+});
+
 postgresCronJob('prune', {
   namespace,
   schedule: '@daily',

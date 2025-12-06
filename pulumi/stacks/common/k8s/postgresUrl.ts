@@ -84,7 +84,7 @@ export function postgresUrlSecret({
       stringData: {
         [PostgresUrlSecretKey.AppPassword]: interpolate`${appPassword}`,
         [PostgresUrlSecretKey.AppDbUrl]: interpolate`postgres://app:${appPassword}@${name}-db-rw/app`,
-        [PostgresUrlSecretKey.AppRocket]: interpolate`{postgres={url="postgres://app:${appPassword}@${name}-db-rw/app"}}`,
+        [PostgresUrlSecretKey.AppRoDbUrl]: interpolate`postgres://app:${appPassword}@${name}-db-ro/app`,
         [PostgresUrlSecretKey.AppLocalDbUrl]: interpolate`postgres://app:${appPassword}@localhost:5433/app`,
         [PostgresUrlSecretKey.AppLocalJdbc]: interpolate`jdbc:postgresql://localhost:5433/app?user=app&password=${appPassword}`,
         [PostgresUrlSecretKey.PostgresPassword]: interpolate`${postgresPassword}`,

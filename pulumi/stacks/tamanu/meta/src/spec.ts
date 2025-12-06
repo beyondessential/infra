@@ -60,6 +60,15 @@ export function spec(
               })),
             },
           },
+          {
+            name: 'RO_DATABASE_URL',
+            valueFrom: {
+              secretKeyRef: dbReady.apply((url) => ({
+                name: url.metadata.name,
+                key: PostgresUrlSecretKey.AppRoDbUrl,
+              })),
+            },
+          },
           ...(extraEnv ?? []),
         ]),
         resources: {
