@@ -73,6 +73,7 @@ new k8s.apps.v1.Deployment(
     metadata: {
       labels: labels('public'),
       namespace,
+      name: 'public-server', // forces pulumi to not replace willy-nilly, so it stays up
     },
     spec: {
       replicas,
