@@ -22,6 +22,7 @@ export const googleDriveCredentialsJson = cfg.requireSecret('googleDriveCredenti
 
 const imageTag = cfg.require('imageTag');
 export const image = `ghcr.io/beyondessential/agent-slack:${imageTag}`;
+export const imagePullPat = cfg.requireSecret('imagePullPat');
 
 export const replicas = cfg.getNumber('replicas') ?? 1;
 export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';

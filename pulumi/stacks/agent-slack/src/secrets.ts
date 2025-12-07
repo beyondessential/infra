@@ -37,3 +37,21 @@ export const credentialsSecret = new k8s.core.v1.Secret('google-drive-credential
     'credentials.json': googleDriveCredentialsJson,
   },
 });
+
+export const registrySecret = new k8s.core.v1.Secret("registry-secret", {
+    metadata: {
+        namespace,
+    },
+    type: "kubernetes.io/dockerconfigjson",
+    stringData: {
+        ".dockerconfigjson": pulumi.jsonStringify({
+            auths: {
+                "https://ghcr.io/": { // Docker Hub
+                    username: "passcod",
+                    password: imagePullPat,
+                    email: "felix@bes.au",
+                }
+            }
+        }),
+    },
+});
