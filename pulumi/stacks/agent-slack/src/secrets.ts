@@ -10,7 +10,6 @@ import {
   googleDriveDocsFolderId,
   googleDriveLogsFolderId,
   googleDriveCredentialsJson,
-  googleDriveTokenJson,
 } from './config.ts';
 
 export const secret = new k8s.core.v1.Secret('agent-slack-secrets', {
@@ -36,6 +35,5 @@ export const credentialsSecret = new k8s.core.v1.Secret('google-drive-credential
   },
   stringData: {
     'credentials.json': googleDriveCredentialsJson,
-    'token.json': googleDriveTokenJson,
   },
 });

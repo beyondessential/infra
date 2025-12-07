@@ -19,7 +19,6 @@ export const anthropicApiKey = cfg.requireSecret('anthropicApiKey');
 export const googleDriveDocsFolderId = cfg.require('googleDriveDocsFolderId');
 export const googleDriveLogsFolderId = cfg.require('googleDriveLogsFolderId');
 export const googleDriveCredentialsJson = cfg.requireSecret('googleDriveCredentialsJson');
-export const googleDriveTokenJson = cfg.requireSecret('googleDriveTokenJson');
 
 const imageTag = cfg.require('imageTag');
 export const image = `ghcr.io/beyondessential/agent-slack:${imageTag}`;
