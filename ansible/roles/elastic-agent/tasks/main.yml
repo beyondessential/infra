@@ -1,6 +1,25 @@
 ---
+- name: Disable Elastic services
+  when: not elastic_agent_enabled
+  block:
+    - name: Stop elastic-agent service
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Stop ElasticEndpoint service
+      become: true
+      ansible.builtin.systemd:
+        name: ElasticEndpoint
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
 - name: Uninstall Elastic security agent
-  when: not elastic_agent_enrollment_token
+  when: elastic_agent_enabled and not elastic_agent_enrollment_token
   block:
     - name: Stop Elastic agent
       become: true
@@ -24,7 +43,7 @@
         state: absent
 
 - name: Install Elastic security agent
-  when: elastic_agent_enrollment_token
+  when: elastic_agent_enabled and elastic_agent_enrollment_token
   block:
     - name: Set elastic_architecture
       set_fact:

@@ -1,3 +1,4 @@
 ---
+elastic_agent_enabled: false
 elastic_agent_enrollment_token: "REDACTED"
 elastic_agent_fleet_url: https://a85a913fbe684a55a889edcdb2dfd4bd.fleet.australiaeast.azure.elastic.cloud:443
