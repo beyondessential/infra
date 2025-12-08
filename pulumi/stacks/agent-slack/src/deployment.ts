@@ -51,7 +51,7 @@ export const deployment = new k8s.apps.v1.Deployment('agent-slack', {
           },
         },
         imagePullSecrets: [
-          { name: registrySecret.name },
+          { name: registrySecret.metadata.name },
         ],
         volumes: [
           {
@@ -66,7 +66,7 @@ export const deployment = new k8s.apps.v1.Deployment('agent-slack', {
             name: 'agent',
             image,
             imagePullPolicy: 'Always',
-            command: ['python', 'src/agent.py'],
+            command: ['python', '-u', '-m', 'src.agent'],
             envFrom: [
               {
                 secretRef: {

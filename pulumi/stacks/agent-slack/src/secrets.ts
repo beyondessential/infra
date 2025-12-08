@@ -10,6 +10,7 @@ import {
   googleDriveDocsFolderId,
   googleDriveLogsFolderId,
   googleDriveCredentialsJson,
+  imagePullPat,
 } from './config.ts';
 
 export const secret = new k8s.core.v1.Secret('agent-slack-secrets', {
@@ -46,12 +47,10 @@ export const registrySecret = new k8s.core.v1.Secret("registry-secret", {
     stringData: {
         ".dockerconfigjson": pulumi.jsonStringify({
             auths: {
-                "https://ghcr.io/": { // Docker Hub
-                    username: "passcod",
-                    password: imagePullPat,
-                    email: "felix@bes.au",
-                }
-            }
+                "https://ghcr.io": {
+                    auth: imagePullPat.apply(pat => Buffer.from(`passcod:${pat}`).toString('base64')),
+                },
+            },
         }),
     },
 });
