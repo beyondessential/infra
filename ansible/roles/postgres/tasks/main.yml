@@ -1,4 +1,5 @@
 ---
+- ansible.builtin.include_tasks: detect-version.yml
 - ansible.builtin.include_tasks: repo.yml
 - ansible.builtin.include_tasks: upgrade.yml
   when: postgresql_upgrade_enabled

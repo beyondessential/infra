@@ -1,0 +1,14 @@
+---
+- name: Check if PostgreSQL current symlink exists
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/current
+  register: postgresql_current_symlink
+
+- name: Detect installed PostgreSQL version from symlink
+  when: postgresql_current_symlink.stat.exists and postgresql_current_symlink.stat.islnk
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_current_symlink.stat.lnk_source | dirname | basename }}"
+
+- name: Set postgresql_version to installed version if exists, otherwise use desired version
+  ansible.builtin.set_fact:
+    postgresql_version: "{{ installed_postgresql_version | default(postgresql_version) }}"

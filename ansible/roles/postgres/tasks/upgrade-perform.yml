@@ -64,7 +64,7 @@
 - name: Install new PostgreSQL version
   become: true
   ansible.builtin.apt:
-    name: postgresql-{{ postgresql_version }}
+    name: postgresql-{{ postgresql_desired_version }}
     state: present
     update_cache: true
 
@@ -72,14 +72,14 @@
   when: postgresql_filesystem_type.stdout == 'btrfs'
   become: true
   ansible.builtin.command:
-    cmd: btrfs subvolume create /var/lib/postgresql/{{ postgresql_version }}
-    creates: /var/lib/postgresql/{{ postgresql_version }}
+    cmd: btrfs subvolume create /var/lib/postgresql/{{ postgresql_desired_version }}
+    creates: /var/lib/postgresql/{{ postgresql_desired_version }}
 
 - name: Create new PostgreSQL version directory (non-btrfs)
   when: postgresql_filesystem_type.stdout != 'btrfs'
   become: true
   ansible.builtin.file:
-    path: /var/lib/postgresql/{{ postgresql_version }}
+    path: /var/lib/postgresql/{{ postgresql_desired_version }}
     state: directory
     owner: postgres
     group: postgres
@@ -88,7 +88,7 @@
 - name: Ensure new PostgreSQL version directory has correct ownership
   become: true
   ansible.builtin.file:
-    path: /var/lib/postgresql/{{ postgresql_version }}
+    path: /var/lib/postgresql/{{ postgresql_desired_version }}
     state: directory
     owner: postgres
     group: postgres
@@ -97,27 +97,27 @@
 - name: Stop new PostgreSQL service (if auto-started)
   become: true
   ansible.builtin.systemd:
-    name: "postgresql@{{ postgresql_version }}-main"
+    name: "postgresql@{{ postgresql_desired_version }}-main"
     state: stopped
   ignore_errors: true
 
 - name: Check if new cluster was auto-initialized
   become: true
   ansible.builtin.stat:
-    path: /var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION
+    path: /var/lib/postgresql/{{ postgresql_desired_version }}/main/PG_VERSION
   register: new_cluster_exists
 
 - name: Remove auto-initialized new cluster
   when: new_cluster_exists.stat.exists
   become: true
   ansible.builtin.file:
-    path: /var/lib/postgresql/{{ postgresql_version }}/main
+    path: /var/lib/postgresql/{{ postgresql_desired_version }}/main
     state: absent
 
 - name: Create new PostgreSQL configuration directory
   become: true
   ansible.builtin.file:
-    path: /etc/postgresql/{{ postgresql_version }}/main
+    path: /etc/postgresql/{{ postgresql_desired_version }}/main
     state: directory
     owner: postgres
     group: postgres
@@ -128,55 +128,55 @@
   ansible.builtin.copy:
     remote_src: true
     src: /etc/postgresql/{{ installed_postgresql_version }}/main/
-    dest: /etc/postgresql/{{ postgresql_version }}/main/
+    dest: /etc/postgresql/{{ postgresql_desired_version }}/main/
     owner: postgres
     group: postgres
 
 - name: Update data_directory in new PostgreSQL config
   become: true
   ansible.builtin.lineinfile:
-    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    path: /etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf
     regexp: "^data_directory\\s*="
-    line: "data_directory = '/var/lib/postgresql/{{ postgresql_version }}/main'"
+    line: "data_directory = '/var/lib/postgresql/{{ postgresql_desired_version }}/main'"
 
 - name: Update cluster_name in new PostgreSQL config
   become: true
   ansible.builtin.lineinfile:
-    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    path: /etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf
     regexp: "^cluster_name\\s*="
-    line: "cluster_name = '{{ postgresql_version }}/main'"
+    line: "cluster_name = '{{ postgresql_desired_version }}/main'"
 
 - name: Update external_pid_file in new PostgreSQL config
   become: true
   ansible.builtin.lineinfile:
-    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    path: /etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf
     regexp: "^external_pid_file\\s*="
-    line: "external_pid_file = '/var/run/postgresql/{{ postgresql_version }}-main.pid'"
+    line: "external_pid_file = '/var/run/postgresql/{{ postgresql_desired_version }}-main.pid'"
 
 - name: Update hba_file in new PostgreSQL config
   become: true
   ansible.builtin.lineinfile:
-    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    path: /etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf
     regexp: "^hba_file\\s*="
-    line: "hba_file = '/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf'"
+    line: "hba_file = '/etc/postgresql/{{ postgresql_desired_version }}/main/pg_hba.conf'"
 
 - name: Update ident_file in new PostgreSQL config
   become: true
   ansible.builtin.lineinfile:
-    path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+    path: /etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf
     regexp: "^ident_file\\s*="
-    line: "ident_file = '/etc/postgresql/{{ postgresql_version }}/main/pg_ident.conf'"
+    line: "ident_file = '/etc/postgresql/{{ postgresql_desired_version }}/main/pg_ident.conf'"
 
 - name: Ensure new PostgreSQL data directory is empty
   become: true
   ansible.builtin.shell:
-    cmd: rm -rf /var/lib/postgresql/{{ postgresql_version }}/main/* /var/lib/postgresql/{{ postgresql_version }}/main/.[!.]* 2>/dev/null || true
+    cmd: rm -rf /var/lib/postgresql/{{ postgresql_desired_version }}/main/* /var/lib/postgresql/{{ postgresql_desired_version }}/main/.[!.]* 2>/dev/null || true
 
 - name: Initialize new PostgreSQL cluster
   become: true
   become_user: postgres
   ansible.builtin.command:
-    cmd: /usr/lib/postgresql/{{ postgresql_version }}/bin/initdb -D /var/lib/postgresql/{{ postgresql_version }}/main
+    cmd: /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/initdb -D /var/lib/postgresql/{{ postgresql_desired_version }}/main
   register: initdb_result
 
 - name: Stop all PostgreSQL services
@@ -188,7 +188,7 @@
 - name: Stop new PostgreSQL service
   become: true
   ansible.builtin.systemd:
-    name: "postgresql@{{ postgresql_version }}-main"
+    name: "postgresql@{{ postgresql_desired_version }}-main"
     state: stopped
 
 - name: Check upgrade compatibility
@@ -196,13 +196,13 @@
   become_user: postgres
   ansible.builtin.command:
     cmd: >
-      /usr/lib/postgresql/{{ postgresql_version }}/bin/pg_upgrade
+      /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/pg_upgrade
       --old-bindir=/usr/lib/postgresql/{{ installed_postgresql_version }}/bin
-      --new-bindir=/usr/lib/postgresql/{{ postgresql_version }}/bin
+      --new-bindir=/usr/lib/postgresql/{{ postgresql_desired_version }}/bin
       --old-datadir=/var/lib/postgresql/{{ installed_postgresql_version }}/main
-      --new-datadir=/var/lib/postgresql/{{ postgresql_version }}/main
+      --new-datadir=/var/lib/postgresql/{{ postgresql_desired_version }}/main
       --old-options="-c config_file=/etc/postgresql/{{ installed_postgresql_version }}/main/postgresql.conf"
-      --new-options="-c config_file=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+      --new-options="-c config_file=/etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf"
       --socketdir=/tmp
       {{ pg_upgrade_method }}
       --check
@@ -231,13 +231,13 @@
   become_user: postgres
   ansible.builtin.command:
     cmd: >
-      /usr/lib/postgresql/{{ postgresql_version }}/bin/pg_upgrade
+      /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/pg_upgrade
       --old-bindir=/usr/lib/postgresql/{{ installed_postgresql_version }}/bin
-      --new-bindir=/usr/lib/postgresql/{{ postgresql_version }}/bin
+      --new-bindir=/usr/lib/postgresql/{{ postgresql_desired_version }}/bin
       --old-datadir=/var/lib/postgresql/{{ installed_postgresql_version }}/main
-      --new-datadir=/var/lib/postgresql/{{ postgresql_version }}/main
+      --new-datadir=/var/lib/postgresql/{{ postgresql_desired_version }}/main
       --old-options="-c config_file=/etc/postgresql/{{ installed_postgresql_version }}/main/postgresql.conf"
-      --new-options="-c config_file=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+      --new-options="-c config_file=/etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf"
       --socketdir=/tmp
       --check
     chdir: /var/lib/postgresql
@@ -249,7 +249,7 @@
   when: pg_upgrade_check.rc != 0
   become: true
   ansible.builtin.shell:
-    cmd: find /var/lib/postgresql/{{ postgresql_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null || echo "No log file found"
+    cmd: find /var/lib/postgresql/{{ postgresql_desired_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null || echo "No log file found"
   register: pg_upgrade_log_content
   changed_when: false
 
@@ -272,13 +272,13 @@
   become_user: postgres
   ansible.builtin.command:
     cmd: >
-      /usr/lib/postgresql/{{ postgresql_version }}/bin/pg_upgrade
+      /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/pg_upgrade
       --old-bindir=/usr/lib/postgresql/{{ installed_postgresql_version }}/bin
-      --new-bindir=/usr/lib/postgresql/{{ postgresql_version }}/bin
+      --new-bindir=/usr/lib/postgresql/{{ postgresql_desired_version }}/bin
       --old-datadir=/var/lib/postgresql/{{ installed_postgresql_version }}/main
-      --new-datadir=/var/lib/postgresql/{{ postgresql_version }}/main
+      --new-datadir=/var/lib/postgresql/{{ postgresql_desired_version }}/main
       --old-options="-c config_file=/etc/postgresql/{{ installed_postgresql_version }}/main/postgresql.conf"
-      --new-options="-c config_file=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+      --new-options="-c config_file=/etc/postgresql/{{ postgresql_desired_version }}/main/postgresql.conf"
       --socketdir=/tmp
       {{ pg_upgrade_method }}
     chdir: /var/lib/postgresql
@@ -291,14 +291,14 @@
 - name: Start new PostgreSQL service
   become: true
   ansible.builtin.systemd:
-    name: "postgresql@{{ postgresql_version }}-main"
+    name: "postgresql@{{ postgresql_desired_version }}-main"
     state: started
     enabled: true
 
 - name: Update PostgreSQL configuration symlink
   become: true
   ansible.builtin.file:
-    src: /etc/postgresql/{{ postgresql_version }}
+    src: /etc/postgresql/{{ postgresql_desired_version }}
     dest: /etc/postgresql/current
     state: link
     force: true
@@ -306,7 +306,7 @@
 - name: Update PostgreSQL data symlink
   become: true
   ansible.builtin.file:
-    src: /var/lib/postgresql/{{ postgresql_version }}/main
+    src: /var/lib/postgresql/{{ postgresql_desired_version }}/main
     dest: /var/lib/postgresql/current
     state: link
     force: true
@@ -315,7 +315,7 @@
   become: true
   become_user: postgres
   ansible.builtin.command:
-    cmd: /usr/lib/postgresql/{{ postgresql_version }}/bin/vacuumdb --all --analyze-in-stages
+    cmd: /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/vacuumdb --all --analyze-in-stages
   async: 3600
   poll: 0
   register: vacuumdb_job
