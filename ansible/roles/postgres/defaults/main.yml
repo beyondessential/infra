@@ -1,5 +1,5 @@
 ---
-postgresql_version: "17"
+postgresql_version: "18"
 postgresql_cleanup_old_cluster: false
 mergerfs_version: "2.40.2"
 postgresql_upgrade_detect_only: false
