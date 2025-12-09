@@ -22,47 +22,15 @@
 
 - name: Restart postgres
   become: true
-  block:
-    - name: Get postgresql_version if not set
-      when: postgresql_version is not defined
-      ansible.builtin.shell: |
-        systemctl list-units --type=service --all | grep postgresql@ | sed 's/.*postgresql@\([0-9]*\)-main.*/\1/' | head -1
-      register: postgres_running_version
-      changed_when: false
-      failed_when: false
-    
-    - name: Set postgresql_version from running service
-      when: postgres_running_version.stdout | length > 0
-      ansible.builtin.set_fact:
-        postgresql_version: "{{ postgres_running_version.stdout }}"
-    
-    - name: Restart postgresql service
-      ansible.builtin.systemd:
-        name: postgresql@{{ postgresql_version }}-main
-        state: restarted
-
+  ansible.builtin.systemd:
+    name: postgresql@{{ postgresql_installed_version }}-main
+    state: restarted
 
 - name: Reload postgres
   become: true
-  block:
-    - name: Get postgresql_version if not set
-      when: postgresql_version is not defined
-      ansible.builtin.shell: |
-        systemctl list-units --type=service --all | grep postgresql@ | sed 's/.*postgresql@\([0-9]*\)-main.*/\1/' | head -1
-      register: postgres_running_version
-      changed_when: false
-      failed_when: false
-    
-    - name: Set postgresql_version from running service
-      when: postgres_running_version.stdout | length > 0
-      ansible.builtin.set_fact:
-        postgresql_version: "{{ postgres_running_version.stdout }}"
-    
-    - name: Reload postgresql service
-      ansible.builtin.systemd:
-        name: postgresql@{{ postgresql_version }}-main
-        state: reloaded
-
+  ansible.builtin.systemd:
+    name: postgresql@{{ postgresql_installed_version }}-main
+    state: reloaded
 
 - name: Restart caddy
   become: true

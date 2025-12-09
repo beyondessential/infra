@@ -2,6 +2,9 @@
 - name: PostgreSQL Upgrade Detection
   hosts: all
   gather_facts: true
+  pre_tasks:
+    - name: Gather PostgreSQL facts
+      ansible.builtin.include_tasks: tasks/gather-postgres-version.yml
   vars:
     postgresql_upgrade_enabled: true
     postgresql_upgrade_detect_only: true
