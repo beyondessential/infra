@@ -15,6 +15,7 @@ export const slackSigningSecret = cfg.requireSecret('slackSigningSecret');
 export const askAiChannelId = cfg.require('askAiChannelId');
 
 export const anthropicApiKey = cfg.requireSecret('anthropicApiKey');
+export const cursorApiKey = cfg.requireSecret('cursorApiKey');
 
 export const googleDriveDocsFolderId = cfg.require('googleDriveDocsFolderId');
 export const googleDriveLogsFolderId = cfg.require('googleDriveLogsFolderId');
