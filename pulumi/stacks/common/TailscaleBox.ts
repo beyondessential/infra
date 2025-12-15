@@ -74,6 +74,11 @@ export class TailscaleBox extends ComponentResource {
         keyName: 'ops',
         ...this.#args.instanceArgs,
         ami: AMI_UBUNTU_ARM64[region],
+        metadataOptions: {
+          httpTokens: 'required',
+          httpProtocolIpv6: 'enabled',
+          instanceMetadataTags: 'enabled',
+        },
         userData: all([authKey.key, output(this.#args.tailscaleName)]).apply(([key, name]) =>
           secret(
             cloudInitYaml([
