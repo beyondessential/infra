@@ -67,6 +67,8 @@ const oac = new aws.cloudfront.OriginAccessControl('access-control', {
   signingProtocol: 'sigv4',
 });
 
+const cachePolicyId = aws.cloudfront.getCachePolicyOutput({ name: 'Managed-CachingOptimized' }).id;
+
 const reqFn = new aws.cloudfront.Function('distribution-request-function', {
   runtime: 'cloudfront-js-1.0',
   comment: 'Distribution Function for dbt Docs',
@@ -98,26 +100,13 @@ const distribution = new aws.cloudfront.Distribution(
         responsePagePath: errorDocument.key.apply((key) => `/${key}`),
       },
     ],
-    loggingConfig: {
-      includeCookies: false,
-      bucket: `${LOGS_BUCKET}.s3.amazonaws.com`,
-      prefix: 'dbt-docs',
-    },
     aliases: [DOMAIN],
     httpVersion: 'http2and3',
     defaultCacheBehavior: {
       allowedMethods: ['GET', 'HEAD'],
       cachedMethods: ['GET', 'HEAD'],
       targetOriginId: originId,
-      forwardedValues: {
-        queryString: false,
-        cookies: {
-          forward: 'none',
-        },
-      },
-      minTtl: 0,
-      defaultTtl: 3600,
-      maxTtl: 86400,
+      cachePolicyId: cachePolicyId,
       compress: true,
       viewerProtocolPolicy: 'redirect-to-https',
       functionAssociations: [

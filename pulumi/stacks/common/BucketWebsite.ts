@@ -15,7 +15,7 @@ export interface BucketWebsiteArgs {
   notFoundPage?: string;
   cacheBehaviour?: Omit<
     Partial<awsClassic.types.input.cloudfront.DistributionDefaultCacheBehavior>,
-    'targetOriginId' | 'allowedMethods' | 'cachedMethods' | 'compress' | 'viewerProtocolPolicy'
+    'targetOriginId' | 'allowedMethods' | 'cachedMethods' | 'compress' | 'viewerProtocolPolicy' | 'cachePolicyId'
   >;
   cachePolicy?: awsClassic.cloudfront.CachePolicy;
   requestFunctionSourceFile?: string;
@@ -114,6 +114,8 @@ export class BucketWebsite extends ComponentResource {
       { parent: this },
     );
 
+    const policyId = cachePolicy?.id || awsClassic.cloudfront.getCachePolicyOutput({ name: 'Managed-CachingOptimized' }).id;
+
     const reqFn = new awsClassic.cloudfront.Function(
       `${name}-distribution-request-function`,
       {
@@ -168,33 +170,16 @@ export class BucketWebsite extends ComponentResource {
             responsePagePath: errorDocument.key.apply((key) => `/${key}`),
           },
         ],
-        loggingConfig: {
-          includeCookies: false,
-          bucket: `${logsBucket}.s3.amazonaws.com`,
-          prefix: `website/${domain}`,
-        },
         aliases: [domain],
         httpVersion: 'http2and3',
         defaultCacheBehavior: {
-          ...(cachePolicy
-            ? { cachePolicyId: cachePolicy.id }
-            : {
-                forwardedValues: {
-                  queryString: true,
-                  cookies: {
-                    forward: 'none',
-                  },
-                },
-                minTtl: 0,
-                defaultTtl: 3600,
-                maxTtl: 86400,
-                compress: true,
-              }),
+          cachePolicyId: policyId,
           ...cacheBehaviour,
           viewerProtocolPolicy: 'redirect-to-https',
           allowedMethods: ['GET', 'HEAD'],
           cachedMethods: ['GET', 'HEAD'],
           targetOriginId: originId,
+          compress: true,
           functionAssociations: [
             {
               eventType: 'viewer-request',
