@@ -13,6 +13,12 @@ import {
   withEndpoints,
 } from './config.ts';
 
+const logGroup = new awsClassic.cloudwatch.LogGroup('core-network-flow-logs', {
+  name: '/aws/vpc/flowlogs/core-network',
+  retentionInDays: 30,
+  tags,
+});
+
 const $network = accountId.apply((id) => {
   const ipv4Cidr = v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;
 
@@ -26,6 +32,45 @@ const $network = accountId.apply((id) => {
   });
 });
 export const network = $network.outputs;
+
+const iamRole = new awsClassic.iam.Role('core-network-flow-logs', {
+  assumeRolePolicy: awsClassic.iam.assumeRolePolicyForPrincipal({
+    Service: 'vpc-flow-logs.amazonaws.com',
+  }),
+  tags,
+});
+
+new awsClassic.iam.RolePolicy('core-network-flow-logs', {
+  role: iamRole.id,
+  policy: awsClassic.iam.getPolicyDocumentOutput({
+    statements: [
+      {
+        actions: [
+          'logs:CreateLogGroup',
+          'logs:CreateLogStream',
+          'logs:PutLogEvents',
+          'logs:DescribeLogGroups',
+          'logs:DescribeLogStreams',
+        ],
+        resources: [interpolate`${logGroup.arn}:*`],
+      },
+    ],
+  }).apply((doc) => doc.json),
+});
+
+network.vpc.apply((vpcId) => {
+  new awsClassic.ec2.FlowLog('core-network-flow-logs', {
+    iamRoleArn: iamRole.arn,
+    logDestination: logGroup.arn,
+    trafficType: 'REJECT',
+    vpcId,
+    logFormat: '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${windowstart} ${windowend} ${action} ${tcpflags} ${type} ${pkt-srcaddr} ${pkt-dstaddr} ${region} ${vpc-id} ${subnet-id} ${instance-id} ${tcp-flags} ${traffic-type} ${flow-logs-version}',
+    tags: {
+      Name: 'core-network-flow-logs',
+      ...tags,
+    },
+  });
+});
 
 export const { arn: dbSubnetGroup } = privateSubnets
   ? new awsClassic.rds.SubnetGroup('core-workload', {
