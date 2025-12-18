@@ -4,7 +4,7 @@
   "devDependencies": {
     "@types/lodash-es": "^4.17.9",
     "@types/netmask": "^2.0.3",
-    "@types/node": "^24.0.14",
+    "@types/node": "^25.0.3",
     "@types/nunjucks": "^3.2.6",
     "prettier": "^3.6.2"
   },
