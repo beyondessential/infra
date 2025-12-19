@@ -64,7 +64,7 @@ network.vpc.apply((vpcId) => {
     logDestination: logGroup.arn,
     trafficType: 'REJECT',
     vpcId,
-    logFormat: '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${windowstart} ${windowend} ${action} ${tcpflags} ${type} ${pkt-srcaddr} ${pkt-dstaddr} ${region} ${vpc-id} ${subnet-id} ${instance-id} ${tcp-flags} ${traffic-type} ${flow-logs-version}',
+    logFormat: '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${tcp-flags} ${type} ${pkt-srcaddr} ${pkt-dstaddr} ${region} ${vpc-id} ${subnet-id} ${instance-id}',
     tags: {
       Name: 'core-network-flow-logs',
       ...tags,
