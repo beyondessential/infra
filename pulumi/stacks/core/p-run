@@ -1,0 +1,38 @@
+#!/bin/sh
+set -e
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <stack-name-or-file> [pulumi-command] [args...]"
+    echo "Example: $0 tamanu-internal preview"
+    echo "Example: $0 Pulumi.tamanu-internal.yaml up"
+    exit 1
+fi
+
+stack_arg="$1"
+shift
+
+if echo "$stack_arg" | grep -q '^Pulumi\..*\.yaml$'; then
+    stack=$(echo "$stack_arg" | cut -d. -f2)
+elif [ -f "Pulumi.$stack_arg.yaml" ]; then
+    stack="$stack_arg"
+else
+    echo "Error: Could not find stack file for '$stack_arg'"
+    exit 1
+fi
+
+pulumi_cmd="${1:-up}"
+if [ $# -gt 0 ]; then
+    shift
+fi
+
+echo "==> Selecting stack: $stack"
+pulumi stack select "$stack"
+
+sso_profile=$(pulumi config get ssoProfile)
+if [ -z "$sso_profile" ]; then
+    echo "Error: No ssoProfile configured for stack $stack"
+    exit 1
+fi
+
+echo "==> Running: aws-sso exec -p $sso_profile -- pulumi $pulumi_cmd $*"
+exec aws-sso exec -p "$sso_profile" -- pulumi "$pulumi_cmd" "$@"

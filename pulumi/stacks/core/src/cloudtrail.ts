@@ -9,7 +9,7 @@ const tags = {
   Purpose: 'audit-logging',
 };
 
-const bucket = new awsClassic.s3.BucketV2('cloudtrail-bucket', {
+const bucket = new awsClassic.s3.Bucket('cloudtrail-bucket', {
   bucket: trailBucket,
   tags,
 });
@@ -22,14 +22,14 @@ new awsClassic.s3.BucketPublicAccessBlock('cloudtrail-bucket-public-access-block
   restrictPublicBuckets: true,
 });
 
-new awsClassic.s3.BucketVersioningV2('cloudtrail-bucket-versioning', {
+new awsClassic.s3.BucketVersioning('cloudtrail-bucket-versioning', {
   bucket: bucket.id,
   versioningConfiguration: {
     status: 'Enabled',
   },
 });
 
-new awsClassic.s3.BucketLifecycleConfigurationV2('cloudtrail-bucket-lifecycle', {
+new awsClassic.s3.BucketLifecycleConfiguration('cloudtrail-bucket-lifecycle', {
   bucket: bucket.id,
   rules: [
     {
