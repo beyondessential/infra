@@ -1,6 +1,7 @@
 import './passwords.ts';
 import './alerts.ts';
 import './ebs-encryption.ts';
+import './cloudtrail.ts';
 
 import { v4, v6 as ipv6 } from './config.ts';
 const ipv4 = Boolean(v4);

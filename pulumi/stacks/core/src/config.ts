@@ -13,7 +13,9 @@ let v4Config: string | boolean | undefined = cfg.get('networkV4');
 try {
   v4Config = cfg.getBoolean('networkV4');
 } catch (_) {}
-if (v4Config === undefined) { v4Config = true };
+if (v4Config === undefined) {
+  v4Config = true;
+}
 const v4: string | boolean = v4Config;
 export { v4 };
 
@@ -42,3 +44,4 @@ if (!domain) {
 export { domain };
 
 export const zoneImport = cfg.get('zoneImport');
+export const trailBucket = cfg.get('trailBucket') ?? `bes-${stackName}-cloudtrail`;
