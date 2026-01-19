@@ -173,25 +173,30 @@ const standardGroups: NodeGroup[] =
           minPerAz: 1,
           maxPerAz: 10,
         },
-        {
-          groupName: 'system-x86-v2',
-          purpose: 'system',
-          schedule: 'spot',
-          arch: 'amd64',
-          amiType: 'BOTTLEROCKET_x86_64',
-          diskSize: 25,
-          instanceTypes: upToMonthly(
-            spotWithinOnDemandPrice(
-              nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
-              'linux',
-            ),
-            'linux',
-            'spot',
-            40,
-          ).map((i) => i.instance_type),
-          minPerAz: 0,
-          maxPerAz: 10,
-        },
+        // x86 system nodes are only needed for HNC (which requires x86)
+        ...(hncEnabled
+          ? [
+              {
+                groupName: 'system-x86-v2',
+                purpose: 'system' as const,
+                schedule: 'spot' as const,
+                arch: 'amd64' as const,
+                amiType: 'BOTTLEROCKET_x86_64',
+                diskSize: 25,
+                instanceTypes: upToMonthly(
+                  spotWithinOnDemandPrice(
+                    nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
+                    'linux',
+                  ),
+                  'linux',
+                  'spot',
+                  40,
+                ).map((i) => i.instance_type),
+                minPerAz: 0,
+                maxPerAz: 10,
+              },
+            ]
+          : []),
       ];
 
 for (const {

@@ -154,7 +154,13 @@ const rbacClusterRole = new k8s.rbac.v1.ClusterRole(
       },
       {
         apiGroups: ['storage.k8s.io'],
-        resources: ['storageclasses', 'csinodes', 'csidrivers', 'csistoragecapacities', 'volumeattachments'],
+        resources: [
+          'storageclasses',
+          'csinodes',
+          'csidrivers',
+          'csistoragecapacities',
+          'volumeattachments',
+        ],
         verbs: ['watch', 'list', 'get'],
       },
       {
@@ -252,16 +258,18 @@ const appLabels = {
 };
 
 // Relative priorities for node groups when they are otherwise equal
-const priorities = new k8s.core.v1.ConfigMap('autoscaler-priority-expander', {
-  metadata: {
-    namespace,
-    labels: appLabels,
-    name: 'cluster-autoscaler-priority-expander',
-  },
-  data: {
-    // cannot be JSON because the keys need to not be quoted
-    // as the go YAML unmarshaller somehow expects int keys!
-    priorities: `
+const priorities = new k8s.core.v1.ConfigMap(
+  'autoscaler-priority-expander',
+  {
+    metadata: {
+      namespace,
+      labels: appLabels,
+      name: 'cluster-autoscaler-priority-expander',
+    },
+    data: {
+      // cannot be JSON because the keys need to not be quoted
+      // as the go YAML unmarshaller somehow expects int keys!
+      priorities: `
 80: [".*-arm-spot-large-.*"]
 70: [".*-arm-spot-.*"]
 60: [".*-spot-large-.*"]
@@ -269,8 +277,10 @@ const priorities = new k8s.core.v1.ConfigMap('autoscaler-priority-expander', {
 30: [".*-arm-.*"]
 10: [".*"]
     `,
-  }
-}, { provider });
+    },
+  },
+  { provider },
+);
 
 new k8s.apps.v1.Deployment(
   'autoscaler',
@@ -350,6 +360,11 @@ new k8s.apps.v1.Deployment(
                 '--balance-similar-node-groups',
                 `--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled`,
                 // TODO: add k8s.io/cluster-autoscaler/cluster=${clusterName} to restrict to EKS cluster
+                // Scale-down tuning for cost optimization
+                '--scale-down-delay-after-add=5m',
+                '--scale-down-unneeded-time=5m',
+                '--scale-down-utilization-threshold=0.5',
+                '--max-node-provision-time=10m',
               ],
               volumeMounts: [
                 {
