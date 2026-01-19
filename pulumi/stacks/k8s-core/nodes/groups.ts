@@ -12,6 +12,12 @@ import {
 } from '../../common/k8s/instanceTypeGroups.ts';
 import { Output } from '@pulumi/pulumi';
 
+// Limit the number of AZs to use for node groups (default: use all available)
+const azLimit = cfg.getNumber('azLimit');
+
+// Use spot instances for system nodes (default: false, uses on-demand)
+const systemSpot = cfg.getBoolean('systemSpot') ?? false;
+
 // Create a standard set of initially-empty node groups for workload autoscaling:
 // - on-demand ARM64 nodes
 // - on-demand x86 nodes
@@ -142,18 +148,28 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 10,
         },
         {
-          groupName: 'system-arm-v2',
+          groupName: systemSpot ? 'system-arm-spot-v1' : 'system-arm-v2',
           purpose: 'system',
-          schedule: 'ondemand',
+          schedule: systemSpot ? 'spot' : 'ondemand',
           arch: 'arm64',
           amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
-          instanceTypes: upToMonthly(
-            onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-            'linux',
-            'ondemand',
-            100,
-          ).map((i) => i.instance_type),
+          instanceTypes: systemSpot
+            ? upToMonthly(
+                spotWithinOnDemandPrice(
+                  onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+                  'linux',
+                ),
+                'linux',
+                'spot',
+                100,
+              ).map((i) => i.instance_type)
+            : upToMonthly(
+                onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+                'linux',
+                'ondemand',
+                100,
+              ).map((i) => i.instance_type),
           minPerAz: 1,
           maxPerAz: 10,
         },
@@ -190,9 +206,10 @@ for (const {
   amiType = null,
   diskSize = 100,
 } of [...standardGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
-  const subnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
-  subnets.apply((subnets) =>
-    subnets.forEach((subnet, az0) => {
+  const allSubnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
+  allSubnets.apply((subnets) => {
+    const limitedSubnets = azLimit ? subnets.slice(0, azLimit) : subnets;
+    limitedSubnets.forEach((subnet, az0) => {
       const az = az0 + 1;
       new aws.eks.Nodegroup(
         `${groupName}-az${az}`,
@@ -264,6 +281,6 @@ for (const {
           deleteBeforeReplace: false,
         },
       );
-    }),
-  );
+    });
+  });
 }

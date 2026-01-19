@@ -1,4 +1,4 @@
-import { failIfIncorrectCluster } from '../common/k8s/coreRef.ts';
+import { failIfIncorrectCluster, cfg } from '../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
 import './gatewayApi.ts';
@@ -8,7 +8,9 @@ import './metrics/prometheus.ts';
 import './postgres.ts';
 import './tailscale.ts';
 
-import './hnc/crds.ts';
-import './hnc/roles.ts';
-import './hnc/manager.ts';
-import './hnc/webhooks.ts';
+if (cfg.getBoolean('hncEnabled') !== false) {
+  await import('./hnc/crds.ts');
+  await import('./hnc/roles.ts');
+  await import('./hnc/manager.ts');
+  await import('./hnc/webhooks.ts');
+}
