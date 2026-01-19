@@ -82,7 +82,7 @@ const standardGroups: NodeGroup[] =
           maxPerAz: 30,
         },
         {
-          groupName: 'workload-arm-spot-large-v2',
+          groupName: 'workload-arm-spot-large-v2', // REPLACING
           purpose: 'workload',
           schedule: 'spot',
           arch: 'arm64',
@@ -91,6 +91,24 @@ const standardGroups: NodeGroup[] =
           instanceTypes: upToMonthly(
             spotWithinOnDemandPrice(
               nonBurst(instancesSizedAtLeast(region, 'arm64', 8, 16)),
+              'linux',
+            ),
+            'linux',
+            'spot',
+            100,
+          ).map((i) => i.instance_type),
+          maxPerAz: 30,
+        },
+        {
+          groupName: 'workload-arm-spot-large-v3',
+          purpose: 'workload',
+          schedule: 'spot',
+          arch: 'arm64',
+          amiType: 'BOTTLEROCKET_ARM_64',
+          diskSize: 50,
+          instanceTypes: upToMonthly(
+            spotWithinOnDemandPrice(
+              nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 16)),
               'linux',
             ),
             'linux',
