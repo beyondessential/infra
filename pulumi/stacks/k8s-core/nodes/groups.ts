@@ -18,6 +18,9 @@ const azLimit = cfg.getNumber('azLimit');
 // Use spot instances for system nodes (default: false, uses on-demand)
 const systemSpot = cfg.getBoolean('systemSpot') ?? false;
 
+// Whether HNC is enabled - if false, skip x86 system nodes (default: true)
+const hncEnabled = cfg.getBoolean('hncEnabled') ?? true;
+
 // Create a standard set of initially-empty node groups for workload autoscaling:
 // - on-demand ARM64 nodes
 // - on-demand x86 nodes
