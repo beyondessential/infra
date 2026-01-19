@@ -13,8 +13,7 @@ export interface Instance {
   ebs_optimized: boolean;
   generation?: 'current';
 
-  availability_zones: { [region: string]: string[] };
-  regions: { [region: string]: string[] };
+  regions: { [region: string]: string };
   pricing: { [region: string]: Pricing };
 
   pretty_name: string;
@@ -30,7 +29,6 @@ export interface Instance {
 
 export interface RegionInstance {
   placement_group_support: boolean;
-  availability_zones: string[];
   pretty_name: string;
   physical_processor: string;
   arch: string[];
@@ -64,17 +62,16 @@ export interface Pricing {
 export function instancesForRegion(region: string): RegionInstance[] {
   return INSTANCES.filter(
     (i) =>
-      Object.keys(i.availability_zones).includes(region) &&
+      Object.keys(i.regions).includes(region) &&
+      i.pricing[region]?.linux != null &&
       i.enhanced_networking &&
       i.ebs_optimized &&
       i.ipv6_support &&
       i.generation === 'current' &&
-      i.availability_zones[region].length >= 3 &&
       !i.instance_type.includes('metal') &&
       isNitro(i.instance_type),
   ).map((i) => ({
     placement_group_support: i.placement_group_support,
-    availability_zones: i.availability_zones[region],
     pretty_name: i.pretty_name,
     physical_processor: i.physical_processor,
     arch: i.arch,

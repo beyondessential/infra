@@ -18,11 +18,10 @@ jq 'map({
   ipv6_support: .ipv6_support,
   enhanced_networking: .enhanced_networking,
   ebs_optimized: .ebs_optimized,
-  availability_zones: .availability_zones,
   regions: .regions,
   pricing: .pricing | map_values({
     linux: { ondemand: .linux.ondemand, spot_avg: .linux.spot_avg },
-    mswin: { ondemand: .linux.ondemand, spot_avg: .linux.spot_avg },
+    mswin: { ondemand: .mswin.ondemand, spot_avg: .mswin.spot_avg },
   }),
 } | select(
   (.generation == "current")
