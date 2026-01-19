@@ -58,6 +58,17 @@ export interface Pricing {
   };
 }
 
+// Instance families suitable for general K8s workloads start with:
+// t - burstable (t3, t4g, etc.)
+// m - general purpose (m5, m6g, m7i, etc.)
+// c - compute optimized (c5, c6g, c7i, etc.)
+// r - memory optimized (r5, r6g, r7i, etc.)
+// Excludes: GPU (g*, p*), storage-optimized (d*, i*), ML ASIC (inf*),
+// HPC (hpc*), high-memory (u-*, x*, z*)
+function isK8sFamily(instance_type: string): boolean {
+  return /^[tmcr]/i.test(instance_type);
+}
+
 // Filter for region, but also eliminate a bunch of instances we never want to use
 export function instancesForRegion(region: string): RegionInstance[] {
   return INSTANCES.filter(
@@ -69,7 +80,8 @@ export function instancesForRegion(region: string): RegionInstance[] {
       i.ipv6_support &&
       i.generation === 'current' &&
       !i.instance_type.includes('metal') &&
-      isNitro(i.instance_type),
+      isNitro(i.instance_type) &&
+      isK8sFamily(i.instance_type),
   ).map((i) => ({
     placement_group_support: i.placement_group_support,
     pretty_name: i.pretty_name,
