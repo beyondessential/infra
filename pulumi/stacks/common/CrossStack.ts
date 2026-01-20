@@ -39,6 +39,8 @@ export interface CrossStackK8sCoreOutput {
   backupsBucket: Output<string>;
   backupsServiceAccountArn: Output<string>;
   oidcProviderArn: Output<string>;
+  opencostRoleArn: Output<string>;
+  spotDataFeedBucketName: Output<string>;
 }
 
 export class CrossStack {
@@ -124,6 +126,8 @@ export class CrossStack {
       backupsBucket: this.get('backupsBucket'),
       backupsServiceAccountArn: this.get('backupsServiceAccountArn'),
       oidcProviderArn: this.get('oidcProviderArn'),
+      opencostRoleArn: this.get('opencostRoleArn'),
+      spotDataFeedBucketName: this.get('spotDataFeedBucketName'),
     };
   }
 }

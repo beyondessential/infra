@@ -13,3 +13,4 @@ export { ghaOidc } from './oidc.ts';
 export { eksCniV6Policy } from './policy.ts';
 export { network, dbSubnetGroup } from './network.ts';
 export { zoneId, zoneNS, zoneMgmtPolicy } from './zone.ts';
+export { spotDataFeed } from './spot-data-feed.ts';
