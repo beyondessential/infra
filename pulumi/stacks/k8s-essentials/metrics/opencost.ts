@@ -12,7 +12,7 @@ new k8s.helm.v3.Release(
   {
     name: 'opencost',
     chart: 'opencost',
-    version: '1.45.0',
+    version: '2.5.3',
     repositoryOpts: {
       repo: 'https://opencost.github.io/opencost-helm-chart',
     },
