@@ -17,26 +17,6 @@ export const bucket = new awsClassic.s3.BucketV2('s3-backups', {
 
 // TODO: intelligent tiering
 
-const bucketOwnership = new awsClassic.s3.BucketOwnershipControls(
-  's3-backups-ownership',
-  {
-    bucket: bucket.id,
-    rule: {
-      objectOwnership: 'BucketOwnerPreferred',
-    },
-  },
-  { parent: bucket },
-);
-
-new awsClassic.s3.BucketAclV2(
-  's3-backups-acl',
-  {
-    bucket: bucket.id,
-    acl: 'private',
-  },
-  { parent: bucket, dependsOn: [bucketOwnership] },
-);
-
 const policy = new awsClassic.iam.Policy(
   's3-backups-policy',
   {
