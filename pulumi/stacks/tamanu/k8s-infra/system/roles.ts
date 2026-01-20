@@ -1,24 +1,22 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
 
-new k8s.rbac.v1.RoleBinding('edit', {
+// Deployer needs read access to tamanu-system to read secrets and config templates
+// that get copied into deployment namespaces
+new k8s.rbac.v1.RoleBinding('view', {
   metadata: {
+    name: 'tamanu-view',
     namespace,
   },
   roleRef: {
     apiGroup: 'rbac.authorization.k8s.io',
     kind: 'ClusterRole',
-    name: 'edit',
+    name: 'view',
   },
-});
-
-new k8s.rbac.v1.RoleBinding('read', {
-  metadata: {
-    namespace,
-  },
-  roleRef: {
-    apiGroup: 'rbac.authorization.k8s.io',
-    kind: 'ClusterRole',
-    name: 'read',
-  },
+  subjects: [
+    {
+      kind: 'Group',
+      name: 'tailscale:tamanu-deploy',
+    },
+  ],
 });
