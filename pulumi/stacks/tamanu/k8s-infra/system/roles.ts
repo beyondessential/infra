@@ -21,7 +21,7 @@ new k8s.rbac.v1.RoleBinding('tamanu-system-deploy-view', {
   ],
 });
 
-// Engineers need read access to view config templates and secrets
+// Engineers need write access to config templates and secrets
 new k8s.rbac.v1.RoleBinding('tamanu-system-engineer', {
   metadata: {
     name: 'tamanu-engineer',
