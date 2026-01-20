@@ -1,37 +1,29 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../superns.ts';
 
-// ClusterRole for creating namespaces and setting up HNC hierarchy.
-// This needs to be cluster-scoped because:
-// 1. Namespaces are cluster-level resources
-// 2. HierarchyConfiguration must be created in the new namespace BEFORE
-//    RoleBindings are propagated from the parent
-const creatensRole = new k8s.rbac.v1.ClusterRole('tamanu-createns', {
+// Minimal cluster-level permissions for namespace operations.
+// With SubnamespaceAnchors, we only need to read namespaces (HNC creates them).
+const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy-cluster', {
   metadata: {
-    name: 'tamanu-createns',
+    name: 'tamanu-deploy-cluster',
   },
   rules: [
     {
       apiGroups: [''],
       resources: ['namespaces'],
-      verbs: ['get', 'list', 'create'],
-    },
-    {
-      apiGroups: ['hnc.x-k8s.io'],
-      resources: ['hierarchyconfigurations'],
-      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch'],
+      verbs: ['get', 'list', 'watch'],
     },
   ],
 });
 
-new k8s.rbac.v1.ClusterRoleBinding('tamanu-deploy-createns', {
+new k8s.rbac.v1.ClusterRoleBinding('tamanu-deploy-cluster', {
   metadata: {
-    name: 'tamanu-deploy-createns',
+    name: 'tamanu-deploy-cluster',
   },
   roleRef: {
     apiGroup: 'rbac.authorization.k8s.io',
     kind: 'ClusterRole',
-    name: creatensRole.metadata.name,
+    name: clusterRole.metadata.name,
   },
   subjects: [
     {
@@ -76,6 +68,15 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
     {
       apiGroups: ['postgresql.cnpg.io'],
       resources: ['clusters', 'scheduledbackups'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    // SubnamespaceAnchors for namespace lifecycle management.
+    // Creating an anchor in tamanu-super causes HNC to create the child namespace.
+    // Deleting the anchor cascades to delete the namespace.
+    // This is safer than granting cluster-wide namespace delete permissions.
+    {
+      apiGroups: ['hnc.x-k8s.io'],
+      resources: ['subnamespaceanchors'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
   ],
