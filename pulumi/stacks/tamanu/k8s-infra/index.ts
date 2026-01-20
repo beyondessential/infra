@@ -3,3 +3,4 @@ await failIfIncorrectCluster();
 
 import './system.ts';
 import './superns.ts';
+import './roles/index.ts';
