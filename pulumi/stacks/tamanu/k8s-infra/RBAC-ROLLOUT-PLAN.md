@@ -128,12 +128,12 @@ for namespace lifecycle management.
 ```yaml
 - name: Create or check namespace
   run: |
-    NS_NAME="${{ inputs.deploy-name }}"
+    NS_NAME="tamanu-${{ inputs.deploy-name }}"
     
     # Check if subnamespace anchor exists
     if kubectl -n tamanu-super get subnamespaceanchor "$NS_NAME" 2>/dev/null; then
       echo "Namespace exists, checking it's matched to this branch"
-      kubectl -n "tamanu-$NS_NAME" \
+      kubectl -n "$NS_NAME" \
         get configmap auto-deploy -o json \
         | tee -a /dev/stderr \
         | jq -e '.data | [.repo == "${{ github.repository }}", .ref == "${{ inputs.ref }}"] | all'
@@ -152,17 +152,17 @@ for namespace lifecycle management.
         -n tamanu-super --timeout=30s || true
       
       # Create tracking configmap
-      kubectl -n "tamanu-$NS_NAME" \
+      kubectl -n "$NS_NAME" \
         create configmap auto-deploy \
         --from-literal=repo=${{ github.repository }} \
         --from-literal=ref=${{ inputs.ref }}
     fi
 
-    kubectl -n "tamanu-$NS_NAME" \
+    kubectl -n "$NS_NAME" \
       patch configmap auto-deploy \
       -p '{"data":{"control":"${{ inputs.control }}"}}'
 
-    kubectl -n "tamanu-$NS_NAME" \
+    kubectl -n "$NS_NAME" \
       patch configmap auto-deploy \
       -p '{"data":{"imageTag":"${{ inputs.image-tag }}"}}'
 ```
@@ -213,7 +213,7 @@ jobs:
 
       - name: Delete namespace via SubnamespaceAnchor
         run: |
-          kubectl -n tamanu-super delete subnamespaceanchor ${{ inputs.deploy-name }} --wait=true
+          kubectl -n tamanu-super delete subnamespaceanchor tamanu-${{ inputs.deploy-name }} --wait=true
 ```
 
 ## Verification
