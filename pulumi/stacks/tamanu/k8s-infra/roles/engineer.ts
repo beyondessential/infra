@@ -76,7 +76,7 @@ new k8s.rbac.v1.RoleBinding('tamanu-super-engineer', {
   ],
 });
 
-// Cluster-level permission to list namespaces (for UI navigation)
+// Cluster-level permissions for UI navigation and overview
 const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-engineer-cluster', {
   metadata: {
     name: 'tamanu-engineer-cluster',
@@ -85,6 +85,24 @@ const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-engineer-cluster', {
     {
       apiGroups: [''],
       resources: ['namespaces'],
+      verbs: ['get', 'list', 'watch'],
+    },
+    // Events view in Headlamp
+    {
+      apiGroups: [''],
+      resources: ['events'],
+      verbs: ['get', 'list', 'watch'],
+    },
+    // Cluster overview (CPU, memory stats)
+    {
+      apiGroups: [''],
+      resources: ['nodes'],
+      verbs: ['get', 'list', 'watch'],
+    },
+    // Node metrics for resource usage
+    {
+      apiGroups: ['metrics.k8s.io'],
+      resources: ['nodes', 'pods'],
       verbs: ['get', 'list', 'watch'],
     },
   ],
