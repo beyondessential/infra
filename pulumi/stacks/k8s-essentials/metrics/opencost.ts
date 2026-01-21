@@ -65,10 +65,10 @@ new k8s.helm.v3.Release(
           resources: {
             requests: {
               cpu: '10m',
-              memory: '55Mi',
+              memory: '200Mi',
             },
             limits: {
-              memory: '256Mi',
+              memory: '1Gi',
             },
           },
         },
