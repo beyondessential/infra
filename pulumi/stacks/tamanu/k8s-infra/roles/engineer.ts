@@ -70,15 +70,28 @@ new k8s.rbac.v1.RoleBinding('tamanu-super-engineer', {
   ],
 });
 
-new k8s.rbac.v1.RoleBinding('tamanu-super-engineer-view', {
+// Cluster-level permission to list namespaces (for UI navigation)
+const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-engineer-cluster', {
   metadata: {
-    name: 'tamanu-engineer-view',
-    namespace,
+    name: 'tamanu-engineer-cluster',
+  },
+  rules: [
+    {
+      apiGroups: [''],
+      resources: ['namespaces'],
+      verbs: ['get', 'list', 'watch'],
+    },
+  ],
+});
+
+new k8s.rbac.v1.ClusterRoleBinding('tamanu-engineer-cluster', {
+  metadata: {
+    name: 'tamanu-engineer-cluster',
   },
   roleRef: {
     apiGroup: 'rbac.authorization.k8s.io',
     kind: 'ClusterRole',
-    name: 'view',
+    name: clusterRole.metadata.name,
   },
   subjects: [
     {
