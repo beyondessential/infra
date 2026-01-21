@@ -11,6 +11,7 @@ const role = new k8s.rbac.v1.ClusterRole('tamanu-engineer', {
       resources: [
         'pods',
         'pods/log',
+        'pods/portforward',
         'services',
         'endpoints',
         'serviceaccounts',
@@ -18,6 +19,11 @@ const role = new k8s.rbac.v1.ClusterRole('tamanu-engineer', {
         'events',
       ],
       verbs: ['get', 'list', 'watch'],
+    },
+    {
+      apiGroups: [''],
+      resources: ['pods/portforward'],
+      verbs: ['create'],
     },
     {
       apiGroups: [''],
