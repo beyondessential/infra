@@ -9,14 +9,16 @@ if (name === 'system' || name === 'super') {
 }
 
 // When true, assumes the namespace was created externally (e.g., by GitHub Actions
-// via SubnamespaceAnchor). When false (default), Pulumi manages namespace lifecycle.
+// via SubnamespaceAnchor) and HNC manages the parent relationship.
+// Pulumi will reference the existing namespace without managing its lifecycle.
 const externalNamespace = cfg.getBoolean('externalNamespace') ?? false;
 
 function setupNamespace(): Output<string> {
   if (externalNamespace) {
     // Namespace created externally via SubnamespaceAnchor in tamanu-super.
-    // HNC automatically sets up the parent relationship, so we just reference it.
-    return Output.create(name);
+    // Use get() to reference it without managing its lifecycle.
+    const ns = k8s.core.v1.Namespace.get(`tamanu-${normalizedStack}`, name);
+    return ns.metadata.name;
   }
 
   // Pulumi manages the namespace directly.
