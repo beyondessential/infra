@@ -13,7 +13,7 @@
   }
 
   transport http {
-    keepalive 65s
+    keepalive 90s
     compression false
   }
 }
@@ -24,7 +24,7 @@
   to http://patientportal.tamanu.internal:3000
 
   transport http {
-    keepalive 65s
+    keepalive 90s
     compression false
   }
 }
@@ -41,7 +41,7 @@
   health_uri /api/public/ping
 
   transport http {
-    keepalive 65s
+    keepalive 90s
     compression false
   }
 }
