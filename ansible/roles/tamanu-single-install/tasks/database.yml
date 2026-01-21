@@ -7,7 +7,7 @@
   become_user: postgres
   community.postgresql.postgresql_user:
     name: "{{ item }}"
-    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + item) }}"
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + item) }}"
 
 - name: Allow reporting users access to postgres
   loop:

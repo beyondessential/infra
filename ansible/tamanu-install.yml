@@ -1,7 +1,7 @@
 - name: Common setup
   hosts: all
   pre_tasks:
-    - when: ansible_system_vendor == 'Amazon EC2'
+    - when: ansible_facts['system_vendor'] == 'Amazon EC2'
       amazon.aws.ec2_metadata_facts:
     - name: Gather PostgreSQL facts
       ansible.builtin.include_tasks: tasks/gather-postgres-version.yml
@@ -11,14 +11,14 @@
         ec2_tag_name: Partitioning
   roles:
     - role: ebs-volume
-      when: ansible_system_vendor == 'Amazon EC2' and ansible_ec2_tag_Partitioning is defined and ansible_ec2_tag_Partitioning == 'split-data-logs'
+      when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_Partitioning is defined and ansible_ec2_tag_Partitioning == 'split-data-logs'
       volume: sdl
       mount: /var/log
       fs_type: btrfs
       mount_opts: defaults,compress=zstd:6
       tags: [base, volumes]
     - role: ebs-volume
-      when: ansible_system_vendor == 'Amazon EC2' and ansible_ec2_tag_Partitioning is defined and ansible_ec2_tag_Partitioning == 'split-data-logs'
+      when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_Partitioning is defined and ansible_ec2_tag_Partitioning == 'split-data-logs'
       volume: sdp
       mount: /var/lib/postgresql
       fs_type: "{{ 'ext4' if (aws_postgres_uses_ext4 is defined and aws_postgres_uses_ext4) else 'btrfs' }}"

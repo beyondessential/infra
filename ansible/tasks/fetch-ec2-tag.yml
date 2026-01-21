@@ -1,6 +1,6 @@
 ---
 - name: Get IMDSv2 token
-  when: ansible_system_vendor == 'Amazon EC2'
+  when: ansible_facts["system_vendor"] == 'Amazon EC2'
   ansible.builtin.uri:
     url: http://169.254.169.254/latest/api/token
     method: PUT
@@ -10,7 +10,7 @@
   register: imds_token
 
 - name: Fetch EC2 tag from metadata service
-  when: ansible_system_vendor == 'Amazon EC2'
+  when: ansible_facts["system_vendor"] == 'Amazon EC2'
   ansible.builtin.uri:
     url: "http://169.254.169.254/latest/meta-data/tags/instance/{{ ec2_tag_name }}"
     headers:
@@ -21,6 +21,6 @@
   failed_when: false
 
 - name: Set EC2 tag fact
-  when: ansible_system_vendor == 'Amazon EC2' and ec2_tag_result.status == 200
+  when: ansible_facts["system_vendor"] == 'Amazon EC2' and ec2_tag_result.status == 200
   ansible.builtin.set_fact:
     "ansible_ec2_tag_{{ ec2_tag_name }}": "{{ ec2_tag_result.content }}"

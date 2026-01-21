@@ -1,7 +1,7 @@
 ---
 - name: Set patient portal enabled fact
   ansible.builtin.set_fact:
-    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_system_vendor == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
+    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
 
 - name: Collect which services are running
   ansible.builtin.service_facts:

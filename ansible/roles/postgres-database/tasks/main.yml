@@ -5,7 +5,7 @@
   when: postgres_create_user
   community.postgresql.postgresql_user:
     name: "{{ postgres_username }}"
-    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_machine_id + salt + 'postgres' + postgres_username) }}"
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + postgres_username) }}"
 
 - name: Create postgres database '{{ postgres_database }}' with owner '{{ postgres_username }}'
   become: true
