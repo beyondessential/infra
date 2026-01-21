@@ -2,3 +2,9 @@
 /vault-password.txt
 /.vault-password
 /*password*
+
+# uv
+.venv/
+uv.lock
+__pycache__/
+*.pyc
