@@ -3,6 +3,7 @@ import { $network, cfg } from '../../common/coreRef.ts';
 import { nodeRole } from '../roles.ts';
 import { clusterName, tags } from '../cluster.ts';
 import { region } from '../../common/awsAccount.ts';
+import { nativeTags } from '../../common/tags.ts';
 import {
   upToMonthly,
   spotWithinOnDemandPrice,
@@ -20,6 +21,9 @@ const systemSpot = cfg.getBoolean('systemSpot') ?? false;
 
 // Whether HNC is enabled - if false, skip x86 system nodes (default: true)
 const hncEnabled = cfg.getBoolean('hncEnabled') ?? true;
+
+// Whether to use custom launch templates with IPv6 IMDS support (default: true)
+const withLaunchTemplate = cfg.getBoolean('withLaunchTemplate') ?? true;
 
 // Create a standard set of initially-empty node groups for workload autoscaling:
 // - on-demand ARM64 nodes
@@ -227,6 +231,52 @@ for (const {
     const limitedSubnets = azLimit ? subnets.slice(0, azLimit) : subnets;
     limitedSubnets.forEach((subnet, az0) => {
       const az = az0 + 1;
+
+      // Create launch template with IPv6 IMDS support
+      const launchTemplate = withLaunchTemplate
+        ? new aws.ec2.LaunchTemplate(`${groupName}-az${az}-lt`, {
+            launchTemplateName: `${groupName}-az${az}`,
+            launchTemplateData: {
+              metadataOptions: {
+                httpEndpoint: 'enabled',
+                httpTokens: 'required',
+                httpPutResponseHopLimit: 2,
+                httpProtocolIpv6: 'enabled',
+              },
+              monitoring: {
+                enabled: true,
+              },
+              creditSpecification:
+                schedule === 'ondemand'
+                  ? {
+                      cpuCredits: 'unlimited',
+                    }
+                  : undefined,
+              blockDeviceMappings: [
+                {
+                  deviceName: '/dev/xvda',
+                  ebs: {
+                    volumeSize: diskSize,
+                    volumeType: 'gp3',
+                    encrypted: true,
+                    deleteOnTermination: true,
+                  },
+                },
+              ],
+              tagSpecifications: [
+                {
+                  resourceType: 'instance',
+                  tags: nativeTags(tags),
+                },
+                {
+                  resourceType: 'volume',
+                  tags: nativeTags(tags),
+                },
+              ],
+            },
+          })
+        : undefined;
+
       new aws.eks.Nodegroup(
         `${groupName}-az${az}`,
         {
@@ -237,6 +287,14 @@ for (const {
           amiType: amiType ?? (arch === 'arm64' ? 'AL2_ARM_64' : 'AL2_x86_64'),
           instanceTypes,
           diskSize,
+          launchTemplate: launchTemplate
+            ? {
+                id: launchTemplate.launchTemplateId,
+                version: launchTemplate.latestVersionNumber.apply(
+                  (v) => v?.toString() ?? '$Latest',
+                ),
+              }
+            : undefined,
           nodeRepairConfig: {
             enabled: true,
           },
