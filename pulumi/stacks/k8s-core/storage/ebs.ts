@@ -2,6 +2,7 @@ import * as k8s from '@pulumi/kubernetes';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { addAddon, oidcProvider } from '../cluster.ts';
 import { provider } from '../kubeconfig.ts';
+import { cfg } from '../../common/coreRef.ts';
 
 const ebsRole = eksServiceAccount('eks-ebs-csi', {
   serviceAccountName: 'ebs-csi-controller-sa',
@@ -21,39 +22,41 @@ const addonSnapshot = addAddon('snapshot-controller', {
   resolveConflicts: 'PRESERVE',
 });
 
-new k8s.storage.v1.StorageClass(
-  'ebs-gp2',
-  {
-    provisioner: 'ebs.csi.aws.com',
-    metadata: {
-      name: 'ebs-gp2',
+if (cfg.getBoolean('enableGP2Storage') ?? false) {
+  new k8s.storage.v1.StorageClass(
+    'ebs-gp2',
+    {
+      provisioner: 'ebs.csi.aws.com',
+      metadata: {
+        name: 'ebs-gp2',
+      },
+      parameters: {
+        type: 'gp2',
+        'csi.storage.k8s.io/fstype': 'ext4',
+      },
+      allowVolumeExpansion: true,
+      volumeBindingMode: 'WaitForFirstConsumer',
     },
-    parameters: {
-      type: 'gp2',
-      'csi.storage.k8s.io/fstype': 'ext4',
-    },
-    allowVolumeExpansion: true,
-    volumeBindingMode: 'WaitForFirstConsumer',
-  },
-  { dependsOn: addonStorage, provider },
-);
+    { dependsOn: addonStorage, provider },
+  );
 
-new k8s.storage.v1.StorageClass(
-  'ebs-gp2-imm',
-  {
-    provisioner: 'ebs.csi.aws.com',
-    metadata: {
-      name: 'ebs-gp2-imm',
+  new k8s.storage.v1.StorageClass(
+    'ebs-gp2-imm',
+    {
+      provisioner: 'ebs.csi.aws.com',
+      metadata: {
+        name: 'ebs-gp2-imm',
+      },
+      parameters: {
+        type: 'gp2',
+        'csi.storage.k8s.io/fstype': 'ext4',
+      },
+      allowVolumeExpansion: true,
+      volumeBindingMode: 'Immediate',
     },
-    parameters: {
-      type: 'gp2',
-      'csi.storage.k8s.io/fstype': 'ext4',
-    },
-    allowVolumeExpansion: true,
-    volumeBindingMode: 'Immediate',
-  },
-  { dependsOn: addonStorage, provider },
-);
+    { dependsOn: addonStorage, provider },
+  );
+}
 
 new k8s.storage.v1.StorageClass(
   'ebs-gp3',
