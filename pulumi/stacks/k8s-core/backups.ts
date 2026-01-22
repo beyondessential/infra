@@ -1,8 +1,6 @@
-import * as k8s from '@pulumi/kubernetes';
 import * as awsClassic from '@pulumi/aws';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
 import { clusterName, oidcProvider, tags } from './cluster.ts';
-import { provider } from './kubeconfig.ts';
 import { stackName } from '../common/coreRef.ts';
 import { interpolate } from '@pulumi/pulumi';
 import { AWS_S3_MULTIPART_ACTIONS } from '../constants/external.ts';
