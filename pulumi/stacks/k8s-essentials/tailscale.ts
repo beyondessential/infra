@@ -8,7 +8,10 @@ const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
   const tailscaleClientId = cfg.require('tailscaleClientId');
   const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
-  const tailscaleProxyDefaultTags = cfg.getObject('tailscaleProxyDefaultTags') ?? ['tag:k8s'];
+  const tailscaleProxyDefaultTags = cfg.getObject('tailscaleProxyDefaultTags') ?? [
+    'tag:k8s',
+    'tag:k8s-proxy',
+  ];
   const tailscaleOperatorDefaultTags = cfg.getObject('tailscaleOperatorDefaultTags') ?? [
     'tag:k8s-operator',
   ];
@@ -21,7 +24,7 @@ if (tailscaleEnabled) {
 
   new k8s.helm.v3.Release('tailscale', {
     chart: 'tailscale-operator',
-    version: '1.80.3',
+    version: '1.92.5',
     repositoryOpts: {
       repo: 'https://pkgs.tailscale.com/helmcharts',
     },
