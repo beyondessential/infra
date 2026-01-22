@@ -72,16 +72,18 @@ if (tailscaleEnabled) {
   // name, save, refresh the page, then go switch it back to generated
   // again, and that should pick up the new hostname defined here.
   const exitNodeName = cfg.get('tailscaleExitNodeName');
-  new k8s.apiextensions.CustomResource('exit-node', {
-    metadata: {
-      namespace: ns.metadata.name,
-    },
-    apiVersion: 'tailscale.com/v1alpha1',
-    kind: 'Connector',
-    spec: {
-      hostname: exitNodeName ?? interpolate`exit-k8s-${clusterFullName}`,
-      tags: ['tag:server'],
-      exitNode: true,
-    },
-  });
+  if (exitNodeName) {
+    new k8s.apiextensions.CustomResource('exit-node', {
+      metadata: {
+        namespace: ns.metadata.name,
+      },
+      apiVersion: 'tailscale.com/v1alpha1',
+      kind: 'Connector',
+      spec: {
+        hostname: exitNodeName,
+        tags: ['tag:server'],
+        exitNode: true,
+      },
+    });
+  }
 }
