@@ -42,20 +42,22 @@ const iamRole = new awsClassic.iam.Role('core-network-flow-logs', {
 
 new awsClassic.iam.RolePolicy('core-network-flow-logs', {
   role: iamRole.id,
-  policy: awsClassic.iam.getPolicyDocumentOutput({
-    statements: [
-      {
-        actions: [
-          'logs:CreateLogGroup',
-          'logs:CreateLogStream',
-          'logs:PutLogEvents',
-          'logs:DescribeLogGroups',
-          'logs:DescribeLogStreams',
-        ],
-        resources: [interpolate`${logGroup.arn}:*`],
-      },
-    ],
-  }).apply((doc) => doc.json),
+  policy: awsClassic.iam
+    .getPolicyDocumentOutput({
+      statements: [
+        {
+          actions: [
+            'logs:CreateLogGroup',
+            'logs:CreateLogStream',
+            'logs:PutLogEvents',
+            'logs:DescribeLogGroups',
+            'logs:DescribeLogStreams',
+          ],
+          resources: [interpolate`${logGroup.arn}:*`],
+        },
+      ],
+    })
+    .apply((doc) => doc.json),
 });
 
 network.vpc.apply((vpcId) => {
