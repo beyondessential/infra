@@ -7,7 +7,11 @@ import { RUN_ON_SPOT } from '../common/k8s/affinities.ts';
 const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
   const tailscaleClientId = cfg.require('tailscaleClientId');
-  const tailscaleClientSecret = cfg.require('tailscaleClientSecret');
+  const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
+  const tailscaleProxyDefaultTags = cfg.getObject('tailscaleProxyDefaultTags') ?? ['tag:k8s'];
+  const tailscaleOperatorDefaultTags = cfg.getObject('tailscaleOperatorDefaultTags') ?? [
+    'tag:k8s-operator',
+  ];
 
   const ns = new k8s.core.v1.Namespace('tailscale', {
     metadata: {
@@ -23,9 +27,13 @@ if (tailscaleEnabled) {
     },
     namespace: ns.metadata.name,
     values: {
+      proxyConfig: {
+        defaultTags: tailscaleProxyDefaultTags,
+      },
       operatorConfig: {
         logging: 'debug',
         hostname: interpolate`k8s-operator-${clusterFullName}`,
+        defaultTags: tailscaleOperatorDefaultTags,
         securityContext: {
           capabilities: {
             add: ['NET_ADMIN'],
