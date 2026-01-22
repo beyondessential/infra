@@ -34,11 +34,15 @@ const hncEnabled = cfg.getBoolean('hncEnabled') ?? true;
 // Additional node groups can be added by setting the `nodeGroups` config, and
 // the standard set can be disabled by setting `standardNodeGroups` to false.
 
+type NodeGroupPurpose = 'workload' | 'ingress' | 'system';
+type NodeGroupSchedule = 'ondemand' | 'spot';
+type NodeGroupArch = 'amd64' | 'arm64';
+
 export interface NodeGroup {
   groupName: string;
-  purpose: 'workload' | 'ingress' | 'system';
-  schedule: 'ondemand' | 'spot';
-  arch: 'amd64' | 'arm64';
+  purpose: NodeGroupPurpose;
+  schedule: NodeGroupSchedule;
+  arch: NodeGroupArch;
   instanceTypes: string[] | Output<string[]>;
   minPerAz?: number;
   maxPerAz: number;
@@ -135,21 +139,25 @@ const standardGroups: NodeGroup[] =
           ).map((i) => i.instance_type),
           maxPerAz: 10,
         },
-        {
-          groupName: 'ingress-arm-ondemand-v3',
-          purpose: 'ingress',
-          schedule: 'ondemand',
-          arch: 'arm64',
-          amiType: 'BOTTLEROCKET_ARM_64',
-          diskSize: 25,
-          instanceTypes: upToMonthly(
-            instancesSizedAtLeast(region, 'arm64', 2, 8),
-            'linux',
-            'ondemand',
-            100,
-          ).map((i) => i.instance_type),
-          maxPerAz: 10,
-        },
+        ...(systemSpot
+          ? []
+          : [
+              {
+                groupName: 'ingress-arm-ondemand-v3',
+                purpose: 'ingress' as NodeGroupPurpose,
+                schedule: 'ondemand' as NodeGroupSchedule,
+                arch: 'arm64' as NodeGroupArch,
+                amiType: 'BOTTLEROCKET_ARM_64',
+                diskSize: 25,
+                instanceTypes: upToMonthly(
+                  instancesSizedAtLeast(region, 'arm64', 2, 8),
+                  'linux',
+                  'ondemand',
+                  100,
+                ).map((i) => i.instance_type),
+                maxPerAz: 10,
+              },
+            ]),
         {
           groupName: systemSpot ? 'system-arm-spot-v1' : 'system-arm-v2',
           purpose: 'system',
