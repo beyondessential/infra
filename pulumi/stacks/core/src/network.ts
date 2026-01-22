@@ -99,8 +99,6 @@ if (withEndpoints) {
         // list of useful endpoints from here:
         // https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html
         'ec2',
-        'ecr.api',
-        'ecr.dkr',
         'elasticloadbalancing',
         'logs',
         'sts',
