@@ -21,9 +21,7 @@ const policy = new awsClassic.iam.Policy('extdns-policy', {
       {
         Effect: 'Allow',
         Action: ['route53:ChangeResourceRecordSets'],
-        Resource: externalDnsZoneIds.map(
-          (zone) => `arn:aws:route53:::hostedzone/${zone}`,
-        ),
+        Resource: externalDnsZoneIds.map((zone) => `arn:aws:route53:::hostedzone/${zone}`),
       },
       {
         Effect: 'Allow',
@@ -138,9 +136,7 @@ new k8s.apps.v1.Deployment(
               args: [
                 '--source=service',
                 '--source=ingress',
-                ...externalDnsZoneDomains.map(
-                  (zone) => interpolate`--domain-filter=${zone}`,
-                ),
+                ...externalDnsZoneDomains.map((zone) => interpolate`--domain-filter=${zone}`),
                 '--provider=aws',
                 '--registry=txt',
                 interpolate`--txt-owner-id=k8s-extdns-${clusterName}`,
@@ -166,7 +162,7 @@ new k8s.apps.v1.Deployment(
               requiredDuringSchedulingIgnoredDuringExecution: {
                 nodeSelectorTerms: [
                   {
-                    matchExpressions: [purposeAffinity('ingress')],
+                    matchExpressions: [purposeAffinity('system')],
                   },
                 ],
               },
