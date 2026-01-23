@@ -17,12 +17,9 @@ await failIfIncorrectCluster();
 // Then test the connection with:
 // $ kubectl --cluster=<cluster-name> cluster-info
 //
-// Finally, set the context for pulumi:
-// $ pulumi config set kubernetes:cluster <cluster-name>
-//
-// Then do the bring up. Once the tailscale proxy is up, install its kubeconfig and change
-// the config to its cluster, so you can run further updates via the tailscale connection,
-// and reset the default context/cluster in the kubeconfig.
+// Then do the bring up. Once the tailscale proxy is up, add it to the kubeconfig and change
+// the current context, see https://devinthewild.com/article/how-to-switch-between-kubernetes-clusters-in-kubectl
+// You can run further updates via the tailscale connection.
 //
 // During bootstrap, you'll also want to go to postgres.ts and comment out the catalogs,
 // until the CNPG resource definitions are installed.

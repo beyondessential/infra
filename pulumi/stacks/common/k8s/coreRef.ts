@@ -28,7 +28,7 @@ export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void>
     throw new Error('No current cluster');
   }
 
-  const tailscaleEndpoint = /^https:\/\/k8s-([a-z0-9-]+)\.tail[0-9a-f]{5}\.ts\.net$/.exec(
+  const tailscaleEndpoint = /^https:\/\/k8s-operator-([a-z0-9-]+)\.tail[0-9a-f]{5}\.ts\.net$/.exec(
     kubeServer,
   );
   if (tailscaleEndpoint) {
