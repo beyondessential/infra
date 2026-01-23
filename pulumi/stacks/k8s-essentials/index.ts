@@ -29,16 +29,23 @@ await failIfIncorrectCluster();
 // until the CNPG resource definitions are installed.
 
 import './gatewayApi.ts';
-import './ingress.ts';
+
 import './metrics/prometheus.ts';
 import './metrics/opencost.ts';
 import './metrics/roles.ts';
 //import './metrics/grafana.ts';
+
 import './postgres.ts';
+
 import './tailscale.ts';
+
 import './roles/index.ts';
 
-if (cfg.getBoolean('hncEnabled') !== false) {
+if (cfg.getBoolean('nginxEnabled') ?? true) {
+  await import('./ingress.ts');
+}
+
+if (cfg.getBoolean('hncEnabled') ?? true) {
   await import('./hnc/crds.ts');
   await import('./hnc/roles.ts');
   await import('./hnc/manager.ts');
