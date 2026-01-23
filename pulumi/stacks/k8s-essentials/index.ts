@@ -22,8 +22,8 @@ await failIfIncorrectCluster();
 // Finally, set the context for pulumi:
 // $ pulumi config set kubernetes:context <context-name>
 //
-// Then do the bring up. Once the tailscale proxy is up, remove the context config,
-// and then you can run further updates to k8s-essentials via the tailscale connection.
+// Then do the bring up. Once the tailscale proxy is up, install its kubeconfig and change
+// the config to its context, so you can run further updates via the tailscale connection.
 //
 // During bootstrap, you'll also want to go to postgres.ts and comment out the catalogs,
 // until the CNPG resource definitions are installed.
