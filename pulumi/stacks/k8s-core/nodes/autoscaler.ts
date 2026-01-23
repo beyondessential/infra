@@ -1,7 +1,6 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import YAML from 'yaml';
 import { pascalStackName } from '../../common/coreRef.ts';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { provider } from '../kubeconfig.ts';
@@ -337,7 +336,7 @@ new k8s.apps.v1.Deployment(
           ],
           containers: [
             {
-              image: 'registry.k8s.io/autoscaling/cluster-autoscaler:v1.32.1',
+              image: 'registry.k8s.io/autoscaling/cluster-autoscaler:v1.34.2',
               name: 'cluster-autoscaler',
               resources: {
                 limits: {
