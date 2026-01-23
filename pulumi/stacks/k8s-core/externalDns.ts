@@ -132,7 +132,7 @@ new k8s.apps.v1.Deployment(
           containers: [
             {
               name: 'external-dns',
-              image: 'registry.k8s.io/external-dns/external-dns:v0.16.1',
+              image: 'registry.k8s.io/external-dns/external-dns:v0.20.0',
               args: [
                 '--source=service',
                 '--source=ingress',
