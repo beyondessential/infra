@@ -8,11 +8,11 @@ const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
   const tailscaleClientId = cfg.require('tailscaleClientId');
   const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
-  const tailscaleProxyDefaultTags = cfg.getObject('tailscaleProxyDefaultTags') ?? [
+  const tailscaleProxyDefaultTags: string[] = cfg.getObject('tailscaleProxyDefaultTags') ?? [
     'tag:k8s',
     'tag:k8s-proxy',
   ];
-  const tailscaleOperatorDefaultTags = cfg.getObject('tailscaleOperatorDefaultTags') ?? [
+  const tailscaleOperatorDefaultTags: string[] = cfg.getObject('tailscaleOperatorDefaultTags') ?? [
     'tag:k8s-operator',
   ];
 
@@ -31,12 +31,12 @@ if (tailscaleEnabled) {
     namespace: ns.metadata.name,
     values: {
       proxyConfig: {
-        defaultTags: tailscaleProxyDefaultTags,
+        defaultTags: tailscaleProxyDefaultTags.join(','),
       },
       operatorConfig: {
         logging: 'debug',
         hostname: interpolate`k8s-operator-${clusterFullName}`,
-        defaultTags: tailscaleOperatorDefaultTags,
+        defaultTags: tailscaleOperatorDefaultTags.join(','),
         securityContext: {
           capabilities: {
             add: ['NET_ADMIN'],
