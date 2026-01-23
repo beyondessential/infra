@@ -346,6 +346,7 @@ for (const {
           },
         },
         {
+          ignoreChanges: ['scalingConfig.desiredSize'],
           deleteBeforeReplace: false,
           replaceOnChanges: ['launchTemplate.id'],
         },
