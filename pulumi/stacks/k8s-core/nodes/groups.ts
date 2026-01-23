@@ -55,6 +55,10 @@ export interface NodeGroup {
   diskSize?: number;
 }
 
+// to recreate nodegroups, bump their version in the groupName.
+// more gracefully, copy the old nodegroup with a new version, up,
+// and then delete the old one in a subsequent up.
+
 const standardGroups: NodeGroup[] =
   cfg.getBoolean('standardNodeGroups') === false
     ? []
@@ -215,7 +219,7 @@ for (const {
   minPerAz = 0,
   maxPerAz,
   initial,
-  amiType = null,
+  amiType = arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64',
   diskSize = 100,
 } of [...standardGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
   const allSubnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
@@ -224,31 +228,14 @@ for (const {
     limitedSubnets.forEach((subnet, az0) => {
       const az = az0 + 1;
 
-      // Resolve final AMI type (with defaults)
-      const finalAmiType =
-        amiType ?? (arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64');
-
       // Create launch template with IPv6 IMDS support
       const launchTemplate = withLaunchTemplate
         ? new aws.ec2.LaunchTemplate(`${groupName}-az${az}-lt`, {
             launchTemplateName: `${groupName}-az${az}`,
             launchTemplateData: {
-              // Enable admin and control containers for Bottlerocket debugging
-              userData: finalAmiType.startsWith('BOTTLEROCKET')
-                ? Buffer.from(
-                    `[settings.host-containers.admin]
-enabled = true
-superpowered = true
-
-[settings.host-containers.control]
-enabled = true
-superpowered = true
-`,
-                  ).toString('base64')
-                : undefined,
               metadataOptions: {
                 httpEndpoint: 'enabled',
-                httpTokens: 'optional',
+                httpTokens: 'required',
                 httpPutResponseHopLimit: 2,
                 httpProtocolIpv6: 'enabled',
               },
@@ -289,11 +276,13 @@ superpowered = true
       new aws.eks.Nodegroup(
         `${groupName}-az${az}`,
         {
+          // the fixed name forces upgrades that can't be done inline to have to use versions
+          nodegroupName: `${groupName}-az${az}`,
           clusterName,
           nodeRole: nodeRole.arn,
           subnets: [subnet],
           capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
-          amiType: amiType ?? (arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64'),
+          amiType,
           instanceTypes,
           diskSize: withLaunchTemplate ? undefined : diskSize,
           launchTemplate: launchTemplate
@@ -357,12 +346,8 @@ superpowered = true
           },
         },
         {
-          // to recreate nodegroups, bump their version in the groupName.
-          // more gracefully, copy the old nodegroup with a new version, up,
-          // and then delete the old one in a subsequent up.
-          ignoreChanges: ['instanceTypes', 'scalingConfig.desiredSize'],
           deleteBeforeReplace: false,
-          replaceOnChanges: ['launchTemplate'],
+          replaceOnChanges: ['launchTemplate.id'],
         },
       );
     });
