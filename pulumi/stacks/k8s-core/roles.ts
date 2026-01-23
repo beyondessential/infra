@@ -41,6 +41,7 @@ export const nodeRole = new awsClassic.iam.Role('node', {
   managedPolicyArns: compact([
     'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly',
     'arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy',
+    'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess',
     $core.get('eksCniV6Policy'),
     autoscalerPolicy.arn,
   ]),
