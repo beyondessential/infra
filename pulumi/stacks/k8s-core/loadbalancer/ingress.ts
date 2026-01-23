@@ -44,7 +44,7 @@ new k8s.helm.v3.Release(
   'lbc',
   {
     chart: 'aws-load-balancer-controller',
-    version: '1.7.1',
+    version: '1.17.1',
     repositoryOpts: {
       repo: 'https://aws.github.io/eks-charts',
     },
