@@ -22,8 +22,7 @@ export const $network = upperCore.apply((core) => core.network());
 
 export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void> {
   const kc = k8sConfig(kubeconfig);
-  const kubeServer = kc.getCluster(kc.currentContext)?.server;
-  // insanely, kc.currentContext returns the current CLUSTER name
+  const kubeServer = kc.getCurrentCluster()?.server;
 
   if (!kubeServer) {
     throw new Error('No current cluster');
