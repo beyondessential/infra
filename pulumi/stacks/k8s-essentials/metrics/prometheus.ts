@@ -6,7 +6,7 @@ new k8s.helm.v3.Release(
   {
     name: 'prometheus',
     chart: 'prometheus',
-    version: '27.28.0',
+    version: '28.6.0',
     repositoryOpts: {
       repo: 'https://prometheus-community.github.io/helm-charts',
     },
