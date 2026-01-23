@@ -14,6 +14,8 @@ await failIfIncorrectCluster();
 //   - "--"
 //   - aws
 //
+// You may also want to rename the context to an easier name.
+//
 // Then test the connection with:
 // $ kubectl --context=<context-name> cluster-info
 //
@@ -22,6 +24,9 @@ await failIfIncorrectCluster();
 //
 // Then do the bring up. Once the tailscale proxy is up, remove the context config,
 // and then you can run further updates to k8s-essentials via the tailscale connection.
+//
+// During bootstrap, you'll also want to go to postgres.ts and comment out the catalogs,
+// until the CNPG resource definitions are installed.
 
 import './gatewayApi.ts';
 import './ingress.ts';
