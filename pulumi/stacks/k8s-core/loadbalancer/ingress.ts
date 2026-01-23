@@ -89,6 +89,13 @@ new k8s.helm.v3.Release(
           ],
         },
       },
+      updateStrategy: {
+        type: 'RollingUpdate',
+        rollingUpdate: {
+          maxUnavailable: 1,
+          maxSurge: 1,
+        },
+      },
     },
   },
   {
