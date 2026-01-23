@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
 import { labels } from './labels.ts';
-import { secret, credentialsSecret, registrySecret } from './secrets.ts';
+import { secret, registrySecret } from './secrets.ts';
 import {
   image,
   replicas,
@@ -53,14 +53,6 @@ export const deployment = new k8s.apps.v1.Deployment('agent-slack', {
         imagePullSecrets: [
           { name: registrySecret.metadata.name },
         ],
-        volumes: [
-          {
-            name: 'google-credentials',
-            secret: {
-              secretName: credentialsSecret.metadata.name,
-            },
-          },
-        ],
         containers: [
           {
             name: 'agent',
@@ -72,20 +64,6 @@ export const deployment = new k8s.apps.v1.Deployment('agent-slack', {
                 secretRef: {
                   name: secret.metadata.name,
                 },
-              },
-            ],
-            volumeMounts: [
-              {
-                name: 'google-credentials',
-                mountPath: '/app/credentials.json',
-                subPath: 'credentials.json',
-                readOnly: true,
-              },
-              {
-                name: 'google-credentials',
-                mountPath: '/app/token.json',
-                subPath: 'token.json',
-                readOnly: true,
               },
             ],
             resources: {

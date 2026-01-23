@@ -8,9 +8,6 @@ import {
   askAiChannelId,
   anthropicApiKey,
   cursorApiKey,
-  googleDriveDocsFolderId,
-  googleDriveLogsFolderId,
-  googleDriveCredentialsJson,
   imagePullPat,
 } from './config.ts';
 
@@ -26,18 +23,6 @@ export const secret = new k8s.core.v1.Secret('agent-slack-secrets', {
     ASK_AI_CHANNEL_ID: askAiChannelId,
     ANTHROPIC_API_KEY: anthropicApiKey,
     CURSOR_API_KEY: cursorApiKey,
-    GOOGLE_DRIVE_DOCS_FOLDER_ID: googleDriveDocsFolderId,
-    GOOGLE_DRIVE_LOGS_FOLDER_ID: googleDriveLogsFolderId,
-  },
-});
-
-export const credentialsSecret = new k8s.core.v1.Secret('google-drive-credentials', {
-  metadata: {
-    namespace,
-    name: 'google-drive-credentials',
-  },
-  stringData: {
-    'credentials.json': googleDriveCredentialsJson,
   },
 });
 
