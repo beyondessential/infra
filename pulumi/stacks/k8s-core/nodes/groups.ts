@@ -277,7 +277,7 @@ for (const {
         `${groupName}-az${az}`,
         {
           // the fixed name forces upgrades that can't be done inline to have to use versions
-          nodegroupName: `${groupName}-az${az}`,
+          nodegroupName: withLaunchTemplate ? `${groupName}-az${az}` : undefined,
           clusterName,
           nodeRole: nodeRole.arn,
           subnets: [subnet],
