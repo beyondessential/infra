@@ -26,6 +26,7 @@ export interface NetworkArgs {
   publicSubnets?: boolean;
   zones?: string[];
   eksSubnetTags?: false | { [key: string]: string };
+  enableDnsHostnames?: boolean;
   tags?: { [key: string]: string };
 }
 
@@ -78,6 +79,7 @@ export class Network extends ComponentResource {
       publicSubnets: true,
       zones: ['a', 'b', 'c'],
       eksSubnetTags: false,
+      enableDnsHostnames: true,
       tags: {},
       ...args,
     };
@@ -91,7 +93,7 @@ export class Network extends ComponentResource {
 
         // both required for service discovery and VPC endpoints
         enableDnsSupport: true,
-        enableDnsHostnames: true,
+        enableDnsHostnames: this.#args.enableDnsHostnames,
 
         // just always useful
         enableNetworkAddressUsageMetrics: true,

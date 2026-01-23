@@ -7,6 +7,7 @@ export const privateSubnets = (cfg.getBoolean('privateSubnets') ?? false) || for
 export const publicSubnets = cfg.getBoolean('publicSubnets') ?? true;
 export const withEndpoints = cfg.getBoolean('withEndpoints') || forEksCluster;
 export const withGithubOidc = (cfg.getBoolean('withGithubOidc') ?? true) || forEksCluster;
+export const enableDnsHostnames = cfg.getBoolean('enableDnsHostnames') ?? true;
 export const tags: { [key: string]: string } = cfg.getObject('tags') ?? {};
 
 let v4Config: string | boolean | undefined = cfg.get('networkV4');

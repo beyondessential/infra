@@ -4,6 +4,7 @@ import { accountId, region } from '../../common/awsAccount.ts';
 import { Network } from '../../common/Network.ts';
 
 import {
+  enableDnsHostnames,
   forEksCluster,
   privateSubnets,
   publicSubnets,
@@ -28,6 +29,7 @@ const $network = accountId.apply((id) => {
     privateSubnets,
     publicSubnets,
     eksSubnetTags: forEksCluster ? {} : false,
+    enableDnsHostnames,
     tags,
   });
 });

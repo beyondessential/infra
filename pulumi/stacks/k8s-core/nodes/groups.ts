@@ -64,7 +64,6 @@ const standardGroups: NodeGroup[] =
           purpose: 'workload',
           schedule: 'ondemand',
           arch: 'arm64',
-          amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
           instanceTypes: upToMonthly(
             instancesSizedAtLeast(region, 'arm64', 2, 4),
@@ -79,7 +78,6 @@ const standardGroups: NodeGroup[] =
           purpose: 'workload',
           schedule: 'ondemand',
           arch: 'amd64',
-          amiType: 'BOTTLEROCKET_x86_64',
           diskSize: 25,
           instanceTypes: upToMonthly(
             instancesSizedAtLeast(region, 'x86_64', 2, 4),
@@ -94,7 +92,6 @@ const standardGroups: NodeGroup[] =
           purpose: 'workload',
           schedule: 'spot',
           arch: 'arm64',
-          amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 50,
           instanceTypes: upToMonthly(
             spotWithinOnDemandPrice(
@@ -112,7 +109,6 @@ const standardGroups: NodeGroup[] =
           purpose: 'workload',
           schedule: 'spot',
           arch: 'amd64',
-          amiType: 'BOTTLEROCKET_x86_64',
           diskSize: 50,
           instanceTypes: upToMonthly(
             spotWithinOnDemandPrice(
@@ -130,7 +126,6 @@ const standardGroups: NodeGroup[] =
           purpose: 'ingress',
           schedule: 'spot',
           arch: 'arm64',
-          amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
           instanceTypes: upToMonthly(
             spotWithinOnDemandPrice(
@@ -151,7 +146,6 @@ const standardGroups: NodeGroup[] =
                 purpose: 'ingress' as NodeGroupPurpose,
                 schedule: 'ondemand' as NodeGroupSchedule,
                 arch: 'arm64' as NodeGroupArch,
-                amiType: 'BOTTLEROCKET_ARM_64',
                 diskSize: 25,
                 instanceTypes: upToMonthly(
                   instancesSizedAtLeast(region, 'arm64', 2, 8),
@@ -167,7 +161,6 @@ const standardGroups: NodeGroup[] =
           purpose: 'system',
           schedule: systemSpot ? 'spot' : 'ondemand',
           arch: 'arm64',
-          amiType: 'BOTTLEROCKET_ARM_64',
           diskSize: 25,
           instanceTypes: systemSpot
             ? upToMonthly(
@@ -196,7 +189,6 @@ const standardGroups: NodeGroup[] =
                 purpose: 'system' as const,
                 schedule: 'spot' as const,
                 arch: 'amd64' as const,
-                amiType: 'BOTTLEROCKET_x86_64',
                 diskSize: 25,
                 instanceTypes: upToMonthly(
                   spotWithinOnDemandPrice(
@@ -232,14 +224,31 @@ for (const {
     limitedSubnets.forEach((subnet, az0) => {
       const az = az0 + 1;
 
+      // Resolve final AMI type (with defaults)
+      const finalAmiType =
+        amiType ?? (arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64');
+
       // Create launch template with IPv6 IMDS support
       const launchTemplate = withLaunchTemplate
         ? new aws.ec2.LaunchTemplate(`${groupName}-az${az}-lt`, {
             launchTemplateName: `${groupName}-az${az}`,
             launchTemplateData: {
+              // Enable admin and control containers for Bottlerocket debugging
+              userData: finalAmiType.startsWith('BOTTLEROCKET')
+                ? Buffer.from(
+                    `[settings.host-containers.admin]
+enabled = true
+superpowered = true
+
+[settings.host-containers.control]
+enabled = true
+superpowered = true
+`,
+                  ).toString('base64')
+                : undefined,
               metadataOptions: {
                 httpEndpoint: 'enabled',
-                httpTokens: 'required',
+                httpTokens: 'optional',
                 httpPutResponseHopLimit: 2,
                 httpProtocolIpv6: 'enabled',
               },
@@ -254,7 +263,7 @@ for (const {
                   : undefined,
               blockDeviceMappings: [
                 {
-                  deviceName: '/dev/xvda',
+                  deviceName: '/dev/xvdb',
                   ebs: {
                     volumeSize: diskSize,
                     volumeType: 'gp3',
@@ -284,9 +293,9 @@ for (const {
           nodeRole: nodeRole.arn,
           subnets: [subnet],
           capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
-          amiType: amiType ?? (arch === 'arm64' ? 'AL2_ARM_64' : 'AL2_x86_64'),
+          amiType: amiType ?? (arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64'),
           instanceTypes,
-          diskSize,
+          diskSize: withLaunchTemplate ? undefined : diskSize,
           launchTemplate: launchTemplate
             ? {
                 id: launchTemplate.launchTemplateId,
@@ -353,6 +362,7 @@ for (const {
           // and then delete the old one in a subsequent up.
           ignoreChanges: ['instanceTypes', 'scalingConfig.desiredSize'],
           deleteBeforeReplace: false,
+          replaceOnChanges: ['launchTemplate'],
         },
       );
     });
