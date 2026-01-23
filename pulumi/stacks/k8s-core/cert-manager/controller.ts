@@ -59,6 +59,13 @@ export const certManager = new k8s.helm.v3.Release(
           ],
         },
       },
+      strategy: {
+        type: 'RollingUpdate',
+        rollingUpdate: {
+          maxUnavailable: 1,
+          maxSurge: 1,
+        },
+      },
     },
   },
   { provider },
