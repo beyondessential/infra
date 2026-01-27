@@ -9,8 +9,18 @@
   ansible.builtin.set_fact:
     installed_postgresql_version: "{{ postgresql_current_symlink.stat.lnk_source | dirname | basename }}"
 
-- name: Query running PostgreSQL version via psql
+- name: Check if postgres user exists
   when: installed_postgresql_version is not defined
+  ansible.builtin.shell: id postgres
+  register: postgres_user_check
+  changed_when: false
+  failed_when: false
+
+- name: Query running PostgreSQL version via psql
+  when:
+    - installed_postgresql_version is not defined
+    - postgres_user_check.rc is defined
+    - postgres_user_check.rc == 0
   become: true
   become_user: postgres
   ansible.builtin.shell: |
@@ -20,8 +30,10 @@
   failed_when: false
 
 - name: Set installed version from running PostgreSQL
-  when: 
+  when:
     - installed_postgresql_version is not defined
+    - postgresql_running_query is not skipped
+    - postgresql_running_query.stdout is defined
     - postgresql_running_query.stdout | length > 0
   ansible.builtin.set_fact:
     installed_postgresql_version: "{{ postgresql_running_query.stdout }}"
@@ -35,8 +47,9 @@
   failed_when: false
 
 - name: Set installed version from systemctl status
-  when: 
+  when:
     - installed_postgresql_version is not defined
+    - postgresql_systemctl_query.stdout is defined
     - postgresql_systemctl_query.stdout | length > 0
   ansible.builtin.set_fact:
     installed_postgresql_version: "{{ postgresql_systemctl_query.stdout }}"
@@ -50,8 +63,9 @@
   failed_when: false
 
 - name: Set installed version from package query
-  when: 
+  when:
     - installed_postgresql_version is not defined
+    - postgresql_package_query.stdout is defined
     - postgresql_package_query.stdout | length > 0
   ansible.builtin.set_fact:
     installed_postgresql_version: "{{ postgresql_package_query.stdout }}"
@@ -59,3 +73,4 @@
 - name: Set postgresql_version to installed version if exists, otherwise use desired version
   ansible.builtin.set_fact:
     postgresql_version: "{{ installed_postgresql_version | default(postgresql_version) }}"
+    postgresql_installed_version: "{{ installed_postgresql_version | default(omit) }}"

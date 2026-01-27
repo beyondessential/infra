@@ -21,12 +21,14 @@
     state: reloaded
 
 - name: Restart postgres
+  when: postgresql_installed_version is defined
   become: true
   ansible.builtin.systemd:
     name: postgresql@{{ postgresql_installed_version }}-main
     state: restarted
 
 - name: Reload postgres
+  when: postgresql_installed_version is defined
   become: true
   ansible.builtin.systemd:
     name: postgresql@{{ postgresql_installed_version }}-main
