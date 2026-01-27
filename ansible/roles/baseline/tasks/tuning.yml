@@ -1,7 +1,27 @@
 ---
+# ipv4 tcp settings also apply to ipv6
+# see https://www.infradead.org/~mchehab/kernel_docs/networking/ip-sysctl.html#proc-sys-net-ipv6-variables
+
 # https://ably.com/blog/optimizing-global-message-transit-latency-a-journey-through-tcp-configuration
 - become: true
   ansible.posix.sysctl:
     name: net.ipv4.tcp_slow_start_after_idle
-    value: '0'
+    value: "0"
+    sysctl_file: /etc/sysctl.d/tcp-tuning.conf
+
+# enable BBR for TCP
+- become: true
+  community.general.modprobe:
+    name: tcp_bbr
+    state: present
+    persistent: present
+- become: true
+  ansible.posix.sysctl:
+    name: net.core.default_qdisc
+    value: "fq"
+    sysctl_file: /etc/sysctl.d/tcp-tuning.conf
+- become: true
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_congestion_control
+    value: "bbr"
     sysctl_file: /etc/sysctl.d/tcp-tuning.conf
