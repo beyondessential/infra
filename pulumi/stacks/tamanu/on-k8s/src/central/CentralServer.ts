@@ -23,6 +23,7 @@ export class CentralServer extends ComponentResource {
   readonly fqdn: string;
   readonly ingress: k8s.networking.v1.Ingress;
   readonly provisioning: Output<Provisioning>;
+  readonly api: k8s.core.v1.Service;
 
   constructor(
     name: string,
@@ -117,6 +118,8 @@ export class CentralServer extends ComponentResource {
       migratorJob,
       provisionerJob,
     });
+
+    this.api = api.service;
 
     const web = new WebFrontend(
       'central',

@@ -1,5 +1,6 @@
 import { ComponentResource, type ComponentResourceOptions } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import { type ImageType } from '../image.ts';
 import { type ServerType, podSpecFactory } from './specs.ts';
 import { runWeb } from './frontend.ts';
 
@@ -7,6 +8,7 @@ export interface WebFrontendArgs {
   serverType: ServerType;
   instance?: string;
   replicas?: number;
+  imageType?: ImageType;
 }
 
 export class WebFrontend extends ComponentResource {
@@ -19,6 +21,7 @@ export class WebFrontend extends ComponentResource {
       serverType,
       instance,
       replicas = 2, // as it runs on spot
+      imageType = 'frontend',
     }: WebFrontendArgs,
     opts: ComponentResourceOptions = {},
   ) {
@@ -29,7 +32,7 @@ export class WebFrontend extends ComponentResource {
       serverType,
       instance,
       replicas,
-      podSpec: podSpecFactory(),
+      podSpec: podSpecFactory(imageType),
     });
 
     this.deployment = deployment;

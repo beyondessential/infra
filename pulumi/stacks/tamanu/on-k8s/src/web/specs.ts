@@ -28,7 +28,7 @@ export function appLabels(serverType: ServerType, instance?: string): { [key: st
   };
 }
 
-export function podSpecFactory(): PodSpecFactory {
+export function podSpecFactory(imageType: ImageType): PodSpecFactory {
   return ({
     podType,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
@@ -57,7 +57,7 @@ export function podSpecFactory(): PodSpecFactory {
     containers: [
       {
         name: podType,
-        image: image('frontend'),
+        image: image(imageType),
         imagePullPolicy: 'IfNotPresent',
         volumeMounts,
         env: compact([

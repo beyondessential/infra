@@ -2,8 +2,10 @@ import * as k8s from '@pulumi/kubernetes';
 import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
 import { CentralServer } from './central/CentralServer.ts';
 import { FacilityServer } from './facility/FacilityServer.ts';
+import { WebFrontend } from './web/WebFrontend.ts';
 import { namespace } from './namespace.ts';
-import { domainBase, domains, facilityNames, replicas } from './config.ts';
+import { domainBase, domains, facilityNames, patientPortalReplicas, replicas } from './config.ts';
+import { ingress } from './common/ingress.ts';
 await failIfIncorrectCluster();
 
 import './secrets.ts';
@@ -23,6 +25,20 @@ for (const [i, name] of facilityNames.entries()) {
     provisioning: central.provisioning,
   });
 }
+
+const patientPortal = new WebFrontend('patient-portal', {
+  serverType: 'patient-portal',
+  imageType: 'patient-portal',
+  replicas: patientPortalReplicas,
+});
+
+const patientPortalIngress = ingress({
+  name: 'patient-portal',
+  host: domains.patientPortal,
+  api: central.api,
+  web: patientPortal.service,
+  parent: patientPortal,
+});
 
 new k8s.networking.v1.Ingress('bare-domain', {
   metadata: {
