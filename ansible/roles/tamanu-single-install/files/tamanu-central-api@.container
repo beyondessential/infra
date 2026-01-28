@@ -20,4 +20,4 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-DefaultInstance=0
+DefaultInstance=1
