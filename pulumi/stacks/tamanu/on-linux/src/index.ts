@@ -9,6 +9,7 @@ import './firewall.ts';
 import './instances.ts';
 
 export { backupBucket, backupUsers } from './backup/kopia.ts';
+export { acmeDnsUsers } from './acme-dns.ts';
 
 export { tailscaleTags } from './config.ts';
 export const urls = Object.fromEntries(
