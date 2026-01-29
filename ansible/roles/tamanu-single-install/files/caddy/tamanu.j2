@@ -3,9 +3,9 @@
     output stdout
   }
 
-  @http1 protocol http/1.0 http/1.1
-  header @http1 >Connection "keep-alive"
-  header @http1 >Keep-Alive "timeout=90"
+  @http11 protocol http/1.1
+  header @http11 >Connection "keep-alive"
+  header @http11 >Keep-Alive "timeout=90"
 
 
   @root_only path /
