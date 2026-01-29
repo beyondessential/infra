@@ -34,6 +34,14 @@
 - name: Make sure podman runs
   ansible.builtin.shell: podman --version
 
+- name: Create symlink for quadlet compatibility
+  become: true
+  ansible.builtin.file:
+    src: /usr/local/bin/podman
+    dest: /usr/bin/podman
+    state: link
+    force: true
+
 - name: Install containers.conf
   become: true
   ansible.builtin.copy:
