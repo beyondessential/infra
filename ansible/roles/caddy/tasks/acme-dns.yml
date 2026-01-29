@@ -1,0 +1,45 @@
+---
+- name: Create AWS credentials directory
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/caddy/.aws
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: "0700"
+  when: tamanu_caddy_tls_dns_iam is defined
+
+- name: Configure AWS credentials for ACME DNS
+  become: true
+  ansible.builtin.copy:
+    content: |
+      [default]
+      aws_access_key_id = {{ tamanu_caddy_tls_dns_iam.access_key_id }}
+      aws_secret_access_key = {{ tamanu_caddy_tls_dns_iam.secret_access_key }}
+    dest: /var/lib/caddy/.aws/credentials
+    owner: caddy
+    group: caddy
+    mode: "0600"
+  when: tamanu_caddy_tls_dns_iam is defined
+  notify: Restart caddy
+
+- name: Configure AWS region for ACME DNS
+  become: true
+  ansible.builtin.copy:
+    content: |
+      [default]
+      region = {{ tamanu_caddy_tls_dns_iam.region | default('ap-southeast-2') }}
+    dest: /var/lib/caddy/.aws/config
+    owner: caddy
+    group: caddy
+    mode: "0600"
+  when: tamanu_caddy_tls_dns_iam is defined
+  notify: Restart caddy
+
+- name: Remove AWS credentials directory
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/caddy/.aws
+    state: absent
+  when: tamanu_caddy_tls_dns_iam is not defined
+  notify: Restart caddy

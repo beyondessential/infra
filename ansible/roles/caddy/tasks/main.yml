@@ -1,5 +1,6 @@
 ---
 - ansible.builtin.include_tasks: install.yml
+- ansible.builtin.include_tasks: acme-dns.yml
 - ansible.builtin.include_tasks: caddyfile.yml
 - ansible.builtin.include_tasks: tuning.yml
 - ansible.builtin.include_tasks: backup.yml
