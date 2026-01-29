@@ -176,5 +176,39 @@ for (const [i, inst] of instances.entries()) {
   }
 }
 
+for (const inst of instances) {
+  if (!inst.external || !inst.externalIps || inst.externalIps.length === 0) continue;
+
+  const ipv4s = inst.externalIps.filter((ip) => ip.includes('.'));
+  const ipv6s = inst.externalIps.filter((ip) => ip.includes(':'));
+
+  if (ipv4s.length > 0) {
+    records.set(`${inst.id}-v4`, {
+      name: inst.fqdn,
+      type: aws.route53.RecordType.A,
+      ttl: 300,
+      records: ipv4s,
+    });
+  }
+
+  if (ipv6s.length > 0) {
+    records.set(`${inst.id}-v6`, {
+      name: inst.fqdn,
+      type: aws.route53.RecordType.AAAA,
+      ttl: 300,
+      records: ipv6s,
+    });
+  }
+
+  if (patientPortalDomain && inst.id === 'central') {
+    records.set('patient-portal-cname', {
+      name: patientPortalDomain,
+      type: aws.route53.RecordType.CNAME,
+      ttl: 300,
+      records: [inst.fqdn],
+    });
+  }
+}
+
 applyBackup(backupResources);
 applyDNS(records);

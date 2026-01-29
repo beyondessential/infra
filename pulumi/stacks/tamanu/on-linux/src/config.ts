@@ -100,6 +100,7 @@ export interface Facility {
   legacyDisk?: boolean;
   tailscaleName?: Input<string>;
   external?: boolean;
+  externalIps?: string[];
 }
 
 export interface Server extends Required<Facility> {
@@ -109,8 +110,9 @@ export interface Server extends Required<Facility> {
 export const facilities: Server[] = (cfg.requireObject('facilities') as Facility[])
   .map((facility: Facility) => {
     const id = facility.id.startsWith('facility-') ? facility.id : `facility-${facility.id}`;
+    const externalIps = facility.externalIps ?? [];
+    const hasExternalIps = externalIps.length > 0;
     return {
-      external: false,
       subdomain: id,
       name: id,
       instance: 't4g.medium',
@@ -118,6 +120,8 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
       legacyDisk,
       disk: defaultDisk,
       ...facility,
+      externalIps,
+      external: hasExternalIps || facility.external || false,
       id,
     };
   })
@@ -127,8 +131,11 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
   }));
 
 const cfgCentral = (cfg.getObject('central') as Omit<Facility, 'id'> | false) ?? {};
+const centralExternalIps = cfgCentral && cfgCentral.externalIps ? cfgCentral.externalIps : [];
+const centralHasExternalIps = centralExternalIps.length > 0;
 export const central: Server = {
-  external: cfgCentral === false,
+  external:
+    cfgCentral === false || centralHasExternalIps || (cfgCentral && cfgCentral.external) || false,
   name: 'Central',
   subdomain: 'central',
   instance: 't4g.medium',
@@ -136,6 +143,7 @@ export const central: Server = {
   legacyDisk,
   disk: defaultDisk,
   ...cfgCentral,
+  externalIps: centralExternalIps,
   id: 'central',
   fqdn: interpolate`${(cfgCentral || null)?.subdomain ?? 'central'}.${domainBase}`,
 };
