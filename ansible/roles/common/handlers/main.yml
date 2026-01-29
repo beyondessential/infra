@@ -45,3 +45,10 @@
   ansible.builtin.systemd:
     name: caddy
     state: reloaded
+
+- name: Flush systemd-resolved cache
+  become: true
+  ansible.builtin.command:
+    cmd: resolvectl flush-caches
+  failed_when: false
+  listen: Reload caddy
