@@ -13,7 +13,7 @@
         --access-key={{ kopia_s3_key }}
         --secret-access-key={{ kopia_s3_secret }}
         --ecc-overhead-percent=1
-        --region={{ kopia_s3_region | default(ansible_facts['ec2_placement_region']) | default('ap-southeast-2') }}
+        --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}
         --retention-mode=GOVERNANCE
         --retention-period=30d
 
@@ -30,7 +30,7 @@
         --bucket={{ kopia_s3_bucket }}
         --access-key={{ kopia_s3_key }}
         --secret-access-key={{ kopia_s3_secret }}
-        --region={{ kopia_s3_region | default(ansible_facts['ec2_placement_region']) | default('ap-southeast-2') }}
+        --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}
 
 - name: Set compression global policy
   become: true
