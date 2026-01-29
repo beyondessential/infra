@@ -23,19 +23,6 @@
   when: tamanu_caddy_tls_dns_iam is defined
   notify: Restart caddy
 
-- name: Configure AWS region for ACME DNS
-  become: true
-  ansible.builtin.copy:
-    content: |
-      [default]
-      region = {{ tamanu_caddy_tls_dns_iam.region | default('ap-southeast-2') }}
-    dest: /var/lib/caddy/.aws/config
-    owner: caddy
-    group: caddy
-    mode: "0600"
-  when: tamanu_caddy_tls_dns_iam is defined
-  notify: Restart caddy
-
 - name: Remove AWS credentials directory
   become: true
   ansible.builtin.file:
