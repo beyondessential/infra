@@ -11,7 +11,7 @@
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ item }}  {{ tamanu_central_hostname }}"
-    state: "{{ 'absent' if tamanu_central_ip else (tamanu_cache_central_dns | ternary('present', 'absent')) }}"
+    state: "{{ 'absent' if (tamanu_central_ip or tamanu_cache_central_as_tailscale) else (tamanu_cache_central_dns | ternary('present', 'absent')) }}"
 
 - name: AAAA record for tamanu central in /etc/hosts
   become: true
@@ -19,7 +19,7 @@
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ item }}  {{ tamanu_central_hostname }}"
-    state: "{{ 'absent' if tamanu_central_ip else (tamanu_cache_central_dns | ternary('present', 'absent')) }}"
+    state: "{{ 'absent' if (tamanu_central_ip or tamanu_cache_central_as_tailscale) else (tamanu_cache_central_dns | ternary('present', 'absent')) }}"
 
 - name: Custom IP record for tamanu central in /etc/hosts
   become: true
@@ -27,3 +27,21 @@
     path: /etc/hosts
     line: "{{ tamanu_central_ip }}  {{ tamanu_central_hostname }}"
     state: "{{ tamanu_central_ip | ternary('present', 'absent') }}"
+
+- name: A records for tamanu central from Tailscale in /etc/hosts
+  when: groups['central'] is defined
+  become: true
+  loop: "{{ query('community.dns.lookup', hostvars[groups['central'][0]]['tailscale_name'] + '.' + tailnet + '.ts.net', type='A', errors='ignore') | default([]) }}"
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}  {{ tamanu_central_hostname }}"
+    state: "{{ 'absent' if tamanu_central_ip else (tamanu_cache_central_as_tailscale | ternary('present', 'absent')) }}"
+
+- name: AAAA records for tamanu central from Tailscale in /etc/hosts
+  when: groups['central'] is defined
+  become: true
+  loop: "{{ query('community.dns.lookup', hostvars[groups['central'][0]]['tailscale_name'] + '.' + tailnet + '.ts.net', type='AAAA', errors='ignore') | default([]) }}"
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}  {{ tamanu_central_hostname }}"
+    state: "{{ 'absent' if tamanu_central_ip else (tamanu_cache_central_as_tailscale | ternary('present', 'absent')) }}"
