@@ -20,7 +20,7 @@
     }
   }
 
-  {% if tamanu_version is defined and tamanu_version.startswith('v') and (tamanu_version | regex_replace('^v', '')) is version_compare('2.47.0', '<') %}
+  {% if tamanu_version is defined and tamanu_version.startswith('v') and (tamanu_version | regex_replace('^v', '')) is version_compare('2.48.0', '<') %}
   @socket_io_paths {
     path /socket.io*
     path /api/socket.io*
