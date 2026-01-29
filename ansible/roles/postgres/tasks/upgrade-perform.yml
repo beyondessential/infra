@@ -33,7 +33,7 @@
   when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
   become: true
   ansible.builtin.command:
-    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date | replace('-', '') }}T{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
+    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_facts['date_time']['date'] | replace('-', '') }}T{{ ansible_facts['date_time']['time'] | replace(':', '') }}-pre-upgrade
   register: btrfs_snapshot_subvolume
 
 - name: Find if /var/lib/postgresql is or is contained in a btrfs subvolume
@@ -48,7 +48,7 @@
   when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0 and postgres_parent_subvolume.rc == 0
   become: true
   ansible.builtin.command:
-    cmd: btrfs subvolume snapshot -r /var/lib/postgresql /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_date_time.date | replace('-', '') }}T{{ ansible_date_time.time | replace(':', '') }}-pre-upgrade
+    cmd: btrfs subvolume snapshot -r /var/lib/postgresql /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_facts['date_time']['date'] | replace('-', '') }}T{{ ansible_facts['date_time']['time'] | replace(':', '') }}-pre-upgrade
   register: btrfs_snapshot_parent
 
 - name: Display snapshot information (subvolume)

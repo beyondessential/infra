@@ -3,7 +3,7 @@
   become: true
   ansible.builtin.unarchive:
     remote_src: true
-    src: https://github.com/starship/starship/releases/download/v{{ starship_version }}/starship-{{ ansible_architecture }}-unknown-linux-musl.tar.gz
+    src: https://github.com/starship/starship/releases/download/v{{ starship_version }}/starship-{{ ansible_facts['architecture'] }}-unknown-linux-musl.tar.gz
     dest: /usr/bin
     mode: a=rx,u=rwx
   notify: Regenerate starship completions
@@ -27,12 +27,12 @@
 
 - name: Create .config for current user
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config"
+    path: "{{ ansible_facts['env']['HOME'] }}/.config"
     state: directory
 
 - name: Configure starship for current user
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/.config/starship.toml"
+    dest: "{{ ansible_facts['env']['HOME'] }}/.config/starship.toml"
     src: "{{ lookup('ansible.builtin.fileglob', 'starship.toml') }}"
 
 - name: Create .config for root

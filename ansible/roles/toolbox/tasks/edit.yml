@@ -3,6 +3,6 @@
   become: true
   ansible.builtin.unarchive:
     remote_src: true
-    src: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_architecture }}-linux-gnu.tar.zst
+    src: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture'] }}-linux-gnu.tar.zst
     dest: /usr/local/bin
     mode: a=rx,u=rwx

@@ -14,13 +14,13 @@
 
 - name: Create .config/htop for current user
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config/htop"
+    path: "{{ ansible_facts['env']['HOME'] }}/.config/htop"
     state: directory
 
 - name: Configure htop
   become: true
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/.config/htop/htoprc"
+    dest: "{{ ansible_facts['env']['HOME'] }}/.config/htop/htoprc"
     src: "{{ lookup('ansible.builtin.fileglob', 'htoprc') }}"
     mode: "0644"
     force: false
