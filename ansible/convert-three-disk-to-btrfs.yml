@@ -1,0 +1,1166 @@
+---
+- name: Convert three-disk setup to single-root btrfs
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    # Device names are auto-detected from the system
+    minimum_final_size_gb: 50
+    extra_space_gb: 20
+
+  tasks:
+    - name: Load or detect conversion metadata
+      tags: [always]
+      block:
+        - name: Check if conversion metadata file exists
+          ansible.builtin.stat:
+            path: /root/.disk-conversion-metadata.json
+          register: metadata_file
+
+        - name: Load metadata from file if it exists
+          ansible.builtin.slurp:
+            path: /root/.disk-conversion-metadata.json
+          register: metadata_slurp
+          when: metadata_file.stat.exists
+
+        - name: Parse metadata from file
+          ansible.builtin.set_fact:
+            conversion_metadata: "{{ metadata_slurp.content | b64decode | from_json }}"
+          when: metadata_file.stat.exists
+
+        - name: Set facts from metadata
+          ansible.builtin.set_fact:
+            root_device: "{{ conversion_metadata.root_device }}"
+            root_partition: "{{ conversion_metadata.root_partition }}"
+            var_log_device: "{{ conversion_metadata.var_log_device }}"
+            postgresql_device: "{{ conversion_metadata.postgresql_device }}"
+            uses_p_separator: "{{ conversion_metadata.uses_p_separator }}"
+            intermediate_partition_number: "{{ conversion_metadata.intermediate_partition_number }}"
+            intermediate_btrfs_partition: "{{ conversion_metadata.intermediate_btrfs_partition }}"
+            final_btrfs_partition: "{{ conversion_metadata.final_btrfs_partition }}"
+            sector_size: "{{ conversion_metadata.sector_size }}"
+            root_start_sector: "{{ conversion_metadata.root_start_sector }}"
+            root_end_sector: "{{ conversion_metadata.root_end_sector }}"
+            total_sectors: "{{ conversion_metadata.total_sectors }}"
+            sectors_per_gb: "{{ conversion_metadata.sectors_per_gb }}"
+            boot_overhead_gb: "{{ conversion_metadata.boot_overhead_gb }}"
+            intermediate_size_gb: "{{ conversion_metadata.intermediate_size_gb }}"
+            final_partition_size_gb: "{{ conversion_metadata.final_partition_size_gb }}"
+            intermediate_start_sector: "{{ conversion_metadata.intermediate_start_sector }}"
+            intermediate_end_sector: "{{ conversion_metadata.intermediate_end_sector }}"
+            final_end_sector: "{{ conversion_metadata.final_end_sector }}"
+          when: metadata_file.stat.exists
+
+    - name: Stage 0 - Detect devices and calculate conversion parameters
+      tags: [never, stage0, detect]
+      block:
+        - name: Detect root device
+          ansible.builtin.shell: |
+            findmnt -n -o SOURCE / | sed 's/p\?[0-9]*$//'
+          register: detected_root_device_raw
+          changed_when: false
+
+        - name: Detect root partition
+          ansible.builtin.shell: |
+            findmnt -n -o SOURCE /
+          register: detected_root_partition_raw
+          changed_when: false
+
+        - name: Detect var/log device
+          ansible.builtin.shell: |
+            findmnt -n -o SOURCE /var/log | sed 's/[0-9]*$//'
+          register: detected_log_device_raw
+          changed_when: false
+          failed_when: false
+
+        - name: Detect postgresql device
+          ansible.builtin.shell: |
+            findmnt -n -o SOURCE /var/lib/postgresql | sed 's/[0-9]*$//'
+          register: detected_pg_device_raw
+          changed_when: false
+          failed_when: false
+
+        - name: Set device facts
+          ansible.builtin.set_fact:
+            root_device: "{{ detected_root_device_raw.stdout }}"
+            root_partition: "{{ detected_root_partition_raw.stdout }}"
+            var_log_device: "{{ detected_log_device_raw.stdout }}"
+            postgresql_device: "{{ detected_pg_device_raw.stdout }}"
+
+        - name: Derive partition naming convention
+          ansible.builtin.set_fact:
+            uses_p_separator: "{{ root_partition is regex('^.+p\\d+$') }}"
+
+        - name: Get existing partition numbers
+          ansible.builtin.shell: |
+            parted {{ root_device }} print | grep '^\s*[0-9]' | awk '{print $1}' | sort -n
+          register: existing_partitions
+          changed_when: false
+
+        - name: Calculate next available partition number
+          ansible.builtin.shell: |
+            next_num=1
+            for num in {{ existing_partitions.stdout_lines | join(' ') }}; do
+              if [ "$num" -eq "$next_num" ]; then
+                next_num=$((next_num + 1))
+              fi
+            done
+            echo $next_num
+          register: intermediate_partition_number_raw
+          changed_when: false
+
+        - name: Set partition facts
+          ansible.builtin.set_fact:
+            intermediate_partition_number: "{{ intermediate_partition_number_raw.stdout }}"
+            intermediate_btrfs_partition: "{{ root_device }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number_raw.stdout }}"
+            final_btrfs_partition: "{{ root_partition }}"
+
+        - name: Calculate intermediate partition start and end sectors
+          ansible.builtin.set_fact:
+            intermediate_start_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+            intermediate_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int) + (intermediate_size_gb | int * sectors_per_gb | int)) }}"
+            final_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+
+        - name: Write conversion metadata to file
+          ansible.builtin.copy:
+            content: |
+              {{ {
+                'root_device': root_device,
+                'root_partition': root_partition,
+                'var_log_device': var_log_device,
+                'postgresql_device': postgresql_device,
+                'uses_p_separator': uses_p_separator,
+                'intermediate_partition_number': intermediate_partition_number,
+                'intermediate_btrfs_partition': intermediate_btrfs_partition,
+                'final_btrfs_partition': final_btrfs_partition,
+                'sector_size': sector_size,
+                'root_start_sector': root_start_sector,
+                'root_end_sector': root_end_sector,
+                'total_sectors': total_sectors,
+                'sectors_per_gb': sectors_per_gb,
+                'boot_overhead_gb': boot_overhead_gb,
+                'intermediate_size_gb': intermediate_size_gb,
+                'final_partition_size_gb': final_partition_size_gb,
+                'intermediate_start_sector': intermediate_start_sector,
+                'intermediate_end_sector': intermediate_end_sector,
+                'final_end_sector': final_end_sector,
+                'total_used_gb': total_used_gb
+              } | to_nice_json }}
+            dest: /root/.disk-conversion-metadata.json
+            mode: "0600"
+
+        - name: Display saved metadata location
+          ansible.builtin.debug:
+            msg: "Conversion metadata saved to /root/.disk-conversion-metadata.json"
+
+    - name: Phase 1 - Gather information and validate
+      tags: [never, phase1, gather]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+        - name: Display detected devices
+          ansible.builtin.debug:
+            msg:
+              - "Root device: {{ root_device }}"
+              - "Root partition: {{ root_partition }}"
+              - "Intermediate partition: {{ intermediate_btrfs_partition }}"
+              - "Final partition: {{ final_btrfs_partition }}"
+              - "Log device: {{ var_log_device | default('not detected') }}"
+              - "PostgreSQL device: {{ postgresql_device | default('not detected') }}"
+
+        - name: Check if root is already btrfs
+          ansible.builtin.shell: |
+            findmnt -n -o FSTYPE /
+          register: root_fstype
+          changed_when: false
+
+        - name: Abort if root is already btrfs
+          ansible.builtin.fail:
+            msg:
+              - "ERROR: Root filesystem is already btrfs!"
+              - "This playbook is for converting three-disk ext4 setups to btrfs"
+              - "Root filesystem type: {{ root_fstype.stdout }}"
+              - "It appears this system may already be converted"
+          when: root_fstype.stdout == "btrfs"
+
+        - name: Check if /var/log btrfs spans multiple devices
+          ansible.builtin.shell: |
+            if mountpoint -q /var/log; then
+              log_fstype=$(findmnt -n -o FSTYPE /var/log)
+              if [ "$log_fstype" = "btrfs" ]; then
+                device_count=$(btrfs filesystem show /var/log | grep -c 'devid')
+                echo "$device_count"
+              else
+                echo "1"
+              fi
+            else
+              echo "1"
+            fi
+          register: log_device_count
+          changed_when: false
+
+        - name: Abort if /var/log btrfs is multi-device
+          ansible.builtin.fail:
+            msg:
+              - "ERROR: /var/log btrfs spans multiple devices!"
+              - "This playbook only supports single-device filesystems"
+              - "/var/log has {{ log_device_count.stdout }} devices"
+              - "Cannot safely convert multi-device btrfs or RAID setups"
+          when: log_device_count.stdout | int > 1
+
+        - name: Validate three-disk setup
+          ansible.builtin.fail:
+            msg:
+              - "ERROR: Not a three-disk setup!"
+              - "This playbook requires separate devices for root, /var/log, and /var/lib/postgresql"
+              - "Root device: {{ root_device }}"
+              - "Log device: {{ var_log_device }}"
+              - "PostgreSQL device: {{ postgresql_device }}"
+          when: >
+            root_device == var_log_device or
+            root_device == postgresql_device or
+            var_log_device == postgresql_device
+
+        - name: Verify three-disk setup
+          ansible.builtin.shell: |
+            set -e
+            root_mount=$(findmnt -n -o SOURCE,TARGET,FSTYPE / | awk '{print $1 "," $3}')
+            log_mount=$(findmnt -n -o SOURCE,TARGET,FSTYPE /var/log | awk '{print $1 "," $3}')
+            pg_mount=$(findmnt -n -o SOURCE,TARGET,FSTYPE /var/lib/postgresql | awk '{print $1 "," $3}')
+
+            echo "root=$root_mount"
+            echo "log=$log_mount"
+            echo "pg=$pg_mount"
+          register: mount_verification
+          changed_when: false
+
+        - name: Display current mount configuration
+          ansible.builtin.debug:
+            var: mount_verification.stdout_lines
+
+        - name: Gather current disk usage in MB
+          ansible.builtin.shell: |
+            set -e
+            root_used=$(df -BM / | tail -1 | awk '{print $3}' | sed 's/M//')
+
+            # Use btrfs filesystem usage for /var/log since df is not accurate for btrfs
+            if mountpoint -q /var/log && [ "$(findmnt -n -o FSTYPE /var/log)" = "btrfs" ]; then
+              log_used=$(btrfs filesystem usage /var/log | grep 'Used:' | head -1 | awk '{print $2}' | sed 's/GiB//' | awk '{print int($1*1024)}')
+            else
+              log_used=$(df -BM /var/log | tail -1 | awk '{print $3}' | sed 's/M//')
+            fi
+
+            pg_used=$(df -BM /var/lib/postgresql | tail -1 | awk '{print $3}' | sed 's/M//')
+            total_used=$((root_used + log_used + pg_used))
+            total_gb=$(((total_used + 1023) / 1024))
+            echo "root_used_mb=${root_used}"
+            echo "log_used_mb=${log_used}"
+            echo "pg_used_mb=${pg_used}"
+            echo "total_used_mb=${total_used}"
+            echo "total_used_gb=${total_gb}"
+          register: disk_usage_raw
+          changed_when: false
+
+        - name: Parse disk usage
+          ansible.builtin.set_fact:
+            root_used_mb: "{{ disk_usage_raw.stdout | regex_search('root_used_mb=(\\d+)', '\\1') | first | int }}"
+            log_used_mb: "{{ disk_usage_raw.stdout | regex_search('log_used_mb=(\\d+)', '\\1') | first | int }}"
+            pg_used_mb: "{{ disk_usage_raw.stdout | regex_search('pg_used_mb=(\\d+)', '\\1') | first | int }}"
+            total_used_mb: "{{ disk_usage_raw.stdout | regex_search('total_used_mb=(\\d+)', '\\1') | first | int }}"
+            total_used_gb: "{{ disk_usage_raw.stdout | regex_search('total_used_gb=(\\d+)', '\\1') | first | int }}"
+
+        - name: Get disk geometry and partition info in sectors
+          ansible.builtin.shell: |
+            fdisk -l {{ root_device }} | grep '^Sector size' | awk '{print $4}'
+          register: sector_size_bytes
+          changed_when: false
+
+        - name: Get root partition start and end sectors
+          ansible.builtin.shell: |
+            fdisk -l {{ root_device }} | grep '^{{ root_partition }}' | awk '{print $2,$3}'
+          register: root_partition_sectors
+          changed_when: false
+
+        - name: Get disk total sectors
+          ansible.builtin.shell: |
+            fdisk -l {{ root_device }} | grep '^Disk {{ root_device }}:' | awk '{print $(NF-1)}'
+          register: disk_total_sectors
+          changed_when: false
+
+        - name: Parse partition and disk info
+          ansible.builtin.set_fact:
+            sector_size: "{{ sector_size_bytes.stdout | int }}"
+            root_start_sector: "{{ root_partition_sectors.stdout.split()[0] | int }}"
+            root_end_sector: "{{ root_partition_sectors.stdout.split()[1] | int }}"
+            total_sectors: "{{ disk_total_sectors.stdout | int }}"
+
+        - name: Calculate sizes for intermediate and final partitions
+          ansible.builtin.set_fact:
+            boot_overhead_gb: "{{ ((root_start_sector | int * sector_size | int) / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
+            intermediate_size_gb: "{{ (total_used_gb | int + 8) }}"
+            final_partition_size_gb: "{{ [minimum_final_size_gb | int, (total_used_gb | int + extra_space_gb | int)] | max }}"
+            sectors_per_gb: "{{ (1024 * 1024 * 1024 / sector_size | int) | int }}"
+
+        - name: Get current root disk size
+          ansible.builtin.shell: |
+            lsblk -b -n -o SIZE {{ root_device }} | head -1
+          register: current_disk_size_bytes
+          changed_when: false
+
+        - name: Calculate current disk size in GB
+          ansible.builtin.set_fact:
+            current_disk_size_gb: "{{ (current_disk_size_bytes.stdout | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
+
+        - name: Calculate total disk space needed
+          ansible.builtin.set_fact:
+            total_disk_space_needed_gb: "{{ (boot_overhead_gb | int + final_partition_size_gb | int + intermediate_size_gb | int + 2) }}"
+
+        - name: Display disk usage information
+          ansible.builtin.debug:
+            msg:
+              - "Root partition usage: {{ (root_used_mb | int / 1024) | round(1) }}GB"
+              - "Log partition usage: {{ (log_used_mb | int / 1024) | round(1) }}GB"
+              - "PostgreSQL partition usage: {{ (pg_used_mb | int / 1024) | round(1) }}GB"
+              - "Total usage: {{ (total_used_mb | int / 1024) | round(1) }}GB ({{ total_used_gb }}GB rounded up)"
+              - "Current root disk size: {{ current_disk_size_gb }}GB"
+              - "Boot/EFI overhead: {{ boot_overhead_gb }}GB"
+              - "Final partition size: {{ final_partition_size_gb }}GB"
+              - "Intermediate partition size: {{ intermediate_size_gb }}GB"
+              - "Total disk space needed: {{ total_disk_space_needed_gb }}GB (boot + final + intermediate + buffer)"
+              - "{% if current_disk_size_gb | int < total_disk_space_needed_gb | int %}WARNING: Root disk is too small! Need {{ total_disk_space_needed_gb }}GB but have {{ current_disk_size_gb }}GB{% else %}Root disk size is sufficient{% endif %}"
+
+        - name: Get all partitions for display
+          ansible.builtin.shell: |
+            fdisk -l {{ root_device }} | grep '^{{ root_device }}' | awk '{print $1 " " $2 " " $3 " " $4 " " $5}'
+          register: all_partitions_raw
+          changed_when: false
+
+        - name: Display current partition table
+          ansible.builtin.shell: |
+            echo "=== CURRENT PARTITION TABLE ==="
+            fdisk -l {{ root_device }}
+          register: current_partition_table
+          changed_when: false
+
+        - name: Show current partition table
+          ansible.builtin.debug:
+            var: current_partition_table.stdout_lines
+
+        - name: Calculate intermediate partition end for display
+          ansible.builtin.set_fact:
+            intermediate_start_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+            intermediate_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int) + (intermediate_size_gb | int * sectors_per_gb | int)) }}"
+            final_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+
+        - name: Calculate sizes in bytes for display
+          ansible.builtin.set_fact:
+            intermediate_size_bytes: "{{ (intermediate_size_gb | int * 1024 * 1024 * 1024) }}"
+            final_size_bytes: "{{ (final_partition_size_gb | int * 1024 * 1024 * 1024) }}"
+            root_current_size_bytes: "{{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int) }}"
+
+        - name: Build expected intermediate partition table
+          ansible.builtin.shell: |
+            echo "=== EXPECTED INTERMEDIATE STATE (after phase 2-5, before reboot1) ==="
+            echo "Device                Start        End    Sectors   Size Type"
+            fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_partition }}\s'
+            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(root_end_sector | int) }} {{ '%10d' | format(root_end_sector | int - root_start_sector | int + 1) }} {{ (root_current_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (ext4)"
+            echo "{{ root_device }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number }} {{ '%10d' | format(intermediate_start_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int - intermediate_start_sector | int + 1) }} {{ intermediate_size_gb }}G Linux filesystem (btrfs intermediate)"
+          register: intermediate_table
+          changed_when: false
+
+        - name: Display expected intermediate partition table
+          ansible.builtin.debug:
+            var: intermediate_table.stdout_lines
+
+        - name: Build expected final partition table
+          ansible.builtin.shell: |
+            echo "=== EXPECTED FINAL STATE (after phase 7-11) ==="
+            echo "Device                Start        End    Sectors   Size Type"
+            fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_partition }}\s'
+            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(final_end_sector | int) }} {{ '%10d' | format(final_end_sector | int - root_start_sector | int + 1) }} {{ final_partition_size_gb }}G Linux filesystem (btrfs with subvolumes)"
+            echo "  Subvolumes: @ (root), @log, @containers, @postgres"
+          register: final_table
+          changed_when: false
+
+        - name: Display expected final partition table
+          ansible.builtin.debug:
+            var: final_table.stdout_lines
+
+        - name: Check for EFI partition
+          ansible.builtin.shell: |
+            fdisk -l {{ root_device }} | grep -i 'EFI' | head -1 | awk '{print $1}'
+          register: efi_check
+          changed_when: false
+          failed_when: false
+
+        - name: Display EFI partition info
+          ansible.builtin.debug:
+            msg: "EFI partition detected: {{ efi_check.stdout }}"
+          when: efi_check.stdout | length > 0
+
+    - name: Phase 2 - Extend root disk and create intermediate btrfs
+      tags: [never, phase2, extend]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Check current partitions
+          ansible.builtin.shell: |
+            parted {{ root_device }} print
+          register: partition_layout_before
+          changed_when: false
+
+        - name: Display current partition layout
+          ansible.builtin.debug:
+            var: partition_layout_before.stdout_lines
+
+        - name: Stop services to reduce disk activity
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: stopped
+          loop:
+            - postgresql
+            - podman
+          failed_when: false
+
+        - name: Sync filesystem
+          ansible.builtin.command: sync
+          changed_when: false
+
+        - name: Drop caches
+          ansible.builtin.shell: echo 3 > /proc/sys/vm/drop_caches
+          changed_when: false
+
+        - name: Create intermediate btrfs partition
+          ansible.builtin.shell: |
+            echo -e "n\np\n{{ intermediate_partition_number }}\n{{ intermediate_start_sector }}\n{{ intermediate_end_sector }}\nw" | fdisk {{ root_device }}
+          register: partition_create
+          changed_when: true
+
+        - name: Reload partition table
+          ansible.builtin.command: partprobe {{ root_device }}
+          changed_when: true
+
+        - name: Wait for partition device node
+          ansible.builtin.wait_for:
+            path: "{{ intermediate_btrfs_partition }}"
+            timeout: 15
+
+        - name: Verify partition was created
+          ansible.builtin.shell: |
+            lsblk {{ intermediate_btrfs_partition }}
+          register: verify_partition
+          changed_when: false
+
+        - name: Create btrfs filesystem on intermediate partition
+          ansible.builtin.command: |
+            mkfs.btrfs --label ROOT_TEMP --checksum xxhash --features block-group-tree,squota {{ intermediate_btrfs_partition }}
+          changed_when: true
+
+        - name: Verify btrfs creation
+          ansible.builtin.shell: |
+            blkid {{ intermediate_btrfs_partition }}
+          register: blkid_check
+          changed_when: false
+
+        - name: Display new partition info
+          ansible.builtin.debug:
+            var: blkid_check.stdout
+
+    - name: Phase 3 - Setup intermediate btrfs
+      tags: [never, phase3, setup]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Ensure mount point exists
+          ansible.builtin.file:
+            path: /mnt/btrfsroot
+            state: directory
+            mode: "0755"
+
+        - name: Mount intermediate btrfs
+          ansible.builtin.shell: |
+            mount -o compress=zstd:6 {{ intermediate_btrfs_partition }} /mnt/btrfsroot
+          changed_when: true
+
+        - name: Verify mount
+          ansible.builtin.shell: |
+            findmnt | grep /mnt/btrfsroot
+          register: intermediate_mount
+          changed_when: false
+
+        - name: Display intermediate mount
+          ansible.builtin.debug:
+            var: intermediate_mount.stdout_lines
+
+        - name: Create btrfs swap file
+          ansible.builtin.command: btrfs filesystem mkswapfile --size 4G /mnt/btrfsroot/swap.img
+          changed_when: true
+
+    - name: Phase 4 - Copy system data
+      tags: [never, phase4, copy]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Rsync root filesystem excluding mounted filesystems
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 \
+              --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/postgresql/*"} \
+              / /mnt/btrfsroot/
+          register: rsync_root
+          changed_when: true
+
+        - name: Rsync var/log
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 /var/log/ /mnt/btrfsroot/var/log/
+          register: rsync_log
+          changed_when: true
+
+        - name: Stop postgresql before final copy
+          ansible.builtin.systemd:
+            name: postgresql
+            state: stopped
+          failed_when: false
+
+        - name: Rsync postgresql data
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/
+          register: rsync_pg
+          changed_when: true
+
+        - name: Get UUID for intermediate btrfs
+          ansible.builtin.shell: |
+            blkid -s UUID -o value {{ intermediate_btrfs_partition }}
+          register: intermediate_uuid
+          changed_when: false
+
+        - name: Display UUID
+          ansible.builtin.debug:
+            msg: "Intermediate btrfs UUID: {{ intermediate_uuid.stdout }}"
+
+        - name: Backup original fstab
+          ansible.builtin.copy:
+            src: /mnt/btrfsroot/etc/fstab
+            dest: /mnt/btrfsroot/etc/fstab.pre-btrfs
+            remote_src: true
+            mode: preserve
+
+        - name: Update fstab for intermediate btrfs
+          ansible.builtin.shell: |
+            set -e
+            uuid="{{ intermediate_uuid.stdout }}"
+
+            cp /mnt/btrfsroot/etc/fstab /mnt/btrfsroot/etc/fstab.backup
+
+            sed -i.old '/^[^#].*[[:space:]]\/[[:space:]]/d' /mnt/btrfsroot/etc/fstab
+            sed -i '/^[^#].*[[:space:]]\/var\/log[[:space:]]/d' /mnt/btrfsroot/etc/fstab
+            sed -i '/^[^#].*[[:space:]]\/var\/lib\/postgresql[[:space:]]/d' /mnt/btrfsroot/etc/fstab
+
+            cat >> /mnt/btrfsroot/etc/fstab << EOF
+            UUID=$uuid / btrfs compress=zstd:6 0 1
+            /swap.img none swap sw 0 0
+            EOF
+          changed_when: true
+
+        - name: Display new fstab
+          ansible.builtin.shell: cat /mnt/btrfsroot/etc/fstab
+          register: new_fstab
+          changed_when: false
+
+        - name: Show new fstab
+          ansible.builtin.debug:
+            var: new_fstab.stdout_lines
+
+    - name: Phase 5 - Update bootloader for intermediate btrfs
+      tags: [never, phase5, bootloader1]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Mount required filesystems for chroot
+          ansible.builtin.shell: |
+            mount --bind /dev /mnt/btrfsroot/dev
+            mount --bind /proc /mnt/btrfsroot/proc
+            mount --bind /sys /mnt/btrfsroot/sys
+            mount --bind /run /mnt/btrfsroot/run
+          changed_when: true
+
+        - name: Check if /boot is separate partition
+          ansible.builtin.shell: |
+            findmnt -n /boot || echo "no_separate_boot"
+          register: boot_check
+          changed_when: false
+
+        - name: Mount boot if it exists as separate partition
+          ansible.builtin.shell: |
+            mount --bind /boot /mnt/btrfsroot/boot
+          changed_when: true
+          when: boot_check.stdout != "no_separate_boot"
+
+        - name: Check if /boot/efi exists
+          ansible.builtin.stat:
+            path: /boot/efi
+          register: boot_efi_stat
+
+        - name: Mount boot/efi if it exists
+          ansible.builtin.shell: |
+            mount --bind /boot/efi /mnt/btrfsroot/boot/efi
+          changed_when: true
+          when: boot_efi_stat.stat.exists
+
+        - name: Update initramfs and grub in chroot
+          ansible.builtin.shell: |
+            chroot /mnt/btrfsroot /bin/bash -c "update-initramfs -u && update-grub"
+          changed_when: true
+
+        - name: Unmount chroot filesystems in reverse order
+          ansible.builtin.shell: |
+            umount /mnt/btrfsroot/boot/efi 2>/dev/null || true
+            umount /mnt/btrfsroot/boot 2>/dev/null || true
+            umount /mnt/btrfsroot/run
+            umount /mnt/btrfsroot/sys
+            umount /mnt/btrfsroot/proc
+            umount /mnt/btrfsroot/dev
+          changed_when: true
+          failed_when: false
+
+        - name: Unmount intermediate btrfs
+          ansible.builtin.shell: |
+            umount /mnt/btrfsroot
+          changed_when: true
+
+        - name: Display completion message
+          ansible.builtin.debug:
+            msg:
+              - "Phase 5 complete - bootloader updated"
+              - "System is ready to reboot into intermediate btrfs"
+              - "Run with --tags=reboot1 when ready"
+
+    - name: Phase 6 - Reboot to intermediate btrfs
+      tags: [never, reboot1]
+      block:
+        - name: Reboot system to intermediate btrfs
+          ansible.builtin.reboot:
+            msg: "Rebooting to intermediate btrfs root filesystem"
+            reboot_timeout: 600
+            post_reboot_delay: 30
+
+        - name: Wait for system to become reachable
+          ansible.builtin.wait_for_connection:
+            timeout: 600
+            delay: 10
+
+        - name: Verify boot from intermediate btrfs
+          ansible.builtin.shell: |
+            root_source=$(findmnt -n -o SOURCE /)
+            root_fstype=$(findmnt -n -o FSTYPE /)
+            echo "Root device: $root_source"
+            echo "Root fstype: $root_fstype"
+            if [ "$root_fstype" != "btrfs" ]; then
+              echo "ERROR: Not booted to btrfs (still on $root_fstype)"
+              exit 1
+            fi
+            if echo "$root_source" | grep -q "{{ intermediate_partition_number }}"; then
+              echo "SUCCESS: Booted from intermediate partition"
+              exit 0
+            else
+              echo "WARNING: On btrfs but may not be intermediate partition"
+              echo "Expected partition number: {{ intermediate_partition_number }}"
+              exit 1
+            fi
+          register: boot_verify
+          changed_when: false
+
+        - name: Display boot verification
+          ansible.builtin.debug:
+            var: boot_verify.stdout_lines
+
+        - name: Check btrfs filesystem
+          ansible.builtin.shell: |
+            btrfs filesystem show /
+            btrfs subvolume list /
+          register: btrfs_check
+          changed_when: false
+
+        - name: Display btrfs status
+          ansible.builtin.debug:
+            var: btrfs_check.stdout_lines
+
+    - name: Phase 7 - Delete old ext4 partition and create final btrfs
+      tags: [never, phase7, finalize]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Verify we're on intermediate btrfs
+          ansible.builtin.shell: |
+            root_fstype=$(findmnt -n -o FSTYPE /)
+            root_source=$(findmnt -n -o SOURCE /)
+            if [ "$root_fstype" != "btrfs" ]; then
+              echo "ERROR: Not on btrfs, cannot proceed to phase7"
+              exit 1
+            fi
+            if ! echo "$root_source" | grep -q "{{ intermediate_partition_number }}"; then
+              echo "ERROR: Not on intermediate partition, cannot proceed"
+              exit 1
+            fi
+          changed_when: false
+
+        - name: Stop services before finalizing
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: stopped
+          loop:
+            - postgresql
+            - podman
+          failed_when: false
+
+        - name: Sync filesystem
+          ansible.builtin.command: sync
+          changed_when: false
+
+        - name: Remove old ext4 partition
+          ansible.builtin.shell: |
+            parted -s {{ root_device }} rm 1
+          changed_when: true
+
+        - name: Get current filesystem usage
+          ansible.builtin.shell: |
+            df -BG / | tail -1 | awk '{print $3}' | sed 's/G//'
+          register: actual_usage
+          changed_when: false
+
+        - name: Display size info
+          ansible.builtin.debug:
+            msg:
+              - "Current usage: {{ actual_usage.stdout }}GB"
+              - "Final partition size: {{ final_partition_size_gb }}GB"
+
+        - name: Create final btrfs partition
+          ansible.builtin.shell: |
+            echo -e "n\np\n1\n{{ root_start_sector }}\n{{ final_end_sector }}\nw" | fdisk {{ root_device }}
+          register: partition_create
+          changed_when: true
+
+        - name: Reload partition table
+          ansible.builtin.command: partprobe {{ root_device }}
+          changed_when: true
+
+        - name: Wait for new partition
+          ansible.builtin.wait_for:
+            path: "{{ final_btrfs_partition }}"
+            timeout: 15
+
+        - name: Create final btrfs filesystem
+          ansible.builtin.command: |
+            mkfs.btrfs --label ROOT --checksum xxhash --features block-group-tree,squota {{ final_btrfs_partition }}
+          changed_when: true
+
+        - name: Ensure final mount point exists
+          ansible.builtin.file:
+            path: /mnt/finalroot
+            state: directory
+            mode: "0755"
+
+        - name: Mount final btrfs (top level)
+          ansible.builtin.shell: |
+            mount {{ final_btrfs_partition }} /mnt/finalroot
+          changed_when: true
+
+        - name: Create subvolumes on final btrfs
+          ansible.builtin.command: btrfs subvolume create /mnt/finalroot/{{ item }}
+          loop:
+            - "@"
+            - "@log"
+            - "@containers"
+            - "@postgres"
+          changed_when: true
+
+        - name: Unmount final btrfs top level
+          ansible.builtin.shell: umount /mnt/finalroot
+          changed_when: true
+
+        - name: Mount final root subvolume
+          ansible.builtin.shell: |
+            mount -o compress=zstd:6,subvol=@ {{ final_btrfs_partition }} /mnt/finalroot
+          changed_when: true
+
+        - name: Create directory structure in final root
+          ansible.builtin.file:
+            path: "/mnt/finalroot/{{ item }}"
+            state: directory
+            mode: "0755"
+          loop:
+            - var/log
+            - var/lib/containers
+            - var/lib/postgresql
+
+        - name: Mount final subvolumes
+          ansible.builtin.shell: |
+            mount -o compress=zstd:6,subvol=@log {{ final_btrfs_partition }} /mnt/finalroot/var/log
+            mount -o compress=zstd:6,subvol=@containers {{ final_btrfs_partition }} /mnt/finalroot/var/lib/containers
+            mount -o compress=zstd:6,subvol=@postgres {{ final_btrfs_partition }} /mnt/finalroot/var/lib/postgresql
+          changed_when: true
+
+        - name: Create swap file on final btrfs
+          ansible.builtin.command: btrfs filesystem mkswapfile --size 4G /mnt/finalroot/swap.img
+          changed_when: true
+
+    - name: Phase 8 - Copy to final btrfs
+      tags: [never, phase8, finalcopy]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Rsync to final root
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 \
+              --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/containers/*","/var/lib/postgresql/*"} \
+              / /mnt/finalroot/
+          changed_when: true
+
+        - name: Rsync logs to final
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 /var/log/ /mnt/finalroot/var/log/
+          changed_when: true
+
+        - name: Rsync containers to final
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 /var/lib/containers/ /mnt/finalroot/var/lib/containers/
+          changed_when: true
+          failed_when: false
+
+        - name: Stop postgresql for final copy
+          ansible.builtin.systemd:
+            name: postgresql
+            state: stopped
+          failed_when: false
+
+        - name: Final rsync of postgresql data
+          ansible.builtin.shell: |
+            rsync -aAXH --info=progress2 /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/
+          changed_when: true
+
+        - name: Get UUID for final partition
+          ansible.builtin.shell: |
+            blkid -s UUID -o value {{ final_btrfs_partition }}
+          register: final_uuid
+          changed_when: false
+
+        - name: Display final UUID
+          ansible.builtin.debug:
+            msg: "Final btrfs UUID: {{ final_uuid.stdout }}"
+
+        - name: Backup fstab from final root
+          ansible.builtin.copy:
+            src: /mnt/finalroot/etc/fstab
+            dest: /mnt/finalroot/etc/fstab.pre-final
+            remote_src: true
+            mode: preserve
+
+        - name: Update fstab for final root
+          ansible.builtin.shell: |
+            set -e
+            uuid="{{ final_uuid.stdout }}"
+
+            sed -i.old '/^[^#].*[[:space:]]\/[[:space:]]/d' /mnt/finalroot/etc/fstab
+            sed -i '/^[^#].*[[:space:]]\/var\/log[[:space:]]/d' /mnt/finalroot/etc/fstab
+            sed -i '/^[^#].*[[:space:]]\/var\/lib\/postgresql[[:space:]]/d' /mnt/finalroot/etc/fstab
+            sed -i '/nvme1n1/d' /mnt/finalroot/etc/fstab
+            sed -i '/nvme2n1/d' /mnt/finalroot/etc/fstab
+
+            cat >> /mnt/finalroot/etc/fstab << EOF
+            UUID=$uuid / btrfs compress=zstd:6,subvol=@ 0 1
+            UUID=$uuid /var/log btrfs compress=zstd:6,subvol=@log 0 2
+            UUID=$uuid /var/lib/containers btrfs compress=zstd:6,subvol=@containers 0 2
+            UUID=$uuid /var/lib/postgresql btrfs compress=zstd:6,subvol=@postgres 0 2
+            /swap.img none swap sw 0 0
+            EOF
+          changed_when: true
+
+        - name: Display final fstab
+          ansible.builtin.shell: cat /mnt/finalroot/etc/fstab
+          register: final_fstab
+          changed_when: false
+
+        - name: Show final fstab
+          ansible.builtin.debug:
+            var: final_fstab.stdout_lines
+
+    - name: Phase 9 - Update bootloader for final btrfs
+      tags: [never, phase9, bootloader2]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Mount filesystems for final chroot
+          ansible.builtin.shell: |
+            mount --bind /dev /mnt/finalroot/dev
+            mount --bind /proc /mnt/finalroot/proc
+            mount --bind /sys /mnt/finalroot/sys
+            mount --bind /run /mnt/finalroot/run
+          changed_when: true
+
+        - name: Check for separate boot partition
+          ansible.builtin.shell: |
+            findmnt -n /boot || echo "no_separate_boot"
+          register: boot_check_final
+          changed_when: false
+
+        - name: Mount boot for final
+          ansible.builtin.shell: |
+            mount --bind /boot /mnt/finalroot/boot
+          changed_when: true
+          when: boot_check_final.stdout != "no_separate_boot"
+
+        - name: Check for boot/efi
+          ansible.builtin.stat:
+            path: /boot/efi
+          register: boot_efi_stat_final
+
+        - name: Mount boot/efi for final
+          ansible.builtin.shell: |
+            mount --bind /boot/efi /mnt/finalroot/boot/efi
+          changed_when: true
+          when: boot_efi_stat_final.stat.exists
+
+        - name: Update initramfs and grub for final boot
+          ansible.builtin.shell: |
+            chroot /mnt/finalroot /bin/bash -c "update-initramfs -u && update-grub"
+          changed_when: true
+
+        - name: Unmount final chroot filesystems
+          ansible.builtin.shell: |
+            umount /mnt/finalroot/boot/efi 2>/dev/null || true
+            umount /mnt/finalroot/boot 2>/dev/null || true
+            umount /mnt/finalroot/run
+            umount /mnt/finalroot/sys
+            umount /mnt/finalroot/proc
+            umount /mnt/finalroot/dev
+          changed_when: true
+          failed_when: false
+
+        - name: Unmount final btrfs mounts
+          ansible.builtin.shell: |
+            umount /mnt/finalroot/var/lib/postgresql
+            umount /mnt/finalroot/var/lib/containers
+            umount /mnt/finalroot/var/log
+            umount /mnt/finalroot
+          changed_when: true
+
+        - name: Display ready for reboot message
+          ansible.builtin.debug:
+            msg:
+              - "Phase 9 complete - final bootloader updated"
+              - "System is ready for final reboot"
+              - "Run with --tags=reboot2 when ready"
+
+    - name: Phase 10 - Reboot to final btrfs
+      tags: [never, reboot2]
+      block:
+        - name: Reboot to final btrfs
+          ansible.builtin.reboot:
+            msg: "Rebooting to final btrfs root filesystem"
+            reboot_timeout: 600
+            post_reboot_delay: 30
+
+        - name: Wait for system
+          ansible.builtin.wait_for_connection:
+            timeout: 600
+            delay: 10
+
+        - name: Verify final boot
+          ansible.builtin.shell: |
+            root_source=$(findmnt -n -o SOURCE /)
+            root_fstype=$(findmnt -n -o FSTYPE /)
+            echo "Root device: $root_source"
+            echo "Root fstype: $root_fstype"
+            if [ "$root_fstype" != "btrfs" ]; then
+              echo "ERROR: Not booted to btrfs"
+              exit 1
+            fi
+            if ! echo "$root_source" | grep -q "{{ intermediate_partition_number }}"; then
+              echo "SUCCESS: Booted from final partition (not intermediate)"
+              exit 0
+            else
+              echo "WARNING: Still on intermediate partition"
+              exit 1
+            fi
+          register: final_boot_verify
+          changed_when: false
+
+        - name: Display final boot verification
+          ansible.builtin.debug:
+            var: final_boot_verify.stdout_lines
+
+        - name: Display filesystem information
+          ansible.builtin.shell: |
+            echo "=== Mount points ==="
+            df -h / /var/log /var/lib/containers /var/lib/postgresql
+            echo ""
+            echo "=== Btrfs filesystem ==="
+            btrfs filesystem show /
+            echo ""
+            echo "=== Subvolumes ==="
+            btrfs subvolume list /
+          register: fs_info
+          changed_when: false
+
+        - name: Show filesystem information
+          ansible.builtin.debug:
+            var: fs_info.stdout_lines
+
+    - name: Phase 11 - Cleanup and resize
+      tags: [never, phase11, cleanup]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Remove intermediate partition
+          ansible.builtin.shell: |
+            parted -s {{ root_device }} rm {{ intermediate_partition_number }}
+          changed_when: true
+          failed_when: false
+
+        - name: Move GPT backup to end of disk
+          ansible.builtin.shell: |
+            sgdisk -e {{ root_device }}
+          changed_when: true
+          failed_when: false
+
+        - name: Get current filesystem usage
+          ansible.builtin.shell: |
+            btrfs filesystem usage / | grep 'Device size:' | awk '{print $3}'
+          register: btrfs_device_size
+          changed_when: false
+
+        - name: Get actual data usage
+          ansible.builtin.shell: |
+            btrfs filesystem usage / | grep 'Used:' | head -1 | awk '{print $2}'
+          register: btrfs_used
+          changed_when: false
+
+        - name: Calculate target size for resize
+          ansible.builtin.shell: |
+            used_gb=$(df -BG / | tail -1 | awk '{print $3}' | sed 's/G//')
+            target=$((used_gb + {{ extra_space_gb }}))
+            minimum={{ minimum_final_size_gb }}
+            if [ $target -lt $minimum ]; then
+              target=$minimum
+            fi
+            echo $target
+          register: target_size
+          changed_when: false
+
+        - name: Get current partition size in GiB
+          ansible.builtin.shell: |
+            parted {{ root_device }} unit GiB print | grep '^ 1' | awk '{print $3}' | sed 's/GiB//'
+          register: current_partition_size
+          changed_when: false
+
+        - name: Display size information
+          ansible.builtin.debug:
+            msg:
+              - "Current partition size: {{ current_partition_size.stdout }}GiB"
+              - "Target size: {{ target_size.stdout }}GB"
+              - "Btrfs device size: {{ btrfs_device_size.stdout }}"
+              - "Btrfs used: {{ btrfs_used.stdout }}"
+
+        - name: Resize filesystem if needed
+          ansible.builtin.shell: |
+            current_size={{ current_partition_size.stdout }}
+            target_size={{ target_size.stdout }}
+            if [ "$current_size" != "$target_size" ] && [ $(echo "$target_size < $current_size" | bc) -eq 1 ]; then
+              echo "Resizing filesystem to ${target_size}G"
+              btrfs filesystem resize ${target_size}G /
+            else
+              echo "No filesystem resize needed"
+            fi
+          register: fs_resize_result
+          changed_when: "'Resizing filesystem' in fs_resize_result.stdout"
+
+        - name: Resize partition if needed
+          ansible.builtin.shell: |
+            current_size={{ current_partition_size.stdout }}
+            target_size={{ target_size.stdout }}
+            if [ "$current_size" != "$target_size" ] && [ $(echo "$target_size < $current_size" | bc) -eq 1 ]; then
+              echo "Resizing partition to ${target_size}GiB"
+              parted {{ root_device }} resizepart 1 ${target_size}GiB
+            else
+              echo "No partition resize needed"
+            fi
+          register: part_resize_result
+          changed_when: "'Resizing partition' in part_resize_result.stdout"
+
+        - name: Get final partition size
+          ansible.builtin.shell: |
+            parted {{ root_device }} unit GiB print | grep '^ 1' | awk '{print $3}' | sed 's/GiB//'
+          register: final_partition_size
+          changed_when: false
+
+        - name: Calculate AWS disk shrink size
+          ansible.builtin.set_fact:
+            aws_shrink_size_gb: "{{ (final_partition_size.stdout | float + 1) | round(0, 'ceil') | int }}"
+
+        - name: Display completion information
+          ansible.builtin.debug:
+            msg:
+              - "========================================="
+              - "CONVERSION COMPLETE"
+              - "========================================="
+              - ""
+              - "Final partition size: {{ final_partition_size.stdout }}GiB"
+              - "Recommended AWS disk size: {{ aws_shrink_size_gb }}GB"
+              - ""
+              - "You can now shrink the EBS volume in AWS to {{ aws_shrink_size_gb }}GB"
+              - ""
+
+        - name: Show final filesystem status
+          ansible.builtin.shell: |
+            echo "=== Disk usage ==="
+            df -h /
+            echo ""
+            echo "=== Btrfs filesystem usage ==="
+            btrfs filesystem usage /
+            echo ""
+            echo "=== Subvolumes ==="
+            btrfs subvolume list /
+            echo ""
+            echo "=== Partition layout ==="
+            lsblk {{ root_device }}
+          register: final_status
+          changed_when: false
+
+        - name: Display final status
+          ansible.builtin.debug:
+            var: final_status.stdout_lines
+
+        - name: Rename conversion metadata file as completed
+          ansible.builtin.command:
+            cmd: mv /root/.disk-conversion-metadata.json /root/.disk-conversion-metadata-completed.json
+          changed_when: true
+
+        - name: Conversion metadata preserved
+          ansible.builtin.debug:
+            msg: "Conversion complete! Metadata saved to /root/.disk-conversion-metadata-completed.json for record keeping."
