@@ -10,9 +10,8 @@
   changed_when: false
 
 - name: Remove old bestool binary (migration only)
-  when: ansible_user != 'iti'
+  when: ansible_user != 'iti' and bestool_install_type.stdout == "custom"
   become: true
-  when: bestool_install_type.stdout == "custom"
   ansible.builtin.file:
     path: /usr/local/bin/bestool
     state: absent
@@ -79,4 +78,3 @@
   notify:
     - Reload systemd
     - Restart iti services
-
