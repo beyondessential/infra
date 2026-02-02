@@ -51,8 +51,7 @@ Options:
 
 Phases:
   all         - Run complete conversion (requires supervision)
-  stage0      - Detect devices and calculate conversion parameters
-  phase1      - Display configuration and validate
+  phase1      - Detect devices, calculate parameters, and validate
   phase2-5    - Setup intermediate btrfs
   reboot1     - Reboot to intermediate
   phase7-9    - Setup final btrfs
@@ -67,8 +66,8 @@ Examples:
   # Check disk status on specific servers
   $0 -i inventory/prod.yml -l "server1,server2" -p check
 
-  # Run stage0 on all servers in parallel (max 3)
-  $0 -i inventory/prod.yml -p stage0 -c 3
+  # Run phase1 on all servers in parallel (max 3)
+  $0 -i inventory/prod.yml -p phase1 -c 3
 
   # Run complete conversion on a single server
   $0 -i inventory/prod.yml -l server1 -p all
@@ -228,14 +227,7 @@ run_interactive() {
     done
     echo ""
 
-    print_header "Stage 0: Detecting Devices and Calculating Parameters"
-    run_ansible "stage0" ""
-
-    echo ""
-    print_info "Device detection complete. Metadata saved on each host."
-    echo ""
-
-    print_header "Phase 1: Displaying Configuration"
+    print_header "Phase 1: Detecting Devices, Calculating Parameters, and Validating"
     run_ansible "phase1" ""
 
     echo ""
@@ -317,8 +309,6 @@ run_all_phases() {
         exit 0
     fi
 
-    run_phase "stage0" "Detecting devices and calculating parameters"
-
     for phase in phase1 phase2 phase3 phase4 phase5; do
         run_phase "$phase" "Running $phase"
     done
@@ -348,7 +338,7 @@ case "$PHASE" in
     check)
         check_disk_status
         ;;
-    stage0|phase1|phase2|phase3|phase4|phase5|phase7|phase8|phase9|phase11|reboot1|reboot2)
+    phase1|phase2|phase3|phase4|phase5|phase7|phase8|phase9|phase11|reboot1|reboot2)
         run_phase "$PHASE" "Running $PHASE"
         ;;
     *)

@@ -22,8 +22,7 @@ Example:
   ./convert-three-disk-to-btrfs.sh inventory/prod.yml server1
 
 Phases:
-  0. stage0     - Detect devices and calculate conversion parameters (required first)
-  1. phase1     - Display detected configuration and validate setup
+  1. phase1     - Detect devices, calculate parameters, and validate setup
   2. phase2     - Create intermediate btrfs partition
   3. phase3     - Setup intermediate btrfs filesystem
   4. phase4     - Copy system data to intermediate btrfs
@@ -76,13 +75,7 @@ echo ""
 echo "Starting conversion for host: $HOSTNAME"
 echo ""
 
-run_phase "stage0" "Detect devices and calculate conversion parameters"
-
-echo ""
-echo "Device detection complete. Metadata saved to /root/.disk-conversion-metadata.json"
-echo ""
-
-run_phase "phase1" "Display configuration and validate"
+run_phase "phase1" "Detect devices, calculate parameters, and validate"
 
 echo ""
 echo "========================================"

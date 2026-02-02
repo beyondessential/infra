@@ -52,8 +52,8 @@
             final_end_sector: "{{ conversion_metadata.final_end_sector }}"
           when: metadata_file.stat.exists
 
-    - name: Stage 0 - Detect devices and calculate conversion parameters
-      tags: [never, stage0, detect]
+    - name: Phase 1 - Gather information and validate
+      tags: [never, phase1, gather]
       block:
         - name: Detect root device
           ansible.builtin.shell: |
@@ -116,51 +116,6 @@
             intermediate_btrfs_partition: "{{ root_device }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number_raw.stdout }}"
             final_btrfs_partition: "{{ root_partition }}"
 
-        - name: Calculate intermediate partition start and end sectors
-          ansible.builtin.set_fact:
-            intermediate_start_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
-            intermediate_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int) + (intermediate_size_gb | int * sectors_per_gb | int)) }}"
-            final_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
-
-        - name: Write conversion metadata to file
-          ansible.builtin.copy:
-            content: |
-              {{ {
-                'root_device': root_device,
-                'root_partition': root_partition,
-                'var_log_device': var_log_device,
-                'postgresql_device': postgresql_device,
-                'uses_p_separator': uses_p_separator,
-                'intermediate_partition_number': intermediate_partition_number,
-                'intermediate_btrfs_partition': intermediate_btrfs_partition,
-                'final_btrfs_partition': final_btrfs_partition,
-                'sector_size': sector_size,
-                'root_start_sector': root_start_sector,
-                'root_end_sector': root_end_sector,
-                'total_sectors': total_sectors,
-                'sectors_per_gb': sectors_per_gb,
-                'boot_overhead_gb': boot_overhead_gb,
-                'intermediate_size_gb': intermediate_size_gb,
-                'final_partition_size_gb': final_partition_size_gb,
-                'intermediate_start_sector': intermediate_start_sector,
-                'intermediate_end_sector': intermediate_end_sector,
-                'final_end_sector': final_end_sector,
-                'total_used_gb': total_used_gb
-              } | to_nice_json }}
-            dest: /root/.disk-conversion-metadata.json
-            mode: "0600"
-
-        - name: Display saved metadata location
-          ansible.builtin.debug:
-            msg: "Conversion metadata saved to /root/.disk-conversion-metadata.json"
-
-    - name: Phase 1 - Gather information and validate
-      tags: [never, phase1, gather]
-      block:
-        - name: Ensure conversion metadata exists
-          ansible.builtin.fail:
-            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
-          when: not metadata_file.stat.exists
         - name: Display detected devices
           ansible.builtin.debug:
             msg:
@@ -317,6 +272,44 @@
         - name: Calculate total disk space needed
           ansible.builtin.set_fact:
             total_disk_space_needed_gb: "{{ (boot_overhead_gb | int + final_partition_size_gb | int + intermediate_size_gb | int + 2) }}"
+
+        - name: Calculate intermediate partition start and end sectors
+          ansible.builtin.set_fact:
+            intermediate_start_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+            intermediate_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int) + (intermediate_size_gb | int * sectors_per_gb | int)) }}"
+            final_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+
+        - name: Write conversion metadata to file
+          ansible.builtin.copy:
+            content: |
+              {{ {
+                'root_device': root_device,
+                'root_partition': root_partition,
+                'var_log_device': var_log_device,
+                'postgresql_device': postgresql_device,
+                'uses_p_separator': uses_p_separator,
+                'intermediate_partition_number': intermediate_partition_number,
+                'intermediate_btrfs_partition': intermediate_btrfs_partition,
+                'final_btrfs_partition': final_btrfs_partition,
+                'sector_size': sector_size,
+                'root_start_sector': root_start_sector,
+                'root_end_sector': root_end_sector,
+                'total_sectors': total_sectors,
+                'sectors_per_gb': sectors_per_gb,
+                'boot_overhead_gb': boot_overhead_gb,
+                'intermediate_size_gb': intermediate_size_gb,
+                'final_partition_size_gb': final_partition_size_gb,
+                'intermediate_start_sector': intermediate_start_sector,
+                'intermediate_end_sector': intermediate_end_sector,
+                'final_end_sector': final_end_sector,
+                'total_used_gb': total_used_gb
+              } | to_nice_json }}
+            dest: /root/.disk-conversion-metadata.json
+            mode: "0600"
+
+        - name: Display saved metadata location
+          ansible.builtin.debug:
+            msg: "Conversion metadata saved to /root/.disk-conversion-metadata.json"
 
         - name: Display disk usage information
           ansible.builtin.debug:
