@@ -15,12 +15,12 @@
       block:
         - name: Check if conversion metadata file exists
           ansible.builtin.stat:
-            path: /root/.disk-conversion-metadata.json
+            path: /root/.disk-conversion-metadata-v1.json
           register: metadata_file
 
-        - name: Load metadata from file if it exists
+        - name: Read existing metadata file if it exists
           ansible.builtin.slurp:
-            path: /root/.disk-conversion-metadata.json
+            path: /root/.disk-conversion-metadata-v1.json
           register: metadata_slurp
           when: metadata_file.stat.exists
 
@@ -29,64 +29,166 @@
             conversion_metadata: "{{ metadata_slurp.content | b64decode | from_json }}"
           when: metadata_file.stat.exists
 
-        - name: Set facts from metadata
+        - name: Load conversion metadata if it exists
           ansible.builtin.set_fact:
-            root_device: "{{ conversion_metadata.root_device }}"
-            root_partition: "{{ conversion_metadata.root_partition }}"
-            var_log_device: "{{ conversion_metadata.var_log_device }}"
-            postgresql_device: "{{ conversion_metadata.postgresql_device }}"
+            root_uuid: "{{ conversion_metadata.root_uuid }}"
+            root_partuuid: "{{ conversion_metadata.root_partuuid }}"
+            var_log_uuid: "{{ conversion_metadata.var_log_uuid }}"
+            postgresql_uuid: "{{ conversion_metadata.postgresql_uuid }}"
             uses_p_separator: "{{ conversion_metadata.uses_p_separator }}"
             intermediate_partition_number: "{{ conversion_metadata.intermediate_partition_number }}"
-            intermediate_btrfs_partition: "{{ conversion_metadata.intermediate_btrfs_partition }}"
-            final_btrfs_partition: "{{ conversion_metadata.final_btrfs_partition }}"
             sector_size: "{{ conversion_metadata.sector_size }}"
             root_start_sector: "{{ conversion_metadata.root_start_sector }}"
             root_end_sector: "{{ conversion_metadata.root_end_sector }}"
             total_sectors: "{{ conversion_metadata.total_sectors }}"
-            sectors_per_gb: "{{ conversion_metadata.sectors_per_gb }}"
-            boot_overhead_gb: "{{ conversion_metadata.boot_overhead_gb }}"
-            intermediate_size_gb: "{{ conversion_metadata.intermediate_size_gb }}"
-            final_partition_size_gb: "{{ conversion_metadata.final_partition_size_gb }}"
+            boot_overhead_sectors: "{{ conversion_metadata.boot_overhead_sectors }}"
+            intermediate_size_sectors: "{{ conversion_metadata.intermediate_size_sectors }}"
+            final_partition_size_sectors: "{{ conversion_metadata.final_partition_size_sectors }}"
             intermediate_start_sector: "{{ conversion_metadata.intermediate_start_sector }}"
             intermediate_end_sector: "{{ conversion_metadata.intermediate_end_sector }}"
             final_end_sector: "{{ conversion_metadata.final_end_sector }}"
+            total_used_bytes: "{{ conversion_metadata.total_used_bytes }}"
           when: metadata_file.stat.exists
+
+    - name: Derive device names from UUIDs when metadata exists
+      tags: [always]
+      when: metadata_file.stat.exists
+      block:
+        - name: Find root partition by PARTUUID
+          ansible.builtin.shell: |
+            blkid -t PARTUUID="{{ root_partuuid }}" -o device
+          register: current_root_partition
+          changed_when: false
+
+        - name: Derive root device from current root partition
+          ansible.builtin.shell: |
+            echo "{{ current_root_partition.stdout }}" | sed 's/p\?[0-9]*$//'
+          register: current_root_device
+          changed_when: false
+
+        - name: Set current device names
+          ansible.builtin.set_fact:
+            root_partition: "{{ current_root_partition.stdout }}"
+            root_device: "{{ current_root_device.stdout }}"
+            intermediate_btrfs_partition: "{{ current_root_device.stdout }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number }}"
+            final_btrfs_partition: "{{ current_root_partition.stdout }}"
+
+        - name: Find var/log partition by UUID if it exists
+          ansible.builtin.shell: |
+            blkid -t UUID="{{ var_log_uuid }}" -o device
+          register: current_var_log_partition
+          changed_when: false
+          failed_when: false
+          when: var_log_uuid != ''
+
+        - name: Set var/log partition
+          ansible.builtin.set_fact:
+            var_log_partition: "{{ current_var_log_partition.stdout }}"
+          when: var_log_uuid != '' and current_var_log_partition.rc == 0
+
+        - name: Find postgresql partition by UUID if it exists
+          ansible.builtin.shell: |
+            blkid -t UUID="{{ postgresql_uuid }}" -o device
+          register: current_postgresql_partition
+          changed_when: false
+          failed_when: false
+          when: postgresql_uuid != ''
+
+        - name: Set postgresql partition
+          ansible.builtin.set_fact:
+            postgresql_partition: "{{ current_postgresql_partition.stdout }}"
+          when: postgresql_uuid != '' and current_postgresql_partition.rc == 0
+
+        - name: Verify we found the correct root partition
+          ansible.builtin.fail:
+            msg: "Could not find root partition with PARTUUID {{ root_partuuid }}"
+          when: current_root_partition.stdout == ''
 
     - name: Phase 1 - Gather information and validate
       tags: [never, phase1, gather]
       block:
-        - name: Detect root device
+        - name: Detect root partition and UUID
           ansible.builtin.shell: |
-            findmnt -n -o SOURCE / | sed 's/p\?[0-9]*$//'
-          register: detected_root_device_raw
+            root_part=$(findmnt -n -o SOURCE /)
+            root_uuid=$(blkid -s UUID -o value "$root_part")
+            root_partuuid=$(blkid -s PARTUUID -o value "$root_part")
+            echo "partition=$root_part"
+            echo "uuid=$root_uuid"
+            echo "partuuid=$root_partuuid"
+          register: root_info_raw
           changed_when: false
 
-        - name: Detect root partition
-          ansible.builtin.shell: |
-            findmnt -n -o SOURCE /
-          register: detected_root_partition_raw
-          changed_when: false
-
-        - name: Detect var/log device
-          ansible.builtin.shell: |
-            findmnt -n -o SOURCE /var/log | sed 's/[0-9]*$//'
-          register: detected_log_device_raw
-          changed_when: false
-          failed_when: false
-
-        - name: Detect postgresql device
-          ansible.builtin.shell: |
-            findmnt -n -o SOURCE /var/lib/postgresql | sed 's/[0-9]*$//'
-          register: detected_pg_device_raw
-          changed_when: false
-          failed_when: false
-
-        - name: Set device facts
+        - name: Parse root partition info
           ansible.builtin.set_fact:
-            root_device: "{{ detected_root_device_raw.stdout }}"
-            root_partition: "{{ detected_root_partition_raw.stdout }}"
-            var_log_device: "{{ detected_log_device_raw.stdout }}"
-            postgresql_device: "{{ detected_pg_device_raw.stdout }}"
+            root_partition: "{{ root_info_raw.stdout | regex_search('partition=(.+)', '\\1') | first }}"
+            root_uuid: "{{ root_info_raw.stdout | regex_search('uuid=(.+)', '\\1') | first }}"
+            root_partuuid: "{{ root_info_raw.stdout | regex_search('partuuid=(.+)', '\\1') | first }}"
+
+        - name: Derive root device from partition
+          ansible.builtin.shell: |
+            echo "{{ root_partition }}" | sed 's/p\?[0-9]*$//'
+          register: root_device_raw
+          changed_when: false
+
+        - name: Set root device
+          ansible.builtin.set_fact:
+            root_device: "{{ root_device_raw.stdout }}"
+
+        - name: Detect var/log filesystem UUID
+          ansible.builtin.shell: |
+            log_part=$(findmnt -n -o SOURCE /var/log)
+            log_uuid=$(blkid -s UUID -o value "$log_part")
+            echo "partition=$log_part"
+            echo "uuid=$log_uuid"
+          register: log_info_raw
+          changed_when: false
+          failed_when: false
+
+        - name: Parse var/log info
+          ansible.builtin.set_fact:
+            var_log_partition: "{{ log_info_raw.stdout | regex_search('partition=(.+)', '\\1') | first | default('') }}"
+            var_log_uuid: "{{ log_info_raw.stdout | regex_search('uuid=(.+)', '\\1') | first | default('') }}"
+          when: log_info_raw.rc == 0
+
+        - name: Detect postgresql filesystem UUID
+          ansible.builtin.shell: |
+            pg_part=$(findmnt -n -o SOURCE /var/lib/postgresql)
+            pg_uuid=$(blkid -s UUID -o value "$pg_part")
+            echo "partition=$pg_part"
+            echo "uuid=$pg_uuid"
+          register: pg_info_raw
+          changed_when: false
+          failed_when: false
+
+        - name: Parse postgresql info
+          ansible.builtin.set_fact:
+            postgresql_partition: "{{ pg_info_raw.stdout | regex_search('partition=(.+)', '\\1') | first | default('') }}"
+            postgresql_uuid: "{{ pg_info_raw.stdout | regex_search('uuid=(.+)', '\\1') | first | default('') }}"
+          when: pg_info_raw.rc == 0
+
+        - name: Derive device names from partitions
+          ansible.builtin.shell: |
+            echo "{{ var_log_partition }}" | sed 's/[0-9]*$//'
+          register: var_log_device_raw
+          changed_when: false
+          when: var_log_partition is defined and var_log_partition != ''
+
+        - name: Set var/log device
+          ansible.builtin.set_fact:
+            var_log_device: "{{ var_log_device_raw.stdout }}"
+          when: var_log_device_raw is not skipped
+
+        - name: Derive postgresql device from partition
+          ansible.builtin.shell: |
+            echo "{{ postgresql_partition }}" | sed 's/[0-9]*$//'
+          register: postgresql_device_raw
+          changed_when: false
+          when: postgresql_partition is defined and postgresql_partition != ''
+
+        - name: Set postgresql device
+          ansible.builtin.set_fact:
+            postgresql_device: "{{ postgresql_device_raw.stdout }}"
+          when: postgresql_device_raw is not skipped
 
         - name: Derive partition naming convention
           ansible.builtin.set_fact:
@@ -116,15 +218,19 @@
             intermediate_btrfs_partition: "{{ root_device }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number_raw.stdout }}"
             final_btrfs_partition: "{{ root_partition }}"
 
-        - name: Display detected devices
+        - name: Display detected devices and UUIDs
           ansible.builtin.debug:
             msg:
               - "Root device: {{ root_device }}"
               - "Root partition: {{ root_partition }}"
+              - "Root UUID: {{ root_uuid }}"
+              - "Root PARTUUID: {{ root_partuuid }}"
               - "Intermediate partition: {{ intermediate_btrfs_partition }}"
               - "Final partition: {{ final_btrfs_partition }}"
-              - "Log device: {{ var_log_device | default('not detected') }}"
-              - "PostgreSQL device: {{ postgresql_device | default('not detected') }}"
+              - "Log partition: {{ var_log_partition | default('not detected') }}"
+              - "Log UUID: {{ var_log_uuid | default('not detected') }}"
+              - "PostgreSQL partition: {{ postgresql_partition | default('not detected') }}"
+              - "PostgreSQL UUID: {{ postgresql_uuid | default('not detected') }}"
 
         - name: Check if root is already btrfs
           ansible.builtin.shell: |
@@ -172,9 +278,11 @@
               - "ERROR: Not a three-disk setup!"
               - "This playbook requires separate devices for root, /var/log, and /var/lib/postgresql"
               - "Root device: {{ root_device }}"
-              - "Log device: {{ var_log_device }}"
-              - "PostgreSQL device: {{ postgresql_device }}"
+              - "Log device: {{ var_log_device | default('NONE') }}"
+              - "PostgreSQL device: {{ postgresql_device | default('NONE') }}"
           when: >
+            (var_log_device is not defined or var_log_device == '') or
+            (postgresql_device is not defined or postgresql_device == '') or
             root_device == var_log_device or
             root_device == postgresql_device or
             var_log_device == postgresql_device
@@ -196,36 +304,39 @@
           ansible.builtin.debug:
             var: mount_verification.stdout_lines
 
-        - name: Gather current disk usage in MB
+        - name: Gather actual disk usage in bytes using sector sizes and compsize
           ansible.builtin.shell: |
             set -e
-            root_used=$(df -BM / | tail -1 | awk '{print $3}' | sed 's/M//')
 
-            # Use btrfs filesystem usage for /var/log since df is not accurate for btrfs
+            # Get root partition actual usage in bytes (df shows 1K blocks by default)
+            root_used_bytes=$(df -B1 / | tail -1 | awk '{print $3}')
+
+            # For btrfs /var/log, use compsize to get referenced bytes (uncompressed size)
+            # This is conservative - we ignore compression savings
             if mountpoint -q /var/log && [ "$(findmnt -n -o FSTYPE /var/log)" = "btrfs" ]; then
-              log_used=$(btrfs filesystem usage /var/log | grep 'Used:' | head -1 | awk '{print $2}' | sed 's/GiB//' | awk '{print int($1*1024)}')
+              log_used_bytes=$(compsize -bx /var/log | grep '^TOTAL' | awk '{print $4}')
             else
-              log_used=$(df -BM /var/log | tail -1 | awk '{print $3}' | sed 's/M//')
+              log_used_bytes=$(df -B1 /var/log | tail -1 | awk '{print $3}')
             fi
 
-            pg_used=$(df -BM /var/lib/postgresql | tail -1 | awk '{print $3}' | sed 's/M//')
-            total_used=$((root_used + log_used + pg_used))
-            total_gb=$(((total_used + 1023) / 1024))
-            echo "root_used_mb=${root_used}"
-            echo "log_used_mb=${log_used}"
-            echo "pg_used_mb=${pg_used}"
-            echo "total_used_mb=${total_used}"
-            echo "total_used_gb=${total_gb}"
+            # Get postgresql usage in bytes
+            pg_used_bytes=$(df -B1 /var/lib/postgresql | tail -1 | awk '{print $3}')
+
+            total_used_bytes=$((root_used_bytes + log_used_bytes + pg_used_bytes))
+
+            echo "root_used_bytes=${root_used_bytes}"
+            echo "log_used_bytes=${log_used_bytes}"
+            echo "pg_used_bytes=${pg_used_bytes}"
+            echo "total_used_bytes=${total_used_bytes}"
           register: disk_usage_raw
           changed_when: false
 
-        - name: Parse disk usage
+        - name: Parse disk usage in bytes
           ansible.builtin.set_fact:
-            root_used_mb: "{{ disk_usage_raw.stdout | regex_search('root_used_mb=(\\d+)', '\\1') | first | int }}"
-            log_used_mb: "{{ disk_usage_raw.stdout | regex_search('log_used_mb=(\\d+)', '\\1') | first | int }}"
-            pg_used_mb: "{{ disk_usage_raw.stdout | regex_search('pg_used_mb=(\\d+)', '\\1') | first | int }}"
-            total_used_mb: "{{ disk_usage_raw.stdout | regex_search('total_used_mb=(\\d+)', '\\1') | first | int }}"
-            total_used_gb: "{{ disk_usage_raw.stdout | regex_search('total_used_gb=(\\d+)', '\\1') | first | int }}"
+            root_used_bytes: "{{ disk_usage_raw.stdout | regex_search('root_used_bytes=(\\d+)', '\\1') | first | int }}"
+            log_used_bytes: "{{ disk_usage_raw.stdout | regex_search('log_used_bytes=(\\d+)', '\\1') | first | int }}"
+            pg_used_bytes: "{{ disk_usage_raw.stdout | regex_search('pg_used_bytes=(\\d+)', '\\1') | first | int }}"
+            total_used_bytes: "{{ disk_usage_raw.stdout | regex_search('total_used_bytes=(\\d+)', '\\1') | first | int }}"
 
         - name: Get disk geometry and partition info in sectors
           ansible.builtin.shell: |
@@ -252,12 +363,30 @@
             root_end_sector: "{{ root_partition_sectors.stdout.split()[1] | int }}"
             total_sectors: "{{ disk_total_sectors.stdout | int }}"
 
-        - name: Calculate sizes for intermediate and final partitions
+        - name: Calculate sizes for intermediate and final partitions in sectors
           ansible.builtin.set_fact:
-            boot_overhead_gb: "{{ ((root_start_sector | int * sector_size | int) / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
-            intermediate_size_gb: "{{ (total_used_gb | int + 8) }}"
-            final_partition_size_gb: "{{ [minimum_final_size_gb | int, (total_used_gb | int + extra_space_gb | int)] | max }}"
-            sectors_per_gb: "{{ (1024 * 1024 * 1024 / sector_size | int) | int }}"
+            boot_overhead_sectors: "{{ root_start_sector | int }}"
+            buffer_bytes: "{{ 8 * 1024 * 1024 * 1024 }}"
+            extra_space_bytes: "{{ extra_space_gb | int * 1024 * 1024 * 1024 }}"
+            minimum_final_size_bytes: "{{ minimum_final_size_gb | int * 1024 * 1024 * 1024 }}"
+            intermediate_size_bytes: "{{ total_used_bytes | int + buffer_bytes | int }}"
+            calculated_final_size_bytes: "{{ total_used_bytes | int + extra_space_bytes | int }}"
+
+        - name: Determine final partition size
+          ansible.builtin.set_fact:
+            final_partition_size_bytes: "{{ [minimum_final_size_bytes | int, calculated_final_size_bytes | int] | max }}"
+
+        - name: Convert sizes to sectors
+          ansible.builtin.set_fact:
+            intermediate_size_sectors: "{{ ((intermediate_size_bytes | int + sector_size | int - 1) / sector_size | int) | int }}"
+            final_partition_size_sectors: "{{ ((final_partition_size_bytes | int + sector_size | int - 1) / sector_size | int) | int }}"
+
+        - name: Calculate human-readable sizes in GB for display
+          ansible.builtin.set_fact:
+            boot_overhead_gb: "{{ (boot_overhead_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
+            intermediate_size_gb: "{{ (intermediate_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            final_partition_size_gb: "{{ (final_partition_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            total_used_gb: "{{ (total_used_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
 
         - name: Get current root disk size
           ansible.builtin.shell: |
@@ -275,49 +404,60 @@
 
         - name: Calculate intermediate partition start and end sectors
           ansible.builtin.set_fact:
-            intermediate_start_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
-            intermediate_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int) + (intermediate_size_gb | int * sectors_per_gb | int)) }}"
-            final_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
+            final_end_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int - 1) }}"
+            intermediate_start_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int) }}"
+            intermediate_end_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int + intermediate_size_sectors | int - 1) }}"
 
         - name: Write conversion metadata to file
           ansible.builtin.copy:
             content: |
               {{ {
-                'root_device': root_device,
-                'root_partition': root_partition,
-                'var_log_device': var_log_device,
-                'postgresql_device': postgresql_device,
+                'root_uuid': root_uuid,
+                'root_partuuid': root_partuuid,
+                'var_log_uuid': var_log_uuid | default(''),
+                'postgresql_uuid': postgresql_uuid | default(''),
                 'uses_p_separator': uses_p_separator,
                 'intermediate_partition_number': intermediate_partition_number,
-                'intermediate_btrfs_partition': intermediate_btrfs_partition,
-                'final_btrfs_partition': final_btrfs_partition,
                 'sector_size': sector_size,
                 'root_start_sector': root_start_sector,
                 'root_end_sector': root_end_sector,
                 'total_sectors': total_sectors,
-                'sectors_per_gb': sectors_per_gb,
-                'boot_overhead_gb': boot_overhead_gb,
-                'intermediate_size_gb': intermediate_size_gb,
-                'final_partition_size_gb': final_partition_size_gb,
+                'boot_overhead_sectors': boot_overhead_sectors,
+                'intermediate_size_sectors': intermediate_size_sectors,
+                'final_partition_size_sectors': final_partition_size_sectors,
                 'intermediate_start_sector': intermediate_start_sector,
                 'intermediate_end_sector': intermediate_end_sector,
                 'final_end_sector': final_end_sector,
-                'total_used_gb': total_used_gb
+                'total_used_bytes': total_used_bytes
               } | to_nice_json }}
-            dest: /root/.disk-conversion-metadata.json
+            dest: /root/.disk-conversion-metadata-v1.json
             mode: "0600"
 
         - name: Display saved metadata location
           ansible.builtin.debug:
-            msg: "Conversion metadata saved to /root/.disk-conversion-metadata.json"
+            msg: "Conversion metadata saved to /root/.disk-conversion-metadata-v1.json"
 
-        - name: Display disk usage information
+        - name: Calculate display values
+          ansible.builtin.set_fact:
+            root_used_gb: "{{ (root_used_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            log_used_gb: "{{ (log_used_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            pg_used_gb: "{{ (pg_used_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            boot_overhead_gb: "{{ (boot_overhead_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
+            intermediate_size_gb: "{{ (intermediate_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
+            final_partition_size_gb: "{{ (final_partition_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
+            total_disk_space_needed_bytes: "{{ boot_overhead_sectors | int * sector_size | int + final_partition_size_sectors | int * sector_size | int + intermediate_size_sectors | int * sector_size | int + (2 * 1024 * 1024 * 1024) }}"
+
+        - name: Calculate total disk space needed in GB
+          ansible.builtin.set_fact:
+            total_disk_space_needed_gb: "{{ (total_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+
+        - name: Display storage information
           ansible.builtin.debug:
             msg:
-              - "Root partition usage: {{ (root_used_mb | int / 1024) | round(1) }}GB"
-              - "Log partition usage: {{ (log_used_mb | int / 1024) | round(1) }}GB"
-              - "PostgreSQL partition usage: {{ (pg_used_mb | int / 1024) | round(1) }}GB"
-              - "Total usage: {{ (total_used_mb | int / 1024) | round(1) }}GB ({{ total_used_gb }}GB rounded up)"
+              - "Root partition usage: {{ root_used_gb }}GB"
+              - "Log partition usage: {{ log_used_gb }}GB"
+              - "PostgreSQL partition usage: {{ pg_used_gb }}GB"
+              - "Total usage: {{ total_used_gb }}GB"
               - "Current root disk size: {{ current_disk_size_gb }}GB"
               - "Boot/EFI overhead: {{ boot_overhead_gb }}GB"
               - "Final partition size: {{ final_partition_size_gb }}GB"
@@ -342,25 +482,25 @@
           ansible.builtin.debug:
             var: current_partition_table.stdout_lines
 
-        - name: Calculate intermediate partition end for display
+        - name: Calculate current root size in bytes
           ansible.builtin.set_fact:
-            intermediate_start_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
-            intermediate_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int) + (intermediate_size_gb | int * sectors_per_gb | int)) }}"
-            final_end_sector: "{{ (root_start_sector | int + (final_partition_size_gb | int * sectors_per_gb | int)) }}"
-
-        - name: Calculate sizes in bytes for display
-          ansible.builtin.set_fact:
-            intermediate_size_bytes: "{{ (intermediate_size_gb | int * 1024 * 1024 * 1024) }}"
-            final_size_bytes: "{{ (final_partition_size_gb | int * 1024 * 1024 * 1024) }}"
             root_current_size_bytes: "{{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int) }}"
+
+        - name: Calculate free space after intermediate partition
+          ansible.builtin.set_fact:
+            free_space_start: "{{ (intermediate_end_sector | int + 1) }}"
+            free_space_end: "{{ (total_sectors | int - 1) }}"
+            free_space_sectors: "{{ (total_sectors | int - intermediate_end_sector | int - 1) }}"
+            free_space_gb: "{{ ((total_sectors | int - intermediate_end_sector | int - 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
 
         - name: Build expected intermediate partition table
           ansible.builtin.shell: |
             echo "=== EXPECTED INTERMEDIATE STATE (after phase 2-5, before reboot1) ==="
             echo "Device                Start        End    Sectors   Size Type"
-            fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_partition }}\s'
-            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(root_end_sector | int) }} {{ '%10d' | format(root_end_sector | int - root_start_sector | int + 1) }} {{ (root_current_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (ext4)"
-            echo "{{ root_device }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number }} {{ '%10d' | format(intermediate_start_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int - intermediate_start_sector | int + 1) }} {{ intermediate_size_gb }}G Linux filesystem (btrfs intermediate)"
+            fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_device }}p1\s'
+            echo "{{ root_partition }}     {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(root_end_sector | int) }} {{ '%10d' | format(root_end_sector | int - root_start_sector | int + 1) }} {{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (ext4)"
+            echo "{{ intermediate_btrfs_partition }} {{ '%10d' | format(intermediate_start_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int - intermediate_start_sector | int + 1) }} {{ ((intermediate_end_sector | int - intermediate_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (btrfs intermediate)"
+            echo "(free space)          {{ '%10d' | format(free_space_start | int) }} {{ '%10d' | format(free_space_end | int) }} {{ '%10d' | format(free_space_sectors | int) }} {{ free_space_gb }}G"
           register: intermediate_table
           changed_when: false
 
@@ -373,7 +513,7 @@
             echo "=== EXPECTED FINAL STATE (after phase 7-11) ==="
             echo "Device                Start        End    Sectors   Size Type"
             fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_partition }}\s'
-            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(final_end_sector | int) }} {{ '%10d' | format(final_end_sector | int - root_start_sector | int + 1) }} {{ final_partition_size_gb }}G Linux filesystem (btrfs with subvolumes)"
+            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(final_end_sector | int) }} {{ '%10d' | format(final_end_sector | int - root_start_sector | int + 1) }} {{ ((final_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (btrfs with subvolumes)"
             echo "  Subvolumes: @ (root), @log, @containers, @postgres"
           register: final_table
           changed_when: false
@@ -742,7 +882,7 @@
           ansible.builtin.debug:
             msg:
               - "Current usage: {{ actual_usage.stdout }}GB"
-              - "Final partition size: {{ final_partition_size_gb }}GB"
+              - "Final partition size: {{ ((final_partition_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}GB"
 
         - name: Create final btrfs partition
           ansible.builtin.shell: |
@@ -1151,9 +1291,9 @@
 
         - name: Rename conversion metadata file as completed
           ansible.builtin.command:
-            cmd: mv /root/.disk-conversion-metadata.json /root/.disk-conversion-metadata-completed.json
+            cmd: mv /root/.disk-conversion-metadata-v1.json /root/.disk-conversion-metadata-v1-completed.json
           changed_when: true
 
         - name: Conversion metadata preserved
           ansible.builtin.debug:
-            msg: "Conversion complete! Metadata saved to /root/.disk-conversion-metadata-completed.json for record keeping."
+            msg: "Conversion complete! Metadata saved to /root/.disk-conversion-metadata-v1-completed.json for record keeping."
