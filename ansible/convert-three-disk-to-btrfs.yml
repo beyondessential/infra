@@ -366,15 +366,17 @@
         - name: Calculate sizes for intermediate and final partitions in sectors
           ansible.builtin.set_fact:
             boot_overhead_sectors: "{{ root_start_sector | int }}"
-            buffer_bytes: "{{ 8 * 1024 * 1024 * 1024 }}"
+            boot_overhead_bytes: "{{ root_start_sector | int * sector_size | int }}"
+            buffer_bytes: "{{ 2 * 1024 * 1024 * 1024 }}"
             extra_space_bytes: "{{ extra_space_gb | int * 1024 * 1024 * 1024 }}"
-            minimum_final_size_bytes: "{{ minimum_final_size_gb | int * 1024 * 1024 * 1024 }}"
-            intermediate_size_bytes: "{{ total_used_bytes | int + buffer_bytes | int }}"
-            calculated_final_size_bytes: "{{ total_used_bytes | int + extra_space_bytes | int }}"
+            minimum_final_disk_size_bytes: "{{ minimum_final_size_gb | int * 1024 * 1024 * 1024 }}"
+            intermediate_size_bytes: "{{ total_used_bytes | int + (2 * 1024 * 1024 * 1024) }}"
+            calculated_final_size_bytes: "{{ total_used_bytes | int + (extra_space_gb | int * 1024 * 1024 * 1024) }}"
 
-        - name: Determine final partition size
+        - name: Determine final partition size (subtract boot overhead from minimum final disk size)
           ansible.builtin.set_fact:
-            final_partition_size_bytes: "{{ [minimum_final_size_bytes | int, calculated_final_size_bytes | int] | max }}"
+            minimum_final_partition_bytes: "{{ (minimum_final_size_gb | int * 1024 * 1024 * 1024) - (root_start_sector | int * sector_size | int) }}"
+            final_partition_size_bytes: "{{ [((minimum_final_size_gb | int * 1024 * 1024 * 1024) - (root_start_sector | int * sector_size | int)), calculated_final_size_bytes | int] | max }}"
 
         - name: Convert sizes to sectors
           ansible.builtin.set_fact:
@@ -398,15 +400,14 @@
           ansible.builtin.set_fact:
             current_disk_size_gb: "{{ (current_disk_size_bytes.stdout | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
 
-        - name: Calculate total disk space needed
+        - name: Calculate minimum disk space needed (will extend intermediate to fill)
           ansible.builtin.set_fact:
-            total_disk_space_needed_gb: "{{ (boot_overhead_gb | int + final_partition_size_gb | int + intermediate_size_gb | int + 2) }}"
+            minimum_disk_space_needed_gb: "{{ (boot_overhead_gb | int + final_partition_size_gb | int + intermediate_size_gb | int) }}"
 
         - name: Calculate intermediate partition start and end sectors
           ansible.builtin.set_fact:
             final_end_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int - 1) }}"
             intermediate_start_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int) }}"
-            intermediate_end_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int + intermediate_size_sectors | int - 1) }}"
 
         - name: Write conversion metadata to file
           ansible.builtin.copy:
@@ -445,11 +446,17 @@
             boot_overhead_gb: "{{ (boot_overhead_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
             intermediate_size_gb: "{{ (intermediate_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
             final_partition_size_gb: "{{ (final_partition_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
-            total_disk_space_needed_bytes: "{{ boot_overhead_sectors | int * sector_size | int + final_partition_size_sectors | int * sector_size | int + intermediate_size_sectors | int * sector_size | int + (2 * 1024 * 1024 * 1024) }}"
+            minimum_disk_space_needed_bytes: "{{ boot_overhead_sectors | int * sector_size | int + final_partition_size_sectors | int * sector_size | int + intermediate_size_sectors | int * sector_size | int }}"
 
-        - name: Calculate total disk space needed in GB
+        - name: Calculate total disk space needed in GB (rounded up for AWS)
           ansible.builtin.set_fact:
-            total_disk_space_needed_gb: "{{ (total_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            total_disk_space_needed_gb: "{{ (minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
+            total_disk_space_needed_bytes: "{{ (((minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int) * 1024 * 1024 * 1024) }}"
+
+        - name: Calculate intermediate partition end to fill disk
+          ansible.builtin.set_fact:
+            theoretical_total_sectors: "{{ ((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int }}"
+            intermediate_end_sector: "{{ (((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int) - 1 }}"
 
         - name: Display storage information
           ansible.builtin.debug:
@@ -462,7 +469,7 @@
               - "Boot/EFI overhead: {{ boot_overhead_gb }}GB"
               - "Final partition size: {{ final_partition_size_gb }}GB"
               - "Intermediate partition size: {{ intermediate_size_gb }}GB"
-              - "Total disk space needed: {{ total_disk_space_needed_gb }}GB (boot + final + intermediate + buffer)"
+              - "Total disk space needed: {{ total_disk_space_needed_gb }}GB (boot + final + intermediate)"
               - "{% if current_disk_size_gb | int < total_disk_space_needed_gb | int %}WARNING: Root disk is too small! Need {{ total_disk_space_needed_gb }}GB but have {{ current_disk_size_gb }}GB{% else %}Root disk size is sufficient{% endif %}"
 
         - name: Get all partitions for display
@@ -486,21 +493,18 @@
           ansible.builtin.set_fact:
             root_current_size_bytes: "{{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int) }}"
 
-        - name: Calculate free space after intermediate partition
+        - name: Calculate space between partitions
           ansible.builtin.set_fact:
-            free_space_start: "{{ (intermediate_end_sector | int + 1) }}"
-            free_space_end: "{{ (total_sectors | int - 1) }}"
-            free_space_sectors: "{{ (total_sectors | int - intermediate_end_sector | int - 1) }}"
-            free_space_gb: "{{ ((total_sectors | int - intermediate_end_sector | int - 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
+            space_between_gb: "{{ ((intermediate_start_sector | int - root_end_sector | int - 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
 
         - name: Build expected intermediate partition table
           ansible.builtin.shell: |
             echo "=== EXPECTED INTERMEDIATE STATE (after phase 2-5, before reboot1) ==="
             echo "Device                Start        End    Sectors   Size Type"
             fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_device }}p1\s'
-            echo "{{ root_partition }}     {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(root_end_sector | int) }} {{ '%10d' | format(root_end_sector | int - root_start_sector | int + 1) }} {{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (ext4)"
-            echo "{{ intermediate_btrfs_partition }} {{ '%10d' | format(intermediate_start_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int - intermediate_start_sector | int + 1) }} {{ ((intermediate_end_sector | int - intermediate_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (btrfs intermediate)"
-            echo "(free space)          {{ '%10d' | format(free_space_start | int) }} {{ '%10d' | format(free_space_end | int) }} {{ '%10d' | format(free_space_sectors | int) }} {{ free_space_gb }}G"
+            echo "{{ root_partition }}     {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(root_end_sector | int) }} {{ '%10d' | format(root_end_sector | int - root_start_sector | int + 1) }} {{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem"
+            echo "(free space)          {{ '%10d' | format(root_end_sector | int + 1) }} {{ '%10d' | format(intermediate_start_sector | int - 1) }} {{ '%10d' | format(intermediate_start_sector | int - root_end_sector | int - 1) }} {{ ((intermediate_start_sector | int - root_end_sector | int - 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G"
+            echo "{{ intermediate_btrfs_partition }} {{ '%10d' | format(intermediate_start_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int - intermediate_start_sector | int + 1) }} {{ ((intermediate_end_sector | int - intermediate_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem"
           register: intermediate_table
           changed_when: false
 
@@ -513,14 +517,55 @@
             echo "=== EXPECTED FINAL STATE (after phase 7-11) ==="
             echo "Device                Start        End    Sectors   Size Type"
             fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_partition }}\s'
-            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(final_end_sector | int) }} {{ '%10d' | format(final_end_sector | int - root_start_sector | int + 1) }} {{ ((final_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem (btrfs with subvolumes)"
-            echo "  Subvolumes: @ (root), @log, @containers, @postgres"
+            echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(final_end_sector | int) }} {{ '%10d' | format(final_end_sector | int - root_start_sector | int + 1) }} {{ ((final_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem"
+            echo "  Subvolumes: @, @log, @containers, @postgres"
           register: final_table
           changed_when: false
 
         - name: Display expected final partition table
           ansible.builtin.debug:
             var: final_table.stdout_lines
+
+        - name: Display EBS extension requirements (if disk too small)
+          ansible.builtin.debug:
+            msg:
+              - "==============================================================================="
+              - "ACTION REQUIRED: EBS VOLUME EXTENSION"
+              - "==============================================================================="
+              - ""
+              - "Current root disk size: {{ current_disk_size_gb }}GB"
+              - "Required disk size: {{ total_disk_space_needed_gb }}GB"
+              - ""
+              - "⚠️  YOU MUST EXTEND THE ROOT EBS VOLUME TO {{ total_disk_space_needed_gb }}GB BEFORE PROCEEDING"
+              - ""
+              - "Steps:"
+              - "  1. Go to AWS Console → EC2 → Instances"
+              - "  2. Find the instance named {{ inventory_hostname }}"
+              - "  3. Go to Storage tab → Click on the root volume"
+              - "  4. Actions → Modify volume"
+              - "  5. Change size to {{ total_disk_space_needed_gb }}GB and confirm"
+              - "  6. Wait for modification to complete (state: optimizing)"
+              - "  7. Run phase2 to create the intermediate partition"
+              - ""
+              - "Note: The root ext4 partition will NOT be extended - the new space"
+              - "      will be used to create the intermediate btrfs partition."
+              - ""
+              - "==============================================================================="
+          when: current_disk_size_gb | int < total_disk_space_needed_gb | int
+
+        - name: Display EBS extension requirements (if disk sufficient)
+          ansible.builtin.debug:
+            msg:
+              - "==============================================================================="
+              - "DISK SIZE CHECK"
+              - "==============================================================================="
+              - ""
+              - "✓ Current disk size ({{ current_disk_size_gb }}GB) is sufficient"
+              - "✓ Required: {{ total_disk_space_needed_gb }}GB"
+              - "✓ You can proceed with phase2"
+              - ""
+              - "==============================================================================="
+          when: current_disk_size_gb | int >= total_disk_space_needed_gb | int
 
         - name: Check for EFI partition
           ansible.builtin.shell: |
@@ -539,8 +584,55 @@
       block:
         - name: Ensure conversion metadata exists
           ansible.builtin.fail:
-            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+            msg: "Conversion metadata not found. Run with --tags=phase1 first to detect and save conversion parameters."
           when: not metadata_file.stat.exists
+
+        - name: Check current disk size before extension
+          ansible.builtin.shell: |
+            lsblk -b -n -o SIZE {{ root_device }} | head -1
+          register: current_disk_size_bytes_check
+          changed_when: false
+
+        - name: Calculate current disk size in GB
+          ansible.builtin.set_fact:
+            current_disk_size_gb_check: "{{ (current_disk_size_bytes_check.stdout | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
+
+        - name: Display disk size check
+          ansible.builtin.debug:
+            msg:
+              - "Current disk size: {{ current_disk_size_gb_check }}GB"
+              - "Required disk size: {{ total_disk_space_needed_gb }}GB"
+              - "Disk size {% if current_disk_size_gb_check | int >= total_disk_space_needed_gb | int %}is sufficient{% else %}needs extension{% endif %}"
+
+        - name: Fail if disk is too small
+          ansible.builtin.fail:
+            msg: |
+              ERROR: Root disk is too small!
+              Current size: {{ current_disk_size_gb_check }}GB
+              Required size: {{ total_disk_space_needed_gb }}GB
+
+              You must extend the EBS volume to at least {{ total_disk_space_needed_gb }}GB in AWS Console before running phase2.
+
+              Steps:
+                1. Go to AWS Console → EC2 → Volumes
+                2. Find the root volume for {{ inventory_hostname }}
+                3. Modify volume size to {{ total_disk_space_needed_gb }}GB
+                4. Wait for modification to complete
+                5. Re-run phase2 (this will automatically run growpart)
+          when: current_disk_size_gb_check | int < total_disk_space_needed_gb | int
+
+        - name: Get root partition number
+          ansible.builtin.shell: |
+            echo "{{ root_partition }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          register: root_partition_number
+          changed_when: false
+
+        - name: Verify disk has been extended (but do NOT extend the root partition)
+          ansible.builtin.debug:
+            msg: |
+              ✓ Disk size verified: {{ current_disk_size_gb_check }}GB
+              ✓ Root partition remains at current size (will NOT be extended)
+              ✓ New space will be used for intermediate btrfs partition
 
         - name: Check current partitions
           ansible.builtin.shell: |
@@ -888,6 +980,11 @@
           ansible.builtin.shell: |
             echo -e "n\np\n1\n{{ root_start_sector }}\n{{ final_end_sector }}\nw" | fdisk {{ root_device }}
           register: partition_create
+          changed_when: true
+
+        - name: Fix partition table order
+          ansible.builtin.shell: |
+            echo -e "x\nf\nr\nw" | fdisk {{ root_device }}
           changed_when: true
 
         - name: Reload partition table
