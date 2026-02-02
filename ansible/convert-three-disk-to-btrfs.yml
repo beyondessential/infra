@@ -964,16 +964,16 @@
             parted -s {{ root_device }} rm 1
           changed_when: true
 
-        - name: Get current filesystem usage
+        - name: Get current filesystem usage in bytes
           ansible.builtin.shell: |
-            df -BG / | tail -1 | awk '{print $3}' | sed 's/G//'
-          register: actual_usage
+            df -B1 / | tail -1 | awk '{print $3}'
+          register: actual_usage_bytes
           changed_when: false
 
         - name: Display size info
           ansible.builtin.debug:
             msg:
-              - "Current usage: {{ actual_usage.stdout }}GB"
+              - "Current usage: {{ (actual_usage_bytes.stdout | int / 1024 / 1024 / 1024) | round(1) }}GB"
               - "Final partition size: {{ ((final_partition_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}GB"
 
         - name: Create final btrfs partition
@@ -1364,7 +1364,7 @@
               - "CONVERSION COMPLETE"
               - "==============================================================================="
               - ""
-              - "Final partition size: {{ final_partition_size.stdout }}GiB"
+              - "Final partition size: {{ final_partition_size_gb }}GB"
               - "Current EBS volume size: {{ total_disk_space_needed_gb }}GB"
               - "Recommended final EBS size: {{ aws_shrink_size_gb }}GB"
               - ""
