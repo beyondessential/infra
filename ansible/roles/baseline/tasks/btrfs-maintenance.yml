@@ -1,0 +1,137 @@
+---
+- name: Check if root filesystem is btrfs
+  ansible.builtin.shell: |
+    findmnt -n -o FSTYPE /
+  register: root_fstype
+  changed_when: false
+
+- name: Set btrfs fact
+  ansible.builtin.set_fact:
+    is_btrfs: "{{ root_fstype.stdout == 'btrfs' }}"
+
+- name: Install btrfs tools
+  become: true
+  ansible.builtin.apt:
+    name:
+      - btrfs-progs
+    state: present
+  when: is_btrfs
+
+- name: Remove btrfs maintenance systemd units
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/btrfs-balance.service
+    - /etc/systemd/system/btrfs-balance.timer
+    - /etc/systemd/system/btrfs-scrub.service
+    - /etc/systemd/system/btrfs-scrub.timer
+  notify: Reload systemd
+  when: not is_btrfs
+
+- name: Disable btrfs balance timer
+  become: true
+  ansible.builtin.systemd:
+    name: btrfs-balance.timer
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: not is_btrfs
+
+- name: Disable btrfs scrub timer
+  become: true
+  ansible.builtin.systemd:
+    name: btrfs-scrub.timer
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: not is_btrfs
+
+- name: Create btrfs maintenance systemd service for balance
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/btrfs-balance.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Balance btrfs filesystems
+      ConditionPathIsMountPoint=/
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/btrfs balance start -dusage=50 -musage=50 /
+      Nice=19
+      IOSchedulingClass=idle
+  when: is_btrfs
+
+- name: Create btrfs balance timer
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/btrfs-balance.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Balance btrfs filesystems weekly
+
+      [Timer]
+      OnCalendar=weekly
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+  notify: Reload systemd
+  when: is_btrfs
+
+- name: Create btrfs scrub systemd service
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/btrfs-scrub.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Scrub btrfs filesystems
+      ConditionPathIsMountPoint=/
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/btrfs scrub start -B -d /
+      Nice=19
+      IOSchedulingClass=idle
+  when: is_btrfs
+
+- name: Create btrfs scrub timer
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/btrfs-scrub.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Scrub btrfs filesystems monthly
+
+      [Timer]
+      OnCalendar=monthly
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+  notify: Reload systemd
+  when: is_btrfs
+
+- name: Enable btrfs balance timer
+  become: true
+  ansible.builtin.systemd:
+    name: btrfs-balance.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: is_btrfs
+
+- name: Enable btrfs scrub timer
+  become: true
+  ansible.builtin.systemd:
+    name: btrfs-scrub.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: is_btrfs

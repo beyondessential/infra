@@ -1,0 +1,148 @@
+---
+- name: Check if root filesystem is btrfs
+  ansible.builtin.shell: |
+    findmnt -n -o FSTYPE /
+  register: root_fstype
+  changed_when: false
+
+- name: Check root mount options
+  ansible.builtin.shell: |
+    findmnt -n -o OPTIONS / | grep -E 'subvol=/?(/@|@)($|,)'
+  register: root_subvol
+  changed_when: false
+  failed_when: false
+
+- name: Set btrfs eligibility fact
+  ansible.builtin.set_fact:
+    btrfs_snapshots_eligible: "{{ root_fstype.stdout == 'btrfs' and root_subvol.rc == 0 }}"
+
+- name: Skip btrfs snapshot setup if not eligible
+  ansible.builtin.debug:
+    msg: "Skipping btrfs snapshot setup: root is not btrfs with subvol=@ (fstype={{ root_fstype.stdout }}, subvol check={{ root_subvol.rc }})"
+  when: not btrfs_snapshots_eligible
+
+- name: Disable and remove btrfs snapshot configuration
+  when: btrfs_snapshots_eligible and not auto_btrfs_snapshots
+  block:
+    - name: Disable snapper timeline timer
+      become: true
+      ansible.builtin.systemd:
+        name: snapper-timeline.timer
+        enabled: false
+        state: stopped
+      failed_when: false
+
+    - name: Disable snapper cleanup timer
+      become: true
+      ansible.builtin.systemd:
+        name: snapper-cleanup.timer
+        enabled: false
+        state: stopped
+      failed_when: false
+
+- name: Enable and configure btrfs snapshots
+  when: btrfs_snapshots_eligible and auto_btrfs_snapshots
+  block:
+    - name: Install snapper
+      become: true
+      ansible.builtin.apt:
+        name:
+          - snapper
+        state: present
+
+    - name: Find top-level subvolumes
+      become: true
+      ansible.builtin.shell: |
+        btrfs subvolume list / | grep -P 'top level 5 path @(?:[^.].+)?$' | awk '{print $NF}'
+      register: btrfs_subvolumes
+      changed_when: false
+      failed_when: false
+
+    - name: Check existing snapper configs
+      become: true
+      ansible.builtin.shell: |
+        snapper list-configs | tail -n +3 | awk '{print $1}'
+      register: existing_snapper_configs
+      changed_when: false
+      failed_when: false
+
+    - name: Determine mount points for subvolumes
+      become: true
+      ansible.builtin.shell: |
+        set -e
+        for subvol in {{ btrfs_subvolumes.stdout_lines | join(' ') }}; do
+          # Find where this subvolume is mounted by parsing mount output
+          mount_point=$(mount | grep -E "subvol=/?${subvol}([,)]|$)" | awk '{print $3}' | head -n1)
+
+          if [ -n "$mount_point" ]; then
+            # Derive config name from subvolume name
+            config_name="${subvol#@}"
+            config_name="${config_name#/}"
+            if [ "$subvol" = "@" ] || [ "$subvol" = "/@" ]; then
+              config_name="root"
+            fi
+            echo "${config_name}:${mount_point}"
+          fi
+        done
+      register: subvol_mount_mapping
+      changed_when: false
+      when: btrfs_subvolumes.stdout_lines | length > 0
+
+    - name: Create snapper configs for each subvolume
+      become: true
+      ansible.builtin.shell: |
+        set -e
+        CONFIG_NAME="{{ item.split(':')[0] }}"
+        MOUNT_POINT="{{ item.split(':')[1] }}"
+
+        if [ ! -d "$MOUNT_POINT" ]; then
+          echo "Mount point $MOUNT_POINT does not exist, skipping"
+          exit 0
+        fi
+
+        if [ -f "/etc/snapper/configs/$CONFIG_NAME" ]; then
+          echo "Config $CONFIG_NAME already exists"
+          exit 0
+        fi
+
+        snapper -c "$CONFIG_NAME" create-config "$MOUNT_POINT"
+        echo "Created config $CONFIG_NAME for $MOUNT_POINT"
+      loop: "{{ subvol_mount_mapping.stdout_lines }}"
+      register: snapper_create_result
+      changed_when: "'Created config' in snapper_create_result.stdout"
+      when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
+
+    - name: Configure snapper timeline settings for all configs
+      become: true
+      ansible.builtin.shell: |
+        set -e
+        CONFIG_NAME="{{ item.split(':')[0] }}"
+
+        if [ ! -f "/etc/snapper/configs/$CONFIG_NAME" ]; then
+          exit 0
+        fi
+
+        snapper -c "$CONFIG_NAME" set-config \
+          TIMELINE_CREATE=yes \
+          TIMELINE_CLEANUP=yes \
+          NUMBER_CLEANUP=yes \
+          TIMELINE_LIMIT_HOURLY=10 \
+          TIMELINE_LIMIT_DAILY=7 \
+          TIMELINE_LIMIT_WEEKLY=4 \
+          TIMELINE_LIMIT_MONTHLY=12
+      loop: "{{ subvol_mount_mapping.stdout_lines }}"
+      when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
+
+    - name: Enable snapper timeline timer
+      become: true
+      ansible.builtin.systemd:
+        name: snapper-timeline.timer
+        enabled: true
+        state: started
+
+    - name: Enable snapper cleanup timer
+      become: true
+      ansible.builtin.systemd:
+        name: snapper-cleanup.timer
+        enabled: true
+        state: started

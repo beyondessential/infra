@@ -6,3 +6,6 @@
 - ansible.builtin.include_tasks: network.yml
 - ansible.builtin.include_tasks: accounting.yml
 - ansible.builtin.include_tasks: tuning.yml
+- ansible.builtin.include_tasks: btrfs-maintenance.yml
+- ansible.builtin.include_tasks: btrfs-swap.yml
+- ansible.builtin.include_tasks: btrfs-snapshots.yml

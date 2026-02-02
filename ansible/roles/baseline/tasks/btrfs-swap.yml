@@ -1,0 +1,83 @@
+---
+- name: Check if root filesystem is btrfs with subvol=@
+  ansible.builtin.shell: |
+    findmnt -n -o FSTYPE /
+  register: root_fstype
+  changed_when: false
+
+- name: Check root mount options for subvol=@
+  ansible.builtin.shell: |
+    findmnt -n -o OPTIONS / | grep -E 'subvol=/?(/@|@)($|,)'
+  register: root_subvol
+  changed_when: false
+  failed_when: false
+
+- name: Set btrfs swap eligibility fact
+  ansible.builtin.set_fact:
+    btrfs_swap_eligible: "{{ root_fstype.stdout == 'btrfs' and root_subvol.rc == 0 }}"
+
+- name: Check if /swap.img exists
+  ansible.builtin.stat:
+    path: /swap.img
+  register: swap_img
+  when: btrfs_swap_eligible
+
+- name: Migrate swap to nocow subvolume
+  when: btrfs_swap_eligible and swap_img.stat.exists
+  block:
+    - name: Get swap.img size
+      become: true
+      ansible.builtin.shell: |
+        stat -c %s /swap.img
+      register: swap_size_bytes
+      changed_when: false
+
+    - name: Swapoff /swap.img
+      become: true
+      ansible.builtin.command:
+        cmd: swapoff /swap.img
+      failed_when: false
+
+    - name: Remove old swap.img
+      become: true
+      ansible.builtin.file:
+        path: /swap.img
+        state: absent
+
+    - name: Check if /.swap subvolume exists
+      become: true
+      ansible.builtin.shell: |
+        btrfs subvolume show /.swap
+      register: swap_subvol_check
+      changed_when: false
+      failed_when: false
+
+    - name: Create /.swap subvolume
+      become: true
+      ansible.builtin.command:
+        cmd: btrfs subvolume create /.swap
+      when: swap_subvol_check.rc != 0
+
+    - name: Set nocow attribute on /.swap
+      become: true
+      ansible.builtin.command:
+        cmd: chattr +C /.swap
+
+    - name: Create swap file in /.swap subvolume using btrfs
+      become: true
+      ansible.builtin.command:
+        cmd: btrfs filesystem mkswapfile --size {{ swap_size_bytes.stdout }} /.swap/swap.img
+        creates: /.swap/swap.img
+
+    - name: Update fstab for new swap location
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^/swap\.img'
+        line: "/.swap/swap.img none swap sw 0 0"
+        state: present
+
+    - name: Enable swap
+      become: true
+      ansible.builtin.command:
+        cmd: swapon /.swap/swap.img
