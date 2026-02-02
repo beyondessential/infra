@@ -1279,7 +1279,7 @@
           changed_when: true
           failed_when: false
 
-        - name: Get current filesystem usage
+        - name: Get current filesystem usage in bytes
           ansible.builtin.shell: |
             btrfs filesystem usage / | grep 'Device size:' | awk '{print $3}'
           register: btrfs_device_size
@@ -1291,79 +1291,101 @@
           register: btrfs_used
           changed_when: false
 
-        - name: Calculate target size for resize
+        - name: Get actual usage in bytes
           ansible.builtin.shell: |
-            used_gb=$(df -BG / | tail -1 | awk '{print $3}' | sed 's/G//')
-            target=$((used_gb + {{ extra_space_gb }}))
-            minimum={{ minimum_final_size_gb }}
-            if [ $target -lt $minimum ]; then
-              target=$minimum
-            fi
-            echo $target
-          register: target_size
+            df -B1 / | tail -1 | awk '{print $3}'
+          register: actual_usage_bytes
           changed_when: false
 
-        - name: Get current partition size in GiB
+        - name: Calculate target size in bytes
+          ansible.builtin.set_fact:
+            target_size_bytes: "{{ [((actual_usage_bytes.stdout | int) + (extra_space_gb | int * 1024 * 1024 * 1024)), ((minimum_final_size_gb | int * 1024 * 1024 * 1024) - (boot_overhead_sectors | int * sector_size | int))] | max }}"
+
+        - name: Get current partition size in sectors
           ansible.builtin.shell: |
-            parted {{ root_device }} unit GiB print | grep '^ 1' | awk '{print $3}' | sed 's/GiB//'
-          register: current_partition_size
+            fdisk -l {{ root_device }} | grep '^{{ root_partition }}' | awk '{print $3}'
+          register: current_partition_end_sector
           changed_when: false
+
+        - name: Calculate current partition size in bytes
+          ansible.builtin.set_fact:
+            current_partition_size_bytes: "{{ ((current_partition_end_sector.stdout | int - root_start_sector | int + 1) * sector_size | int) }}"
+            current_partition_size_gb: "{{ (((current_partition_end_sector.stdout | int - root_start_sector | int + 1) * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}"
+            target_size_gb: "{{ (target_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
 
         - name: Display size information
           ansible.builtin.debug:
             msg:
-              - "Current partition size: {{ current_partition_size.stdout }}GiB"
-              - "Target size: {{ target_size.stdout }}GB"
+              - "Current partition size: {{ current_partition_size_gb }}GB"
+              - "Target size: {{ target_size_gb }}GB"
               - "Btrfs device size: {{ btrfs_device_size.stdout }}"
               - "Btrfs used: {{ btrfs_used.stdout }}"
 
         - name: Resize filesystem if needed
           ansible.builtin.shell: |
-            current_size={{ current_partition_size.stdout }}
-            target_size={{ target_size.stdout }}
-            if [ "$current_size" != "$target_size" ] && [ $(echo "$target_size < $current_size" | bc) -eq 1 ]; then
-              echo "Resizing filesystem to ${target_size}G"
-              btrfs filesystem resize ${target_size}G /
+            if [ {{ target_size_bytes | int }} -lt {{ current_partition_size_bytes | int }} ]; then
+              echo "Resizing filesystem to {{ target_size_gb }}G"
+              btrfs filesystem resize {{ target_size_gb }}G /
             else
               echo "No filesystem resize needed"
             fi
           register: fs_resize_result
           changed_when: "'Resizing filesystem' in fs_resize_result.stdout"
 
+        - name: Calculate target end sector
+          ansible.builtin.set_fact:
+            target_end_sector: "{{ (root_start_sector | int + ((target_size_bytes | int + sector_size | int - 1) / sector_size | int) - 1) | int }}"
+
         - name: Resize partition if needed
           ansible.builtin.shell: |
-            current_size={{ current_partition_size.stdout }}
-            target_size={{ target_size.stdout }}
-            if [ "$current_size" != "$target_size" ] && [ $(echo "$target_size < $current_size" | bc) -eq 1 ]; then
-              echo "Resizing partition to ${target_size}GiB"
-              parted {{ root_device }} resizepart 1 ${target_size}GiB
+            if [ {{ target_end_sector | int }} -lt {{ current_partition_end_sector.stdout | int }} ]; then
+              echo "Resizing partition to end at sector {{ target_end_sector }}"
+              echo -e "d\n1\nn\np\n1\n{{ root_start_sector }}\n{{ target_end_sector }}\nw" | fdisk {{ root_device }}
             else
               echo "No partition resize needed"
             fi
           register: part_resize_result
           changed_when: "'Resizing partition' in part_resize_result.stdout"
 
-        - name: Get final partition size
-          ansible.builtin.shell: |
-            parted {{ root_device }} unit GiB print | grep '^ 1' | awk '{print $3}' | sed 's/GiB//'
-          register: final_partition_size
-          changed_when: false
+        - name: Reload partition table after resize
+          ansible.builtin.command: partprobe {{ root_device }}
+          changed_when: true
+          when: part_resize_result.changed
 
-        - name: Calculate AWS disk shrink size
+        - name: Calculate AWS disk shrink size from sectors
           ansible.builtin.set_fact:
-            aws_shrink_size_gb: "{{ (final_partition_size.stdout | float + 1) | round(0, 'ceil') | int }}"
+            final_partition_size_gb: "{{ (target_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
+            aws_shrink_size_gb: "{{ ((boot_overhead_sectors | int * sector_size | int + target_size_bytes | int) / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
 
         - name: Display completion information
           ansible.builtin.debug:
             msg:
-              - "========================================="
+              - "==============================================================================="
               - "CONVERSION COMPLETE"
-              - "========================================="
+              - "==============================================================================="
               - ""
               - "Final partition size: {{ final_partition_size.stdout }}GiB"
-              - "Recommended AWS disk size: {{ aws_shrink_size_gb }}GB"
+              - "Current EBS volume size: {{ total_disk_space_needed_gb }}GB"
+              - "Recommended final EBS size: {{ aws_shrink_size_gb }}GB"
               - ""
-              - "You can now shrink the EBS volume in AWS to {{ aws_shrink_size_gb }}GB"
+              - "==============================================================================="
+              - "NEXT STEP: SHRINK EBS VOLUME (OPTIONAL - SAVES COSTS)"
+              - "==============================================================================="
+              - ""
+              - "You can now shrink the EBS volume to {{ aws_shrink_size_gb }}GB to save costs."
+              - ""
+              - "Steps:"
+              - "  1. Go to AWS Console → EC2 → Instances"
+              - "  2. Find the instance named {{ inventory_hostname }}"
+              - "  3. Go to Storage tab → Click on the root volume"
+              - "  4. Actions → Modify volume"
+              - "  5. Change size to {{ aws_shrink_size_gb }}GB and confirm"
+              - "  6. Wait for modification to complete"
+              - ""
+              - "Note: Volume shrinking requires stopping the instance first."
+              - "      Only shrink if you need to reclaim the temporary space."
+              - ""
+              - "==============================================================================="
               - ""
 
         - name: Show final filesystem status
