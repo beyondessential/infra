@@ -42,7 +42,7 @@ export const acmeDnsUsers = instances
       `acme-dns-change-policy-${inst.id}`,
       {
         userName: user.userName,
-        policyDocument: jsonStringify({
+        policyDocument: {
           Version: '2012-10-17',
           Statement: [
             {
@@ -59,7 +59,7 @@ export const acmeDnsUsers = instances
               },
             },
           ],
-        }),
+        },
       },
       { parent: user },
     );
