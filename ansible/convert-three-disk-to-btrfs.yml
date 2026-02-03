@@ -789,21 +789,33 @@
 
         - name: Rsync root filesystem excluding mounted filesystems
           ansible.builtin.shell: |
-            rsync -aAXHx \
+            rsync -aAXHx --info=progress2 \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/postgresql/*"} \
-              / /mnt/btrfsroot/
+              / /mnt/btrfsroot/ > /tmp/rsync-phase4-root.log 2>&1
           async: 3600
           poll: 5
           register: rsync_root
           changed_when: true
+          failed_when: rsync_root.rc != 0
+
+        - name: Display rsync root errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-root.log || cat /tmp/rsync-phase4-root.log
+          when: rsync_root.rc != 0
 
         - name: Rsync var/log
           ansible.builtin.shell: |
-            rsync -aAXHx /var/log/ /mnt/btrfsroot/var/log/
+            rsync -aAXHx --info=progress2 /var/log/ /mnt/btrfsroot/var/log/ > /tmp/rsync-phase4-log.log 2>&1
           async: 1800
           poll: 5
           register: rsync_log
           changed_when: true
+          failed_when: rsync_log.rc != 0
+
+        - name: Display rsync log errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-log.log || cat /tmp/rsync-phase4-log.log
+          when: rsync_log.rc != 0
 
         - name: Stop postgresql before final copy
           ansible.builtin.systemd:
@@ -813,11 +825,17 @@
 
         - name: Rsync postgresql data
           ansible.builtin.shell: |
-            rsync -aAXHx /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/
+            rsync -aAXHx --info=progress2 /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/ > /tmp/rsync-phase4-postgresql.log 2>&1
           async: 3600
           poll: 5
           register: rsync_pg
           changed_when: true
+          failed_when: rsync_pg.rc != 0
+
+        - name: Display rsync postgresql errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-postgresql.log || cat /tmp/rsync-phase4-postgresql.log
+          when: rsync_pg.rc != 0
 
         - name: Get UUID for intermediate btrfs
           ansible.builtin.shell: |
@@ -1118,30 +1136,47 @@
 
         - name: Rsync to final root
           ansible.builtin.shell: |
-            rsync -aAXHx \
+            rsync -aAXHx --info=progress2 \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/containers/*","/var/lib/postgresql/*"} \
-              / /mnt/finalroot/
+              / /mnt/finalroot/ > /tmp/rsync-phase8-root.log 2>&1
           async: 3600
           poll: 5
           register: rsync_final_root
           changed_when: true
+          failed_when: rsync_final_root.rc != 0
+
+        - name: Display rsync final root errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-root.log || cat /tmp/rsync-phase8-root.log
+          when: rsync_final_root.rc != 0
 
         - name: Rsync logs to final
           ansible.builtin.shell: |
-            rsync -aAXHx /var/log/ /mnt/finalroot/var/log/
+            rsync -aAXHx --info=progress2 /var/log/ /mnt/finalroot/var/log/ > /tmp/rsync-phase8-log.log 2>&1
           async: 1800
           poll: 5
           register: rsync_final_log
           changed_when: true
+          failed_when: rsync_final_log.rc != 0
+
+        - name: Display rsync final log errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-log.log || cat /tmp/rsync-phase8-log.log
+          when: rsync_final_log.rc != 0
 
         - name: Rsync containers to final btrfs
           ansible.builtin.shell: |
-            rsync -aAXHx /var/lib/containers/ /mnt/finalroot/var/lib/containers/
+            rsync -aAXHx --info=progress2 /var/lib/containers/ /mnt/finalroot/var/lib/containers/ > /tmp/rsync-phase8-containers.log 2>&1
           async: 1800
           poll: 5
           register: rsync_final_containers
           changed_when: true
           failed_when: false
+
+        - name: Display rsync final containers errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-containers.log || cat /tmp/rsync-phase8-containers.log
+          when: rsync_final_containers.rc != 0
 
         - name: Stop postgresql for final copy
           ansible.builtin.systemd:
@@ -1151,11 +1186,17 @@
 
         - name: Final rsync of postgresql data
           ansible.builtin.shell: |
-            rsync -aAXHx /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/
+            rsync -aAXHx --info=progress2 /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/ > /tmp/rsync-phase8-postgresql.log 2>&1
           async: 3600
           poll: 5
           register: rsync_final_pg
           changed_when: true
+          failed_when: rsync_final_pg.rc != 0
+
+        - name: Display rsync final postgresql errors if failed
+          ansible.builtin.shell: |
+            grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-postgresql.log || cat /tmp/rsync-phase8-postgresql.log
+          when: rsync_final_pg.rc != 0
 
         - name: Get UUID for final partition
           ansible.builtin.shell: |
