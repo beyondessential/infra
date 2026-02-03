@@ -94,7 +94,6 @@
             root_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
             root_device: "{{ current_root_device.stdout if current_root_partition.rc == 0 else current_root_device_fallback.stdout }}"
             intermediate_btrfs_partition: "{{ intermediate_partition_lookup.stdout if (intermediate_partuuid != '' and intermediate_partition_lookup.rc == 0) else '' }}"
-            final_btrfs_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
 
         - name: Find var/log partition by UUID if it exists
           ansible.builtin.shell: |
@@ -239,7 +238,6 @@
           ansible.builtin.set_fact:
             intermediate_partition_number: "{{ intermediate_partition_number_raw.stdout }}"
             intermediate_btrfs_partition: "{{ root_device }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number_raw.stdout }}"
-            final_btrfs_partition: "{{ root_partition }}"
 
         - name: Display detected devices and UUIDs
           ansible.builtin.debug:
@@ -249,7 +247,6 @@
               - "Root UUID: {{ root_uuid }}"
               - "Root PARTUUID: {{ root_partuuid }}"
               - "Intermediate partition: {{ intermediate_btrfs_partition }}"
-              - "Final partition: {{ final_btrfs_partition }}"
               - "Log partition: {{ var_log_partition | default('not detected') }}"
               - "Log UUID: {{ var_log_uuid | default('not detected') }}"
               - "PostgreSQL partition: {{ postgresql_partition | default('not detected') }}"
@@ -1156,14 +1153,38 @@
           ansible.builtin.command: partprobe {{ root_device }}
           changed_when: true
 
-        - name: Wait for new partition
-          ansible.builtin.wait_for:
-            path: "{{ final_btrfs_partition }}"
-            timeout: 15
+        - name: Find newly created partition by start sector
+          ansible.builtin.shell: |
+            lsblk -n -o NAME,START {{ root_device }} | awk -v start="{{ root_start_sector }}" '$2 == start {print "/dev/" $1}'
+          register: final_partition_device
+          changed_when: false
+          retries: 5
+          delay: 2
+          until: final_partition_device.stdout != ""
 
         - name: Create final btrfs filesystem
           ansible.builtin.command: |
-            mkfs.btrfs --label ROOT --checksum xxhash --features block-group-tree,squota {{ final_btrfs_partition }}
+            mkfs.btrfs --label ROOT --checksum xxhash --features block-group-tree,squota {{ final_partition_device.stdout }}
+          changed_when: true
+
+        - name: Get UUID and PARTUUID for final partition
+          ansible.builtin.shell: |
+            echo "uuid=$(blkid -s UUID -o value {{ final_partition_device.stdout }})"
+            echo "partuuid=$(blkid -s PARTUUID -o value {{ final_partition_device.stdout }})"
+          register: final_ids
+          changed_when: false
+
+        - name: Parse final partition IDs
+          ansible.builtin.set_fact:
+            final_uuid: "{{ final_ids.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
+            final_partuuid: "{{ final_ids.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
+
+        - name: Update metadata with final partition IDs
+          ansible.builtin.shell: |
+            metadata_file="/root/.disk-conversion-metadata-{{ metadata_version }}.json"
+            temp_file="${metadata_file}.tmp"
+            jq '. + {"final_uuid": "{{ final_uuid }}", "final_partuuid": "{{ final_partuuid }}"}' "$metadata_file" > "$temp_file"
+            mv "$temp_file" "$metadata_file"
           changed_when: true
 
         - name: Ensure final mount point exists
@@ -1174,7 +1195,7 @@
 
         - name: Mount final btrfs (top level)
           ansible.builtin.shell: |
-            mount {{ final_btrfs_partition }} /mnt/finalroot
+            mount UUID={{ final_uuid }} /mnt/finalroot
           changed_when: true
 
         - name: Create subvolumes on final btrfs
@@ -1192,7 +1213,7 @@
 
         - name: Mount final root subvolume
           ansible.builtin.shell: |
-            mount -o compress=zstd:6,subvol=@ {{ final_btrfs_partition }} /mnt/finalroot
+            mount -o compress=zstd:6,subvol=@ UUID={{ final_uuid }} /mnt/finalroot
           changed_when: true
 
         - name: Create directory structure in final root
@@ -1207,9 +1228,9 @@
 
         - name: Mount final subvolumes
           ansible.builtin.shell: |
-            mount -o compress=zstd:6,subvol=@log {{ final_btrfs_partition }} /mnt/finalroot/var/log
-            mount -o compress=zstd:6,subvol=@containers {{ final_btrfs_partition }} /mnt/finalroot/var/lib/containers
-            mount -o compress=zstd:6,subvol=@postgres {{ final_btrfs_partition }} /mnt/finalroot/var/lib/postgresql
+            mount -o compress=zstd:6,subvol=@log UUID={{ final_uuid }} /mnt/finalroot/var/log
+            mount -o compress=zstd:6,subvol=@containers UUID={{ final_uuid }} /mnt/finalroot/var/lib/containers
+            mount -o compress=zstd:6,subvol=@postgres UUID={{ final_uuid }} /mnt/finalroot/var/lib/postgresql
           changed_when: true
 
         - name: Create swap file on final btrfs
@@ -1288,15 +1309,9 @@
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-postgresql.log || cat /tmp/rsync-phase8-postgresql.log
           when: rsync_final_pg.rc != 0
 
-        - name: Get UUID for final partition
-          ansible.builtin.shell: |
-            blkid -s UUID -o value {{ final_btrfs_partition }}
-          register: final_uuid
-          changed_when: false
-
         - name: Display final UUID
           ansible.builtin.debug:
-            msg: "Final btrfs UUID: {{ final_uuid.stdout }}"
+            msg: "Final btrfs UUID: {{ final_uuid }}"
 
         - name: Backup fstab from final root
           ansible.builtin.copy:
@@ -1308,7 +1323,7 @@
         - name: Update fstab for final root
           ansible.builtin.shell: |
             set -e
-            uuid="{{ final_uuid.stdout }}"
+            uuid="{{ final_uuid }}"
 
             sed -i.old '/^[^#].*[[:space:]]\/[[:space:]]/d' /mnt/finalroot/etc/fstab
             sed -i '/^[^#].*[[:space:]]\/var\/log[[:space:]]/d' /mnt/finalroot/etc/fstab
@@ -1381,7 +1396,7 @@
 
         - name: Set GRUB_DEVICE in grub defaults for final
           ansible.builtin.shell: |
-            final_uuid=$(blkid -s UUID -o value {{ final_btrfs_partition }})
+            final_uuid="{{ final_uuid }}"
             # Backup original grub defaults if not already backed up
             if [ ! -f /mnt/finalroot/etc/default/grub.backup ]; then
               cp /mnt/finalroot/etc/default/grub /mnt/finalroot/etc/default/grub.backup
