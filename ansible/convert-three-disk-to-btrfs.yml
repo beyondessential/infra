@@ -5,9 +5,10 @@
   become: true
 
   vars:
-    # Device names are auto-detected from the system
-    minimum_final_size_gb: 50
-    extra_space_gb: 20
+    # Target a minimum size of 30GB for the root volume
+    minimum_final_size_gb: 30
+    # The resulting filesystem will have at least 10GB free
+    minimum_final_free_gb: 10
     # Metadata file version - bump this when schema changes to avoid compatibility issues
     metadata_version: v2
 
@@ -418,14 +419,18 @@
           ansible.builtin.set_fact:
             current_disk_size_gb: "{{ (current_disk_size_bytes.stdout | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
 
-        - name: Calculate minimum disk space needed based on 2x intermediate + boot overhead
+        - name: Calculate intermediate partition size in GB
           ansible.builtin.set_fact:
-            calculated_minimum_gb: "{{ ((boot_overhead_sectors | int * sector_size | int + 2 * intermediate_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
+            intermediate_size_gb: "{{ (intermediate_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
 
-        - name: Calculate total disk space needed (at least 50GB, 2x intermediate + boot overhead, or current disk size)
+        - name: Calculate desired size with free space (intermediate + minimum_final_free_gb)
           ansible.builtin.set_fact:
-            total_disk_space_needed_gb: "{{ [minimum_final_size_gb | int, calculated_minimum_gb | int, current_disk_size_gb | int] | max }}"
-            total_disk_space_needed_bytes: "{{ ([minimum_final_size_gb | int, calculated_minimum_gb | int, current_disk_size_gb | int] | max) * 1024 * 1024 * 1024 }}"
+            desired_size_with_free_gb: "{{ (intermediate_size_gb | int + minimum_final_free_gb | int) }}"
+
+        - name: Calculate total disk space needed (max of minimum_final_size_gb, desired_size_with_free_gb, or current disk size)
+          ansible.builtin.set_fact:
+            total_disk_space_needed_gb: "{{ [minimum_final_size_gb | int, desired_size_with_free_gb | int, current_disk_size_gb | int] | max }}"
+            total_disk_space_needed_bytes: "{{ ([minimum_final_size_gb | int, desired_size_with_free_gb | int, current_disk_size_gb | int] | max) * 1024 * 1024 * 1024 }}"
 
         - name: Calculate theoretical total sectors after disk extension
           ansible.builtin.set_fact:
