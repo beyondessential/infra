@@ -48,6 +48,8 @@
             intermediate_end_sector: "{{ conversion_metadata.intermediate_end_sector }}"
             final_end_sector: "{{ conversion_metadata.final_end_sector }}"
             total_used_bytes: "{{ conversion_metadata.total_used_bytes }}"
+            total_disk_space_needed_gb: "{{ conversion_metadata.total_disk_space_needed_gb }}"
+            total_disk_space_needed_bytes: "{{ conversion_metadata.total_disk_space_needed_bytes }}"
           when: metadata_file.stat.exists
 
     - name: Derive device names from UUIDs when metadata exists
@@ -443,7 +445,9 @@
                 'intermediate_start_sector': intermediate_start_sector,
                 'intermediate_end_sector': intermediate_end_sector,
                 'final_end_sector': final_end_sector,
-                'total_used_bytes': total_used_bytes
+                'total_used_bytes': total_used_bytes,
+                'total_disk_space_needed_gb': total_disk_space_needed_gb,
+                'total_disk_space_needed_bytes': total_disk_space_needed_bytes
               } | to_nice_json }}
             dest: /root/.disk-conversion-metadata-v1.json
             mode: "0600"
