@@ -38,7 +38,7 @@
             var_log_uuid: "{{ conversion_metadata.var_log_uuid }}"
             postgresql_uuid: "{{ conversion_metadata.postgresql_uuid }}"
             uses_p_separator: "{{ conversion_metadata.uses_p_separator }}"
-            intermediate_partition_number: "{{ conversion_metadata.intermediate_partition_number }}"
+
             intermediate_uuid: "{{ conversion_metadata.intermediate_uuid | default('') }}"
             intermediate_partuuid: "{{ conversion_metadata.intermediate_partuuid | default('') }}"
             sector_size: "{{ conversion_metadata.sector_size }}"
@@ -81,11 +81,19 @@
           changed_when: false
           when: current_root_partition.rc == 0
 
+        - name: Find intermediate partition by PARTUUID if available
+          ansible.builtin.shell: |
+            blkid -t PARTUUID="{{ intermediate_partuuid }}" -o device
+          register: intermediate_partition_lookup
+          changed_when: false
+          failed_when: false
+          when: intermediate_partuuid != ''
+
         - name: Set current device names
           ansible.builtin.set_fact:
             root_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
             root_device: "{{ current_root_device.stdout if current_root_partition.rc == 0 else current_root_device_fallback.stdout }}"
-            intermediate_btrfs_partition: "{{ (current_root_device.stdout if current_root_partition.rc == 0 else current_root_device_fallback.stdout) }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number }}"
+            intermediate_btrfs_partition: "{{ intermediate_partition_lookup.stdout if (intermediate_partuuid != '' and intermediate_partition_lookup.rc == 0) else '' }}"
             final_btrfs_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
 
         - name: Find var/log partition by UUID if it exists
@@ -447,7 +455,7 @@
                 'var_log_uuid': var_log_uuid | default(''),
                 'postgresql_uuid': postgresql_uuid | default(''),
                 'uses_p_separator': uses_p_separator,
-                'intermediate_partition_number': intermediate_partition_number,
+
                 'sector_size': sector_size,
                 'root_start_sector': root_start_sector,
                 'root_end_sector': root_end_sector,
