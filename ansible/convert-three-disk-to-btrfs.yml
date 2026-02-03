@@ -1221,6 +1221,14 @@
           ansible.builtin.shell: |
             wipefs -a {{ final_partition_device.stdout }} || true
 
+        - name: Reload partition table
+          ansible.builtin.command: partprobe {{ root_device }}
+          changed_when: true
+
+        - name: Sync
+          ansible.builtin.command: sync
+          changed_when: true
+
         - name: Create final btrfs filesystem
           ansible.builtin.command: |
             mkfs.btrfs --label ROOT --checksum xxhash --features block-group-tree,squota {{ final_partition_device.stdout }}
