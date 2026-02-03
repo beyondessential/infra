@@ -41,8 +41,10 @@
 
             intermediate_uuid: "{{ conversion_metadata.intermediate_uuid | default('') }}"
             intermediate_partuuid: "{{ conversion_metadata.intermediate_partuuid | default('') }}"
+            final_uuid: "{{ conversion_metadata.final_uuid | default('') }}"
+            final_partuuid: "{{ conversion_metadata.final_partuuid | default('') }}"
+            final_start_sector: "{{ conversion_metadata.final_start_sector | default('') }}"
             sector_size: "{{ conversion_metadata.sector_size }}"
-            root_start_sector: "{{ conversion_metadata.root_start_sector }}"
             root_end_sector: "{{ conversion_metadata.root_end_sector }}"
             total_sectors: "{{ conversion_metadata.total_sectors }}"
             boot_overhead_sectors: "{{ conversion_metadata.boot_overhead_sectors }}"
@@ -454,7 +456,6 @@
                 'uses_p_separator': uses_p_separator,
 
                 'sector_size': sector_size,
-                'root_start_sector': root_start_sector,
                 'root_end_sector': root_end_sector,
                 'total_sectors': total_sectors,
                 'boot_overhead_sectors': boot_overhead_sectors,
@@ -1124,16 +1125,15 @@
               Refusing to delete btrfs partition.
           when: old_root_fstype.stdout == "btrfs"
 
+        - name: Wipe filesystem signature from deleted partition area
+          ansible.builtin.shell: |
+            wipefs -a {{ old_root_partition_device.stdout }}
+          changed_when: false
+
         - name: Remove old ext4 partition
           ansible.builtin.shell: |
             parted -s {{ root_device }} rm {{ old_root_partition_number.stdout }}
           changed_when: true
-
-        - name: Wipe filesystem signature from deleted partition area
-          ansible.builtin.shell: |
-            wipefs -a {{ old_root_partition_device.stdout }} 2>/dev/null || true
-          changed_when: false
-          failed_when: false
 
         - name: Display deletion complete
           ansible.builtin.debug:
@@ -1210,12 +1210,16 @@
 
         - name: Find newly created partition by start sector
           ansible.builtin.shell: |
-            lsblk -n -o NAME,START {{ root_device }} | awk -v start="{{ root_start_sector }}" '$2 == start {print "/dev/" $1}'
+            lsblk -n -o NAME,START {{ root_device }} | awk -v start="{{ largest_free_start.stdout }}" '$2 == start {print "/dev/" $1}'
           register: final_partition_device
           changed_when: false
           retries: 5
           delay: 2
           until: final_partition_device.stdout != ""
+
+        - name: Wipe filesystem signature from new partition just in case
+          ansible.builtin.shell: |
+            wipefs -a {{ final_partition_device.stdout }} || true
 
         - name: Create final btrfs filesystem
           ansible.builtin.command: |
@@ -1233,12 +1237,13 @@
           ansible.builtin.set_fact:
             final_uuid: "{{ final_ids.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
             final_partuuid: "{{ final_ids.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
+            final_start_sector: "{{ largest_free_start.stdout }}"
 
-        - name: Update metadata with final partition IDs
+        - name: Update metadata with final partition IDs and start sector
           ansible.builtin.shell: |
             metadata_file="/root/.disk-conversion-metadata-{{ metadata_version }}.json"
             temp_file="${metadata_file}.tmp"
-            jq '. + {"final_uuid": "{{ final_uuid }}", "final_partuuid": "{{ final_partuuid }}"}' "$metadata_file" > "$temp_file"
+            jq '. + {"final_uuid": "{{ final_uuid }}", "final_partuuid": "{{ final_partuuid }}", "final_start_sector": "{{ final_start_sector }}"}' "$metadata_file" > "$temp_file"
             mv "$temp_file" "$metadata_file"
           changed_when: true
 
@@ -1622,8 +1627,8 @@
 
         - name: Calculate current partition size in bytes
           ansible.builtin.set_fact:
-            current_partition_size_bytes: "{{ ((current_partition_end_sector.stdout | int - root_start_sector | int + 1) * sector_size | int) }}"
-            current_partition_size_gb: "{{ (((current_partition_end_sector.stdout | int - root_start_sector | int + 1) * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}"
+            current_partition_size_bytes: "{{ ((current_partition_end_sector.stdout | int - final_start_sector | int + 1) * sector_size | int) }}"
+            current_partition_size_gb: "{{ (((current_partition_end_sector.stdout | int - final_start_sector | int + 1) * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}"
             target_size_gb: "{{ (target_size_bytes | int / 1024 / 1024 / 1024) | round(1) }}"
 
         - name: Display size information
@@ -1647,14 +1652,14 @@
 
         - name: Calculate target end sector
           ansible.builtin.set_fact:
-            target_end_sector: "{{ (root_start_sector | int + ((target_size_bytes | int + sector_size | int - 1) / sector_size | int) - 1) | int }}"
+            target_end_sector: "{{ (final_start_sector | int + ((target_size_bytes | int + sector_size | int - 1) / sector_size | int) - 1) | int }}"
 
         - name: Resize partition if needed
           ansible.builtin.shell: |
             if [ {{ target_end_sector | int }} -lt {{ current_partition_end_sector.stdout | int }} ]; then
               echo "Resizing partition to end at sector {{ target_end_sector }}"
               parted -s {{ root_device }} rm 1
-              parted -s {{ root_device }} unit s mkpart primary {{ root_start_sector }} {{ target_end_sector }}
+              parted -s {{ root_device }} unit s mkpart primary {{ final_start_sector }} {{ target_end_sector }}
             else
               echo "No partition resize needed"
             fi
