@@ -8,6 +8,8 @@
     # Device names are auto-detected from the system
     minimum_final_size_gb: 50
     extra_space_gb: 20
+    # Metadata file version - bump this when schema changes to avoid compatibility issues
+    metadata_version: v2
 
   tasks:
     - name: Load or detect conversion metadata
@@ -15,12 +17,12 @@
       block:
         - name: Check if conversion metadata file exists
           ansible.builtin.stat:
-            path: /root/.disk-conversion-metadata-v1.json
+            path: /root/.disk-conversion-metadata-{{ metadata_version }}.json
           register: metadata_file
 
         - name: Read existing metadata file if it exists
           ansible.builtin.slurp:
-            path: /root/.disk-conversion-metadata-v1.json
+            path: /root/.disk-conversion-metadata-{{ metadata_version }}.json
           register: metadata_slurp
           when: metadata_file.stat.exists
 
@@ -449,12 +451,12 @@
                 'total_disk_space_needed_gb': total_disk_space_needed_gb,
                 'total_disk_space_needed_bytes': total_disk_space_needed_bytes
               } | to_nice_json }}
-            dest: /root/.disk-conversion-metadata-v1.json
+            dest: /root/.disk-conversion-metadata-{{ metadata_version }}.json
             mode: "0600"
 
         - name: Display saved metadata location
           ansible.builtin.debug:
-            msg: "Conversion metadata saved to /root/.disk-conversion-metadata-v1.json"
+            msg: "Conversion metadata saved to /root/.disk-conversion-metadata-{{ metadata_version }}.json"
 
         - name: Calculate display values
           ansible.builtin.set_fact:
@@ -670,9 +672,21 @@
 
         - name: Create intermediate btrfs partition
           ansible.builtin.shell: |
+            set -o pipefail
             echo -e "n\np\n{{ intermediate_partition_number }}\n{{ intermediate_start_sector }}\n{{ intermediate_end_sector }}\nw" | fdisk {{ root_device }}
+          args:
+            executable: /bin/bash
           register: partition_create
           changed_when: true
+
+        - name: Display partition creation output
+          ansible.builtin.debug:
+            msg:
+              - "Partition creation stdout:"
+              - "{{ partition_create.stdout }}"
+              - "Partition creation stderr:"
+              - "{{ partition_create.stderr }}"
+              - "Return code: {{ partition_create.rc }}"
 
         - name: Reload partition table
           ansible.builtin.command: partprobe {{ root_device }}
@@ -985,13 +999,19 @@
 
         - name: Create final btrfs partition
           ansible.builtin.shell: |
+            set -o pipefail
             echo -e "n\np\n1\n{{ root_start_sector }}\n{{ final_end_sector }}\nw" | fdisk {{ root_device }}
+          args:
+            executable: /bin/bash
           register: partition_create
           changed_when: true
 
         - name: Fix partition table order
           ansible.builtin.shell: |
+            set -o pipefail
             echo -e "x\nf\nr\nw" | fdisk {{ root_device }}
+          args:
+            executable: /bin/bash
           changed_when: true
 
         - name: Reload partition table
@@ -1345,12 +1365,15 @@
 
         - name: Resize partition if needed
           ansible.builtin.shell: |
+            set -o pipefail
             if [ {{ target_end_sector | int }} -lt {{ current_partition_end_sector.stdout | int }} ]; then
               echo "Resizing partition to end at sector {{ target_end_sector }}"
               echo -e "d\n1\nn\np\n1\n{{ root_start_sector }}\n{{ target_end_sector }}\nw" | fdisk {{ root_device }}
             else
               echo "No partition resize needed"
             fi
+          args:
+            executable: /bin/bash
           register: part_resize_result
           changed_when: "'Resizing partition' in part_resize_result.stdout"
 
@@ -1417,9 +1440,9 @@
 
         - name: Rename conversion metadata file as completed
           ansible.builtin.command:
-            cmd: mv /root/.disk-conversion-metadata-v1.json /root/.disk-conversion-metadata-v1-completed.json
+            cmd: mv /root/.disk-conversion-metadata-{{ metadata_version }}.json /root/.disk-conversion-metadata-{{ metadata_version }}-completed.json
           changed_when: true
 
         - name: Conversion metadata preserved
           ansible.builtin.debug:
-            msg: "Conversion complete! Metadata saved to /root/.disk-conversion-metadata-v1-completed.json for record keeping."
+            msg: "Conversion complete! Metadata saved to /root/.disk-conversion-metadata-{{ metadata_version }}-completed.json for record keeping."
