@@ -700,8 +700,9 @@
 
               If you need to restart phase2, first clean up manually:
                 1. Unmount: umount /mnt/btrfsroot (if mounted)
-                2. Delete partition: parted -s {{ root_device }} rm {{ intermediate_partition_number }}
-                3. Then re-run phase2
+                2. Wipe filesystem signature: wipefs -a {{ intermediate_btrfs_partition }}
+                3. Delete partition: parted -s {{ root_device }} rm {{ intermediate_partition_number }}
+                4. Then re-run phase2
           when: intermediate_partition_exists.stat.exists
 
         - name: Create intermediate btrfs partition
