@@ -688,6 +688,22 @@
               - "Last usable sector: {{ last_usable_sector.stdout }}"
               - "Using end sector: {{ actual_intermediate_end_sector }}"
 
+        - name: Check if intermediate partition already exists
+          ansible.builtin.stat:
+            path: "{{ intermediate_btrfs_partition }}"
+          register: intermediate_partition_exists
+
+        - name: Fail if intermediate partition already exists
+          ansible.builtin.fail:
+            msg: |
+              ERROR: Intermediate partition {{ intermediate_btrfs_partition }} already exists!
+
+              If you need to restart phase2, first clean up manually:
+                1. Unmount: umount /mnt/btrfsroot (if mounted)
+                2. Delete partition: parted -s {{ root_device }} rm {{ intermediate_partition_number }}
+                3. Then re-run phase2
+          when: intermediate_partition_exists.stat.exists
+
         - name: Create intermediate btrfs partition
           ansible.builtin.shell: |
             parted -s {{ root_device }} unit s mkpart primary {{ intermediate_start_sector }} {{ actual_intermediate_end_sector }}
