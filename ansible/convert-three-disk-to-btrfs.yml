@@ -887,6 +887,19 @@
             msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
           when: not metadata_file.stat.exists
 
+        - name: Check if intermediate btrfs is mounted
+          ansible.builtin.shell: |
+            findmnt /mnt/btrfsroot || echo "not_mounted"
+          register: intermediate_mount_check
+          changed_when: false
+
+        - name: Mount intermediate btrfs if not mounted
+          ansible.builtin.shell: |
+            mkdir -p /mnt/btrfsroot
+            mount -o compress=zstd:6 {{ intermediate_btrfs_partition }} /mnt/btrfsroot
+          changed_when: true
+          when: intermediate_mount_check.stdout == "not_mounted"
+
         - name: Mount required filesystems for chroot
           ansible.builtin.shell: |
             mount --bind /dev /mnt/btrfsroot/dev
