@@ -931,10 +931,46 @@
           changed_when: true
           when: boot_efi_stat.stat.exists
 
+        - name: Display current root device before grub update
+          ansible.builtin.shell: |
+            echo "=== Current root device ==="
+            findmnt -n -o SOURCE /
+            echo "=== Intermediate partition ==="
+            echo "{{ intermediate_btrfs_partition }}"
+            echo "=== Intermediate UUID ==="
+            blkid -s UUID -o value {{ intermediate_btrfs_partition }}
+            echo "=== Fstab in chroot ==="
+            cat /mnt/btrfsroot/etc/fstab | grep -v '^#' | grep -v '^$'
+          register: pre_grub_debug
+          changed_when: false
+
+        - name: Show pre-grub debug info
+          ansible.builtin.debug:
+            var: pre_grub_debug.stdout_lines
+
         - name: Update initramfs and grub in chroot
           ansible.builtin.shell: |
             chroot /mnt/btrfsroot /bin/bash -c "update-initramfs -u && update-grub"
+          register: grub_update
           changed_when: true
+
+        - name: Display grub update output
+          ansible.builtin.debug:
+            var: grub_update.stdout_lines
+
+        - name: Verify grub configuration after update
+          ansible.builtin.shell: |
+            echo "=== Checking grub.cfg for intermediate UUID ==="
+            intermediate_uuid=$(blkid -s UUID -o value {{ intermediate_btrfs_partition }})
+            grep "root=UUID=$intermediate_uuid" /mnt/btrfsroot/boot/grub/grub.cfg || echo "WARNING: Intermediate UUID not found in grub.cfg"
+            echo "=== First menuentry in grub.cfg ==="
+            grep -A10 'menuentry.*Ubuntu' /mnt/btrfsroot/boot/grub/grub.cfg | head -15
+          register: post_grub_debug
+          changed_when: false
+
+        - name: Show post-grub debug info
+          ansible.builtin.debug:
+            var: post_grub_debug.stdout_lines
 
         - name: Unmount intermediate btrfs and all bind mounts
           ansible.builtin.shell: |
