@@ -1210,24 +1210,12 @@
 
         - name: Find newly created partition by start sector
           ansible.builtin.shell: |
-            lsblk -n -o NAME,START {{ root_device }} | awk -v start="{{ largest_free_start.stdout }}" '$2 == start {print "/dev/" $1}'
+            lsblk -p -l -n -o NAME,START {{ root_device }} | awk -v start="{{ largest_free_start.stdout }}" '$2 == start {print $1}'
           register: final_partition_device
           changed_when: false
           retries: 5
           delay: 2
           until: final_partition_device.stdout != ""
-
-        - name: Wipe filesystem signature from new partition just in case
-          ansible.builtin.shell: |
-            wipefs -a {{ final_partition_device.stdout }} || true
-
-        - name: Reload partition table
-          ansible.builtin.command: partprobe {{ root_device }}
-          changed_when: true
-
-        - name: Sync
-          ansible.builtin.command: sync
-          changed_when: true
 
         - name: Create final btrfs filesystem
           ansible.builtin.command: |
