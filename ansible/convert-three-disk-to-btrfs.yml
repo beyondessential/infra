@@ -923,21 +923,11 @@
             chroot /mnt/btrfsroot /bin/bash -c "update-initramfs -u && update-grub"
           changed_when: true
 
-        - name: Unmount chroot filesystems in reverse order
+        - name: Unmount intermediate btrfs and all bind mounts
           ansible.builtin.shell: |
-            umount /mnt/btrfsroot/boot/efi 2>/dev/null || true
-            umount /mnt/btrfsroot/boot 2>/dev/null || true
-            umount /mnt/btrfsroot/run
-            umount /mnt/btrfsroot/sys
-            umount /mnt/btrfsroot/proc
-            umount /mnt/btrfsroot/dev
+            umount -R /mnt/btrfsroot
           changed_when: true
           failed_when: false
-
-        - name: Unmount intermediate btrfs
-          ansible.builtin.shell: |
-            umount /mnt/btrfsroot
-          changed_when: true
 
         - name: Display completion message
           ansible.builtin.debug:
@@ -1288,24 +1278,11 @@
             chroot /mnt/finalroot /bin/bash -c "update-initramfs -u && update-grub"
           changed_when: true
 
-        - name: Unmount final chroot filesystems
+        - name: Unmount final btrfs and all submounts
           ansible.builtin.shell: |
-            umount /mnt/finalroot/boot/efi 2>/dev/null || true
-            umount /mnt/finalroot/boot 2>/dev/null || true
-            umount /mnt/finalroot/run
-            umount /mnt/finalroot/sys
-            umount /mnt/finalroot/proc
-            umount /mnt/finalroot/dev
+            umount -R /mnt/finalroot
           changed_when: true
           failed_when: false
-
-        - name: Unmount final btrfs mounts
-          ansible.builtin.shell: |
-            umount /mnt/finalroot/var/lib/postgresql
-            umount /mnt/finalroot/var/lib/containers
-            umount /mnt/finalroot/var/log
-            umount /mnt/finalroot
-          changed_when: true
 
         - name: Display ready for reboot message
           ansible.builtin.debug:
