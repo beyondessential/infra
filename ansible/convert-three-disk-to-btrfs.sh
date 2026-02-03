@@ -5,16 +5,6 @@ cat << 'EOF'
 Three-Disk to Single-Root BTRFS Conversion Script
 ==================================================
 
-This script guides you through converting a three-disk setup to single-root btrfs.
-
-IMPORTANT: Review the playbook and understand each phase before running.
-
-Prerequisites:
-- Ansible installed and configured
-- SSH access to target server
-- Backups of all data (recommended)
-- AWS access to extend/modify EBS volumes
-
 Usage:
   ./convert-three-disk-to-btrfs.sh <inventory> <hostname> [resume_from_phase]
 
@@ -35,10 +25,6 @@ Phases:
   10. phase10   - Update bootloader for final btrfs
   11. reboot2   - Reboot to final btrfs
   12. phase12   - Cleanup and calculate shrink size
-
-Run phases individually with:
-  ansible-playbook convert-three-disk-to-btrfs.yml -i <inventory> -l <hostname> --tags=<phase>
-
 EOF
 
 if [ $# -lt 2 ]; then

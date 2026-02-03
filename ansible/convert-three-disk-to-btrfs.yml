@@ -390,15 +390,11 @@
             boot_overhead_sectors: "{{ root_start_sector | int }}"
             boot_overhead_bytes: "{{ root_start_sector | int * sector_size | int }}"
             buffer_bytes: "{{ 2 * 1024 * 1024 * 1024 }}"
-            extra_space_bytes: "{{ extra_space_gb | int * 1024 * 1024 * 1024 }}"
-            minimum_final_disk_size_bytes: "{{ minimum_final_size_gb | int * 1024 * 1024 * 1024 }}"
             intermediate_size_bytes: "{{ total_used_bytes | int + (2 * 1024 * 1024 * 1024) }}"
-            calculated_final_size_bytes: "{{ total_used_bytes | int + (extra_space_gb | int * 1024 * 1024 * 1024) }}"
 
-        - name: Determine final partition size (subtract boot overhead from minimum final disk size)
+        - name: Determine final partition size (matches intermediate since it will expand later)
           ansible.builtin.set_fact:
-            minimum_final_partition_bytes: "{{ (minimum_final_size_gb | int * 1024 * 1024 * 1024) - (root_start_sector | int * sector_size | int) }}"
-            final_partition_size_bytes: "{{ [((minimum_final_size_gb | int * 1024 * 1024 * 1024) - (root_start_sector | int * sector_size | int)), calculated_final_size_bytes | int] | max }}"
+            final_partition_size_bytes: "{{ intermediate_size_bytes | int }}"
 
         - name: Convert sizes to sectors
           ansible.builtin.set_fact:
@@ -572,9 +568,6 @@
               - "  5. Change size to {{ total_disk_space_needed_gb }}GB and confirm"
               - "  6. Wait for modification to complete (state: optimizing)"
               - "  7. Run phase2 to create the intermediate partition"
-              - ""
-              - "Note: The root ext4 partition will NOT be extended - the new space"
-              - "      will be used to create the intermediate btrfs partition."
               - ""
               - "==============================================================================="
           when: current_disk_size_gb | int < total_disk_space_needed_gb | int
