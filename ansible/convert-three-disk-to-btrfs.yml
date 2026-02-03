@@ -931,37 +931,6 @@
           changed_when: true
           when: boot_efi_stat.stat.exists
 
-        - name: Display current root device before grub update
-          ansible.builtin.shell: |
-            echo "=== Current root device ==="
-            findmnt -n -o SOURCE /
-            echo "=== Intermediate partition ==="
-            echo "{{ intermediate_btrfs_partition }}"
-            echo "=== Intermediate UUID ==="
-            blkid -s UUID -o value {{ intermediate_btrfs_partition }}
-            echo "=== Fstab in chroot ==="
-            cat /mnt/btrfsroot/etc/fstab | grep -v '^#' | grep -v '^$'
-          register: pre_grub_debug
-          changed_when: false
-
-        - name: Show pre-grub debug info
-          ansible.builtin.debug:
-            var: pre_grub_debug.stdout_lines
-
-        - name: Check for AWS-specific grub settings
-          ansible.builtin.shell: |
-            echo "=== Checking for AWS grub configs ==="
-            ls -la /mnt/btrfsroot/etc/default/grub.d/ 2>/dev/null || echo "No grub.d directory"
-            cat /mnt/btrfsroot/etc/default/grub.d/* 2>/dev/null || echo "No files in grub.d"
-            echo "=== Current grub defaults ==="
-            cat /mnt/btrfsroot/etc/default/grub
-          register: aws_grub_check
-          changed_when: false
-
-        - name: Show AWS grub check
-          ansible.builtin.debug:
-            var: aws_grub_check.stdout_lines
-
         - name: Remove AWS GRUB_FORCE_PARTUUID override file
           ansible.builtin.file:
             path: /mnt/btrfsroot/etc/default/grub.d/40-force-partuuid.cfg
@@ -981,38 +950,12 @@
             echo "GRUB_DEVICE=UUID=$intermediate_uuid" >> /mnt/btrfsroot/etc/default/grub
             echo "GRUB_DISABLE_LINUX_UUID=false" >> /mnt/btrfsroot/etc/default/grub
             echo "GRUB_DISABLE_OS_PROBER=true" >> /mnt/btrfsroot/etc/default/grub
-            echo "=== Updated grub defaults ==="
-            tail -5 /mnt/btrfsroot/etc/default/grub
-          register: grub_config_update
           changed_when: true
-
-        - name: Show updated grub config
-          ansible.builtin.debug:
-            var: grub_config_update.stdout_lines
 
         - name: Update initramfs and grub in chroot
           ansible.builtin.shell: |
             chroot /mnt/btrfsroot /bin/bash -c "update-initramfs -u && update-grub"
-          register: grub_update
           changed_when: true
-
-        - name: Display grub update output
-          ansible.builtin.debug:
-            var: grub_update.stdout_lines
-
-        - name: Verify grub configuration after update
-          ansible.builtin.shell: |
-            echo "=== Checking grub.cfg for intermediate UUID ==="
-            intermediate_uuid=$(blkid -s UUID -o value {{ intermediate_btrfs_partition }})
-            grep "root=UUID=$intermediate_uuid" /mnt/btrfsroot/boot/grub/grub.cfg || echo "WARNING: Intermediate UUID not found in grub.cfg"
-            echo "=== First menuentry in grub.cfg ==="
-            grep -A10 'menuentry.*Ubuntu' /mnt/btrfsroot/boot/grub/grub.cfg | head -15
-          register: post_grub_debug
-          changed_when: false
-
-        - name: Show post-grub debug info
-          ansible.builtin.debug:
-            var: post_grub_debug.stdout_lines
 
         - name: Unmount intermediate btrfs and all bind mounts
           ansible.builtin.shell: |
@@ -1363,6 +1306,29 @@
             mount --bind /boot/efi /mnt/finalroot/boot/efi
           changed_when: true
           when: boot_efi_stat_final.stat.exists
+
+        - name: Remove AWS GRUB_FORCE_PARTUUID override file for final
+          ansible.builtin.file:
+            path: /mnt/finalroot/etc/default/grub.d/40-force-partuuid.cfg
+            state: absent
+          changed_when: true
+
+        - name: Set GRUB_DEVICE in grub defaults for final
+          ansible.builtin.shell: |
+            final_uuid=$(blkid -s UUID -o value {{ final_btrfs_partition }})
+            # Backup original grub defaults if not already backed up
+            if [ ! -f /mnt/finalroot/etc/default/grub.backup ]; then
+              cp /mnt/finalroot/etc/default/grub /mnt/finalroot/etc/default/grub.backup
+            fi
+            # Remove any existing GRUB_DEVICE or GRUB_DISABLE_LINUX_UUID settings
+            sed -i '/^GRUB_DEVICE=/d' /mnt/finalroot/etc/default/grub
+            sed -i '/^GRUB_DISABLE_LINUX_UUID=/d' /mnt/finalroot/etc/default/grub
+            sed -i '/^GRUB_DISABLE_OS_PROBER=/d' /mnt/finalroot/etc/default/grub
+            # Set GRUB_DEVICE to force grub to use final btrfs UUID
+            echo "GRUB_DEVICE=UUID=$final_uuid" >> /mnt/finalroot/etc/default/grub
+            echo "GRUB_DISABLE_LINUX_UUID=false" >> /mnt/finalroot/etc/default/grub
+            echo "GRUB_DISABLE_OS_PROBER=true" >> /mnt/finalroot/etc/default/grub
+          changed_when: true
 
         - name: Update initramfs and grub for final boot
           ansible.builtin.shell: |
