@@ -63,19 +63,28 @@
             blkid -t PARTUUID="{{ root_partuuid }}" -o device
           register: current_root_partition
           changed_when: false
+          failed_when: false
 
-        - name: Derive root device from current root partition
+        - name: Derive root device from current root if PARTUUID not found
+          ansible.builtin.shell: |
+            findmnt -n -o SOURCE / | sed 's/\[.*\]$//' | sed 's/p\?[0-9]*$//'
+          register: current_root_device_fallback
+          changed_when: false
+          when: current_root_partition.rc != 0
+
+        - name: Derive root device from old partition if PARTUUID found
           ansible.builtin.shell: |
             echo "{{ current_root_partition.stdout }}" | sed 's/p\?[0-9]*$//'
           register: current_root_device
           changed_when: false
+          when: current_root_partition.rc == 0
 
         - name: Set current device names
           ansible.builtin.set_fact:
-            root_partition: "{{ current_root_partition.stdout }}"
-            root_device: "{{ current_root_device.stdout }}"
-            intermediate_btrfs_partition: "{{ current_root_device.stdout }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number }}"
-            final_btrfs_partition: "{{ current_root_partition.stdout }}"
+            root_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
+            root_device: "{{ current_root_device.stdout if current_root_partition.rc == 0 else current_root_device_fallback.stdout }}"
+            intermediate_btrfs_partition: "{{ (current_root_device.stdout if current_root_partition.rc == 0 else current_root_device_fallback.stdout) }}{{ 'p' if uses_p_separator else '' }}{{ intermediate_partition_number }}"
+            final_btrfs_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
 
         - name: Find var/log partition by UUID if it exists
           ansible.builtin.shell: |
@@ -103,10 +112,10 @@
             postgresql_partition: "{{ current_postgresql_partition.stdout }}"
           when: postgresql_uuid != '' and current_postgresql_partition.rc == 0
 
-        - name: Verify we found the correct root partition
+        - name: Verify we found the root device
           ansible.builtin.fail:
-            msg: "Could not find root partition with PARTUUID {{ root_partuuid }}"
-          when: current_root_partition.stdout == ''
+            msg: "Could not determine root device"
+          when: root_device == ''
 
     - name: Phase 1 - Gather information and validate
       tags: [never, phase1, gather]
@@ -653,10 +662,11 @@
           ansible.builtin.debug:
             var: partition_layout_before.stdout_lines
 
-        - name: Stop services to reduce disk activity
+        - name: Stop and disable services to reduce disk activity
           ansible.builtin.systemd:
             name: "{{ item }}"
             state: stopped
+            enabled: false
           loop:
             - postgresql
             - podman
@@ -1078,14 +1088,6 @@
           register: partition_create
           changed_when: true
 
-        - name: Fix partition table order
-          ansible.builtin.shell: |
-            set -o pipefail
-            echo -e "x\nf\nr\nw" | fdisk {{ root_device }}
-          args:
-            executable: /bin/bash
-          changed_when: true
-
         - name: Reload partition table
           ansible.builtin.command: partprobe {{ root_device }}
           changed_when: true
@@ -1341,10 +1343,18 @@
           changed_when: true
           failed_when: false
 
+        - name: Fix partition table order before reboot
+          ansible.builtin.shell: |
+            set -o pipefail
+            echo -e "x\nf\nr\nw" | fdisk {{ root_device }}
+          args:
+            executable: /bin/bash
+          changed_when: true
+
         - name: Display ready for reboot message
           ansible.builtin.debug:
             msg:
-              - "Phase 9 complete - final bootloader updated"
+              - "Phase 9 complete - final bootloader updated and partition table reordered"
               - "System is ready for final reboot"
               - "Run with --tags=reboot2 when ready"
 
@@ -1402,6 +1412,25 @@
         - name: Show filesystem information
           ansible.builtin.debug:
             var: fs_info.stdout_lines
+
+        - name: Re-enable podman service
+          ansible.builtin.systemd:
+            name: podman
+            enabled: true
+            state: started
+          failed_when: false
+
+        - name: Re-enable postgresql service
+          ansible.builtin.systemd:
+            name: postgresql
+            enabled: true
+            state: started
+          failed_when: false
+
+        - name: Display service re-enable status
+          ansible.builtin.debug:
+            msg:
+              - "Services re-enabled: podman and postgresql are now enabled and started"
 
     - name: Phase 11 - Cleanup and resize
       tags: [never, phase11, cleanup]
