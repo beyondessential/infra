@@ -948,6 +948,16 @@
           ansible.builtin.debug:
             var: pre_grub_debug.stdout_lines
 
+        - name: Set GRUB_DEVICE in grub defaults before update
+          ansible.builtin.shell: |
+            intermediate_uuid=$(blkid -s UUID -o value {{ intermediate_btrfs_partition }})
+            # Backup original grub defaults
+            cp /mnt/btrfsroot/etc/default/grub /mnt/btrfsroot/etc/default/grub.backup
+            # Set GRUB_DEVICE to force grub to use intermediate btrfs UUID
+            echo "GRUB_DEVICE=UUID=$intermediate_uuid" >> /mnt/btrfsroot/etc/default/grub
+            echo "GRUB_DISABLE_OS_PROBER=true" >> /mnt/btrfsroot/etc/default/grub
+          changed_when: true
+
         - name: Update initramfs and grub in chroot
           ansible.builtin.shell: |
             chroot /mnt/btrfsroot /bin/bash -c "update-initramfs -u && update-grub"
