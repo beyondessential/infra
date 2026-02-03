@@ -1013,6 +1013,14 @@
           register: partition_create
           changed_when: true
 
+        - name: Fix partition table order
+          ansible.builtin.shell: |
+            set -o pipefail
+            echo -e "x\nf\nr\nw" | fdisk {{ root_device }}
+          args:
+            executable: /bin/bash
+          changed_when: true
+
         - name: Reload partition table
           ansible.builtin.command: partprobe {{ root_device }}
           changed_when: true
