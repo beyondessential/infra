@@ -1129,6 +1129,12 @@
             parted -s {{ root_device }} rm {{ old_root_partition_number.stdout }}
           changed_when: true
 
+        - name: Wipe filesystem signature from deleted partition area
+          ansible.builtin.shell: |
+            wipefs -a {{ old_root_partition_device.stdout }} 2>/dev/null || true
+          changed_when: false
+          failed_when: false
+
         - name: Display deletion complete
           ansible.builtin.debug:
             msg:
@@ -1166,15 +1172,35 @@
           register: actual_usage_bytes
           changed_when: false
 
+        - name: Find largest free space for final partition
+          ansible.builtin.shell: |
+            parted {{ root_device }} unit s print free | awk '
+              /Free Space/ {
+                start = $1; gsub(/s$/, "", start);
+                end = $2; gsub(/s$/, "", end);
+                size = $3; gsub(/s$/, "", size);
+                if (size + 0 > max_size + 0) {
+                  max_size = size;
+                  max_start = start;
+                  max_end = end;
+                }
+              }
+              END { print max_start }
+            '
+          register: largest_free_start
+          changed_when: false
+
         - name: Display size info
           ansible.builtin.debug:
             msg:
               - "Current usage: {{ (actual_usage_bytes.stdout | int / 1024 / 1024 / 1024) | round(1) }}GB"
               - "Final partition size: {{ ((final_partition_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}GB"
+              - "Largest free space starts at sector: {{ largest_free_start.stdout }}"
+              - "Target end sector: {{ final_end_sector }}"
 
         - name: Create final btrfs partition
           ansible.builtin.shell: |
-            parted -s {{ root_device }} unit s mkpart primary {{ root_start_sector }} {{ final_end_sector }}
+            parted -s {{ root_device }} unit s mkpart primary {{ largest_free_start.stdout }} {{ final_end_sector }}
           register: partition_create
           changed_when: true
 
