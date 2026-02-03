@@ -672,10 +672,7 @@
 
         - name: Create intermediate btrfs partition
           ansible.builtin.shell: |
-            set -o pipefail
-            echo -e "n\np\n{{ intermediate_partition_number }}\n{{ intermediate_start_sector }}\n{{ intermediate_end_sector }}\nw" | fdisk {{ root_device }}
-          args:
-            executable: /bin/bash
+            parted -s {{ root_device }} unit s mkpart primary {{ intermediate_start_sector }} {{ intermediate_end_sector }}
           register: partition_create
           changed_when: true
 
@@ -999,19 +996,8 @@
 
         - name: Create final btrfs partition
           ansible.builtin.shell: |
-            set -o pipefail
-            echo -e "n\np\n1\n{{ root_start_sector }}\n{{ final_end_sector }}\nw" | fdisk {{ root_device }}
-          args:
-            executable: /bin/bash
+            parted -s {{ root_device }} unit s mkpart primary {{ root_start_sector }} {{ final_end_sector }}
           register: partition_create
-          changed_when: true
-
-        - name: Fix partition table order
-          ansible.builtin.shell: |
-            set -o pipefail
-            echo -e "x\nf\nr\nw" | fdisk {{ root_device }}
-          args:
-            executable: /bin/bash
           changed_when: true
 
         - name: Reload partition table
@@ -1365,20 +1351,33 @@
 
         - name: Resize partition if needed
           ansible.builtin.shell: |
-            set -o pipefail
             if [ {{ target_end_sector | int }} -lt {{ current_partition_end_sector.stdout | int }} ]; then
               echo "Resizing partition to end at sector {{ target_end_sector }}"
-              echo -e "d\n1\nn\np\n1\n{{ root_start_sector }}\n{{ target_end_sector }}\nw" | fdisk {{ root_device }}
+              parted -s {{ root_device }} rm 1
+              parted -s {{ root_device }} unit s mkpart primary {{ root_start_sector }} {{ target_end_sector }}
             else
               echo "No partition resize needed"
             fi
-          args:
-            executable: /bin/bash
           register: part_resize_result
           changed_when: "'Resizing partition' in part_resize_result.stdout"
 
         - name: Reload partition table after resize
           ansible.builtin.command: partprobe {{ root_device }}
+          changed_when: true
+          when: part_resize_result.changed
+
+        - name: Rescan btrfs devices after partition recreation
+          ansible.builtin.command: btrfs device scan
+          changed_when: true
+          when: part_resize_result.changed
+
+        - name: Expand filesystem to fill partition after recreation
+          ansible.builtin.command: btrfs filesystem resize max /
+          changed_when: true
+          when: part_resize_result.changed
+
+        - name: Update grub after partition resize
+          ansible.builtin.command: update-grub
           changed_when: true
           when: part_resize_result.changed
 
