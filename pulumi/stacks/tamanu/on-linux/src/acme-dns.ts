@@ -13,7 +13,7 @@ const tags = [
   },
 ];
 
-const acmeDnsPolicy = new awsNative.iam.ManagedPolicy('acme-dns-route53-policy', {
+const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy('acme-dns-route53-policy', {
   policyDocument: jsonStringify({
     Version: '2012-10-17',
     Statement: [
@@ -22,31 +22,47 @@ const acmeDnsPolicy = new awsNative.iam.ManagedPolicy('acme-dns-route53-policy',
         Action: ['route53:ListHostedZones', 'route53:GetChange'],
         Resource: ['*'],
       },
-      {
-        Effect: 'Allow',
-        Action: ['route53:ChangeResourceRecordSets'],
-        Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
-        Condition: {
-          'ForAllValues:StringLike': {
-            'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['_acme-challenge.*'],
-            'route53:ChangeResourceRecordSetsRecordTypes': ['TXT'],
-          },
-        },
-      },
     ],
   }),
 });
 
 export const acmeDnsUsers = instances
   .filter((inst) => inst.external && inst.externalIps && inst.externalIps.length > 0)
-  .map(
-    (inst) =>
-      new awsNative.iam.User(
-        `tamanu-acme-dns-${inst.id}`,
-        {
-          tags,
-          managedPolicyArns: [acmeDnsPolicy.policyArn],
-        },
-        { parent: acmeDnsPolicy },
-      ).userName,
-  );
+  .map((inst) => {
+    const user = new awsNative.iam.User(
+      `tamanu-acme-dns-${inst.id}`,
+      {
+        tags,
+        managedPolicyArns: [acmeDnsReadPolicy.policyArn],
+      },
+      { parent: acmeDnsReadPolicy },
+    );
+
+    new awsNative.iam.UserPolicy(
+      `acme-dns-change-policy-${inst.id}`,
+      {
+        userName: user.userName,
+        policyDocument: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: ['route53:ChangeResourceRecordSets'],
+              Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
+              Condition: {
+                'ForAllValues:StringLike': {
+                  'route53:ChangeResourceRecordSetsNormalizedRecordNames': [
+                    inst.fqdn.apply((fqdn) => `_acme-challenge.${fqdn}`),
+                  ],
+                  'route53:ChangeResourceRecordSetsRecordTypes': ['TXT'],
+                },
+              },
+            },
+          ],
+        }),
+      },
+      { parent: user },
+    );
+
+    return user.userName;
+  });
