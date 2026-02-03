@@ -772,7 +772,7 @@
 
         - name: Rsync root filesystem excluding mounted filesystems
           ansible.builtin.shell: |
-            rsync -aAXH \
+            rsync -aAXHx \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/postgresql/*"} \
               / /mnt/btrfsroot/
           async: 3600
@@ -782,7 +782,7 @@
 
         - name: Rsync var/log
           ansible.builtin.shell: |
-            rsync -aAXH /var/log/ /mnt/btrfsroot/var/log/
+            rsync -aAXHx /var/log/ /mnt/btrfsroot/var/log/
           async: 1800
           poll: 5
           register: rsync_log
@@ -796,7 +796,7 @@
 
         - name: Rsync postgresql data
           ansible.builtin.shell: |
-            rsync -aAXH /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/
+            rsync -aAXHx /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/
           async: 3600
           poll: 5
           register: rsync_pg
@@ -1101,7 +1101,7 @@
 
         - name: Rsync to final root
           ansible.builtin.shell: |
-            rsync -aAXH \
+            rsync -aAXHx \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/containers/*","/var/lib/postgresql/*"} \
               / /mnt/finalroot/
           async: 3600
@@ -1111,7 +1111,7 @@
 
         - name: Rsync logs to final
           ansible.builtin.shell: |
-            rsync -aAXH /var/log/ /mnt/finalroot/var/log/
+            rsync -aAXHx /var/log/ /mnt/finalroot/var/log/
           async: 1800
           poll: 5
           register: rsync_final_log
@@ -1119,7 +1119,7 @@
 
         - name: Rsync containers to final btrfs
           ansible.builtin.shell: |
-            rsync -aAXH /var/lib/containers/ /mnt/finalroot/var/lib/containers/
+            rsync -aAXHx /var/lib/containers/ /mnt/finalroot/var/lib/containers/
           async: 1800
           poll: 5
           register: rsync_final_containers
@@ -1134,7 +1134,7 @@
 
         - name: Final rsync of postgresql data
           ansible.builtin.shell: |
-            rsync -aAXH /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/
+            rsync -aAXHx /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/
           async: 3600
           poll: 5
           register: rsync_final_pg
