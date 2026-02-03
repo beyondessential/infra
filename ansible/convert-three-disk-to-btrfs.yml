@@ -670,22 +670,22 @@
           ansible.builtin.shell: echo 3 > /proc/sys/vm/drop_caches
           changed_when: false
 
-        - name: Get actual disk size in sectors
+        - name: Get last usable sector from GPT
           ansible.builtin.shell: |
-            blockdev --getsz {{ root_device }}
-          register: actual_disk_sectors
+            sgdisk -E {{ root_device }}
+          register: last_usable_sector
           changed_when: false
 
         - name: Calculate actual intermediate end sector
           ansible.builtin.set_fact:
-            actual_intermediate_end_sector: "{{ (actual_disk_sectors.stdout | int) - 1 }}"
+            actual_intermediate_end_sector: "{{ last_usable_sector.stdout }}"
 
         - name: Display partition creation info
           ansible.builtin.debug:
             msg:
               - "Intermediate start sector: {{ intermediate_start_sector }}"
               - "Calculated end sector: {{ intermediate_end_sector }}"
-              - "Actual disk sectors: {{ actual_disk_sectors.stdout }}"
+              - "Last usable sector: {{ last_usable_sector.stdout }}"
               - "Using end sector: {{ actual_intermediate_end_sector }}"
 
         - name: Create intermediate btrfs partition
