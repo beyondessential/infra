@@ -671,7 +671,6 @@
             enabled: false
           loop:
             - postgresql
-            - podman
           failed_when: false
 
         - name: Sync filesystem
@@ -1080,7 +1079,6 @@
             state: stopped
           loop:
             - postgresql
-            - podman
           failed_when: false
 
         - name: Sync filesystem
@@ -1474,24 +1472,12 @@
           ansible.builtin.debug:
             var: fs_info.stdout_lines
 
-        - name: Re-enable podman service
-          ansible.builtin.systemd:
-            name: podman
-            enabled: true
-            state: started
-          failed_when: false
-
         - name: Re-enable postgresql service
           ansible.builtin.systemd:
             name: postgresql
             enabled: true
             state: started
           failed_when: false
-
-        - name: Display service re-enable status
-          ansible.builtin.debug:
-            msg:
-              - "Services re-enabled: podman and postgresql are now enabled and started"
 
     - name: Phase 11 - Cleanup and resize
       tags: [never, phase11, cleanup]
