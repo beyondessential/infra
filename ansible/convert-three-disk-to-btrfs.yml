@@ -39,6 +39,8 @@
             postgresql_uuid: "{{ conversion_metadata.postgresql_uuid }}"
             uses_p_separator: "{{ conversion_metadata.uses_p_separator }}"
             intermediate_partition_number: "{{ conversion_metadata.intermediate_partition_number }}"
+            intermediate_uuid: "{{ conversion_metadata.intermediate_uuid | default('') }}"
+            intermediate_partuuid: "{{ conversion_metadata.intermediate_partuuid | default('') }}"
             sector_size: "{{ conversion_metadata.sector_size }}"
             root_start_sector: "{{ conversion_metadata.root_start_sector }}"
             root_end_sector: "{{ conversion_metadata.root_end_sector }}"
@@ -847,15 +849,29 @@
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-postgresql.log || cat /tmp/rsync-phase4-postgresql.log
           when: rsync_pg.rc != 0
 
-        - name: Get UUID for intermediate btrfs
+        - name: Get UUID and PARTUUID for intermediate btrfs
           ansible.builtin.shell: |
-            blkid -s UUID -o value {{ intermediate_btrfs_partition }}
-          register: intermediate_uuid
+            echo "uuid=$(blkid -s UUID -o value {{ intermediate_btrfs_partition }})"
+            echo "partuuid=$(blkid -s PARTUUID -o value {{ intermediate_btrfs_partition }})"
+          register: intermediate_ids
           changed_when: false
+
+        - name: Parse intermediate partition IDs
+          ansible.builtin.set_fact:
+            intermediate_uuid: "{{ intermediate_ids.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
+            intermediate_partuuid: "{{ intermediate_ids.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
+
+        - name: Update metadata with intermediate partition IDs
+          ansible.builtin.shell: |
+            metadata_file="/root/.disk-conversion-metadata-{{ metadata_version }}.json"
+            temp_file="${metadata_file}.tmp"
+            jq '. + {"intermediate_uuid": "{{ intermediate_uuid }}", "intermediate_partuuid": "{{ intermediate_partuuid }}"}' "$metadata_file" > "$temp_file"
+            mv "$temp_file" "$metadata_file"
+          changed_when: true
 
         - name: Display UUID
           ansible.builtin.debug:
-            msg: "Intermediate btrfs UUID: {{ intermediate_uuid.stdout }}"
+            msg: "Intermediate btrfs UUID: {{ intermediate_uuid }}"
 
         - name: Backup original fstab
           ansible.builtin.copy:
@@ -867,7 +883,7 @@
         - name: Update fstab for intermediate btrfs
           ansible.builtin.shell: |
             set -e
-            uuid="{{ intermediate_uuid.stdout }}"
+            uuid="{{ intermediate_uuid }}"
 
             cp /mnt/btrfsroot/etc/fstab /mnt/btrfsroot/etc/fstab.backup
 
@@ -996,20 +1012,23 @@
 
         - name: Verify boot from intermediate btrfs
           ansible.builtin.shell: |
-            root_source=$(findmnt -n -o SOURCE /)
+            root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
             root_fstype=$(findmnt -n -o FSTYPE /)
+            root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
             echo "Root device: $root_source"
             echo "Root fstype: $root_fstype"
+            echo "Root PARTUUID: $root_partuuid"
             if [ "$root_fstype" != "btrfs" ]; then
               echo "ERROR: Not booted to btrfs (still on $root_fstype)"
               exit 1
             fi
-            if echo "$root_source" | grep -q "{{ intermediate_partition_number }}"; then
+            if [ "$root_partuuid" = "{{ intermediate_partuuid }}" ]; then
               echo "SUCCESS: Booted from intermediate partition"
               exit 0
             else
               echo "WARNING: On btrfs but may not be intermediate partition"
-              echo "Expected partition number: {{ intermediate_partition_number }}"
+              echo "Expected PARTUUID: {{ intermediate_partuuid }}"
+              echo "Current PARTUUID: $root_partuuid"
               exit 1
             fi
           register: boot_verify
@@ -1041,13 +1060,16 @@
         - name: Verify we're on intermediate btrfs
           ansible.builtin.shell: |
             root_fstype=$(findmnt -n -o FSTYPE /)
-            root_source=$(findmnt -n -o SOURCE /)
+            root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
+            root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
             if [ "$root_fstype" != "btrfs" ]; then
               echo "ERROR: Not on btrfs, cannot proceed to phase7"
               exit 1
             fi
-            if ! echo "$root_source" | grep -q "{{ intermediate_partition_number }}"; then
+            if [ "$root_partuuid" != "{{ intermediate_partuuid }}" ]; then
               echo "ERROR: Not on intermediate partition, cannot proceed"
+              echo "Expected PARTUUID: {{ intermediate_partuuid }}"
+              echo "Current PARTUUID: $root_partuuid"
               exit 1
             fi
           changed_when: false
@@ -1065,9 +1087,45 @@
           ansible.builtin.command: sync
           changed_when: false
 
+        - name: Find old root partition by PARTUUID
+          ansible.builtin.shell: |
+            blkid -t PARTUUID="{{ root_partuuid }}" -o device
+          register: old_root_partition_device
+          changed_when: false
+          failed_when: false
+
+        - name: Fail if old root partition not found
+          ansible.builtin.fail:
+            msg: |
+              ERROR: Could not find old root partition with PARTUUID {{ root_partuuid }}.
+              This suggests it may have already been deleted.
+          when: old_root_partition_device.rc != 0 or old_root_partition_device.stdout == ""
+
+        - name: Extract old root partition number
+          ansible.builtin.shell: |
+            echo "{{ old_root_partition_device.stdout }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          register: old_root_partition_number
+          changed_when: false
+
+        - name: Check old root partition filesystem type
+          ansible.builtin.shell: |
+            blkid -s TYPE -o value {{ old_root_partition_device.stdout }}
+          register: old_root_fstype
+          changed_when: false
+          failed_when: false
+
+        - name: Fail if old root partition is btrfs
+          ansible.builtin.fail:
+            msg: |
+              ERROR: Old root partition {{ old_root_partition_number.stdout }} ({{ old_root_partition_device.stdout }}) is btrfs, not ext4!
+              This suggests the conversion may have already progressed past this point.
+              Current fstype: {{ old_root_fstype.stdout }}
+              Refusing to delete btrfs partition.
+          when: old_root_fstype.stdout == "btrfs"
+
         - name: Remove old ext4 partition
           ansible.builtin.shell: |
-            parted -s {{ root_device }} rm 1
+            parted -s {{ root_device }} rm {{ old_root_partition_number.stdout }}
           changed_when: true
 
         - name: Get current filesystem usage in bytes
@@ -1374,20 +1432,23 @@
 
         - name: Verify final boot
           ansible.builtin.shell: |
-            root_source=$(findmnt -n -o SOURCE /)
+            root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
             root_fstype=$(findmnt -n -o FSTYPE /)
+            root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
             echo "Root device: $root_source"
             echo "Root fstype: $root_fstype"
+            echo "Root PARTUUID: $root_partuuid"
             if [ "$root_fstype" != "btrfs" ]; then
               echo "ERROR: Not booted to btrfs"
               exit 1
             fi
-            if ! echo "$root_source" | grep -q "{{ intermediate_partition_number }}"; then
+            if [ "$root_partuuid" = "{{ intermediate_partuuid }}" ]; then
+              echo "WARNING: Still on intermediate partition"
+              echo "Expected to be off intermediate PARTUUID: {{ intermediate_partuuid }}"
+              exit 1
+            else
               echo "SUCCESS: Booted from final partition (not intermediate)"
               exit 0
-            else
-              echo "WARNING: Still on intermediate partition"
-              exit 1
             fi
           register: final_boot_verify
           changed_when: false
@@ -1440,11 +1501,26 @@
             msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
           when: not metadata_file.stat.exists
 
+        - name: Find intermediate partition by PARTUUID
+          ansible.builtin.shell: |
+            blkid -t PARTUUID="{{ intermediate_partuuid }}" -o device
+          register: intermediate_partition_device
+          changed_when: false
+          failed_when: false
+
+        - name: Extract intermediate partition number
+          ansible.builtin.shell: |
+            echo "{{ intermediate_partition_device.stdout }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          register: intermediate_partition_number_current
+          changed_when: false
+          when: intermediate_partition_device.rc == 0
+
         - name: Remove intermediate partition
           ansible.builtin.shell: |
-            parted -s {{ root_device }} rm {{ intermediate_partition_number }}
+            parted -s {{ root_device }} rm {{ intermediate_partition_number_current.stdout }}
           changed_when: true
           failed_when: false
+          when: intermediate_partition_device.rc == 0 and intermediate_partition_number_current.stdout != ""
 
         - name: Move GPT backup to end of disk
           ansible.builtin.shell: |
