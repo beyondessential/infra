@@ -670,6 +670,16 @@
           ansible.builtin.debug:
             var: partition_layout_before.stdout_lines
 
+        - name: Move GPT backup to end of disk after EBS extension
+          ansible.builtin.shell: |
+            sgdisk -e {{ root_device }}
+          changed_when: true
+          failed_when: false
+
+        - name: Reload partition table after GPT fix
+          ansible.builtin.command: partprobe {{ root_device }}
+          changed_when: false
+
         - name: Stop tamanu services
           ansible.builtin.shell: |
             systemctl list-units --type=service --all 'tamanu*' --no-legend | awk '{print $1}' | while read service; do
