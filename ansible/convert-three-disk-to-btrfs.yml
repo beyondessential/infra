@@ -802,6 +802,10 @@
             msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
           when: not metadata_file.stat.exists
 
+        - name: Display rsync monitoring command for root
+          ansible.builtin.debug:
+            msg: "Starting rsync of root filesystem. Monitor progress with: tail -f /tmp/rsync-phase4-root.log"
+
         - name: Rsync root filesystem excluding mounted filesystems
           ansible.builtin.shell: |
             rsync -aAXHx --info=progress2 \
@@ -817,6 +821,10 @@
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-root.log || cat /tmp/rsync-phase4-root.log
           when: rsync_root.rc != 0
+
+        - name: Display rsync monitoring command for var/log
+          ansible.builtin.debug:
+            msg: "Starting rsync of /var/log. Monitor progress with: tail -f /tmp/rsync-phase4-log.log"
 
         - name: Rsync var/log
           ansible.builtin.shell: |
@@ -837,6 +845,10 @@
             name: postgresql
             state: stopped
           failed_when: false
+
+        - name: Display rsync monitoring command for postgresql
+          ansible.builtin.debug:
+            msg: "Starting rsync of /var/lib/postgresql. Monitor progress with: tail -f /tmp/rsync-phase4-postgresql.log"
 
         - name: Rsync postgresql data
           ansible.builtin.shell: |
@@ -1301,6 +1313,10 @@
             msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
           when: not metadata_file.stat.exists
 
+        - name: Display rsync monitoring command for final root
+          ansible.builtin.debug:
+            msg: "Starting rsync to final root. Monitor progress with: tail -f /tmp/rsync-phase8-root.log"
+
         - name: Rsync to final root
           ansible.builtin.shell: |
             rsync -aAXHx --info=progress2 \
@@ -1317,6 +1333,10 @@
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-root.log || cat /tmp/rsync-phase8-root.log
           when: rsync_final_root.rc != 0
 
+        - name: Display rsync monitoring command for final logs
+          ansible.builtin.debug:
+            msg: "Starting rsync of logs to final. Monitor progress with: tail -f /tmp/rsync-phase8-log.log"
+
         - name: Rsync logs to final
           ansible.builtin.shell: |
             rsync -aAXHx --info=progress2 /var/log/ /mnt/finalroot/var/log/ > /tmp/rsync-phase8-log.log 2>&1
@@ -1330,6 +1350,10 @@
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-log.log || cat /tmp/rsync-phase8-log.log
           when: rsync_final_log.rc != 0
+
+        - name: Display rsync monitoring command for containers
+          ansible.builtin.debug:
+            msg: "Starting rsync of containers to final. Monitor progress with: tail -f /tmp/rsync-phase8-containers.log"
 
         - name: Rsync containers to final btrfs
           ansible.builtin.shell: |
@@ -1350,6 +1374,10 @@
             name: postgresql
             state: stopped
           failed_when: false
+
+        - name: Display rsync monitoring command for final postgresql
+          ansible.builtin.debug:
+            msg: "Starting final rsync of postgresql. Monitor progress with: tail -f /tmp/rsync-phase8-postgresql.log"
 
         - name: Final rsync of postgresql data
           ansible.builtin.shell: |
