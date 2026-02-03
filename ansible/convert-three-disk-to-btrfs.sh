@@ -29,11 +29,12 @@ Phases:
   4. phase4     - Copy system data to intermediate btrfs
   5. phase5     - Update bootloader for intermediate btrfs
   6. reboot1    - Reboot to intermediate btrfs
-  7. phase7     - Delete old ext4, create final btrfs with subvolumes
-  8. phase8     - Copy to final btrfs
-  9. phase9     - Update bootloader for final btrfs
-  10. reboot2   - Reboot to final btrfs
-  11. phase11   - Cleanup and calculate shrink size
+  7. phase7     - Delete old ext4 partition
+  8. phase8     - Create final btrfs partition with subvolumes
+  9. phase9     - Copy to final btrfs
+  10. phase10   - Update bootloader for final btrfs
+  11. reboot2   - Reboot to final btrfs
+  12. phase12   - Cleanup and calculate shrink size
 
 Run phases individually with:
   ansible-playbook convert-three-disk-to-btrfs.yml -i <inventory> -l <hostname> --tags=<phase>
@@ -163,8 +164,8 @@ elif [ "$RESUME_FROM" != "reboot1" ]; then
     echo "Skipping reboot1"
 fi
 
-# Phase 7-9
-for phase_info in "phase7:Delete old ext4 and create final btrfs" "phase8:Copy to final btrfs" "phase9:Update bootloader for final btrfs"; do
+# Phase 7-10
+for phase_info in "phase7:Delete old ext4 partition" "phase8:Create final btrfs partition with subvolumes" "phase9:Copy to final btrfs" "phase10:Update bootloader for final btrfs"; do
     phase="${phase_info%%:*}"
     desc="${phase_info#*:}"
     if [ -z "$RESUME_FROM" ] || [ "$RESUME_FROM" = "$phase" ]; then
@@ -197,11 +198,11 @@ elif [ "$RESUME_FROM" != "reboot2" ]; then
     echo "Skipping reboot2"
 fi
 
-# Phase 11
-if [ -z "$RESUME_FROM" ] || [ "$RESUME_FROM" = "phase11" ]; then
-    run_phase "phase11" "Cleanup and calculate shrink size"
-elif [ "$RESUME_FROM" != "phase11" ]; then
-    echo "Skipping phase11"
+# Phase 12
+if [ -z "$RESUME_FROM" ] || [ "$RESUME_FROM" = "phase12" ]; then
+    run_phase "phase12" "Cleanup and calculate shrink size"
+elif [ "$RESUME_FROM" != "phase12" ]; then
+    echo "Skipping phase12"
 fi
 
 echo ""

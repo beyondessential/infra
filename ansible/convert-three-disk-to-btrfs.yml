@@ -669,13 +669,11 @@
           ansible.builtin.debug:
             var: partition_layout_before.stdout_lines
 
-        - name: Stop and disable services to reduce disk activity
+        - name: Stop and disable postgresql to reduce disk activity
           ansible.builtin.systemd:
-            name: "{{ item }}"
+            name: postgresql
             state: stopped
             enabled: false
-          loop:
-            - postgresql
           failed_when: false
 
         - name: Sync filesystem
@@ -1053,8 +1051,8 @@
           ansible.builtin.debug:
             var: btrfs_check.stdout_lines
 
-    - name: Phase 7 - Delete old ext4 partition and create final btrfs
-      tags: [never, phase7, finalize]
+    - name: Phase 7 - Delete old ext4 partition
+      tags: [never, phase7, delete_ext4]
       block:
         - name: Ensure conversion metadata exists
           ansible.builtin.fail:
@@ -1130,6 +1128,37 @@
           ansible.builtin.shell: |
             parted -s {{ root_device }} rm {{ old_root_partition_number.stdout }}
           changed_when: true
+
+        - name: Display deletion complete
+          ansible.builtin.debug:
+            msg:
+              - "Phase 7 complete - old ext4 partition deleted"
+              - "Run with --tags=phase8 to create final btrfs partition"
+
+    - name: Phase 8 - Create final btrfs partition
+      tags: [never, phase8, create_final]
+      block:
+        - name: Ensure conversion metadata exists
+          ansible.builtin.fail:
+            msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
+          when: not metadata_file.stat.exists
+
+        - name: Verify we're on intermediate btrfs
+          ansible.builtin.shell: |
+            root_fstype=$(findmnt -n -o FSTYPE /)
+            root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
+            root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
+            if [ "$root_fstype" != "btrfs" ]; then
+              echo "ERROR: Not on btrfs, cannot proceed to phase8"
+              exit 1
+            fi
+            if [ "$root_partuuid" != "{{ intermediate_partuuid }}" ]; then
+              echo "ERROR: Not on intermediate partition, cannot proceed"
+              echo "Expected PARTUUID: {{ intermediate_partuuid }}"
+              echo "Current PARTUUID: $root_partuuid"
+              exit 1
+            fi
+          changed_when: false
 
         - name: Get current filesystem usage in bytes
           ansible.builtin.shell: |
@@ -1237,8 +1266,8 @@
           ansible.builtin.command: btrfs filesystem mkswapfile --size 4G /mnt/finalroot/swap.img
           changed_when: true
 
-    - name: Phase 8 - Copy to final btrfs
-      tags: [never, phase8, finalcopy]
+    - name: Phase 9 - Copy to final btrfs
+      tags: [never, phase9, finalcopy]
       block:
         - name: Ensure conversion metadata exists
           ansible.builtin.fail:
@@ -1349,8 +1378,8 @@
           ansible.builtin.debug:
             var: final_fstab.stdout_lines
 
-    - name: Phase 9 - Update bootloader for final btrfs
-      tags: [never, phase9, bootloader2]
+    - name: Phase 10 - Update bootloader for final btrfs
+      tags: [never, phase10, bootloader_final]
       block:
         - name: Ensure conversion metadata exists
           ansible.builtin.fail:
@@ -1433,11 +1462,11 @@
         - name: Display ready for reboot message
           ansible.builtin.debug:
             msg:
-              - "Phase 9 complete - final bootloader updated and partition table reordered"
+              - "Phase 10 complete - final bootloader updated and partition table reordered"
               - "System is ready for final reboot"
               - "Run with --tags=reboot2 when ready"
 
-    - name: Phase 10 - Reboot to final btrfs
+    - name: Phase 11 - Reboot to final btrfs
       tags: [never, reboot2]
       block:
         - name: Reboot to final btrfs
@@ -1495,15 +1524,8 @@
           ansible.builtin.debug:
             var: fs_info.stdout_lines
 
-        - name: Re-enable postgresql service
-          ansible.builtin.systemd:
-            name: postgresql
-            enabled: true
-            state: started
-          failed_when: false
-
-    - name: Phase 11 - Cleanup and resize
-      tags: [never, phase11, cleanup]
+    - name: Phase 12 - Cleanup and resize
+      tags: [never, phase12, cleanup]
       block:
         - name: Ensure conversion metadata exists
           ansible.builtin.fail:
@@ -1523,6 +1545,13 @@
           register: intermediate_partition_number_current
           changed_when: false
           when: intermediate_partition_device.rc == 0
+
+        - name: Re-enable postgresql service
+          ansible.builtin.systemd:
+            name: postgresql
+            enabled: true
+            state: started
+          failed_when: false
 
         - name: Remove intermediate partition
           ansible.builtin.shell: |
