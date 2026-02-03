@@ -762,10 +762,6 @@
           ansible.builtin.debug:
             var: intermediate_mount.stdout_lines
 
-        - name: Create btrfs swap file
-          ansible.builtin.command: btrfs filesystem mkswapfile --size 4G /mnt/btrfsroot/swap.img
-          changed_when: true
-
     - name: Phase 4 - Copy system data
       tags: [never, phase4, copy]
       block:
@@ -830,7 +826,6 @@
 
             cat >> /mnt/btrfsroot/etc/fstab << EOF
             UUID=$uuid / btrfs compress=zstd:6 0 1
-            /swap.img none swap sw 0 0
             EOF
           changed_when: true
 
