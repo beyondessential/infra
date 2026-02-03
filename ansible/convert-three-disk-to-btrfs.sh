@@ -70,7 +70,18 @@ run_phase() {
     echo "========================================"
     echo ""
     read -p "Press Enter to run phase '$phase', or Ctrl+C to abort: "
-    uv run ansible-playbook "$PLAYBOOK" -i "$INVENTORY" -l "$HOSTNAME" --tags="$phase"
+
+    if ! uv run ansible-playbook "$PLAYBOOK" -i "$INVENTORY" -l "$HOSTNAME" --tags="$phase"; then
+        echo ""
+        echo "========================================"
+        echo "PHASE FAILED"
+        echo "========================================"
+        echo ""
+        echo "To resume from this phase, run:"
+        echo "  $0 $INVENTORY $HOSTNAME $phase"
+        echo ""
+        exit 1
+    fi
 }
 
 echo ""
