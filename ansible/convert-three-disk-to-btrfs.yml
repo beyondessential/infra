@@ -720,23 +720,6 @@
               - "Last usable sector: {{ last_usable_sector.stdout }}"
               - "Using end sector: {{ actual_intermediate_end_sector }}"
 
-        - name: Check if intermediate partition already exists
-          ansible.builtin.stat:
-            path: "{{ intermediate_btrfs_partition }}"
-          register: intermediate_partition_exists
-
-        - name: Fail if intermediate partition already exists
-          ansible.builtin.fail:
-            msg: |
-              ERROR: Intermediate partition {{ intermediate_btrfs_partition }} already exists!
-
-              If you need to restart phase2, first clean up manually:
-                1. Unmount: umount /mnt/btrfsroot (if mounted)
-                2. Wipe filesystem signature: wipefs -a {{ intermediate_btrfs_partition }}
-                3. Delete partition: parted -s {{ root_device }} rm {{ intermediate_partition_number }}
-                4. Then re-run phase2
-          when: intermediate_partition_exists.stat.exists
-
         - name: Create intermediate btrfs partition
           ansible.builtin.shell: |
             parted -s {{ root_device }} unit s mkpart primary {{ intermediate_start_sector }} {{ actual_intermediate_end_sector }}
@@ -756,31 +739,50 @@
           ansible.builtin.command: partprobe {{ root_device }}
           changed_when: true
 
-        - name: Wait for partition device node
-          ansible.builtin.wait_for:
-            path: "{{ intermediate_btrfs_partition }}"
-            timeout: 15
-
-        - name: Verify partition was created
+        - name: Find newly created intermediate partition by start sector
           ansible.builtin.shell: |
-            lsblk {{ intermediate_btrfs_partition }}
-          register: verify_partition
+            lsblk -p -l -n -o NAME,START {{ root_device }} | awk -v start="{{ intermediate_start_sector }}" '$2 == start {print $1}'
+          register: intermediate_partition_device
           changed_when: false
+          retries: 5
+          delay: 2
+          until: intermediate_partition_device.stdout != ""
+
+        - name: Set intermediate partition path
+          ansible.builtin.set_fact:
+            intermediate_btrfs_partition: "{{ intermediate_partition_device.stdout }}"
 
         - name: Create btrfs filesystem on intermediate partition
           ansible.builtin.command: |
             mkfs.btrfs --label ROOT_TEMP --checksum xxhash --features block-group-tree,squota {{ intermediate_btrfs_partition }}
           changed_when: true
 
-        - name: Verify btrfs creation
+        - name: Get UUID and PARTUUID for intermediate partition
           ansible.builtin.shell: |
-            blkid {{ intermediate_btrfs_partition }}
-          register: blkid_check
+            echo "uuid=$(blkid -s UUID -o value {{ intermediate_btrfs_partition }})"
+            echo "partuuid=$(blkid -s PARTUUID -o value {{ intermediate_btrfs_partition }})"
+          register: intermediate_ids
           changed_when: false
+
+        - name: Parse intermediate partition IDs
+          ansible.builtin.set_fact:
+            intermediate_uuid: "{{ intermediate_ids.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
+            intermediate_partuuid: "{{ intermediate_ids.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
+
+        - name: Update metadata with intermediate partition IDs
+          ansible.builtin.shell: |
+            metadata_file="/root/.disk-conversion-metadata-{{ metadata_version }}.json"
+            temp_file="${metadata_file}.tmp"
+            jq '. + {"intermediate_uuid": "{{ intermediate_uuid }}", "intermediate_partuuid": "{{ intermediate_partuuid }}"}' "$metadata_file" > "$temp_file"
+            mv "$temp_file" "$metadata_file"
+          changed_when: true
 
         - name: Display new partition info
           ansible.builtin.debug:
-            var: blkid_check.stdout
+            msg:
+              - "Intermediate partition: {{ intermediate_btrfs_partition }}"
+              - "Intermediate UUID: {{ intermediate_uuid }}"
+              - "Intermediate PARTUUID: {{ intermediate_partuuid }}"
 
     - name: Phase 3 - Setup intermediate btrfs
       tags: [never, phase3, setup]
@@ -790,6 +792,12 @@
             msg: "Conversion metadata not found. Run with --tags=stage0 first to detect and save conversion parameters."
           when: not metadata_file.stat.exists
 
+        - name: Find intermediate partition by PARTUUID
+          ansible.builtin.shell: |
+            blkid -t PARTUUID="{{ intermediate_partuuid }}" -o device
+          register: intermediate_partition_lookup
+          changed_when: false
+
         - name: Ensure mount point exists
           ansible.builtin.file:
             path: /mnt/btrfsroot
@@ -798,7 +806,7 @@
 
         - name: Mount intermediate btrfs
           ansible.builtin.shell: |
-            mount -o compress=zstd:6 {{ intermediate_btrfs_partition }} /mnt/btrfsroot
+            mount -o compress=zstd:6 {{ intermediate_partition_lookup.stdout }} /mnt/btrfsroot
           changed_when: true
 
         - name: Verify mount
@@ -880,26 +888,6 @@
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-postgresql.log || cat /tmp/rsync-phase4-postgresql.log
           when: rsync_pg.rc != 0
-
-        - name: Get UUID and PARTUUID for intermediate btrfs
-          ansible.builtin.shell: |
-            echo "uuid=$(blkid -s UUID -o value {{ intermediate_btrfs_partition }})"
-            echo "partuuid=$(blkid -s PARTUUID -o value {{ intermediate_btrfs_partition }})"
-          register: intermediate_ids
-          changed_when: false
-
-        - name: Parse intermediate partition IDs
-          ansible.builtin.set_fact:
-            intermediate_uuid: "{{ intermediate_ids.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
-            intermediate_partuuid: "{{ intermediate_ids.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
-
-        - name: Update metadata with intermediate partition IDs
-          ansible.builtin.shell: |
-            metadata_file="/root/.disk-conversion-metadata-{{ metadata_version }}.json"
-            temp_file="${metadata_file}.tmp"
-            jq '. + {"intermediate_uuid": "{{ intermediate_uuid }}", "intermediate_partuuid": "{{ intermediate_partuuid }}"}' "$metadata_file" > "$temp_file"
-            mv "$temp_file" "$metadata_file"
-          changed_when: true
 
         - name: Display UUID
           ansible.builtin.debug:
