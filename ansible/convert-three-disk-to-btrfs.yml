@@ -418,28 +418,27 @@
           ansible.builtin.set_fact:
             current_disk_size_gb: "{{ (current_disk_size_bytes.stdout | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
 
-        - name: Calculate minimum disk space needed (will extend intermediate to fill)
+        - name: Calculate minimum disk space needed based on 2x intermediate + boot overhead
           ansible.builtin.set_fact:
-            minimum_disk_space_needed_gb: "{{ (boot_overhead_gb | int + final_partition_size_gb | int + intermediate_size_gb | int) }}"
+            calculated_minimum_gb: "{{ ((boot_overhead_sectors | int * sector_size | int + 2 * intermediate_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
 
-        - name: Calculate intermediate partition start sector
+        - name: Calculate total disk space needed (at least 50GB, 2x intermediate + boot overhead, or current disk size)
+          ansible.builtin.set_fact:
+            total_disk_space_needed_gb: "{{ [minimum_final_size_gb | int, calculated_minimum_gb | int, current_disk_size_gb | int] | max }}"
+            total_disk_space_needed_bytes: "{{ ([minimum_final_size_gb | int, calculated_minimum_gb | int, current_disk_size_gb | int] | max) * 1024 * 1024 * 1024 }}"
+
+        - name: Calculate theoretical total sectors after disk extension
+          ansible.builtin.set_fact:
+            theoretical_total_sectors: "{{ (total_disk_space_needed_bytes | int / sector_size | int) | int }}"
+
+        - name: Calculate intermediate partition to be placed at END of disk
+          ansible.builtin.set_fact:
+            intermediate_end_sector: "{{ (theoretical_total_sectors | int - 1) }}"
+            intermediate_start_sector: "{{ (theoretical_total_sectors | int - intermediate_size_sectors | int) }}"
+
+        - name: Calculate final partition end sector (for future reference)
           ansible.builtin.set_fact:
             final_end_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int - 1) }}"
-            intermediate_start_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int) }}"
-
-        - name: Calculate minimum disk space needed (bytes)
-          ansible.builtin.set_fact:
-            minimum_disk_space_needed_bytes: "{{ boot_overhead_sectors | int * sector_size | int + final_partition_size_sectors | int * sector_size | int + intermediate_size_sectors | int * sector_size | int }}"
-
-        - name: Calculate total disk space needed in GB (rounded up for AWS)
-          ansible.builtin.set_fact:
-            total_disk_space_needed_gb: "{{ (minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
-            total_disk_space_needed_bytes: "{{ (((minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int) * 1024 * 1024 * 1024) }}"
-
-        - name: Calculate intermediate partition end to fill disk
-          ansible.builtin.set_fact:
-            theoretical_total_sectors: "{{ ((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int }}"
-            intermediate_end_sector: "{{ (((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int) - 1 }}"
 
         - name: Write conversion metadata to file
           ansible.builtin.copy:
