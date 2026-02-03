@@ -42,7 +42,7 @@ export function applyBackup(resources: Input<string>[]) {
       },
     });
 
-    const backup = new awsNative.backup.BackupPlan('backup-12months', {
+    const backup = new awsNative.backup.BackupPlan('backup-180days', {
       backupPlan: {
         backupPlanName: interpolate`tamanu-on-linux-${getStack()}-12months`,
         backupPlanRule: [
