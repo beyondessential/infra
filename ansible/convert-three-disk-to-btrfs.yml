@@ -120,9 +120,9 @@
 
         - name: Parse root partition info
           ansible.builtin.set_fact:
-            root_partition: "{{ root_info_raw.stdout | regex_search('partition=(.+)', '\\1') | first }}"
-            root_uuid: "{{ root_info_raw.stdout | regex_search('uuid=(.+)', '\\1') | first }}"
-            root_partuuid: "{{ root_info_raw.stdout | regex_search('partuuid=(.+)', '\\1') | first }}"
+            root_partition: "{{ root_info_raw.stdout | regex_search('partition=(.+)', '\\1') | default([''], true) | first }}"
+            root_uuid: "{{ root_info_raw.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
+            root_partuuid: "{{ root_info_raw.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
 
         - name: Derive root device from partition
           ansible.builtin.shell: |
@@ -404,10 +404,24 @@
           ansible.builtin.set_fact:
             minimum_disk_space_needed_gb: "{{ (boot_overhead_gb | int + final_partition_size_gb | int + intermediate_size_gb | int) }}"
 
-        - name: Calculate intermediate partition start and end sectors
+        - name: Calculate intermediate partition start sector
           ansible.builtin.set_fact:
             final_end_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int - 1) }}"
             intermediate_start_sector: "{{ (root_start_sector | int + final_partition_size_sectors | int) }}"
+
+        - name: Calculate minimum disk space needed (bytes)
+          ansible.builtin.set_fact:
+            minimum_disk_space_needed_bytes: "{{ boot_overhead_sectors | int * sector_size | int + final_partition_size_sectors | int * sector_size | int + intermediate_size_sectors | int * sector_size | int }}"
+
+        - name: Calculate total disk space needed in GB (rounded up for AWS)
+          ansible.builtin.set_fact:
+            total_disk_space_needed_gb: "{{ (minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
+            total_disk_space_needed_bytes: "{{ (((minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int) * 1024 * 1024 * 1024) }}"
+
+        - name: Calculate intermediate partition end to fill disk
+          ansible.builtin.set_fact:
+            theoretical_total_sectors: "{{ ((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int }}"
+            intermediate_end_sector: "{{ (((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int) - 1 }}"
 
         - name: Write conversion metadata to file
           ansible.builtin.copy:
@@ -446,17 +460,6 @@
             boot_overhead_gb: "{{ (boot_overhead_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
             intermediate_size_gb: "{{ (intermediate_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
             final_partition_size_gb: "{{ (final_partition_size_sectors | int * sector_size | int / 1024 / 1024 / 1024) | round(1) }}"
-            minimum_disk_space_needed_bytes: "{{ boot_overhead_sectors | int * sector_size | int + final_partition_size_sectors | int * sector_size | int + intermediate_size_sectors | int * sector_size | int }}"
-
-        - name: Calculate total disk space needed in GB (rounded up for AWS)
-          ansible.builtin.set_fact:
-            total_disk_space_needed_gb: "{{ (minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int }}"
-            total_disk_space_needed_bytes: "{{ (((minimum_disk_space_needed_bytes | int / 1024 / 1024 / 1024) | round(0, 'ceil') | int) * 1024 * 1024 * 1024) }}"
-
-        - name: Calculate intermediate partition end to fill disk
-          ansible.builtin.set_fact:
-            theoretical_total_sectors: "{{ ((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int }}"
-            intermediate_end_sector: "{{ (((total_disk_space_needed_bytes | int + sector_size | int - 1) / sector_size | int) | int) - 1 }}"
 
         - name: Display storage information
           ansible.builtin.debug:
