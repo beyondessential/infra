@@ -24,7 +24,7 @@ Phases:
   9. phase9     - Copy to final btrfs
   10. phase10   - Update bootloader for final btrfs
   11. reboot2   - Reboot to final btrfs
-  12. phase12   - Cleanup and calculate shrink size
+  12. phase12   - Cleanup and resize
 EOF
 
 if [ $# -lt 2 ]; then
@@ -186,7 +186,7 @@ fi
 
 # Phase 12
 if [ -z "$RESUME_FROM" ] || [ "$RESUME_FROM" = "phase12" ]; then
-    run_phase "phase12" "Cleanup and calculate shrink size"
+    run_phase "phase12" "Cleanup and resize"
 elif [ "$RESUME_FROM" != "phase12" ]; then
     echo "Skipping phase12"
 fi

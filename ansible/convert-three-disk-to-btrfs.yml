@@ -1662,14 +1662,9 @@
           register: final_partition_number_current
           changed_when: false
 
-        - name: Expand partition to fill disk
+        - name: Expand partition to fill disk using growpart
           ansible.builtin.shell: |
-            parted -s {{ root_device }} rm {{ final_partition_number_current.stdout }}
-            parted -s {{ root_device }} unit s mkpart primary {{ final_start_sector }} {{ last_usable_sector_disk.stdout }}
-          changed_when: true
-
-        - name: Reload partition table after expansion
-          ansible.builtin.command: partprobe {{ root_device }}
+            growpart {{ root_device }} {{ final_partition_number_current.stdout }}
           changed_when: true
 
         - name: Rescan btrfs devices
@@ -1678,10 +1673,6 @@
 
         - name: Expand filesystem to fill partition
           ansible.builtin.command: btrfs filesystem resize max /
-          changed_when: true
-
-        - name: Update grub after partition expansion
-          ansible.builtin.command: update-grub
           changed_when: true
 
         - name: Get final partition size
