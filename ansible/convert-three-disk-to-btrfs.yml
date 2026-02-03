@@ -670,6 +670,13 @@
           ansible.builtin.debug:
             var: partition_layout_before.stdout_lines
 
+        - name: Stop tamanu services
+          ansible.builtin.shell: |
+            systemctl list-units --type=service --all 'tamanu*' --no-legend | awk '{print $1}' | while read service; do
+              systemctl stop "$service" || true
+            done
+          changed_when: false
+
         - name: Stop and disable postgresql to reduce disk activity
           ansible.builtin.systemd:
             name: postgresql
@@ -1063,6 +1070,13 @@
         - name: Display btrfs status
           ansible.builtin.debug:
             var: btrfs_check.stdout_lines
+
+        - name: Stop tamanu services after first reboot
+          ansible.builtin.shell: |
+            systemctl list-units --type=service --all 'tamanu*' --no-legend | awk '{print $1}' | while read service; do
+              systemctl stop "$service" || true
+            done
+          changed_when: false
 
     - name: Phase 7 - Delete old ext4 partition
       tags: [never, phase7, delete_ext4]
