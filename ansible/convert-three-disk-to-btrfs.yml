@@ -772,15 +772,19 @@
 
         - name: Rsync root filesystem excluding mounted filesystems
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 \
+            rsync -aAXH \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/postgresql/*"} \
               / /mnt/btrfsroot/
+          async: 3600
+          poll: 5
           register: rsync_root
           changed_when: true
 
         - name: Rsync var/log
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 /var/log/ /mnt/btrfsroot/var/log/
+            rsync -aAXH /var/log/ /mnt/btrfsroot/var/log/
+          async: 1800
+          poll: 5
           register: rsync_log
           changed_when: true
 
@@ -792,7 +796,9 @@
 
         - name: Rsync postgresql data
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/
+            rsync -aAXH /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/
+          async: 3600
+          poll: 5
           register: rsync_pg
           changed_when: true
 
@@ -1095,19 +1101,28 @@
 
         - name: Rsync to final root
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 \
+            rsync -aAXH \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/containers/*","/var/lib/postgresql/*"} \
               / /mnt/finalroot/
+          async: 3600
+          poll: 5
+          register: rsync_final_root
           changed_when: true
 
         - name: Rsync logs to final
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 /var/log/ /mnt/finalroot/var/log/
+            rsync -aAXH /var/log/ /mnt/finalroot/var/log/
+          async: 1800
+          poll: 5
+          register: rsync_final_log
           changed_when: true
 
-        - name: Rsync containers to final
+        - name: Rsync containers to final btrfs
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 /var/lib/containers/ /mnt/finalroot/var/lib/containers/
+            rsync -aAXH /var/lib/containers/ /mnt/finalroot/var/lib/containers/
+          async: 1800
+          poll: 5
+          register: rsync_final_containers
           changed_when: true
           failed_when: false
 
@@ -1119,7 +1134,10 @@
 
         - name: Final rsync of postgresql data
           ansible.builtin.shell: |
-            rsync -aAXH --info=progress2 /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/
+            rsync -aAXH /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/
+          async: 3600
+          poll: 5
+          register: rsync_final_pg
           changed_when: true
 
         - name: Get UUID for final partition
