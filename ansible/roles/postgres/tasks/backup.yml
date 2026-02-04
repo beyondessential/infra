@@ -1,85 +1,32 @@
 ---
-- name: Install tools needed for postgres backup script
-  become: true
-  ansible.builtin.apt:
-    name:
-      - bindfs
-      - inotify-tools
-  notify:
-    - Update package facts
+- name: Detect filesystem type for PostgreSQL data directory
+  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  register: postgresql_filesystem_type
+  changed_when: false
 
-- name: Set mergerfs_architecture
-  set_fact:
-    mergerfs_architecture: |-
-      {{
-        "amd64" if ansible_facts['architecture'] == "x86_64"
-        else (
-          "arm64" if ansible_facts['architecture'] == "aarch64"
-          else ansible_facts['architecture']
-        )
-      }}
-
-- name: Install mergerfs {{ mergerfs_version }}
+- name: Check if snapper has a postgres configuration
+  when: postgresql_filesystem_type.stdout == 'btrfs'
   become: true
-  ansible.builtin.apt:
-    deb: https://github.com/trapexit/mergerfs/releases/download/{{ mergerfs_version }}/mergerfs_{{ mergerfs_version }}.{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['lsb']['codename'] }}_{{ mergerfs_architecture }}.deb
+  ansible.builtin.shell: snapper -c postgres list >/dev/null 2>&1
+  register: snapper_postgres_config
+  changed_when: false
+  ignore_errors: true
 
-- name: Allow FUSE allow_other to be used by users
-  become: true
-  ansible.builtin.lineinfile:
-    path: /etc/fuse.conf
-    regexp: "^user_allow_other"
-    line: user_allow_other
+- name: Set backup method based on filesystem
+  ansible.builtin.set_fact:
+    postgres_backup_method: "{{ 'btrfs' if (postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config is defined and snapper_postgres_config.rc == 0) else 'ext4' }}"
 
-- name: Create kopia pgdata mountpoint
-  become: true
-  ansible.builtin.file:
-    path: /var/lib/kopia/pgdata
-    state: directory
-    owner: kopia
-    group: kopia
+- name: Display backup method
+  ansible.builtin.debug:
+    msg: "Using {{ postgres_backup_method }} backup method for postgres (filesystem: {{ postgresql_filesystem_type.stdout }})"
 
-- name: Create postgres kopia user
-  become: true
-  become_user: postgres
-  community.postgresql.postgresql_user:
-    name: kopia
-    role_attr_flags: SUPERUSER
+- name: Include btrfs backup tasks
+  when: postgres_backup_method == 'btrfs'
+  ansible.builtin.include_tasks: backup/on-btrfs.yml
 
-- name: Allow kopia peer access to postgres
-  become: true
-  community.postgresql.postgresql_pg_hba:
-    dest: /etc/postgresql/current/main/pg_hba.conf
-    contype: local
-    users: kopia
-    databases: postgres
-    method: peer
-    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
-  notify: Reload postgres
-
-- name: Set archive command
-  become: true
-  become_user: postgres
-  community.postgresql.postgresql_alter_system:
-    name: archive_command
-    value: "/bin/true"
-
-- name: Add kopia backup for postgres (script)
-  become: true
-  ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.sh') }}"
-    dest: /var/lib/kopia/backup-postgres.sh
-    mode: "0755"
-    owner: kopia
-    group: kopia
-
-- name: Add kopia backup for postgres (service)
-  become: true
-  ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.service') }}"
-    dest: /etc/systemd/system/kopia-backup-postgres.service
-  notify:
-    - Reload systemd
+- name: Include ext4 backup tasks
+  when: postgres_backup_method == 'ext4'
+  ansible.builtin.include_tasks: backup/on-ext4.yml
 
 - name: Add kopia backup for postgres (timer)
   become: true

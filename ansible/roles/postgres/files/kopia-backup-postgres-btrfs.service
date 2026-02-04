@@ -1,0 +1,8 @@
+[Unit]
+Description=Take a snapshot of postgres using snapper
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/var/lib/kopia/backup-postgres.sh

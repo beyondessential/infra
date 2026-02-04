@@ -1,5 +1,5 @@
 [Unit]
-Description=Take a snapshot of postgres
+Description=Take a snapshot of postgres (ext4 method)
 
 [Service]
 Type=oneshot
