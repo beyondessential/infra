@@ -24,7 +24,7 @@
   become: true
   become_user: postgres
   community.postgresql.postgresql_alter_system:
-    name: archive_command
+    param: archive_command
     value: "/bin/true"
 
 - name: Cleanup ext4 backup method before switching to btrfs

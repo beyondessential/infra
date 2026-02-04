@@ -3,7 +3,7 @@
   become: true
   become_user: postgres
   community.postgresql.postgresql_alter_system:
-    name: archive_timeout
+    param: archive_timeout
     value: "300"
     # recommended to be no shorter than 1 minute
     # this helps keep pg_wal size reasonable
@@ -12,7 +12,7 @@
   become: true
   become_user: postgres
   community.postgresql.postgresql_alter_system:
-    name: archive_mode
+    param: archive_mode
     value: "on"
     # this is mostly used for backup purposes
     # but as it requires a restart, we enable it

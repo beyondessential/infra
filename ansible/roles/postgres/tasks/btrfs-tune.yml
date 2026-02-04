@@ -7,7 +7,7 @@
   notify:
     - Restart postgres
   community.postgresql.postgresql_alter_system:
-    name: wal_init_zero
+    param: wal_init_zero
     value: "off"
 
 - name: Set wal_recycle to off
@@ -16,5 +16,5 @@
   notify:
     - Restart postgres
   community.postgresql.postgresql_alter_system:
-    name: wal_recycle
+    param: wal_recycle
     value: "off"

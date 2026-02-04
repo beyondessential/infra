@@ -33,5 +33,5 @@
   become: true
   become_user: postgres
   community.postgresql.postgresql_alter_system:
-    name: scram_iterations
+    param: scram_iterations
     value: "50000"
