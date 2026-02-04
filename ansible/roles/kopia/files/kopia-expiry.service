@@ -1,6 +1,6 @@
 [Unit]
 Description=Expire old Kopia snapshots
-ConditionPathExists=/var/lib/kopia/ready
+ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 
 [Service]
 Type=oneshot

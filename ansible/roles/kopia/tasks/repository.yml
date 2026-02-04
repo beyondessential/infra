@@ -10,7 +10,7 @@
 
 - name: Check if kopia is configured
   ansible.builtin.stat:
-    path: /var/lib/kopia/ready
+    path: /var/lib/kopia/.config/kopia/repository.config
   register: kopia_ready
 
 - name: Display kopia configuration status
@@ -20,12 +20,3 @@
       Kopia is not yet configured on this host.
       After Ansible completes, run: sudo bes-setup-kopia
       This will prompt for S3 credentials and repository password.
-
-- name: Set compression global policy
-  when: kopia_ready.stat.exists
-  become: true
-  become_user: kopia
-  ansible.builtin.command:
-    cmd: kopia policy set --compression=zstd-fastest --global
-  changed_when: false
-  ignore_errors: true

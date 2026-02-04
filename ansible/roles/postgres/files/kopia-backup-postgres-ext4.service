@@ -1,6 +1,6 @@
 [Unit]
 Description=Take a snapshot of postgres (ext4 method)
-ConditionPathExists=/var/lib/kopia/ready
+ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 
 [Service]
 Type=oneshot

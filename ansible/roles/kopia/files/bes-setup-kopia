@@ -5,7 +5,6 @@ set -euo pipefail
 # bes-setup-kopia: Interactive script to configure kopia backup credentials
 # This script is installed by Ansible but run manually by operators to provide secrets
 
-READY_FILE="/var/lib/kopia/ready"
 CONFIG_FILE="/var/lib/kopia/.config/kopia/repository.config"
 KOPIA_USER="kopia"
 
@@ -34,10 +33,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Check if already configured
-if [ -f "$READY_FILE" ]; then
+if [ -f "$CONFIG_FILE" ]; then
     log_info "Kopia is already configured on this host"
     log_info "Configuration: $CONFIG_FILE"
-    log_info "Ready marker: $READY_FILE"
     echo ""
     read -p "Do you want to reconfigure? This will delete existing configuration. [y/N] " -n 1 -r
     echo
@@ -47,7 +45,6 @@ if [ -f "$READY_FILE" ]; then
     fi
 
     log_warn "Removing existing configuration..."
-    rm -f "$READY_FILE"
     rm -f "$CONFIG_FILE"
 fi
 
@@ -135,11 +132,6 @@ fi
 # Set compression policy
 log_info "Setting compression policy..."
 sudo -u "$KOPIA_USER" kopia policy set --compression=zstd-fastest --global
-
-# Create ready marker
-log_info "Creating ready marker..."
-touch "$READY_FILE"
-chown "$KOPIA_USER:$KOPIA_USER" "$READY_FILE"
 
 echo ""
 log_info "=== Kopia configuration complete! ==="
