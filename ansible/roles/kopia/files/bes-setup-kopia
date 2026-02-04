@@ -64,6 +64,31 @@ fi
 log_info "=== Kopia Configuration Setup ==="
 echo ""
 
+# Prompt for repository creation or connection
+if [ "$IS_CENTRAL" = true ]; then
+    DEFAULT_CREATE="Y"
+    PROMPT_TEXT="Create new repository? [Y/n]: "
+else
+    DEFAULT_CREATE="N"
+    PROMPT_TEXT="Create new repository? [y/N]: "
+fi
+
+read -p "$PROMPT_TEXT" -n 1 -r CREATE_REPO
+echo
+if [ -z "$CREATE_REPO" ]; then
+    CREATE_REPO="$DEFAULT_CREATE"
+fi
+
+if [[ $CREATE_REPO =~ ^[Yy]$ ]]; then
+    REPO_ACTION="create"
+    log_info "Will create a new kopia repository"
+else
+    REPO_ACTION="connect"
+    log_info "Will connect to an existing kopia repository"
+fi
+
+echo ""
+
 # Prompt for S3 bucket
 read -p "S3 Bucket name: " S3_BUCKET
 if [ -z "$S3_BUCKET" ]; then
@@ -108,8 +133,8 @@ echo ""
 log_info "Configuring kopia..."
 
 # Create or connect to repository
-if [ "$IS_CENTRAL" = true ]; then
-    log_info "This is a central host - creating repository"
+if [ "$REPO_ACTION" = "create" ]; then
+    log_info "Creating repository..."
 
     sudo -u "$KOPIA_USER" env KOPIA_PASSWORD="$KOPIA_PASSWORD" kopia repository create s3 \
         --bucket="$S3_BUCKET" \
@@ -120,7 +145,7 @@ if [ "$IS_CENTRAL" = true ]; then
         --retention-mode=GOVERNANCE \
         --retention-period=30d
 else
-    log_info "This is a facility host - connecting to repository"
+    log_info "Connecting to existing repository..."
 
     sudo -u "$KOPIA_USER" env KOPIA_PASSWORD="$KOPIA_PASSWORD" kopia repository connect s3 \
         --bucket="$S3_BUCKET" \
@@ -132,6 +157,31 @@ fi
 # Set compression policy
 log_info "Setting compression policy..."
 sudo -u "$KOPIA_USER" kopia policy set --compression=zstd-fastest --global
+
+# Check available disk space and prompt for cache limits
+AVAILABLE_GB=$(df -BG /var/lib/kopia | tail -1 | awk '{print $4}' | sed 's/G//')
+log_info "Available disk space: ${AVAILABLE_GB}GB"
+
+if [ "$AVAILABLE_GB" -lt 10 ]; then
+    DEFAULT_CACHE_LIMIT="Y"
+    PROMPT_TEXT="Set cache limits for small disk? (3GB content, 1GB metadata) [Y/n]: "
+else
+    DEFAULT_CACHE_LIMIT="N"
+    PROMPT_TEXT="Set cache limits for small disk? (3GB content, 1GB metadata) [y/N]: "
+fi
+
+read -p "$PROMPT_TEXT" -n 1 -r SET_CACHE_LIMIT
+echo
+if [ -z "$SET_CACHE_LIMIT" ]; then
+    SET_CACHE_LIMIT="$DEFAULT_CACHE_LIMIT"
+fi
+
+if [[ $SET_CACHE_LIMIT =~ ^[Yy]$ ]]; then
+    log_info "Setting cache limits..."
+    sudo -u "$KOPIA_USER" kopia cache set --content-cache-size-limit-mb=3000
+    sudo -u "$KOPIA_USER" kopia cache set --metadata-cache-size-limit-mb=1000
+    log_info "Cache limits configured"
+fi
 
 echo ""
 log_info "=== Kopia configuration complete! ==="

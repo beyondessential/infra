@@ -22,17 +22,3 @@
     daemon_reload: true
     state: started
     enabled: true
-
-- name: Set cache contents limit (3GB)
-  when: ansible_facts['system_vendor'] == 'Amazon EC2' # we only have a 10G disk here
-  become: true
-  become_user: kopia
-  ansible.builtin.command:
-    cmd: kopia cache set --content-cache-size-limit-mb=3000
-
-- name: Set cache metadata limit (1GB)
-  when: ansible_facts['system_vendor'] == 'Amazon EC2' # we only have a 10G disk here
-  become: true
-  become_user: kopia
-  ansible.builtin.command:
-    cmd: kopia cache set --metadata-cache-size-limit-mb=1000
