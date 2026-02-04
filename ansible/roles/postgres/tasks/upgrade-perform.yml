@@ -12,54 +12,25 @@
   ansible.builtin.debug:
     msg: "Using pg_upgrade method: {{ pg_upgrade_method }} (filesystem: {{ postgresql_filesystem_type.stdout }})"
 
-- name: Check if old PostgreSQL directory is a btrfs subvolume
+- name: Check if snapper has a postgres configuration
   when: postgresql_filesystem_type.stdout == 'btrfs'
   become: true
-  ansible.builtin.shell:
-    cmd: btrfs subvolume show /var/lib/postgresql/{{ installed_postgresql_version }} >/dev/null 2>&1
-  register: old_is_subvolume
+  ansible.builtin.shell: snapper -c postgres list >/dev/null 2>&1
+  register: snapper_postgres_config
   changed_when: false
   ignore_errors: true
 
-- name: Create snapshot directory for old PostgreSQL version
-  when: postgresql_filesystem_type.stdout == 'btrfs'
-  become: true
-  ansible.builtin.file:
-    path: /.snapshots/postgres-{{ installed_postgresql_version }}
-    state: directory
-    mode: "0755"
-
-- name: Create read-only btrfs snapshot of old PostgreSQL subvolume
-  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+- name: Create pre-upgrade snapshot with snapper
+  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
   become: true
   ansible.builtin.command:
-    cmd: btrfs subvolume snapshot -r /var/lib/postgresql/{{ installed_postgresql_version }} /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_facts['date_time']['date'] | replace('-', '') }}T{{ ansible_facts['date_time']['time'] | replace(':', '') }}-pre-upgrade
-  register: btrfs_snapshot_subvolume
+    cmd: snapper -c postgres create --type pre --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
+  register: snapper_pre_snapshot
 
-- name: Find if /var/lib/postgresql is or is contained in a btrfs subvolume
-  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0
-  become: true
-  ansible.builtin.shell:
-    cmd: btrfs subvolume show /var/lib/postgresql | head -1 | awk '{print $1}'
-  register: postgres_parent_subvolume
-  changed_when: false
-
-- name: Create read-only btrfs snapshot of parent subvolume
-  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0 and postgres_parent_subvolume.rc == 0
-  become: true
-  ansible.builtin.command:
-    cmd: btrfs subvolume snapshot -r /var/lib/postgresql /.snapshots/postgres-{{ installed_postgresql_version }}/{{ ansible_facts['date_time']['date'] | replace('-', '') }}T{{ ansible_facts['date_time']['time'] | replace(':', '') }}-pre-upgrade
-  register: btrfs_snapshot_parent
-
-- name: Display snapshot information (subvolume)
-  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc == 0
+- name: Display snapshot information
+  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
   ansible.builtin.debug:
-    msg: "Created read-only snapshot of PostgreSQL {{ installed_postgresql_version }} subvolume: {{ btrfs_snapshot_subvolume.cmd | join(' ') }}"
-
-- name: Display snapshot information (parent)
-  when: postgresql_filesystem_type.stdout == 'btrfs' and old_is_subvolume.rc != 0
-  ansible.builtin.debug:
-    msg: "Created read-only snapshot of parent subvolume {{ postgres_parent_subvolume.stdout }}: {{ btrfs_snapshot_parent.cmd | join(' ') }}"
+    msg: "Created pre-upgrade snapshot with snapper for postgres configuration"
 
 - name: Install new PostgreSQL version
   become: true
@@ -68,15 +39,7 @@
     state: present
     update_cache: true
 
-- name: Create btrfs subvolume for new PostgreSQL version
-  when: postgresql_filesystem_type.stdout == 'btrfs'
-  become: true
-  ansible.builtin.command:
-    cmd: btrfs subvolume create /var/lib/postgresql/{{ postgresql_desired_version }}
-    creates: /var/lib/postgresql/{{ postgresql_desired_version }}
-
-- name: Create new PostgreSQL version directory (non-btrfs)
-  when: postgresql_filesystem_type.stdout != 'btrfs'
+- name: Create new PostgreSQL version directory
   become: true
   ansible.builtin.file:
     path: /var/lib/postgresql/{{ postgresql_desired_version }}
@@ -287,6 +250,18 @@
 - name: Display upgrade results
   ansible.builtin.debug:
     var: pg_upgrade_result.stdout_lines
+
+- name: Create post-upgrade snapshot with snapper
+  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
+  become: true
+  ansible.builtin.command:
+    cmd: snapper -c postgres create --type post --pre-number "{{ snapper_pre_snapshot.stdout }}" --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
+  register: snapper_post_snapshot
+
+- name: Display post-upgrade snapshot information
+  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
+  ansible.builtin.debug:
+    msg: "Created post-upgrade snapshot with snapper for postgres configuration"
 
 - name: Start new PostgreSQL service
   become: true
