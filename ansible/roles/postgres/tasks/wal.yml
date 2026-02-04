@@ -5,7 +5,7 @@
   when: kopia_enabled is not defined or kopia_enabled == false
   notify:
     - Restart postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: archive_command
     value: "/bin/true"
     # this essentially soft-disables archiving;
@@ -17,7 +17,7 @@
 - name: Set WAL expiry
   become: true
   become_user: postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: archive_timeout
     value: "300"
     # recommended to be no shorter than 1 minute
@@ -26,7 +26,7 @@
 - name: Enable archive mode in postgres
   become: true
   become_user: postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: archive_mode
     value: "on"
     # this is mostly used for backup purposes

@@ -27,11 +27,11 @@
   notify: Reload postgres
 
 # lineinfile (postgresql.conf) settings are machine-local
-# postgresql_set settings are saved in backups
+# postgresql_alter_system settings are saved in backups
 
 - name: Raise password hashing iterations
   become: true
   become_user: postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: scram_iterations
     value: "50000"

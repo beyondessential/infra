@@ -6,7 +6,7 @@
   become_user: postgres
   notify:
     - Restart postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: wal_init_zero
     value: "off"
 
@@ -15,6 +15,6 @@
   become_user: postgres
   notify:
     - Restart postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: wal_recycle
     value: "off"

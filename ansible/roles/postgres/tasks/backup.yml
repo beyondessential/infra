@@ -60,7 +60,7 @@
 - name: Set archive command
   become: true
   become_user: postgres
-  community.postgresql.postgresql_set:
+  community.postgresql.postgresql_alter_system:
     name: archive_command
     value: "/bin/true"
 
