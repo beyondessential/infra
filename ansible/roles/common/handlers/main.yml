@@ -9,7 +9,7 @@
   ansible.builtin.reboot:
     reboot_timeout: 300
     msg: Rebooting to apply changes
-    pre_reboot_delay: 5 # required for mitogen
+    pre_reboot_delay: 5
 
 - name: Update package facts
   ansible.builtin.package_facts:

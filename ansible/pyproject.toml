@@ -1,13 +1,12 @@
 [project]
 name = "ansible-setup"
 version = "0.1.0"
-description = "Ansible setup with mitogen for faster execution"
+description = "Ansible setup with pipelining for faster execution"
 requires-python = ">=3.12"
 dependencies = [
     "ansible~=13.2",
     "ansible-core~=2.20",
     "dnspython~=2.6",
-    "mitogen~=0.3.0",
 ]
 
 [project.scripts]
