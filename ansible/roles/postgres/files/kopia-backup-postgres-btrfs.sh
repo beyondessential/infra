@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export KOPIA_CHECK_FOR_UPDATES=false
+
 # This script backs up postgres using snapper snapshots
 # It requires:
 # - snapper configured with a 'postgres' configuration

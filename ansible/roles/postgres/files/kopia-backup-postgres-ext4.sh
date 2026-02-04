@@ -2,6 +2,8 @@
 
 set -uxo pipefail
 
+export KOPIA_CHECK_FOR_UPDATES=false
+
 # the pgdatadir MUST be *entirely* readable by the kopia user
 # this isn't usually the case: even when kopia is part of the postgres group,
 # pg writes its files group-unreadable. you can fix this using bindfs as root

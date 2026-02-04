@@ -6,4 +6,5 @@ ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 Type=oneshot
 User=kopia
 Group=kopia
+Environment=KOPIA_CHECK_FOR_UPDATES=false
 ExecStart=kopia snapshot create --description="%H Caddy config" /etc/caddy

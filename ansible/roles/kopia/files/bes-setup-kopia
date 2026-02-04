@@ -136,7 +136,7 @@ log_info "Configuring kopia..."
 if [ "$REPO_ACTION" = "create" ]; then
     log_info "Creating repository..."
 
-    sudo -u "$KOPIA_USER" env KOPIA_PASSWORD="$KOPIA_PASSWORD" kopia repository create s3 \
+    sudo -u "$KOPIA_USER" env KOPIA_PASSWORD="$KOPIA_PASSWORD" KOPIA_CHECK_FOR_UPDATES=false kopia repository create s3 \
         --bucket="$S3_BUCKET" \
         --access-key="$S3_KEY" \
         --secret-access-key="$S3_SECRET" \
@@ -147,7 +147,7 @@ if [ "$REPO_ACTION" = "create" ]; then
 else
     log_info "Connecting to existing repository..."
 
-    sudo -u "$KOPIA_USER" env KOPIA_PASSWORD="$KOPIA_PASSWORD" kopia repository connect s3 \
+    sudo -u "$KOPIA_USER" env KOPIA_PASSWORD="$KOPIA_PASSWORD" KOPIA_CHECK_FOR_UPDATES=false kopia repository connect s3 \
         --bucket="$S3_BUCKET" \
         --access-key="$S3_KEY" \
         --secret-access-key="$S3_SECRET" \
@@ -156,7 +156,7 @@ fi
 
 # Set compression policy
 log_info "Setting compression policy..."
-sudo -u "$KOPIA_USER" kopia policy set --compression=zstd-fastest --global
+sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --global
 
 # Check available disk space and prompt for cache limits
 AVAILABLE_GB=$(df -BG /var/lib/kopia | tail -1 | awk '{print $4}' | sed 's/G//')
