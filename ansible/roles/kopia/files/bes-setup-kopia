@@ -107,22 +107,66 @@ if [ -z "$S3_KEY" ]; then
     exit 1
 fi
 
-read -sp "S3 Secret Key: " S3_SECRET
+# Read S3 secret with asterisk feedback
+echo -n "S3 Secret Key: "
+S3_SECRET=""
+while IFS= read -r -s -n1 char; do
+    if [[ $char == $'\0' ]]; then
+        break
+    elif [[ $char == $'\177' ]]; then
+        if [ ${#S3_SECRET} -gt 0 ]; then
+            S3_SECRET="${S3_SECRET%?}"
+            echo -ne "\b \b"
+        fi
+    else
+        S3_SECRET+="$char"
+        echo -n "*"
+    fi
+done
 echo
 if [ -z "$S3_SECRET" ]; then
     log_error "S3 secret key is required"
     exit 1
 fi
 
-# Prompt for kopia repository password
-read -sp "Kopia Repository Password: " KOPIA_PASSWORD
+# Read kopia password with asterisk feedback
+echo -n "Kopia Repository Password: "
+KOPIA_PASSWORD=""
+while IFS= read -r -s -n1 char; do
+    if [[ $char == $'\0' ]]; then
+        break
+    elif [[ $char == $'\177' ]]; then
+        if [ ${#KOPIA_PASSWORD} -gt 0 ]; then
+            KOPIA_PASSWORD="${KOPIA_PASSWORD%?}"
+            echo -ne "\b \b"
+        fi
+    else
+        KOPIA_PASSWORD+="$char"
+        echo -n "*"
+    fi
+done
 echo
 if [ -z "$KOPIA_PASSWORD" ]; then
     log_error "Kopia repository password is required"
     exit 1
 fi
 
-read -sp "Confirm Kopia Repository Password: " KOPIA_PASSWORD_CONFIRM
+# Confirm kopia password with asterisk feedback
+echo -n "Confirm Kopia Repository Password: "
+KOPIA_PASSWORD_CONFIRM=""
+while IFS= read -r -s -n1 char; do
+    if [[ $char == $'\0' ]]; then
+        break
+    elif [[ $char == $'\177' ]]; then
+        if [ ${#KOPIA_PASSWORD_CONFIRM} -gt 0 ]; then
+            KOPIA_PASSWORD_CONFIRM="${KOPIA_PASSWORD_CONFIRM%?}"
+            echo -ne "\b \b"
+        fi
+    else
+        KOPIA_PASSWORD_CONFIRM+="$char"
+        echo -n "*"
+    fi
+done
 echo
 if [ "$KOPIA_PASSWORD" != "$KOPIA_PASSWORD_CONFIRM" ]; then
     log_error "Passwords do not match"
