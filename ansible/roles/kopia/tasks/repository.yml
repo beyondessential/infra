@@ -1,39 +1,31 @@
 ---
-- name: Create kopia repository
-  when: "'central' in group_names"
+- name: Install bes-setup-kopia script
   become: true
-  become_user: kopia
-  environment:
-    KOPIA_PASSWORD: "{{ kopia_password }}"
-  ansible.builtin.command:
-    creates: /var/lib/kopia/.config/kopia/repository.config
-    cmd: |
-      kopia repository create s3
-        --bucket={{ kopia_s3_bucket }}
-        --access-key={{ kopia_s3_key }}
-        --secret-access-key={{ kopia_s3_secret }}
-        --ecc-overhead-percent=1
-        --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}
-        --retention-mode=GOVERNANCE
-        --retention-period=30d
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'bes-setup-kopia') }}"
+    dest: /usr/local/bin/bes-setup-kopia
+    mode: "0755"
+    owner: root
+    group: root
 
-- name: Connect to kopia repository
-  when: "'central' not in group_names"
-  become: true
-  become_user: kopia
-  environment:
-    KOPIA_PASSWORD: "{{ kopia_password }}"
-  ansible.builtin.command:
-    creates: /var/lib/kopia/.config/kopia/repository.config
-    cmd: >
-      kopia repository connect s3
-        --bucket={{ kopia_s3_bucket }}
-        --access-key={{ kopia_s3_key }}
-        --secret-access-key={{ kopia_s3_secret }}
-        --region={{ kopia_s3_region | default(ansible_ec2_placement_region) | default('ap-southeast-2') }}
+- name: Check if kopia is configured
+  ansible.builtin.stat:
+    path: /var/lib/kopia/ready
+  register: kopia_ready
+
+- name: Display kopia configuration status
+  when: not kopia_ready.stat.exists
+  ansible.builtin.debug:
+    msg: |
+      Kopia is not yet configured on this host.
+      After Ansible completes, run: sudo bes-setup-kopia
+      This will prompt for S3 credentials and repository password.
 
 - name: Set compression global policy
+  when: kopia_ready.stat.exists
   become: true
   become_user: kopia
   ansible.builtin.command:
     cmd: kopia policy set --compression=zstd-fastest --global
+  changed_when: false
+  ignore_errors: true

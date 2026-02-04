@@ -1,5 +1,6 @@
 [Unit]
 Description=Kopia repository maintenance
+ConditionPathExists=/var/lib/kopia/ready
 
 [Service]
 Type=oneshot
