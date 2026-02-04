@@ -1,0 +1,36 @@
+---
+- name: Remove postgres kopia user from database
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: kopia
+    state: absent
+  ignore_errors: true
+
+- name: Remove kopia peer access from pg_hba
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: kopia
+    databases: postgres
+    method: peer
+    address: ""
+    state: absent
+  notify: Reload postgres
+  ignore_errors: true
+
+- name: Remove kopia pgdata mountpoint
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kopia/pgdata
+    state: absent
+
+- name: Unmount any remaining bindfs mounts
+  become: true
+  ansible.builtin.shell: |
+    if mountpoint -q /var/lib/kopia/pgdata; then
+      fusermount -u /var/lib/kopia/pgdata || umount /var/lib/kopia/pgdata
+    fi
+  ignore_errors: true
+  changed_when: false

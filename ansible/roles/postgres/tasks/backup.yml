@@ -20,9 +20,17 @@
   ansible.builtin.debug:
     msg: "Using {{ postgres_backup_method }} backup method for postgres (filesystem: {{ postgresql_filesystem_type.stdout }})"
 
+- name: Cleanup ext4 backup method before switching to btrfs
+  when: postgres_backup_method == 'btrfs'
+  ansible.builtin.include_tasks: backup/cleanup-ext4.yml
+
 - name: Include btrfs backup tasks
   when: postgres_backup_method == 'btrfs'
   ansible.builtin.include_tasks: backup/on-btrfs.yml
+
+- name: Cleanup btrfs backup method before switching to ext4
+  when: postgres_backup_method == 'ext4'
+  ansible.builtin.include_tasks: backup/cleanup-btrfs.yml
 
 - name: Include ext4 backup tasks
   when: postgres_backup_method == 'ext4'
