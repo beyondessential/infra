@@ -158,29 +158,16 @@ fi
 log_info "Setting compression policy..."
 sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --global
 
-# Check available disk space and prompt for cache limits
+# Check available disk space and set cache limits for small disks
 AVAILABLE_GB=$(df -BG /var/lib/kopia | tail -1 | awk '{print $4}' | sed 's/G//')
-log_info "Available disk space: ${AVAILABLE_GB}GB"
 
 if [ "$AVAILABLE_GB" -lt 10 ]; then
-    DEFAULT_CACHE_LIMIT="Y"
-    PROMPT_TEXT="Set cache limits for small disk? (3GB content, 1GB metadata) [Y/n]: "
+    log_info "Small disk detected (${AVAILABLE_GB}GB available), setting cache limits..."
+    sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia cache set --content-cache-size-limit-mb=3000
+    sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia cache set --metadata-cache-size-limit-mb=1000
+    log_info "Cache limits configured (3GB content, 1GB metadata)"
 else
-    DEFAULT_CACHE_LIMIT="N"
-    PROMPT_TEXT="Set cache limits for small disk? (3GB content, 1GB metadata) [y/N]: "
-fi
-
-read -p "$PROMPT_TEXT" -n 1 -r SET_CACHE_LIMIT
-echo
-if [ -z "$SET_CACHE_LIMIT" ]; then
-    SET_CACHE_LIMIT="$DEFAULT_CACHE_LIMIT"
-fi
-
-if [[ $SET_CACHE_LIMIT =~ ^[Yy]$ ]]; then
-    log_info "Setting cache limits..."
-    sudo -u "$KOPIA_USER" kopia cache set --content-cache-size-limit-mb=3000
-    sudo -u "$KOPIA_USER" kopia cache set --metadata-cache-size-limit-mb=1000
-    log_info "Cache limits configured"
+    log_info "Sufficient disk space available (${AVAILABLE_GB}GB), using default cache settings"
 fi
 
 echo ""
