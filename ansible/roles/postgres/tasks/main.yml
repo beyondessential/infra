@@ -10,7 +10,6 @@
   when: not (aws_postgres_uses_ext4 is defined and aws_postgres_uses_ext4)
 - ansible.builtin.include_tasks: wal.yml
 - ansible.builtin.include_tasks: backup.yml
-  when: kopia_enabled is defined and kopia_enabled
 - ansible.builtin.set_fact:
     postgresql_configured: true
     postgresql_version: "{{ postgresql_version }}"

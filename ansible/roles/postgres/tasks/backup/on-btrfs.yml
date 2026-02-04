@@ -1,11 +1,4 @@
 ---
-- name: Set archive command
-  become: true
-  become_user: postgres
-  community.postgresql.postgresql_alter_system:
-    name: archive_command
-    value: "/bin/true"
-
 - name: Add kopia backup for postgres (btrfs script)
   become: true
   ansible.builtin.copy:

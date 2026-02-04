@@ -1,19 +1,4 @@
 ---
-- name: Set do-nothing archive command
-  become: true
-  become_user: postgres
-  when: kopia_enabled is not defined or kopia_enabled == false
-  notify:
-    - Restart postgres
-  community.postgresql.postgresql_alter_system:
-    name: archive_command
-    value: "/bin/true"
-    # this essentially soft-disables archiving;
-    # wal files are still created but immediately
-    # discarded by the postgres server once unneeded
-    #
-    # when kopia is enabled, it may take over this setting
-
 - name: Set WAL expiry
   become: true
   become_user: postgres

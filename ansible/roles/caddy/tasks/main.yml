@@ -4,7 +4,6 @@
 - ansible.builtin.include_tasks: caddyfile.yml
 - ansible.builtin.include_tasks: tuning.yml
 - ansible.builtin.include_tasks: backup.yml
-  when: kopia_enabled is defined and kopia_enabled
 - ansible.builtin.include_tasks: tailscale.yml
   when: tailscale_configured is defined and tailscale_configured
 - ansible.builtin.set_fact:

@@ -8,4 +8,3 @@
 - ansible.builtin.include_tasks: dns.yml
   when: tamanu_server_type != 'central'
 - ansible.builtin.include_tasks: backup.yml
-  when: kopia_enabled is defined and kopia_enabled

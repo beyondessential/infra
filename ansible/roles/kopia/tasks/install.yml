@@ -1,0 +1,67 @@
+---
+- name: Add kopia apt key
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'apt.gpg') }}"
+    dest: /etc/apt/keyrings/kopia-keyring.gpg
+
+- name: Add kopia apt repo
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/kopia-keyring.gpg] http://packages.kopia.io/apt/ stable main
+    state: present
+    filename: kopia
+
+- name: Prioritise kopia repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99-kopia
+    content: |
+      Package: *
+      Pin: release o=packages.kopia.io
+      Pin-Priority: 900
+
+- name: Install kopia
+  become: true
+  ansible.builtin.apt:
+    name: kopia
+  notify:
+    - Update package facts
+
+- name: Create kopia group
+  become: true
+  ansible.builtin.group:
+    name: kopia
+    system: true
+    state: present
+
+- name: Create kopia user
+  become: true
+  ansible.builtin.user:
+    name: kopia
+    group: kopia
+    system: true
+    create_home: true
+    home: /var/lib/kopia
+
+- name: Install bes-setup-kopia script
+  become: true
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.fileglob', 'bes-setup-kopia') }}"
+    dest: /usr/local/bin/bes-setup-kopia
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Check if kopia is configured
+  ansible.builtin.stat:
+    path: /var/lib/kopia/.config/kopia/repository.config
+  register: kopia_ready
+
+- name: Display kopia configuration status
+  when: not kopia_ready.stat.exists
+  ansible.builtin.debug:
+    msg: |
+      Kopia is not yet configured on this host.
+      After Ansible completes, run: sudo bes-setup-kopia
+      This will prompt for S3 credentials and repository password.
