@@ -12,14 +12,12 @@ export KOPIA_CHECK_FOR_UPDATES=false
 SNAPPER_CONFIG="postgres"
 HOSTNAME=$(hostname)
 
-# Check if snapper config exists
 if ! snapper -c "$SNAPPER_CONFIG" list >/dev/null 2>&1; then
   echo "ERROR: snapper configuration '$SNAPPER_CONFIG' does not exist"
   exit 1
 fi
 
-# Get the most recent snapshot number
-LATEST_SNAPSHOT=$(snapper -c "$SNAPPER_CONFIG" list --columns number | tail -n 1)
+LATEST_SNAPSHOT=$(snapper -c "$SNAPPER_CONFIG" list --columns number | tail -n1 | xargs)
 
 if [ -z "$LATEST_SNAPSHOT" ]; then
   echo "ERROR: No snapshots found for configuration '$SNAPPER_CONFIG'"
@@ -28,25 +26,29 @@ fi
 
 echo "Using snapshot #$LATEST_SNAPSHOT from snapper config '$SNAPPER_CONFIG'"
 
-# Get snapshot path
-SNAPSHOT_PATH="/.snapshots/$SNAPPER_CONFIG/$LATEST_SNAPSHOT/snapshot"
+SUBVOLUME=$(source "/etc/snapper/configs/$SNAPPER_CONFIG" && echo "$SUBVOLUME")
+FSDEV="/dev/disk/by-uuid/$(findmnt "$SUBVOLUME" -o UUID -n)"
 
-if [ ! -d "$SNAPSHOT_PATH" ]; then
-  echo "ERROR: Snapshot path does not exist: $SNAPSHOT_PATH"
-  exit 1
-fi
+SNAPSHOT_SUBVOL="@postgres/.snapshots/$LATEST_SNAPSHOT/snapshot"
 
-# Verify it looks like a postgres data directory
-if [ ! -f "$SNAPSHOT_PATH/PG_VERSION" ]; then
-  echo "ERROR: Snapshot does not contain a valid postgres data directory"
-  exit 1
-fi
+KOPIA_UID=$(id -u kopia)
+KOPIA_GID=$(id -g kopia)
+POSTGRES_UID=$(id -u postgres)
+POSTGRES_GID=$(id -g postgres)
+MAPPING="u:$POSTGRES_UID:$KOPIA_UID:1 g:$POSTGRES_GID:$KOPIA_GID:1"
 
-echo "Backing up snapshot at $SNAPSHOT_PATH"
+echo "Mount snapshot as readable by kopia"
+MOUNT="/var/lib/kopia/mnt-postgres-$LATEST_SNAPSHOT"
+mkdir -p "$MOUNT"
+trap "umount $MOUNT; rmdir $MOUNT" ERR EXIT
+mount "$FSDEV" "$MOUNT" -o "subvol=$SNAPSHOT_SUBVOL,X-mount.idmap=$MAPPING"
 
-# Take a kopia snapshot
-kopia snapshot create \
-  --description="$HOSTNAME Postgres (from snapper snapshot #$LATEST_SNAPSHOT)" \
-  "$SNAPSHOT_PATH"
+echo "Backing up snapshot at $MOUNT"
+
+sudo -u kopia \
+  kopia snapshot create \
+  --tags area:postgres,snapper:$LATEST_SNAPSHOT \
+  --description="$HOSTNAME Postgres" \
+  "$MOUNT"
 
 echo "Backup complete"

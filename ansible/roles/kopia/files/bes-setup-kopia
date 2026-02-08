@@ -200,7 +200,7 @@ fi
 
 # Set compression policy
 log_info "Setting compression policy..."
-sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --global
+sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --add-ignore 'lost+found' --global
 
 # Check available disk space and set cache limits for small disks
 AVAILABLE_GB=$(df -BG /var/lib/kopia | tail -1 | awk '{print $4}' | sed 's/G//')
