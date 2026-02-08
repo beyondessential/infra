@@ -7,4 +7,4 @@ Type=oneshot
 User=kopia
 Group=kopia
 Environment=KOPIA_CHECK_FOR_UPDATES=false
-ExecStart=kopia snapshot create --description="%H Postgres config" /etc/postgresql
+ExecStart=kopia snapshot create --tags area:postgres-config --description="%H Postgres config" /etc/postgresql
