@@ -47,7 +47,7 @@ echo "Backing up snapshot at $MOUNT"
 
 sudo -u kopia \
   kopia snapshot create \
-  --tags area:postgres,snapper:$LATEST_SNAPSHOT \
+  --tags area:postgres,type:btrfs,snapper:$LATEST_SNAPSHOT \
   --description="$HOSTNAME Postgres" \
   "$MOUNT"
 
