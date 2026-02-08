@@ -1,0 +1,10 @@
+[Unit]
+Description=Take a snapshot of postgres config
+ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
+
+[Service]
+Type=oneshot
+User=kopia
+Group=kopia
+Environment=KOPIA_CHECK_FOR_UPDATES=false
+ExecStart=kopia snapshot create --description="%H Postgres config" /etc/postgresql
