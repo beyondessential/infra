@@ -199,6 +199,8 @@ else
 fi
 
 # Set compression policy
+# NOTE: These policies must be kept in sync with Ansible
+# See: ops/ansible/roles/kopia/tasks/policy.yml
 log_info "Setting compression policy..."
 sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --add-ignore 'lost+found' --global
 
