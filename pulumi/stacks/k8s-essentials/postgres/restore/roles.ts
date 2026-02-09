@@ -60,6 +60,12 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         resources: ['deployments'],
         verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
       },
+      // Pods (reading Job pod termination messages for version detection)
+      {
+        apiGroups: [''],
+        resources: ['pods'],
+        verbs: ['get', 'list'],
+      },
       // Events (for emitting Kubernetes events)
       {
         apiGroups: [''],
