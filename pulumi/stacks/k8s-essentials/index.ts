@@ -40,6 +40,7 @@ import './roles/index.ts';
 import './postgres-restore-operator/crds.ts';
 import './postgres-restore-operator/namespace.ts';
 import './postgres-restore-operator/roles.ts';
+import './postgres-restore-operator/manager.ts';
 
 if (cfg.getBoolean('nginxEnabled') ?? true) {
   await import('./ingress.ts');
