@@ -3,7 +3,8 @@ import * as pulumi from '@pulumi/pulumi';
 import { namespace, ns } from './namespace.ts';
 
 const cfg = new pulumi.Config('postgres-restore-operator');
-const image = cfg.require('image');
+const imageTag = cfg.get('imageTag') ?? 'latest';
+const image = `ghcr.io/beyondessential/postgres-restore-operator:${imageTag}`;
 const maxConcurrentRestores = cfg.getNumber('maxConcurrentRestores') ?? 2;
 
 const labels = {
@@ -88,7 +89,7 @@ new k8s.apps.v1.Deployment(
               env: [
                 {
                   name: 'METRICS_ADDR',
-                  value: '0.0.0.0:8080',
+                  value: '[::]:8080',
                 },
                 {
                   name: 'OPERATOR_NAMESPACE',
@@ -108,7 +109,7 @@ new k8s.apps.v1.Deployment(
               ],
               readinessProbe: {
                 httpGet: {
-                  path: '/healthz',
+                  path: '/readyz',
                   port: 'metrics',
                 },
                 initialDelaySeconds: 5,
@@ -116,7 +117,7 @@ new k8s.apps.v1.Deployment(
               },
               livenessProbe: {
                 httpGet: {
-                  path: '/healthz',
+                  path: '/livez',
                   port: 'metrics',
                 },
                 initialDelaySeconds: 15,

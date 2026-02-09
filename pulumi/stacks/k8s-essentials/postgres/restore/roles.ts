@@ -117,7 +117,7 @@ const configRole = new k8s.rbac.v1.Role(
         apiGroups: [''],
         resources: ['configmaps'],
         resourceNames: ['postgres-restore-operator-config'],
-        verbs: ['get', 'watch'],
+        verbs: ['get', 'list', 'watch'],
       },
     ],
   },

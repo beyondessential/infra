@@ -5,7 +5,8 @@ metadata:
 spec:
   group: bes.au
   names:
-    categories: []
+    categories:
+    - all
     kind: PostgresPhysicalReplica
     plural: postgresphysicalreplicas
     shortNames:
@@ -62,7 +63,7 @@ spec:
                         headers:
                           additionalProperties:
                             anyOf:
-                            - type: string
+                            - {}
                             - required:
                               - secretKeyRef
                             properties:
@@ -76,7 +77,7 @@ spec:
                                 - key
                                 - name
                                 type: object
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           nullable: true
                           type: object
                         mutation:
@@ -102,7 +103,7 @@ spec:
                         headers:
                           additionalProperties:
                             anyOf:
-                            - type: string
+                            - {}
                             - required:
                               - secretKeyRef
                             properties:
@@ -116,7 +117,7 @@ spec:
                                 - key
                                 - name
                                 type: object
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           nullable: true
                           type: object
                         method:
@@ -329,7 +330,8 @@ metadata:
 spec:
   group: bes.au
   names:
-    categories: []
+    categories:
+    - all
     kind: PostgresPhysicalRestore
     plural: postgresphysicalrestores
     shortNames:
