@@ -39,8 +39,8 @@ spec:
                 description: Reference to a Secret containing kopia repository credentials
                 type: string
               minimumTtl:
-                default: 6h
                 description: Don't restore a new snapshot within this duration of the last restore completing
+                nullable: true
                 type: string
               nodeSelector:
                 additionalProperties:
