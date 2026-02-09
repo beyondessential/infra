@@ -86,7 +86,7 @@ bindfs $pgdatadir $mountoverlay
 
 : take a snapshot of postgres
 snap=$tmpdir/snapshot.json
-kopia snapshot create --tags area:postgres,type:ext4 --description="$(hostname) Postgres (data only)" --json $mountoverlay > $snap
+kopia snapshot create --tags area:postgres --tags type:ext4 --description="$(hostname) Postgres (data only)" --json $mountoverlay > $snap
 jq . $snap
 
 : unbind pgdata
@@ -152,7 +152,7 @@ mergerfs -o "$mergerfs_opts" $mountlow:$metadir $mountoverlay
 ls -shall $mountoverlay
 
 : take a snapshot of the overlay
-kopia snapshot create --tags area:postgres,type:ext4 --description="$(hostname) Postgres" --json $mountoverlay
+kopia snapshot create --tags area:postgres --tags type:ext4 --description="$(hostname) Postgres" --json $mountoverlay
 
 : unlist the data-only snapshot
 # deletes in kopia are just markers; in this case all we're doing is removing
