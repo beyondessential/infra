@@ -91,6 +91,10 @@ new k8s.apps.v1.Deployment(
                   name: 'METRICS_ADDR',
                   value: '[::]:8080',
                 },
+                // {
+                //   name: 'RUST_LOG',
+                //   value: 'info,tower_http=debug',
+                // },
                 {
                   name: 'OPERATOR_NAMESPACE',
                   valueFrom: {
