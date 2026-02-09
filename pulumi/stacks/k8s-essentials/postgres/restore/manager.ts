@@ -11,6 +11,20 @@ const labels = {
   'app.kubernetes.io/component': 'controller',
 };
 
+const configMap = new k8s.core.v1.ConfigMap(
+  'postgres-restore-operator-config',
+  {
+    metadata: {
+      name: 'postgres-restore-operator-config',
+      namespace,
+    },
+    data: {
+      maxConcurrentRestores: String(maxConcurrentRestores),
+    },
+  },
+  { parent: ns },
+);
+
 new k8s.core.v1.Service(
   'postgres-restore-operator-metrics',
   {
@@ -71,9 +85,19 @@ new k8s.apps.v1.Deployment(
             {
               name: 'controller',
               image,
-              args: [
-                `--max-concurrent-restores=${maxConcurrentRestores}`,
-                '--metrics-addr=0.0.0.0:8080',
+              env: [
+                {
+                  name: 'METRICS_ADDR',
+                  value: '0.0.0.0:8080',
+                },
+                {
+                  name: 'OPERATOR_NAMESPACE',
+                  valueFrom: {
+                    fieldRef: {
+                      fieldPath: 'metadata.namespace',
+                    },
+                  },
+                },
               ],
               ports: [
                 {
@@ -121,5 +145,5 @@ new k8s.apps.v1.Deployment(
       },
     },
   },
-  { parent: ns },
+  { parent: ns, dependsOn: [configMap] },
 );

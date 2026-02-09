@@ -98,3 +98,45 @@ new k8s.rbac.v1.ClusterRoleBinding(
   },
   { parent: ns },
 );
+
+const configRole = new k8s.rbac.v1.Role(
+  'postgres-restore-operator-config',
+  {
+    metadata: {
+      name: 'postgres-restore-operator-config',
+      namespace,
+    },
+    rules: [
+      {
+        apiGroups: [''],
+        resources: ['configmaps'],
+        resourceNames: ['postgres-restore-operator-config'],
+        verbs: ['get', 'watch'],
+      },
+    ],
+  },
+  { parent: ns },
+);
+
+new k8s.rbac.v1.RoleBinding(
+  'postgres-restore-operator-config',
+  {
+    metadata: {
+      name: 'postgres-restore-operator-config',
+      namespace,
+    },
+    roleRef: {
+      apiGroup: 'rbac.authorization.k8s.io',
+      kind: 'Role',
+      name: configRole.metadata.name,
+    },
+    subjects: [
+      {
+        kind: 'ServiceAccount',
+        name: serviceAccount.metadata.name,
+        namespace,
+      },
+    ],
+  },
+  { parent: ns },
+);
