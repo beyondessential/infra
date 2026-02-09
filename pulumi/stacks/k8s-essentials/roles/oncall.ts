@@ -53,6 +53,11 @@ const role = new k8s.rbac.v1.ClusterRole('oncall', {
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch'],
     },
     {
+      apiGroups: ['bes.au'],
+      resources: ['*'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    {
       apiGroups: ['rbac.authorization.k8s.io'],
       resources: ['roles', 'rolebindings', 'clusterroles', 'clusterrolebindings'],
       verbs: ['get', 'list', 'watch'],

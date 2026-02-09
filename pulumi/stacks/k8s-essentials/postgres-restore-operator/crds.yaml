@@ -1,0 +1,456 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: postgresphysicalreplicas.bes.au
+spec:
+  group: bes.au
+  names:
+    categories: []
+    kind: PostgresPhysicalReplica
+    plural: postgresphysicalreplicas
+    shortNames:
+    - ppr
+    singular: postgresphysicalreplica
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.serviceName
+      name: Service
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for PostgresPhysicalReplicaSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              analyticsUsername:
+                default: analytics
+                description: Username for analytics connections
+                type: string
+              kopiaSecretRef:
+                description: Reference to a Secret containing kopia repository credentials
+                type: string
+              minimumTtl:
+                default: 6h
+                description: Don't restore a new snapshot within this duration of the last restore completing
+                type: string
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                nullable: true
+                type: object
+              notifications:
+                items:
+                  properties:
+                    events:
+                      default: []
+                      items:
+                        enum:
+                        - RestoreComplete
+                        type: string
+                      type: array
+                    graphql:
+                      nullable: true
+                      properties:
+                        headers:
+                          additionalProperties:
+                            anyOf:
+                            - type: string
+                            - required:
+                              - secretKeyRef
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            type: object
+                          nullable: true
+                          type: object
+                        mutation:
+                          type: string
+                        url:
+                          type: string
+                        variablesTemplate:
+                          type: string
+                      required:
+                      - mutation
+                      - url
+                      - variablesTemplate
+                      type: object
+                    includePassword:
+                      default: false
+                      description: Include password directly in notification payload
+                      type: boolean
+                    name:
+                      type: string
+                    webhook:
+                      nullable: true
+                      properties:
+                        headers:
+                          additionalProperties:
+                            anyOf:
+                            - type: string
+                            - required:
+                              - secretKeyRef
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            type: object
+                          nullable: true
+                          type: object
+                        method:
+                          default: POST
+                          type: string
+                        url:
+                          type: string
+                      required:
+                      - url
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
+              podAnnotations:
+                additionalProperties:
+                  type: string
+                nullable: true
+                type: object
+              readOnly:
+                default: true
+                description: Set database to read-only mode
+                type: boolean
+              resources:
+                nullable: true
+                properties:
+                  limits:
+                    additionalProperties:
+                      type: string
+                    nullable: true
+                    type: object
+                  requests:
+                    additionalProperties:
+                      type: string
+                    nullable: true
+                    type: object
+                type: object
+              schedule:
+                description: Cron expression for scheduled restores
+                nullable: true
+                type: string
+              scheduleJitter:
+                default: 10m
+                description: Random jitter added to scheduled restores
+                type: string
+              serviceAnnotations:
+                additionalProperties:
+                  type: string
+                nullable: true
+                type: object
+              snapshotFilter:
+                nullable: true
+                properties:
+                  hostPattern:
+                    description: Glob pattern for filtering snapshot hosts
+                    nullable: true
+                    type: string
+                  tags:
+                    additionalProperties:
+                      type: string
+                    nullable: true
+                    type: object
+                type: object
+              storageClass:
+                nullable: true
+                type: string
+              storageSizeOverride:
+                description: Override dynamic sizing with a fixed PVC size
+                nullable: true
+                type: string
+              switchoverGracePeriod:
+                default: 5m
+                description: Wait before deleting old restore after switchover
+                type: string
+              tolerations:
+                items:
+                  properties:
+                    effect:
+                      nullable: true
+                      type: string
+                    key:
+                      nullable: true
+                      type: string
+                    operator:
+                      nullable: true
+                      type: string
+                    tolerationSeconds:
+                      format: int64
+                      nullable: true
+                      type: integer
+                    value:
+                      nullable: true
+                      type: string
+                  type: object
+                type: array
+            required:
+            - kopiaSecretRef
+            type: object
+          status:
+            nullable: true
+            properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              connectionInfo:
+                nullable: true
+                properties:
+                  database:
+                    type: string
+                  host:
+                    type: string
+                  passwordSecret:
+                    type: string
+                  port:
+                    format: uint16
+                    maximum: 65535.0
+                    minimum: 0.0
+                    type: integer
+                  username:
+                    type: string
+                required:
+                - database
+                - host
+                - passwordSecret
+                - port
+                - username
+                type: object
+              currentRestore:
+                nullable: true
+                type: string
+              lastRestoreCompletedAt:
+                nullable: true
+                type: string
+              latestAvailableSnapshot:
+                nullable: true
+                type: string
+              nextScheduledRestore:
+                nullable: true
+                type: string
+              notifications:
+                items:
+                  properties:
+                    lastError:
+                      nullable: true
+                      type: string
+                    lastSentAt:
+                      nullable: true
+                      type: string
+                    name:
+                      type: string
+                    success:
+                      default: false
+                      type: boolean
+                  required:
+                  - name
+                  type: object
+                type: array
+              phase:
+                enum:
+                - Pending
+                - Restoring
+                - Ready
+                - Failed
+                - null
+                nullable: true
+                type: string
+              previousRestore:
+                nullable: true
+                type: string
+              queuePosition:
+                format: uint32
+                minimum: 0.0
+                nullable: true
+                type: integer
+              serviceName:
+                nullable: true
+                type: string
+            type: object
+        required:
+        - spec
+        title: PostgresPhysicalReplica
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: postgresphysicalrestores.bes.au
+spec:
+  group: bes.au
+  names:
+    categories: []
+    kind: PostgresPhysicalRestore
+    plural: postgresphysicalrestores
+    shortNames:
+    - pprestore
+    singular: postgresphysicalrestore
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .spec.replica
+      name: Replica
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for PostgresPhysicalRestoreSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              replica:
+                description: Reference to parent PostgresPhysicalReplica
+                type: string
+              snapshot:
+                description: Kopia snapshot ID to restore
+                type: string
+              snapshotSize:
+                description: Size of the snapshot from kopia metadata
+                type: string
+              storageSize:
+                description: Calculated PVC size (snapshot_size * 1.1)
+                type: string
+            required:
+            - replica
+            - snapshot
+            - snapshotSize
+            - storageSize
+            type: object
+          status:
+            nullable: true
+            properties:
+              activatedAt:
+                description: When service switched to this restore
+                nullable: true
+                type: string
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              createdAt:
+                nullable: true
+                type: string
+              credentialsSecret:
+                description: Shared credentials secret (owned by parent replica)
+                nullable: true
+                type: string
+              deployment:
+                nullable: true
+                type: string
+              phase:
+                enum:
+                - Pending
+                - Restoring
+                - Ready
+                - Switching
+                - Active
+                - Failed
+                - null
+                nullable: true
+                type: string
+              postgresVersion:
+                nullable: true
+                type: string
+              pvc:
+                nullable: true
+                type: string
+              restoreJob:
+                nullable: true
+                properties:
+                  completedAt:
+                    nullable: true
+                    type: string
+                  name:
+                    type: string
+                  phase:
+                    type: string
+                required:
+                - name
+                - phase
+                type: object
+              restoredAt:
+                description: When restore job completed
+                nullable: true
+                type: string
+            type: object
+        required:
+        - spec
+        title: PostgresPhysicalRestore
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
