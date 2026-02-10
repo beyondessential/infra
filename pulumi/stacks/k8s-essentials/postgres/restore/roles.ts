@@ -21,7 +21,7 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
     rules: [
       // CRD access
       {
-        apiGroups: ['bes.au'],
+        apiGroups: ['pgro.bes.au'],
         resources: [
           'postgresphysicalreplicas',
           'postgresphysicalreplicas/status',
