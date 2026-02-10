@@ -72,6 +72,18 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         resources: ['events'],
         verbs: ['create', 'patch'],
       },
+      // CNPG Clusters (overlay database)
+      {
+        apiGroups: ['postgresql.cnpg.io'],
+        resources: ['clusters'],
+        verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+      },
+      // CNPG Image Catalogs (PG version discovery)
+      {
+        apiGroups: ['postgresql.cnpg.io'],
+        resources: ['clusterimagecatalogs', 'imagecatalogs'],
+        verbs: ['get', 'list'],
+      },
       // Leader election
       {
         apiGroups: ['coordination.k8s.io'],

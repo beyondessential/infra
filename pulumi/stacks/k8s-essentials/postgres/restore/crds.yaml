@@ -31,6 +31,10 @@ spec:
         properties:
           spec:
             properties:
+              affinity:
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               analyticsUsername:
                 default: analytics
                 description: Username for analytics connections
@@ -42,11 +46,6 @@ spec:
                 description: Don't restore a new snapshot within this duration of the last restore completing
                 nullable: true
                 type: string
-              nodeSelector:
-                additionalProperties:
-                  type: string
-                nullable: true
-                type: object
               notifications:
                 items:
                   properties:
@@ -132,11 +131,111 @@ spec:
                   - name
                   type: object
                 type: array
+              overlayDatabase:
+                description: Optional overlay database configuration (FDW-based persistent database)
+                nullable: true
+                properties:
+                  affinity:
+                    description: Pod affinity/anti-affinity rules for the overlay database
+                    nullable: true
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  imageCatalog:
+                    description: |-
+                      CNPG image catalog to use for PG version discovery and image resolution.
+                      If absent, defaults to ClusterImageCatalog kind.
+                    nullable: true
+                    properties:
+                      kind:
+                        description: 'Kind: "ClusterImageCatalog" (default) or "ImageCatalog"'
+                        nullable: true
+                        type: string
+                      name:
+                        description: Name of the image catalog resource
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  postgresVersion:
+                    description: |-
+                      PostgreSQL major version for the CNPG cluster (e.g. "17").
+                      If absent, resolved from the CNPG image catalog (see image_catalog).
+                      Falls back to a hardcoded default ("17") if no catalog is available.
+                    nullable: true
+                    type: string
+                  resources:
+                    description: Resource requirements for the overlay database pods
+                    nullable: true
+                    properties:
+                      limits:
+                        additionalProperties:
+                          type: string
+                        nullable: true
+                        type: object
+                      requests:
+                        additionalProperties:
+                          type: string
+                        nullable: true
+                        type: object
+                    type: object
+                  schemaMapping:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Schema mapping: if provided, only these schemas are imported.
+                      Key = remote schema name, Value = local schema name in overlay DB.
+                      If absent, all user schemas are imported at their original names.
+                    nullable: true
+                    type: object
+                  serviceAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations to apply to the overlay database's -rw Service
+                    nullable: true
+                    type: object
+                  storageClass:
+                    description: Storage class for the overlay database PVC
+                    nullable: true
+                    type: string
+                  storageSizeOverride:
+                    description: |-
+                      Override for the overlay database PVC size.
+                      If absent, auto-sized: 5Gi + ceil(snapshot_size / 10) rounded up to whole Gi.
+                      Auto-sizing only ever increases (ratchets up), never shrinks.
+                    nullable: true
+                    type: string
+                  tolerations:
+                    description: Tolerations for the overlay database pods
+                    items:
+                      properties:
+                        effect:
+                          nullable: true
+                          type: string
+                        key:
+                          nullable: true
+                          type: string
+                        operator:
+                          nullable: true
+                          type: string
+                        tolerationSeconds:
+                          format: int64
+                          nullable: true
+                          type: integer
+                        value:
+                          nullable: true
+                          type: string
+                      type: object
+                    type: array
+                type: object
               podAnnotations:
                 additionalProperties:
                   type: string
                 nullable: true
                 type: object
+              postgresExtraConfig:
+                description: Extra lines appended to postgresql.conf (e.g. shared_preload_libraries)
+                nullable: true
+                type: string
               readOnly:
                 default: true
                 description: Set database to read-only mode
@@ -293,6 +392,22 @@ spec:
                   - name
                   type: object
                 type: array
+              overlayClusterName:
+                description: Name of the CNPG Cluster CR for the overlay database
+                nullable: true
+                type: string
+              overlayFdwRestore:
+                description: Name of the restore whose schemas are currently imported via FDW
+                nullable: true
+                type: string
+              overlayPostgresVersion:
+                description: Resolved PG major version used for the overlay cluster
+                nullable: true
+                type: string
+              overlayStorageSize:
+                description: Current (possibly ratcheted) storage size of the overlay PVC
+                nullable: true
+                type: string
               phase:
                 enum:
                 - Pending
