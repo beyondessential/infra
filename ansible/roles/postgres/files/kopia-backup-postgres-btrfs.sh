@@ -46,6 +46,13 @@ mount "$FSDEV" "$MOUNT" -o "subvol=$SNAPSHOT_SUBVOL,X-mount.idmap=$MAPPING"
 echo "Backing up snapshot at $MOUNT"
 
 sudo -u kopia \
+  kopia policy set \
+  --add-ignore="postmaster.pid" \
+  --add-ignore="*.log" \
+  --add-ignore="pg_stat_tmp/*" \
+  "$MOUNT"
+
+sudo -u kopia \
   kopia snapshot create \
   --tags area:postgres \
   --tags type:btrfs \

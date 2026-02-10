@@ -84,6 +84,13 @@ wait $wait_pid
 # this makes the paths better and also makes the second snapshot WAY faster
 bindfs $pgdatadir $mountoverlay
 
+: set ignore policy for postgres-specific files
+kopia policy set \
+  --add-ignore="postmaster.pid" \
+  --add-ignore="*.log" \
+  --add-ignore="pg_stat_tmp/*" \
+  $mountoverlay
+
 : take a snapshot of postgres
 snap=$tmpdir/snapshot.json
 kopia snapshot create --tags area:postgres --tags type:ext4 --description="$(hostname) Postgres (data only)" --json $mountoverlay > $snap
