@@ -66,6 +66,12 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         resources: ['pods'],
         verbs: ['get', 'list'],
       },
+      // Pod port-forward (overlay FDW reconciliation)
+      {
+        apiGroups: [''],
+        resources: ['pods/portforward'],
+        verbs: ['create'],
+      },
       // Events (for emitting Kubernetes events)
       {
         apiGroups: [''],
