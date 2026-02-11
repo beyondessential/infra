@@ -1120,6 +1120,13 @@ spec:
                     required:
                     - name
                     type: object
+                  importGenerated:
+                    default: false
+                    description: |-
+                      Include GENERATED expressions when importing foreign schemas.
+                      Requires that all functions used in generated columns exist on the
+                      overlay database. Defaults to false.
+                    type: boolean
                   postgresVersion:
                     description: |-
                       PostgreSQL major version for the CNPG cluster.
