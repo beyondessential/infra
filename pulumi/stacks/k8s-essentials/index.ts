@@ -21,7 +21,7 @@ await failIfIncorrectCluster();
 // the current context, see https://devinthewild.com/article/how-to-switch-between-kubernetes-clusters-in-kubectl
 // You can run further updates via the tailscale connection.
 //
-// During bootstrap, you'll also want to go to postgres.ts and comment out the catalogs,
+// During bootstrap, you'll also want to go to postgres/cnpg.ts and comment out the catalogs,
 // until the CNPG resource definitions are installed.
 
 import './gatewayApi.ts';
@@ -29,9 +29,6 @@ import './gatewayApi.ts';
 import './metrics/prometheus.ts';
 import './metrics/opencost.ts';
 import './metrics/roles.ts';
-//import './metrics/grafana.ts';
-
-import './postgres.ts';
 
 import './tailscale.ts';
 
@@ -39,6 +36,14 @@ import './roles/index.ts';
 
 if (cfg.getBoolean('nginxEnabled') ?? true) {
   await import('./ingress.ts');
+}
+
+if (cfg.getBoolean('postgresEnabled') ?? true) {
+  await import('./postgres/cnpg.ts');
+}
+
+if (cfg.getBoolean('postgresRestoreEnabled') ?? false) {
+  await import('./postgres/restore/index.ts');
 }
 
 if (cfg.getBoolean('hncEnabled') ?? true) {

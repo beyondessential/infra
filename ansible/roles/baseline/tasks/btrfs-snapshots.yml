@@ -122,8 +122,17 @@
           exit 0
         fi
 
+        # If a custom snapshot timer exists for this config, don't override its
+        # TIMELINE_CREATE=no (e.g. postgres-snapshot-btrfs.timer wraps snapshots
+        # with pg_backup_start/stop for consistency)
+        if systemctl is-enabled "${CONFIG_NAME}-snapshot-btrfs.timer" 2>/dev/null; then
+          TIMELINE_CREATE=no
+        else
+          TIMELINE_CREATE=yes
+        fi
+
         snapper -c "$CONFIG_NAME" set-config \
-          TIMELINE_CREATE=yes \
+          TIMELINE_CREATE=$TIMELINE_CREATE \
           TIMELINE_CLEANUP=yes \
           NUMBER_CLEANUP=yes \
           TIMELINE_LIMIT_HOURLY=10 \
