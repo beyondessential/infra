@@ -1470,6 +1470,12 @@ spec:
                 minimum: 0.0
                 nullable: true
                 type: integer
+              scheduleInputHash:
+                description: |-
+                  Hash of the schedule inputs used to compute `nextScheduledRestore`,
+                  so we only recompute when the inputs actually change.
+                nullable: true
+                type: string
               serviceName:
                 nullable: true
                 type: string
