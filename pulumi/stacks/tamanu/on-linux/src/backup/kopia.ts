@@ -1,7 +1,11 @@
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { jsonStringify } from '@pulumi/pulumi';
-import { AWS_S3_BACKUP_ACTIONS, AWS_EC2 } from '../../../../constants/external.ts';
+import {
+  AWS_S3_BACKUP_ACTIONS,
+  AWS_S3_READ_ACTIONS,
+  AWS_EC2,
+} from '../../../../constants/external.ts';
 import { instances, normalizedStack } from '../config.ts';
 
 const tags = [
@@ -146,3 +150,32 @@ export const backupUsers = instances.map(
       { parent: bucket, protect: false },
     ).userName,
 );
+
+const kopiaReadOnlyPolicy = new awsNative.iam.ManagedPolicy(
+  'backups-kopia-readonly-policy',
+  {
+    policyDocument: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: AWS_S3_READ_ACTIONS,
+          Resource: bucket.bucketName.apply((name) => [
+            `arn:aws:s3:::${name}`,
+            `arn:aws:s3:::${name}/*`,
+          ]),
+        },
+      ],
+    }),
+  },
+  { parent: bucket, protect: false },
+);
+
+export const backupReadOnlyUser = new awsNative.iam.User(
+  `backups-kopia-${normalizedStack}-readonly`,
+  {
+    managedPolicyArns: [kopiaReadOnlyPolicy.policyArn],
+    tags,
+  },
+  { parent: bucket, protect: false },
+).userName;
