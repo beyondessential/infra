@@ -27,7 +27,7 @@ const configMap = new k8s.core.v1.ConfigMap(
 );
 
 new k8s.core.v1.Service(
-  'postgres-restore-operator-metrics',
+  'postgres-restore-operator',
   {
     metadata: {
       annotations: {
@@ -36,15 +36,15 @@ new k8s.core.v1.Service(
         'prometheus.io/scrape': 'true',
       },
       labels,
-      name: 'postgres-restore-operator-metrics',
+      name: 'postgres-restore-operator',
       namespace,
     },
     spec: {
       ports: [
         {
-          name: 'metrics',
+          name: 'http',
           port: 8080,
-          targetPort: 'metrics',
+          targetPort: 'http',
         },
       ],
       selector: labels,
@@ -103,10 +103,14 @@ new k8s.apps.v1.Deployment(
                     },
                   },
                 },
+                {
+                  name: 'OPERATOR_SERVICE_NAME',
+                  value: 'postgres-restore-operator',
+                },
               ],
               ports: [
                 {
-                  name: 'metrics',
+                  name: 'http',
                   containerPort: 8080,
                   protocol: 'TCP',
                 },
@@ -114,7 +118,7 @@ new k8s.apps.v1.Deployment(
               readinessProbe: {
                 httpGet: {
                   path: '/readyz',
-                  port: 'metrics',
+                  port: 'http',
                 },
                 initialDelaySeconds: 5,
                 periodSeconds: 10,
@@ -122,7 +126,7 @@ new k8s.apps.v1.Deployment(
               livenessProbe: {
                 httpGet: {
                   path: '/livez',
-                  port: 'metrics',
+                  port: 'http',
                 },
                 initialDelaySeconds: 15,
                 periodSeconds: 20,

@@ -60,7 +60,7 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         resources: ['deployments'],
         verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
       },
-      // Pods (reading Job pod termination messages for version detection)
+      // Pods (reading Job pod termination messages for version detection, self-annotation)
       {
         apiGroups: [''],
         resources: ['pods'],
@@ -72,9 +72,9 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         resources: ['pods/portforward'],
         verbs: ['create'],
       },
-      // Events (for emitting Kubernetes events)
+      // Events (events.k8s.io/v1)
       {
-        apiGroups: [''],
+        apiGroups: ['events.k8s.io'],
         resources: ['events'],
         verbs: ['create', 'patch'],
       },
