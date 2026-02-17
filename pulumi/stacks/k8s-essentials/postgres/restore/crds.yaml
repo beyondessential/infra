@@ -599,7 +599,7 @@ spec:
                   type: object
                 type: array
               overlayDatabase:
-                description: Optional overlay database configuration (FDW-based persistent database)
+                description: Optional overlay database configuration (persistent database via CNPG)
                 nullable: true
                 properties:
                   affinity:
@@ -1123,9 +1123,9 @@ spec:
                   importGenerated:
                     default: false
                     description: |-
-                      Include GENERATED expressions when importing foreign schemas.
+                      Include GENERATED expressions when importing foreign schemas (FDW only).
                       Requires that all functions used in generated columns exist on the
-                      overlay database. Defaults to false.
+                      overlay database. Defaults to false. Ignored for copy strategy.
                     type: boolean
                   postgresVersion:
                     description: |-
@@ -1173,6 +1173,13 @@ spec:
                         description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  retainRestore:
+                    default: true
+                    description: |-
+                      When false and strategy is `copy`, delete the restore Deployment and
+                      PVC after a successful copy. The restore CR is kept for bookkeeping.
+                      Ignored for `fdw` strategy (the restore must stay alive).
+                    type: boolean
                   schemaMapping:
                     additionalProperties:
                       type: string
@@ -1199,6 +1206,13 @@ spec:
                       Auto-sizing only ever increases (ratchets up), never shrinks.
                     nullable: true
                     x-kubernetes-int-or-string: true
+                  strategy:
+                    default: fdw
+                    description: Strategy for populating the overlay from the restore.
+                    enum:
+                    - fdw
+                    - copy
+                    type: string
                   tolerations:
                     description: Tolerations for the overlay database pods
                     items:
@@ -1439,16 +1453,16 @@ spec:
                 description: Name of the CNPG Cluster CR for the overlay database
                 nullable: true
                 type: string
-              overlayFdwRestore:
-                description: Name of the restore whose schemas are currently imported via FDW
-                nullable: true
-                type: string
               overlayPostgresVersion:
                 description: Resolved PG major version used for the overlay cluster
                 format: uint32
                 minimum: 0.0
                 nullable: true
                 type: integer
+              overlayRestore:
+                description: Name of the restore whose schemas are currently imported into the overlay
+                nullable: true
+                type: string
               overlayStorageSize:
                 description: Current (possibly ratcheted) storage size of the overlay PVC
                 nullable: true
