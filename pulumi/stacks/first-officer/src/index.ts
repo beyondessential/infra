@@ -13,7 +13,7 @@ const ns = new k8s.core.v1.Namespace('first-officer', {
     name: cfg.get('namespace') ?? APP_NAME,
   },
 });
-export const namespace = ns.metadata.name;
+const namespace = ns.metadata.name;
 
 const labels = {
   'app.kubernetes.io/name': APP_NAME,
@@ -83,20 +83,22 @@ const svc = new k8s.core.v1.Service('api', {
   },
 });
 
+const tailscaleName = 'first-officer-api';
+
 new k8s.networking.v1.Ingress('tailscale', {
   metadata: {
     namespace,
     annotations: {
-      'tailscale.com/hostname': 'first-officer',
+      'tailscale.com/hostname': tailscaleName,
       'tailscale.com/tags': 'tag:k8s,tag:k8s-ai',
     },
   },
   spec: {
     ingressClassName: 'tailscale',
-    tls: [{ hosts: ['first-officer'] }],
+    tls: [{ hosts: [tailscaleName] }],
     rules: [
       {
-        host: 'first-officer',
+        host: tailscaleName,
         http: {
           paths: [
             {
