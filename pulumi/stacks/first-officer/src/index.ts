@@ -57,7 +57,7 @@ new k8s.apps.v1.Deployment('api', {
                 memory: '10Mi',
               },
               limits: {
-                memory: '50Mi',
+                // memory: '50Mi',
               },
             },
             livenessProbe: {
@@ -72,16 +72,48 @@ new k8s.apps.v1.Deployment('api', {
   },
 });
 
-new k8s.core.v1.Service('api', {
+const svc = new k8s.core.v1.Service('api', {
   metadata: {
     name: 'api',
     namespace,
-    annotations: {
-      'tailscale.com/expose': 'true',
-    },
   },
   spec: {
     selector: labels,
-    ports: [{ port: 80, targetPort: 4141, protocol: 'TCP' }],
+    ports: [{ port: 80, targetPort: 4141, protocol: 'TCP', name: 'http' }],
+  },
+});
+
+new k8s.networking.v1.Ingress('tailscale', {
+  metadata: {
+    namespace,
+    annotations: {
+      'tailscale.com/hostname': 'first-officer',
+      'tailscale.com/tags': 'tag:k8s,tag:k8s-ai',
+    },
+  },
+  spec: {
+    ingressClassName: 'tailscale',
+    tls: [{ hosts: ['first-officer'] }],
+    rules: [
+      {
+        host: 'first-officer',
+        http: {
+          paths: [
+            {
+              path: '/',
+              pathType: 'Prefix',
+              backend: {
+                service: {
+                  name: svc.metadata.name,
+                  port: {
+                    name: 'http',
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ],
   },
 });
