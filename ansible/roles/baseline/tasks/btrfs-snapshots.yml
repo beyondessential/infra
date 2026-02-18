@@ -93,21 +93,22 @@
       vars:
         config_name: "{{ item.split(':')[0] }}"
         mount_point: "{{ item.split(':')[1] }}"
-      ansible.builtin.shell: |
-        set -e
+      ansible.builtin.shell:
+        cmd: |
+          set -e
 
-        if [ ! -d "{{ mount_point }}" ]; then
-          echo "Mount point {{ mount_point }} does not exist, skipping"
-          exit 0
-        fi
+          if [ ! -d "{{ mount_point }}" ]; then
+            echo "Mount point {{ mount_point }} does not exist, skipping"
+            exit 0
+          fi
 
-        if [ -f "/etc/snapper/configs/{{ config_name }}" ]; then
-          echo "Config {{ config_name }} already exists"
-          exit 0
-        fi
+          if [ -f "/etc/snapper/configs/{{ config_name }}" ]; then
+            echo "Config {{ config_name }} already exists"
+            exit 0
+          fi
 
-        snapper -c "{{ config_name }}" create-config "{{ mount_point }}"
-        echo "Created config {{ config_name }} for {{ mount_point }}"
+          snapper -c "{{ config_name }}" create-config "{{ mount_point }}"
+          echo "Created config {{ config_name }} for {{ mount_point }}"
       loop: "{{ subvol_mount_mapping.stdout_lines }}"
       register: snapper_create_result
       changed_when: "'Created config' in snapper_create_result.stdout"
@@ -117,30 +118,31 @@
       become: true
       vars:
         config_name: "{{ item.split(':')[0] }}"
-      ansible.builtin.shell: |
-        set -e
+      ansible.builtin.shell:
+        cmd: |
+          set -e
 
-        if [ ! -f "/etc/snapper/configs/{{ config_name }}" ]; then
-          exit 0
-        fi
+          if [ ! -f "/etc/snapper/configs/{{ config_name }}" ]; then
+            exit 0
+          fi
 
-        # If a custom snapshot timer exists for this config, don't override its
-        # TIMELINE_CREATE=no (e.g. postgres-snapshot-btrfs.timer wraps snapshots
-        # with pg_backup_start/stop for consistency)
-        if systemctl is-enabled "{{ config_name }}-snapshot-btrfs.timer" 2>/dev/null; then
-          TIMELINE_CREATE=no
-        else
-          TIMELINE_CREATE=yes
-        fi
+          # If a custom snapshot timer exists for this config, don't override its
+          # TIMELINE_CREATE=no (e.g. postgres-snapshot-btrfs.timer wraps snapshots
+          # with pg_backup_start/stop for consistency)
+          if systemctl is-enabled "{{ config_name }}-snapshot-btrfs.timer" 2>/dev/null; then
+            TIMELINE_CREATE=no
+          else
+            TIMELINE_CREATE=yes
+          fi
 
-        snapper -c "{{ config_name }}" set-config \
-          TIMELINE_CREATE=$TIMELINE_CREATE \
-          TIMELINE_CLEANUP=yes \
-          NUMBER_CLEANUP=yes \
-          TIMELINE_LIMIT_HOURLY=10 \
-          TIMELINE_LIMIT_DAILY=7 \
-          TIMELINE_LIMIT_WEEKLY=4 \
-          TIMELINE_LIMIT_MONTHLY=12
+          snapper -c "{{ config_name }}" set-config \
+            TIMELINE_CREATE=$TIMELINE_CREATE \
+            TIMELINE_CLEANUP=yes \
+            NUMBER_CLEANUP=yes \
+            TIMELINE_LIMIT_HOURLY=10 \
+            TIMELINE_LIMIT_DAILY=7 \
+            TIMELINE_LIMIT_WEEKLY=4 \
+            TIMELINE_LIMIT_MONTHLY=12
       loop: "{{ subvol_mount_mapping.stdout_lines }}"
       when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
 
