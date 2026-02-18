@@ -2,44 +2,27 @@ import * as k8s from '@pulumi/kubernetes';
 import { failIfIncorrectCluster, cfg } from '../../common/k8s/coreRef.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../common/k8s/affinities.ts';
-import { image, ghToken, port } from './config.ts';
+import { image } from './config.ts';
 
 await failIfIncorrectCluster();
 
-const ns = new k8s.core.v1.Namespace('copilot-api', {
+const APP_NAME = 'first-officer';
+
+const ns = new k8s.core.v1.Namespace('first-officer', {
   metadata: {
-    name: cfg.get('namespace') ?? 'copilot-api',
+    name: cfg.get('namespace') ?? APP_NAME,
   },
 });
 export const namespace = ns.metadata.name;
 
 const labels = {
-  'app.kubernetes.io/name': 'copilot-api',
+  'app.kubernetes.io/name': APP_NAME,
 };
 
-const secret = new k8s.core.v1.Secret('copilot-api', {
-  metadata: { namespace },
-  stringData: {
-    GH_TOKEN: ghToken,
-  },
-});
-
-const pvc = new k8s.core.v1.PersistentVolumeClaim('copilot-api', {
-  metadata: { namespace },
-  spec: {
-    accessModes: ['ReadWriteOnce'],
-    resources: {
-      requests: {
-        storage: '1Gi',
-      },
-    },
-  },
-});
-
-new k8s.apps.v1.Deployment('copilot-api', {
+new k8s.apps.v1.Deployment('api', {
   metadata: {
     namespace,
-    name: 'copilot-api',
+    name: 'api',
   },
   spec: {
     replicas: 1,
@@ -63,40 +46,22 @@ new k8s.apps.v1.Deployment('copilot-api', {
             },
           },
         },
-        volumes: [
-          {
-            name: 'data',
-            persistentVolumeClaim: { claimName: pvc.metadata.name },
-          },
-        ],
         containers: [
           {
-            name: 'copilot-api',
+            name: 'api',
             image,
-            imagePullPolicy: 'Always',
-            ports: [{ containerPort: port, name: 'http' }],
-            envFrom: [
-              {
-                secretRef: { name: secret.metadata.name },
-              },
-            ],
-            volumeMounts: [
-              {
-                name: 'data',
-                mountPath: '/root/.local/share/copilot-api',
-              },
-            ],
+            ports: [{ containerPort: 4141, name: 'http' }],
             resources: {
               requests: {
                 cpu: '10m',
-                memory: '128Mi',
+                memory: '10Mi',
               },
               limits: {
-                memory: '512Mi',
+                memory: '50Mi',
               },
             },
             livenessProbe: {
-              httpGet: { path: '/', port },
+              httpGet: { path: '/', port: 4141 },
               initialDelaySeconds: 15,
               periodSeconds: 30,
             },
@@ -107,9 +72,9 @@ new k8s.apps.v1.Deployment('copilot-api', {
   },
 });
 
-new k8s.core.v1.Service('copilot-api', {
+new k8s.core.v1.Service('api', {
   metadata: {
-    name: 'copilot-api',
+    name: 'api',
     namespace,
     annotations: {
       'tailscale.com/expose': 'true',
@@ -117,6 +82,6 @@ new k8s.core.v1.Service('copilot-api', {
   },
   spec: {
     selector: labels,
-    ports: [{ port: 80, targetPort: port, protocol: 'TCP' }],
+    ports: [{ port: 80, targetPort: 4141, protocol: 'TCP' }],
   },
 });
