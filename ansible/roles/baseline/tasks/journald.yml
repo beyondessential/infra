@@ -1,5 +1,6 @@
 ---
 - name: Ensure /var/log/journal directory exists
+  become: true
   ansible.builtin.file:
     path: /var/log/journal
     state: directory
@@ -8,6 +9,7 @@
     mode: "2755"
 
 - name: Configure journald for persistent storage
+  become: true
   ansible.builtin.lineinfile:
     path: /etc/systemd/journald.conf
     regexp: "^#?Storage="
@@ -16,6 +18,7 @@
   notify: Restart systemd-journald
 
 - name: Set SystemMaxUse for journal
+  become: true
   ansible.builtin.lineinfile:
     path: /etc/systemd/journald.conf
     regexp: "^#?SystemMaxUse="
