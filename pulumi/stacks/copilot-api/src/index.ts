@@ -113,7 +113,6 @@ new k8s.core.v1.Service('copilot-api', {
     namespace,
     annotations: {
       'tailscale.com/expose': 'true',
-      'tailscale.com/tags': 'tag:k8s,tag:tools,tag:tools-copilot-api',
     },
   },
   spec: {
