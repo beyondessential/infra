@@ -90,23 +90,24 @@
 
     - name: Create snapper configs for each subvolume
       become: true
+      vars:
+        config_name: "{{ item.split(':')[0] }}"
+        mount_point: "{{ item.split(':')[1] }}"
       ansible.builtin.shell: |
         set -e
-        CONFIG_NAME="{{ item.split(':')[0] }}"
-        MOUNT_POINT="{{ item.split(':')[1] }}"
 
-        if [ ! -d "$MOUNT_POINT" ]; then
-          echo "Mount point $MOUNT_POINT does not exist, skipping"
+        if [ ! -d "{{ mount_point }}" ]; then
+          echo "Mount point {{ mount_point }} does not exist, skipping"
           exit 0
         fi
 
-        if [ -f "/etc/snapper/configs/$CONFIG_NAME" ]; then
-          echo "Config $CONFIG_NAME already exists"
+        if [ -f "/etc/snapper/configs/{{ config_name }}" ]; then
+          echo "Config {{ config_name }} already exists"
           exit 0
         fi
 
-        snapper -c "$CONFIG_NAME" create-config "$MOUNT_POINT"
-        echo "Created config $CONFIG_NAME for $MOUNT_POINT"
+        snapper -c "{{ config_name }}" create-config "{{ mount_point }}"
+        echo "Created config {{ config_name }} for {{ mount_point }}"
       loop: "{{ subvol_mount_mapping.stdout_lines }}"
       register: snapper_create_result
       changed_when: "'Created config' in snapper_create_result.stdout"
@@ -114,24 +115,25 @@
 
     - name: Configure snapper timeline settings for all configs
       become: true
+      vars:
+        config_name: "{{ item.split(':')[0] }}"
       ansible.builtin.shell: |
         set -e
-        CONFIG_NAME="{{ item.split(':')[0] }}"
 
-        if [ ! -f "/etc/snapper/configs/$CONFIG_NAME" ]; then
+        if [ ! -f "/etc/snapper/configs/{{ config_name }}" ]; then
           exit 0
         fi
 
         # If a custom snapshot timer exists for this config, don't override its
         # TIMELINE_CREATE=no (e.g. postgres-snapshot-btrfs.timer wraps snapshots
         # with pg_backup_start/stop for consistency)
-        if systemctl is-enabled "${CONFIG_NAME}-snapshot-btrfs.timer" 2>/dev/null; then
+        if systemctl is-enabled "{{ config_name }}-snapshot-btrfs.timer" 2>/dev/null; then
           TIMELINE_CREATE=no
         else
           TIMELINE_CREATE=yes
         fi
 
-        snapper -c "$CONFIG_NAME" set-config \
+        snapper -c "{{ config_name }}" set-config \
           TIMELINE_CREATE=$TIMELINE_CREATE \
           TIMELINE_CLEANUP=yes \
           NUMBER_CLEANUP=yes \
