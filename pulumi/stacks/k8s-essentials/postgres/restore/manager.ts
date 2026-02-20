@@ -63,6 +63,7 @@ new k8s.apps.v1.Deployment(
     },
     spec: {
       replicas: 1,
+      strategy: { type: 'Recreate' },
       selector: {
         matchLabels: labels,
       },
