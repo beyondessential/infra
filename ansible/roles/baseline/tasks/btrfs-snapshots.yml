@@ -137,12 +137,7 @@
 
           snapper -c "{{ config_name }}" set-config \
             TIMELINE_CREATE=$TIMELINE_CREATE \
-            TIMELINE_CLEANUP=yes \
-            NUMBER_CLEANUP=yes \
-            TIMELINE_LIMIT_HOURLY=10 \
-            TIMELINE_LIMIT_DAILY=7 \
-            TIMELINE_LIMIT_WEEKLY=4 \
-            TIMELINE_LIMIT_MONTHLY=12
+            {{ snapper_timeline_settings | dict2items | map(attribute='key') | zip(snapper_timeline_settings | dict2items | map(attribute='value')) | map('join', '=') | join(' ') }}
       loop: "{{ subvol_mount_mapping.stdout_lines }}"
       when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
 

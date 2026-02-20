@@ -126,12 +126,7 @@
         snapper -c postgres create-config /var/lib/postgresql
         snapper -c postgres set-config \
           TIMELINE_CREATE=no \
-          TIMELINE_CLEANUP=yes \
-          NUMBER_CLEANUP=yes \
-          TIMELINE_LIMIT_HOURLY=10 \
-          TIMELINE_LIMIT_DAILY=7 \
-          TIMELINE_LIMIT_WEEKLY=4 \
-          TIMELINE_LIMIT_MONTHLY=12
+          {{ snapper_timeline_settings | dict2items | map(attribute='key') | zip(snapper_timeline_settings | dict2items | map(attribute='value')) | map('join', '=') | join(' ') }}
         echo "created"
       register: snapper_pg_config
       changed_when: "'created' in snapper_pg_config.stdout"
