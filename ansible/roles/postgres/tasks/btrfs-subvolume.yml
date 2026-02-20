@@ -1,0 +1,145 @@
+---
+- name: Check if root filesystem is btrfs with subvol=@
+  ansible.builtin.shell: |
+    findmnt -n -o FSTYPE /
+  register: pg_root_fstype
+  changed_when: false
+
+- name: Check root mount options for subvol=@
+  ansible.builtin.shell: |
+    findmnt -n -o OPTIONS / | grep -E 'subvol=/?(/@|@)($|,)'
+  register: pg_root_subvol
+  changed_when: false
+  failed_when: false
+
+- name: Set btrfs subvolume eligibility
+  ansible.builtin.set_fact:
+    pg_btrfs_subvol_eligible: "{{ pg_root_fstype.stdout == 'btrfs' and pg_root_subvol.rc == 0 }}"
+
+- name: Check if /var/lib/postgresql is already a separate mount point
+  ansible.builtin.command:
+    cmd: mountpoint -q /var/lib/postgresql
+  register: pg_already_mounted
+  changed_when: false
+  failed_when: false
+  when: pg_btrfs_subvol_eligible
+
+- name: Set up @postgres btrfs subvolume
+  when:
+    - pg_btrfs_subvol_eligible
+    - pg_already_mounted.rc != 0
+  block:
+    - name: Get root filesystem device UUID
+      ansible.builtin.shell: |
+        findmnt -n -o UUID /
+      register: pg_root_uuid
+      changed_when: false
+
+    - name: Mount btrfs top-level subvolume
+      become: true
+      ansible.builtin.shell: |
+        set -e
+        mkdir -p /mnt/btrfs-toplevel
+        mount -o subvolid=5 UUID={{ pg_root_uuid.stdout }} /mnt/btrfs-toplevel
+      changed_when: true
+
+    - name: Check if @postgres subvolume exists
+      become: true
+      ansible.builtin.shell: |
+        btrfs subvolume show /mnt/btrfs-toplevel/@postgres
+      register: pg_subvol_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Create @postgres subvolume
+      become: true
+      ansible.builtin.command:
+        cmd: btrfs subvolume create /mnt/btrfs-toplevel/@postgres
+      when: pg_subvol_exists.rc != 0
+
+    - name: Unmount btrfs top-level
+      become: true
+      ansible.builtin.command:
+        cmd: umount /mnt/btrfs-toplevel
+      changed_when: true
+
+    - name: Check if /var/lib/postgresql has existing data
+      become: true
+      ansible.builtin.shell: |
+        ls -A /var/lib/postgresql 2>/dev/null | head -1
+      register: pg_existing_data
+      changed_when: false
+      failed_when: false
+
+    - name: Stop postgresql before migrating data
+      become: true
+      ansible.builtin.systemd:
+        name: postgresql
+        state: stopped
+      when: pg_existing_data.stdout | length > 0
+      failed_when: false
+
+    - name: Temporarily mount @postgres to migrate existing data
+      become: true
+      ansible.builtin.shell: |
+        set -e
+        mkdir -p /mnt/btrfs-postgres
+        mount -o compress=zstd:6,subvol=@postgres UUID={{ pg_root_uuid.stdout }} /mnt/btrfs-postgres
+        rsync -aAXH /var/lib/postgresql/ /mnt/btrfs-postgres/
+        umount /mnt/btrfs-postgres
+        rm -rf /var/lib/postgresql/*
+      when: pg_existing_data.stdout | length > 0
+      changed_when: true
+
+    - name: Ensure /var/lib/postgresql mount point exists
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/postgresql
+        state: directory
+        mode: "0755"
+
+    - name: Add @postgres fstab entry
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^\S+\s+/var/lib/postgresql\s+'
+        line: "UUID={{ pg_root_uuid.stdout }} /var/lib/postgresql btrfs compress=zstd:6,subvol=@postgres 0 2"
+        state: present
+
+    - name: Mount /var/lib/postgresql
+      become: true
+      ansible.builtin.command:
+        cmd: mount /var/lib/postgresql
+      changed_when: true
+
+    - name: Create snapper config for postgres subvolume
+      become: true
+      ansible.builtin.shell: |
+        if ! command -v snapper >/dev/null 2>&1; then
+          echo "snapper not installed"
+          exit 0
+        fi
+        if [ -f "/etc/snapper/configs/postgres" ]; then
+          echo "already exists"
+          exit 0
+        fi
+        snapper -c postgres create-config /var/lib/postgresql
+        snapper -c postgres set-config \
+          TIMELINE_CREATE=no \
+          TIMELINE_CLEANUP=yes \
+          NUMBER_CLEANUP=yes \
+          TIMELINE_LIMIT_HOURLY=10 \
+          TIMELINE_LIMIT_DAILY=7 \
+          TIMELINE_LIMIT_WEEKLY=4 \
+          TIMELINE_LIMIT_MONTHLY=12
+        echo "created"
+      register: snapper_pg_config
+      changed_when: "'created' in snapper_pg_config.stdout"
+
+    - name: Start postgresql after migration
+      become: true
+      ansible.builtin.systemd:
+        name: postgresql
+        state: started
+      when: pg_existing_data.stdout | length > 0
+      failed_when: false
