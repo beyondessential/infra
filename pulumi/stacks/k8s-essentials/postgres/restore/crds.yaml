@@ -1180,15 +1180,6 @@ spec:
                       PVC after a successful copy. The restore CR is kept for bookkeeping.
                       Ignored for `fdw` strategy (the restore must stay alive).
                     type: boolean
-                  schemaMapping:
-                    additionalProperties:
-                      type: string
-                    description: |-
-                      Schema mapping: if provided, only these schemas are imported.
-                      Key = remote schema name, Value = local schema name in overlay DB.
-                      If absent, all user schemas are imported at their original names.
-                    nullable: true
-                    type: object
                   serviceAnnotations:
                     additionalProperties:
                       type: string
@@ -1237,6 +1228,14 @@ spec:
                       type: object
                     type: array
                 type: object
+              persistentSchemas:
+                description: |-
+                  List of schema names to migrate from the previous restore to the new restore on each switchover.
+                  Mutually exclusive with overlay_database.
+                items:
+                  type: string
+                nullable: true
+                type: array
               podAnnotations:
                 additionalProperties:
                   type: string
@@ -1320,6 +1319,13 @@ spec:
               storageClass:
                 nullable: true
                 type: string
+              storageSizeMaximum:
+                default: 2Ti
+                description: |-
+                  Maximum allowed size for the restore PVC. The restore will fail if the
+                  computed size exceeds this limit. Defaults to 2Ti.
+                nullable: true
+                x-kubernetes-int-or-string: true
               storageSizeOverride:
                 description: Override dynamic sizing with a fixed PVC size
                 nullable: true
@@ -1467,6 +1473,12 @@ spec:
                 description: Current (possibly ratcheted) storage size of the overlay PVC
                 nullable: true
                 x-kubernetes-int-or-string: true
+              persistentSchemaDataSize:
+                description: |-
+                  Measured size of persistent schema data from the last successful migration (bytes).
+                  Used to size the next restore PVC.
+                nullable: true
+                x-kubernetes-int-or-string: true
               phase:
                 enum:
                 - Pending
@@ -1488,6 +1500,14 @@ spec:
                 description: |-
                   Hash of the schedule inputs used to compute `nextScheduledRestore`,
                   so we only recompute when the inputs actually change.
+                nullable: true
+                type: string
+              schemaMigrationJob:
+                description: Name of the Job performing schema migration (persistent_schemas only)
+                nullable: true
+                type: string
+              schemaMigrationPhase:
+                description: 'Phase of schema migration: pending, active, complete, failed'
                 nullable: true
                 type: string
               serviceName:
