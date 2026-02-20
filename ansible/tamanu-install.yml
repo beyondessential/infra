@@ -30,13 +30,6 @@
     - role: toolbox
       tags: [base, toolbox]
 
-    - role: kopia
-      tags: [base, kopia]
-    - role: elastic-agent
-      tags: [base, elastic]
-    - role: metrics-cleanup
-      tags: [base, metrics]
-
     - role: postgres
       tags: [base, postgres]
     - role: tailscale
@@ -46,6 +39,13 @@
       tags: [base, caddy]
     - role: podman
       tags: [base, podman]
+
+    - role: kopia
+      tags: [base, kopia]
+    - role: elastic-agent
+      tags: [base, elastic]
+    - role: metrics-cleanup
+      tags: [base, metrics]
 
 - name: Central server setup
   hosts: central
