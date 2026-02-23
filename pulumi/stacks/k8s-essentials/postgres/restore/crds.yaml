@@ -1419,6 +1419,16 @@ spec:
                 - port
                 - username
                 type: object
+              consecutiveRestoreFailures:
+                description: |-
+                  Number of consecutive restore failures for this replica.
+                  Reset to 0 on a successful restore. After 3 consecutive failures
+                  the operator stops scheduling new restores until the condition is
+                  cleared (e.g. by a spec change or manual intervention).
+                format: uint32
+                minimum: 0.0
+                nullable: true
+                type: integer
               currentRestore:
                 nullable: true
                 type: string
