@@ -11,6 +11,25 @@
 # during first install, the service is not started (handlers are not run) until
 # after the play completes, and thus the symlink step below fails. Workaround by
 # forcing the handlers to run now.
+- name: Ensure /var/run/postgresql exists on boot
+  become: true
+  ansible.builtin.copy:
+    src: run-postgresql.conf
+    dest: /etc/tmpfiles.d/run-postgresql.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Ensure /var/run/postgresql exists now
+  become: true
+  ansible.builtin.file:
+    path: /var/run/postgresql
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "2775"
+
 - name: Make sure postgresql is running now
   meta: flush_handlers
 
