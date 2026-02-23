@@ -43,6 +43,7 @@ if (cfg.getBoolean('postgresEnabled') ?? true) {
 }
 
 if (cfg.getBoolean('postgresRestoreEnabled') ?? false) {
+  // you must apply the CRDs separately, Pulumi barfs on them
   await import('./postgres/restore/index.ts');
 }
 

@@ -5,6 +5,7 @@ await failIfIncorrectCluster();
 import { secret } from './kopia.ts';
 import {
   minimumTtl,
+  normalizedStack,
   persistentSchemas,
   schedule,
   snapshotFilter,
@@ -37,6 +38,7 @@ new k8s.apiextensions.CustomResource('replica', {
     storageSizeMaximum,
     serviceAnnotations: {
       'tailscale.com/expose': 'true',
+      'tailscale.com/hostname': `infra-tamanu-replica-${normalizedStack}`,
     },
   },
 });

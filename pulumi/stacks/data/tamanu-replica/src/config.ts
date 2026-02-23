@@ -5,7 +5,7 @@ export const normalizedStack = getStack()
   .toLowerCase()
   .replace(/[^a-z0-9-]+/g, '-')
   .replace(/-+$/, '')
-  .slice(0, 63) // 63 is the max length of a k8s namespace
+  .slice(0, 63 - 'tamanu-replica-'.length) // 63 is the max length of a k8s namespace
   .replace(/^-+|-+$/g, '');
 
 export const bucket = cfg.require('bucket');
