@@ -19,7 +19,7 @@ const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy('acme-dns-route53-poli
     Statement: [
       {
         Effect: 'Allow',
-        Action: ['route53:ListHostedZones', 'route53:GetChange'],
+        Action: ['route53:ListHostedZones', 'route53:ListHostedZonesByName', 'route53:GetChange'],
         Resource: ['*'],
       },
     ],
