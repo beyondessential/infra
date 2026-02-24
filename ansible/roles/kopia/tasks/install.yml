@@ -28,21 +28,7 @@
   notify:
     - Update package facts
 
-- name: Create kopia group
-  become: true
-  ansible.builtin.group:
-    name: kopia
-    system: true
-    state: present
-
-- name: Create kopia user
-  become: true
-  ansible.builtin.user:
-    name: kopia
-    group: kopia
-    system: true
-    create_home: true
-    home: /var/lib/kopia
+# Kopia user/home is created in baseline
 
 - name: Install bes-setup-kopia script
   become: true
