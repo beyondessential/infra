@@ -244,12 +244,17 @@ async function main() {
       continue;
     }
 
+    // Extract managed policy ARNs from state so we can re-attach after rename
+    const managedPolicyArns =
+      stateResource?.inputs?.managedPolicyArns || stateResource?.outputs?.managedPolicyArns || [];
+
     plan.push({
       instanceId,
       oldUrn: matchingDelete.urn,
       newUrn: createStep.urn,
       oldUserName,
       newUserName,
+      managedPolicyArns,
     });
   }
 
@@ -302,6 +307,15 @@ async function main() {
     console.log(`  Renaming in AWS: ${p.oldUserName} → ${p.newUserName}`);
     try {
       exec(`aws iam update-user --user-name '${p.oldUserName}' --new-user-name '${p.newUserName}'`);
+
+      // Re-attach managed policies (update-user can detach them in some circumstances)
+      for (const policyArn of p.managedPolicyArns) {
+        console.log(`    Re-attaching policy: ${policyArn}`);
+        exec(
+          `aws iam attach-user-policy --user-name '${p.newUserName}' --policy-arn '${policyArn}'`,
+        );
+      }
+
       awsRenamed.push(p);
     } catch (e) {
       console.error(`  FAILED to rename ${p.oldUserName}: ${e.message}`);
