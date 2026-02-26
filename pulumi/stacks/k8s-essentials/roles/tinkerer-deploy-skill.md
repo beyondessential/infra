@@ -39,6 +39,12 @@ contexts:
 current-context: main
 ```
 
+Switch to the correct context (in case you have other clusters configured):
+
+```sh
+kubectl config use-context main
+```
+
 Verify connectivity:
 
 ```sh
