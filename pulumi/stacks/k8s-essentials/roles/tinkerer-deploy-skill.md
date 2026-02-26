@@ -135,6 +135,29 @@ To access a service locally, use port-forwarding:
 kubectl port-forward -n tinker svc/myproject 8080:80
 ```
 
+### Exposing a service to the tailnet
+
+You can make a Service reachable to anyone on the Tailscale network by adding annotations. Use the tags `tag:k8s,tag:tools` and expose on port 80 or 443 — these are already permissioned in the Tailscale ACLs.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myproject
+  namespace: tinker
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/tags: "tag:k8s,tag:tools"
+spec:
+  selector:
+    app: myproject
+  ports:
+  - port: 80
+    targetPort: 8080
+```
+
+The Tailscale operator will create a proxy for the service. Tailscale automatically prepends the namespace name, so a Service called `myproject` in `tinker` will appear as `tinker-myproject` on the tailnet. Service names are unique within a namespace, so collisions are handled naturally.
+
 ### PostgreSQL
 
 CNPG (CloudNativePG) is available. You can create a Postgres cluster as part of your YAML:
