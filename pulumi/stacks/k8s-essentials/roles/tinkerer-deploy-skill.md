@@ -137,7 +137,7 @@ kubectl port-forward -n tinker svc/myproject 8080:80
 
 ### Exposing a service to the tailnet
 
-You can make a Service reachable to anyone on the Tailscale network by adding annotations. Use the tags `tag:k8s,tag:tools` and expose on port 80 or 443 — these are already permissioned in the Tailscale ACLs.
+You can make a Service reachable to anyone on the Tailscale network by adding annotations. Use the tags `tag:k8s,tag:tinker` and prefer to expose on port 80 for better UX —  Tailscale allows tinkerers access to all ports on tinker services.
 
 ```yaml
 apiVersion: v1
@@ -147,7 +147,7 @@ metadata:
   namespace: tinker
   annotations:
     tailscale.com/expose: "true"
-    tailscale.com/tags: "tag:k8s,tag:tools"
+    tailscale.com/tags: "tag:k8s,tag:tinker"
 spec:
   selector:
     app: myproject
