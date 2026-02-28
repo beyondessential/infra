@@ -165,7 +165,13 @@ spec:
     - tinker-myproject
 ```
 
-This creates a Tailscale machine called `tinker-myproject` that proxies traffic to your Service. It will be reachable at `https://tinker-myproject.<tailnet>.ts.net`. Only `ingressClassName: tailscale` is allowed in this namespace; other ingress classes will be rejected.
+Only `ingressClassName: tailscale` is allowed in this namespace; other ingress classes will be rejected.
+
+Once the Ingress is ready, look up its URL from the status:
+
+```sh
+kubectl get ingress myproject -n tinker -o jsonpath='https://{.status.loadBalancer.ingress[0].hostname}'
+```
 
 ### Exposing a non-HTTP service to the tailnet
 
