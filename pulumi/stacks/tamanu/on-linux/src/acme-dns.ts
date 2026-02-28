@@ -13,18 +13,22 @@ const tags = [
   },
 ];
 
-const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy('acme-dns-route53-policy', {
-  policyDocument: jsonStringify({
-    Version: '2012-10-17',
-    Statement: [
-      {
-        Effect: 'Allow',
-        Action: ['route53:ListHostedZones', 'route53:ListHostedZonesByName', 'route53:GetChange'],
-        Resource: ['*'],
-      },
-    ],
-  }),
-});
+const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy(
+  'acme-dns-route53-policy',
+  {
+    policyDocument: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: ['route53:ListHostedZones', 'route53:ListHostedZonesByName', 'route53:GetChange'],
+          Resource: ['*'],
+        },
+      ],
+    }),
+  },
+  { ignoreChanges: ['users'] },
+);
 
 // Policy for future dns-persist-01 support (not yet attached to any users).
 // See https://letsencrypt.org/2026/02/18/dns-persist-01.html
@@ -33,31 +37,35 @@ const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy('acme-dns-route53-poli
 export const acmeDnsPersistPolicy = instances
   .filter((inst) => inst.external && inst.externalIps && inst.externalIps.length > 0)
   .map((inst) => {
-    return new awsNative.iam.ManagedPolicy(`acme-dns-persist-policy-${inst.id}`, {
-      policyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: ['route53:ChangeResourceRecordSets'],
-            Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
-            Condition: {
-              'ForAllValues:StringLike': {
-                'route53:ChangeResourceRecordSetsNormalizedRecordNames': [
-                  inst.fqdn.apply((fqdn) => `_validation-persist.${fqdn}`),
-                ],
-                'route53:ChangeResourceRecordSetsRecordTypes': ['TXT'],
+    return new awsNative.iam.ManagedPolicy(
+      `acme-dns-persist-policy-${inst.id}`,
+      {
+        policyDocument: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: ['route53:ChangeResourceRecordSets'],
+              Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
+              Condition: {
+                'ForAllValues:StringLike': {
+                  'route53:ChangeResourceRecordSetsNormalizedRecordNames': [
+                    inst.fqdn.apply((fqdn) => `_validation-persist.${fqdn}`),
+                  ],
+                  'route53:ChangeResourceRecordSetsRecordTypes': ['TXT'],
+                },
               },
             },
-          },
-          {
-            Effect: 'Allow',
-            Action: ['route53:ListResourceRecordSets'],
-            Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
-          },
-        ],
-      }),
-    });
+            {
+              Effect: 'Allow',
+              Action: ['route53:ListResourceRecordSets'],
+              Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
+            },
+          ],
+        }),
+      },
+      { ignoreChanges: ['users'] },
+    );
   });
 
 export const acmeDnsUsers = instances

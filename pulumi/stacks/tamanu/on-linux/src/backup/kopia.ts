@@ -90,7 +90,7 @@ const kopiaPolicy = new awsNative.iam.ManagedPolicy(
       ],
     }),
   },
-  { parent: bucket, protect: false },
+  { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
 );
 
 new awsNative.iam.Role(
@@ -168,7 +168,7 @@ const kopiaReadOnlyPolicy = new awsNative.iam.ManagedPolicy(
       ],
     }),
   },
-  { parent: bucket, protect: false },
+  { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
 );
 
 export const backupReadOnlyUser = new awsNative.iam.User(

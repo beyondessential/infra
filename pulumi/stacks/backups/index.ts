@@ -61,21 +61,25 @@ new awsClassic.s3.BucketPolicy('backups-bucket-policy', {
   }),
 });
 
-const fullAccessPolicy = new awsNative.iam.ManagedPolicy('backups-fullaccess-policy', {
-  policyDocument: jsonStringify({
-    Version: '2012-10-17',
-    Statement: [
-      {
-        Effect: 'Allow',
-        Action: ['s3:*'],
-        Resource: bucket.bucketName.apply((bucket) => [
-          `arn:aws:s3:::${bucket}`,
-          `arn:aws:s3:::${bucket}/*`,
-        ]),
-      },
-    ],
-  }),
-});
+const fullAccessPolicy = new awsNative.iam.ManagedPolicy(
+  'backups-fullaccess-policy',
+  {
+    policyDocument: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: ['s3:*'],
+          Resource: bucket.bucketName.apply((bucket) => [
+            `arn:aws:s3:::${bucket}`,
+            `arn:aws:s3:::${bucket}/*`,
+          ]),
+        },
+      ],
+    }),
+  },
+  { ignoreChanges: ['users', 'roles', 'groups'] },
+);
 
 const fullAccessRole = new awsNative.iam.Role('backups-fullaccess-role', {
   managedPolicyArns: [fullAccessPolicy.policyArn],
@@ -94,21 +98,25 @@ const fullAccessRole = new awsNative.iam.Role('backups-fullaccess-role', {
 });
 export const roleForFullAccess = fullAccessRole.roleName;
 
-const kopiaPolicy = new awsNative.iam.ManagedPolicy('backups-kopia-policy', {
-  policyDocument: jsonStringify({
-    Version: '2012-10-17',
-    Statement: [
-      {
-        Effect: 'Allow',
-        Action: AWS_S3_BACKUP_ACTIONS,
-        Resource: bucket.bucketName.apply((bucket) => [
-          `arn:aws:s3:::${bucket}`,
-          `arn:aws:s3:::${bucket}/*`,
-        ]),
-      },
-    ],
-  }),
-});
+const kopiaPolicy = new awsNative.iam.ManagedPolicy(
+  'backups-kopia-policy',
+  {
+    policyDocument: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: AWS_S3_BACKUP_ACTIONS,
+          Resource: bucket.bucketName.apply((bucket) => [
+            `arn:aws:s3:::${bucket}`,
+            `arn:aws:s3:::${bucket}/*`,
+          ]),
+        },
+      ],
+    }),
+  },
+  { ignoreChanges: ['users', 'roles', 'groups'] },
+);
 
 const kopiaRole = new awsNative.iam.Role(`backups-kopia-role`, {
   managedPolicyArns: [kopiaPolicy.policyArn],

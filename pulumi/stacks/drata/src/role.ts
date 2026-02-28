@@ -19,11 +19,15 @@ export const policy = {
   ],
 };
 
-export const additionalPermissions = new awsNative.iam.ManagedPolicy('additional-permissions', {
-  managedPolicyName: 'DrataAdditionalPermissions',
-  description: 'Custom policy for permissions in addition to the SecurityAudit policy',
-  policyDocument: jsonStringify(policy),
-});
+export const additionalPermissions = new awsNative.iam.ManagedPolicy(
+  'additional-permissions',
+  {
+    managedPolicyName: 'DrataAdditionalPermissions',
+    description: 'Custom policy for permissions in addition to the SecurityAudit policy',
+    policyDocument: jsonStringify(policy),
+  },
+  { ignoreChanges: ['users', 'roles', 'groups'] },
+);
 
 export const assumeRole = new awsNative.iam.Role('assume-role', {
   roleName: 'DrataAutopilotRole',
