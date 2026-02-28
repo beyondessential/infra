@@ -1,5 +1,5 @@
 export { coreStackName, region } from '../common/coreRef.ts';
-import { failIfIncorrectAccount } from '../common/coreRef.ts';
+import { cfg, failIfIncorrectAccount } from '../common/coreRef.ts';
 failIfIncorrectAccount();
 
 import { cluster, oidcProvider } from './cluster.ts';
@@ -18,10 +18,23 @@ export { spotDataFeedBucketName };
 import './nodes/groups.ts';
 import './nodes/autoscaler.ts';
 import './nodes/monitor.ts';
-import './loadbalancer/ingress.ts';
-import './externalDns.ts';
-import './cert-manager/controller.ts';
-import './cert-manager/letsencrypt.ts';
-import './cert-manager/zerossl.ts';
+
 import './storage/ebs.ts';
 import './storage/s3.ts';
+
+if (cfg.getBoolean('enableAwsLb') ?? true) {
+ await import('./loadbalancer/ingress.ts');
+}
+
+if (cfg.getBoolean('enableCertManager') ?? true) {
+  await import('./cert-manager/controller.ts');
+
+  if (cfg.getBoolean('enableCertManagerPublic') ?? true) {
+    await import('./cert-manager/letsencrypt.ts');
+    await import('./cert-manager/zerossl.ts');
+  }
+}
+
+if (cfg.getBoolean('enableExternalDns') ?? true) {
+  await import('./externalDns.ts');
+}

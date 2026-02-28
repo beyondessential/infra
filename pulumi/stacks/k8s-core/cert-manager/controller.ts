@@ -1,9 +1,11 @@
 import * as k8s from '@pulumi/kubernetes';
+import { cfg } from '../../common/coreRef.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
 import { namespace } from './namespace.ts';
-import { sa } from './policy.ts';
 import { provider } from '../kubeconfig.ts';
+
+const externalDns = cfg.getBoolean('enableExternalDns') ?? true;
 
 export const certManager = new k8s.helm.v3.Release(
   'cert-manager',
@@ -21,10 +23,10 @@ export const certManager = new k8s.helm.v3.Release(
         enabled: true,
         minAvailable: 1,
       },
-      serviceAccount: {
+      serviceAccount: externalDns ? {
         create: false,
-        name: sa.metadata.name,
-      },
+        name: (await import('./policy.ts')).sa.metadata.name,
+      } : { create: false },
       tolerations: [CAN_RUN_ON_SPOT],
       affinity: {
         nodeAffinity: {
