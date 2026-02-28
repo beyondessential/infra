@@ -135,9 +135,41 @@ To access a service locally, use port-forwarding:
 kubectl port-forward -n tinker svc/myproject 8080:80
 ```
 
-### Exposing a service to the tailnet
+### Exposing an HTTP service to the tailnet
 
-You can make a Service reachable to anyone on the Tailscale network by adding annotations. Use the tags `tag:k8s,tag:tinker` and prefer to expose on port 80 for better UX —  Tailscale allows tinkerers access to all ports on tinker services.
+Create a Tailscale Ingress to make an HTTP service reachable to anyone on the Tailscale network. The first entry in `tls.hosts` becomes the machine name on the tailnet. All ingress hostnames must be prefixed with `tinker-`.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myproject
+  namespace: tinker
+  annotations:
+    tailscale.com/tags: "tag:k8s,tag:tinker"
+spec:
+  ingressClassName: tailscale
+  rules:
+  - host: tinker-myproject
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: myproject
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - tinker-myproject
+```
+
+This creates a Tailscale machine called `tinker-myproject` that proxies traffic to your Service. It will be reachable at `https://tinker-myproject.<tailnet>.ts.net`. Only `ingressClassName: tailscale` is allowed in this namespace; other ingress classes will be rejected.
+
+### Exposing a non-HTTP service to the tailnet
+
+For non-HTTP services (e.g. a raw TCP port), you can expose a Service directly by adding annotations instead of using an Ingress. Tailscale automatically prepends the namespace name, so a Service called `myproject` in `tinker` will appear as `tinker-myproject` on the tailnet.
 
 ```yaml
 apiVersion: v1
@@ -155,8 +187,6 @@ spec:
   - port: 80
     targetPort: 8080
 ```
-
-The Tailscale operator will create a proxy for the service. Tailscale automatically prepends the namespace name, so a Service called `myproject` in `tinker` will appear as `tinker-myproject` on the tailnet. Service names are unique within a namespace, so collisions are handled naturally.
 
 ### PostgreSQL
 
@@ -180,7 +210,7 @@ Note: there are no database backups in this namespace. There is no IRSA role con
 
 The `tinker` namespace has the following restrictions in place:
 
-- **No Ingresses.** You cannot expose services to the internet. Use `kubectl port-forward` to access them locally.
+- **Tailscale ingresses only.** You can create Ingress resources, but only with `ingressClassName: tailscale`. Internet-facing ingress classes (e.g. `nginx`) are blocked. All ingress hostnames must start with `tinker-`.
 - **No LoadBalancer or NodePort Services.** Only ClusterIP Services are allowed.
 - **No TLS certificate issuance.** cert-manager is not available in this namespace.
 - **No sub-namespace creation.** HNC SubnamespaceAnchors are not permitted.

@@ -58,6 +58,11 @@ const role = new k8s.rbac.v1.Role('tinkerer', {
       verbs: ['*'],
     },
     {
+      apiGroups: ['networking.k8s.io'],
+      resources: ['ingresses'],
+      verbs: ['*'],
+    },
+    {
       apiGroups: ['postgresql.cnpg.io'],
       resources: ['*'],
       verbs: ['*'],
@@ -86,6 +91,54 @@ new k8s.rbac.v1.RoleBinding('tinkerer', {
       name: 'tailscale:tinkerer',
     },
   ],
+});
+
+const admissionPolicy = new k8s.admissionregistration.v1.ValidatingAdmissionPolicy(
+  'tinker-tailscale-ingress-only',
+  {
+    metadata: {
+      name: 'tinker-tailscale-ingress-only',
+    },
+    spec: {
+      failurePolicy: 'Fail',
+      matchConstraints: {
+        resourceRules: [
+          {
+            apiGroups: ['networking.k8s.io'],
+            apiVersions: ['v1'],
+            operations: ['CREATE', 'UPDATE'],
+            resources: ['ingresses'],
+          },
+        ],
+        namespaceSelector: {
+          matchLabels: {
+            'kubernetes.io/metadata.name': 'tinker',
+          },
+        },
+      },
+      validations: [
+        {
+          expression: 'object.spec.ingressClassName == "tailscale"',
+          message: 'Only tailscale ingresses are allowed in the tinker namespace.',
+        },
+        {
+          expression:
+            'has(object.spec.tls) && object.spec.tls.size() > 0 && object.spec.tls[0].hosts.size() > 0 && object.spec.tls[0].hosts[0].startsWith("tinker-")',
+          message: 'Ingress tls.hosts[0] in the tinker namespace must be prefixed with "tinker-".',
+        },
+      ],
+    },
+  },
+);
+
+new k8s.admissionregistration.v1.ValidatingAdmissionPolicyBinding('tinker-tailscale-ingress-only', {
+  metadata: {
+    name: 'tinker-tailscale-ingress-only',
+  },
+  spec: {
+    policyName: admissionPolicy.metadata.name,
+    validationActions: ['Deny'],
+  },
 });
 
 new k8s.core.v1.ResourceQuota('tinker-no-loadbalancers', {
