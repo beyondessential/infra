@@ -46,3 +46,12 @@
     src: /var/lib/postgresql/{{ postgresql_version }}/main
     dest: /var/lib/postgresql/current
     state: link
+
+- name: Hold postgresql packages to prevent unattended upgrades
+  become: true
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - postgresql-{{ postgresql_version }}
+    - postgresql-client-{{ postgresql_version }}

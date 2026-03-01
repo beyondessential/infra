@@ -1,4 +1,17 @@
 ---
+- name: Get tailscale IPv4 address
+  ansible.builtin.command: tailscale ip -4
+  register: tailscale_ipv4
+  changed_when: false
+
+- name: Set postgres listen_addresses to include tailscale
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/current/main/postgresql.conf
+    line: "listen_addresses = 'localhost,{{ tailscale_ipv4.stdout | trim }}'"
+    regexp: "^#?listen_addresses\\s*="
+  notify: Restart postgres
+
 - name: Allow tailscale access to postgres
   loop:
     - 100.64.0.0/10

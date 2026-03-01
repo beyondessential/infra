@@ -1,4 +1,14 @@
 ---
+- name: Unhold old postgresql packages for upgrade
+  become: true
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  loop:
+    - postgresql-{{ installed_postgresql_version }}
+    - postgresql-client-{{ installed_postgresql_version }}
+  failed_when: false
+
 - name: Detect filesystem type for PostgreSQL data directory
   ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
   register: postgresql_filesystem_type
@@ -319,3 +329,12 @@
     name: postgresql-{{ installed_postgresql_version }}
     state: absent
     autoremove: true
+
+- name: Hold new postgresql packages after upgrade
+  become: true
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - postgresql-{{ postgresql_desired_version }}
+    - postgresql-client-{{ postgresql_desired_version }}
