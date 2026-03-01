@@ -7,6 +7,7 @@ import {
   minimumTtl,
   normalizedStack,
   persistentSchemas,
+  readOnly,
   schedule,
   snapshotFilter,
   storageSizeMaximum,
@@ -35,6 +36,7 @@ new k8s.apiextensions.CustomResource('replica', {
     // how long the old restore stays alive once the new one has been set up
     switchoverGracePeriod: '2m',
     persistentSchemas,
+    readOnly,
     storageSizeMaximum,
     serviceAnnotations: {
       'tailscale.com/expose': 'true',

@@ -15,6 +15,7 @@ export const snapshotFilter: SnapshotFilter = cfg.requireObject('snapshotFilter'
 export const persistentSchemas: string[] = cfg.getObject('persistentSchemas') ?? ['dbt'];
 export const storageSizeMaximum = `${cfg.getNumber('storageSizeMaximumGB') ?? 200}Gi`;
 export const minimumTtl = cfg.get('minimumTtl') ?? '2h';
+export const readOnly = cfg.getBoolean('readOnly') ?? true;
 
 // every 3 hours, at an arbitrary but stable amount of minutes past the hour
 export const schedule = cfg.get('schedule') ?? 'H */3 * * *';
