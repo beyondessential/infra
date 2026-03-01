@@ -35,7 +35,7 @@ new k8s.apiextensions.CustomResource('replica', {
     storageClass: 'ebs-gp3',
     // how long the old restore stays alive once the new one has been set up
     switchoverGracePeriod: '2m',
-    persistentSchemas,
+    persistentSchemas: persistentSchemas?.length > 0 ? persistentSchemas : undefined,
     readOnly,
     storageSizeMaximum,
     serviceAnnotations: {
