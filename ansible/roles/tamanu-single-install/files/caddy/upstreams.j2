@@ -1,7 +1,10 @@
 (upstream_frontend) {
   header_up Host "localhost"
-  to http://frontend-a.tamanu.internal:3000
-  to http://frontend-b.tamanu.internal:3000
+  dynamic a {
+    name frontend.tamanu.internal
+    port 3000
+    versions ipv4
+  }
 
   lb_policy least_conn
   lb_retries 2
@@ -16,7 +19,11 @@
 {% if patient_portal_enabled %}
 (upstream_patientportal) {
   header_up Host "localhost"
-  to http://patientportal.tamanu.internal:3000
+  dynamic a {
+    name patientportal.tamanu.internal
+    port 3000
+    versions ipv4
+  }
 
   lb_policy least_conn
   lb_retries 2
@@ -30,8 +37,11 @@
 {% endif %}
 
 (upstream_api) {
-  to http://api-1.{{ tamanu_server_type }}.tamanu.internal:3000
-  to http://api-2.{{ tamanu_server_type }}.tamanu.internal:3000
+  dynamic a {
+    name api.{{ tamanu_server_type }}.tamanu.internal
+    port 3000
+    versions ipv4
+  }
 
   lb_policy least_conn
   lb_retries 2
