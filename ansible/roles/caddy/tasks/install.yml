@@ -72,8 +72,9 @@
 - name: Install caddy from bes-tools repo
   become: true
   ansible.builtin.apt:
-    name: caddy
+    name: "caddy={{ caddy_version }}"
     state: present
+    allow_downgrade: true
     update_cache: true
   notify:
     - Reload systemd
