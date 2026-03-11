@@ -1,15 +1,22 @@
 ---
-- name: Check if tailscale is available
+- name: Check if tailscale is available (IPv4)
   ansible.builtin.command: tailscale ip -4
   register: tailscale_ipv4
   changed_when: false
   failed_when: false
 
+- name: Get tailscale IPv6 address
+  ansible.builtin.command: tailscale ip -6
+  register: tailscale_ipv6
+  changed_when: false
+  failed_when: false
+  when: tailscale_ipv4.rc == 0
+
 - name: Set postgres listen_addresses
   become: true
   ansible.builtin.lineinfile:
     path: /etc/postgresql/current/main/postgresql.conf
-    line: "listen_addresses = '{{ ('localhost,' ~ tailscale_ipv4.stdout | trim) if tailscale_ipv4.rc == 0 else 'localhost' }}'"
+    line: "listen_addresses = '{{ ('localhost,' ~ tailscale_ipv4.stdout | trim ~ ',' ~ tailscale_ipv6.stdout | trim) if tailscale_ipv4.rc == 0 else 'localhost' }}'"
     regexp: "^#?listen_addresses\\s*="
   notify: Restart postgres
 

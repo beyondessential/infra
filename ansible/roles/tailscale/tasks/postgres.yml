@@ -4,11 +4,16 @@
   register: tailscale_ipv4
   changed_when: false
 
+- name: Get tailscale IPv6 address
+  ansible.builtin.command: tailscale ip -6
+  register: tailscale_ipv6
+  changed_when: false
+
 - name: Set postgres listen_addresses to include tailscale
   become: true
   ansible.builtin.lineinfile:
     path: /etc/postgresql/current/main/postgresql.conf
-    line: "listen_addresses = 'localhost,{{ tailscale_ipv4.stdout | trim }}'"
+    line: "listen_addresses = 'localhost,{{ tailscale_ipv4.stdout | trim }},{{ tailscale_ipv6.stdout | trim }}'"
     regexp: "^#?listen_addresses\\s*="
   notify: Restart postgres
 
