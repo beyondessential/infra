@@ -5,6 +5,7 @@
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: network.yml
 - ansible.builtin.include_tasks: accounting.yml
+- ansible.builtin.include_tasks: bash-history.yml
 - ansible.builtin.include_tasks: journald.yml
 - ansible.builtin.include_tasks: kopia-user.yml
 - ansible.builtin.include_tasks: tuning.yml
