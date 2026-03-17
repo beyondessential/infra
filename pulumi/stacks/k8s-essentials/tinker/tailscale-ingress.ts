@@ -4,7 +4,7 @@ import { publicService } from './services.ts';
 new k8s.networking.v1.Ingress('tinker-gateway-tailscale', {
   metadata: {
     name: 'tinker-gateway-tailscale',
-    namespace: 'tinker',
+    namespace: 'tinker-system',
     annotations: {
       'tailscale.com/hostname': 'tinker-gateway-detect',
       'tailscale.com/tags': 'tag:k8s,tag:tinker',

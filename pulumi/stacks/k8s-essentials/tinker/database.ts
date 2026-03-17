@@ -6,7 +6,7 @@ export const dbCluster = new k8s.apiextensions.CustomResource('tinker-gateway-db
   kind: 'Cluster',
   metadata: {
     name: databaseName,
-    namespace: 'tinker',
+    namespace: 'tinker-system',
     labels: {
       'app.kubernetes.io/name': 'tinker-gateway',
       'app.kubernetes.io/component': 'database',

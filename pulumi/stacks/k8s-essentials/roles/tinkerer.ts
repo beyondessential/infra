@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 
-// t[impl namespace.exists]
+// t[impl namespace.exists+2]
 const namespace = new k8s.core.v1.Namespace('tinker', {
   metadata: {
     name: 'tinker',

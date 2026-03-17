@@ -8,7 +8,7 @@ import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 export const gateway = new k8s.apps.v1.Deployment('tinker-gateway', {
   metadata: {
     name: 'tinker-gateway',
-    namespace: 'tinker',
+    namespace: 'tinker-system',
   },
   spec: {
     replicas: gatewayReplicas,

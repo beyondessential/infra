@@ -6,7 +6,7 @@ import { publicService } from './services.ts';
 new k8s.networking.v1.Ingress('tinker-gateway', {
   metadata: {
     name: 'tinker-gateway',
-    namespace: 'tinker',
+    namespace: 'tinker-system',
     annotations: {
       'cert-manager.io/cluster-issuer': 'letsencrypt',
       'cert-manager.io/private-key-algorithm': 'ECDSA',

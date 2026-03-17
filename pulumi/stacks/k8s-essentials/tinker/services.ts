@@ -4,7 +4,7 @@ import { gatewayLabels } from './labels.ts';
 export const internalService = new k8s.core.v1.Service('tinker-gateway-internal', {
   metadata: {
     name: 'tinker-gateway-internal',
-    namespace: 'tinker',
+    namespace: 'tinker-system',
   },
   spec: {
     type: 'ClusterIP',
@@ -16,7 +16,7 @@ export const internalService = new k8s.core.v1.Service('tinker-gateway-internal'
 export const publicService = new k8s.core.v1.Service('tinker-gateway-public', {
   metadata: {
     name: 'tinker-gateway-public',
-    namespace: 'tinker',
+    namespace: 'tinker-system',
   },
   spec: {
     type: 'ClusterIP',
