@@ -1,6 +1,6 @@
-# Skill: Deploy to the Tinker Namespace (with Gateway)
+# Skill: Deploy to the Tinker Namespace
 
-You are deploying experimental workloads to a shared Kubernetes cluster and optionally exposing them to the public internet via the Tinker Gateway. All resources go in the `tinker` namespace.
+You are deploying experimental workloads to a shared Kubernetes cluster. All resources go in the `tinker` namespace.
 
 > **Important:** Manage all tinker resources exclusively via `kubectl` and Kubernetes manifests. The Tinker Gateway management API and dashboard at `tinker.bes.au` use browser-based Tailscale authentication that cannot be used from scripts or agents. Do not attempt to call those endpoints directly.
 
@@ -41,21 +41,14 @@ contexts:
 current-context: main
 ```
 
-Switch to the correct context (in case you have other clusters configured):
+Switch to the correct context:
 
 ```sh
 kubectl config use-context main
-```
-
-Verify connectivity:
-
-```sh
 kubectl cluster-info
 ```
 
 ### Check your permissions
-
-Confirm you have the `tinkerer` role:
 
 ```sh
 kubectl auth can-i create deployments -n tinker
@@ -68,17 +61,15 @@ Both should return `yes`. If not, request the `tinkerer` Tailscale group from Ka
 
 You must be connected to the Tailscale network for kubectl access to the cluster.
 
-Verify you are connected:
-
 ```sh
 tailscale status
 ```
 
 ## Deploying a Workload
 
-Create a single YAML file named `<project>.yaml` containing your Kubernetes resources. Every resource must set `namespace: tinker` in its metadata. Separate multiple resources with `---`.
+Create a single YAML file named `<project>.yaml`. Every resource must set `namespace: tinker`. Separate multiple resources with `---`.
 
-Minimal example with a Deployment and Service:
+Minimal example:
 
 ```yaml
 apiVersion: apps/v1
@@ -130,15 +121,17 @@ kubectl logs -n tinker deployment/myapp
 
 To update, edit the file and re-run `kubectl apply -f myapp.yaml`.
 
-To access a service locally without exposing it, use port-forwarding:
+To access a service locally without exposing it:
 
 ```sh
 kubectl port-forward -n tinker svc/myapp 8080:80
 ```
 
-## Exposing via the Tinker Gateway (Public Internet)
+## Exposing an HTTP UI via the Tinker Gateway
 
-To give your Service a public URL via the Tinker Gateway, add the `tinker.bes.au/expose` annotation to the **Service** resource:
+The Tinker Gateway is the primary way to expose HTTP workloads. It gives your service a public URL at `<name>.tinker.bes.au` and authenticates visitors using their Tailscale identity by default, so only people on the tailnet can access it unless you explicitly make it public.
+
+Add the `tinker.bes.au/expose` annotation to the **Service**:
 
 ```yaml
 apiVersion: v1
@@ -156,7 +149,7 @@ spec:
     targetPort: 8080
 ```
 
-Optionally set a custom subdomain name with `tinker.bes.au/name`. If omitted, the Service name is used:
+Optionally set a custom subdomain with `tinker.bes.au/name`. If omitted, the Service name is used:
 
 ```yaml
   annotations:
@@ -164,98 +157,60 @@ Optionally set a custom subdomain name with `tinker.bes.au/name`. If omitted, th
     tinker.bes.au/name: "my-custom-name"
 ```
 
-Apply the change:
+Apply:
 
 ```sh
 kubectl apply -f myapp.yaml
 ```
 
-The gateway controller watches for these annotations, registers the service, and writes back:
-- `tinker.bes.au/tinker-id` — the assigned Tinker ID (a UUID)
+The gateway controller registers the service and writes back:
+- `tinker.bes.au/tinker-id` — the assigned Tinker ID (UUID)
 - `tinker.bes.au/public-hostname` — the public URL (e.g. `myapp.tinker.bes.au`)
 
-If there is a name conflict, `tinker.bes.au/error: name-conflict` is set instead. Choose a different name and re-apply.
-
-## Retrieving the Public URL
-
-Wait a few seconds after applying, then read the annotation the controller writes back to the Service:
+Wait a few seconds, then retrieve the URL:
 
 ```sh
 kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/public-hostname}'
 ```
 
-This returns something like `myapp.tinker.bes.au`. The full URL is `https://myapp.tinker.bes.au`.
+The full URL is `https://<hostname>`.
 
-To check for a name conflict error:
+To check for errors:
 
 ```sh
 kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/error}'
 ```
 
-If this returns `name-conflict`, another Service already holds that name. Set a different `tinker.bes.au/name` annotation and re-apply.
+If this returns `name-conflict`, another Service already holds that name. Set a different `tinker.bes.au/name` and re-apply.
 
-## Tailscale-Only Ingress (Not Public)
+## Exposing Non-HTTP Services via Tailscale
 
-If you want your service reachable only on the Tailscale network (not the public internet), use a Tailscale Ingress instead of the gateway annotations. All ingress hostnames must be prefixed with `tinker-`.
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: myapp
-  namespace: tinker
-  annotations:
-    tailscale.com/tags: "tag:k8s,tag:tinker"
-spec:
-  ingressClassName: tailscale
-  rules:
-  - host: tinker-myapp
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: myapp
-            port:
-              number: 80
-  tls:
-  - hosts:
-    - tinker-myapp
-```
-
-Only `ingressClassName: tailscale` is allowed in this namespace; other ingress classes will be rejected.
-
-Once the Ingress is ready, look up its URL:
-
-```sh
-kubectl get ingress myapp -n tinker -o jsonpath='https://{.status.loadBalancer.ingress[0].hostname}'
-```
-
-For non-HTTP services (raw TCP), expose via Tailscale annotations on the Service instead:
+For services that are not HTTP UIs — raw TCP, databases, internal APIs, etc. — expose them directly onto the Tailscale network using the `tailscale.com/expose` annotation on the Service. The service will appear as `tinker-<name>` on the tailnet and is accessible only to tailnet members.
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: myapp
+  name: mydb
   namespace: tinker
   annotations:
     tailscale.com/expose: "true"
     tailscale.com/tags: "tag:k8s,tag:tinker"
 spec:
   selector:
-    app: myapp
+    app: mydb
   ports:
-  - port: 80
-    targetPort: 8080
+  - port: 5432
+    targetPort: 5432
 ```
 
-The service appears as `tinker-myapp` on the tailnet.
+The service appears as `tinker-mydb` on the tailnet. Connect to it directly using that hostname.
+
+Do not use this approach for HTTP UIs — use the Tinker Gateway instead.
 
 ## PostgreSQL via CNPG
 
-CNPG (CloudNativePG) is available. You can create a Postgres cluster as part of your YAML:
+CNPG (CloudNativePG) is available:
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -269,9 +224,9 @@ spec:
     size: 5Gi
 ```
 
-There are no database backups in this namespace. There is no IRSA role configured for `tinker`, so CNPG's backup-to-S3 functionality will not work. Treat all data as ephemeral.
+There are no database backups in this namespace and no IRSA role configured, so CNPG's backup-to-S3 will not work. Treat all data as ephemeral.
 
-To connect from your app, CNPG creates a secret named `<cluster>-app` with connection details:
+CNPG creates a secret named `<cluster>-app` with connection details:
 
 ```yaml
 env:
@@ -282,30 +237,27 @@ env:
       key: uri
 ```
 
+To expose the database directly to the tailnet for external access, use the Tailscale Service annotation described above.
+
 ## Restrictions
 
-The `tinker` namespace has the following restrictions:
-
-- **Tailscale ingresses only.** You can create Ingress resources, but only with `ingressClassName: tailscale`. Internet-facing ingress classes (e.g. `nginx`) are blocked. All ingress hostnames must start with `tinker-`.
 - **No LoadBalancer or NodePort Services.** Only ClusterIP Services are allowed.
 - **No TLS certificate issuance.** cert-manager is not available in this namespace.
 - **No sub-namespace creation.** HNC SubnamespaceAnchors are not permitted.
-- **No Tailscale resources.** You cannot create Tailscale CRs directly.
 - **Storage is capped at 100Gi total** across all PVCs.
 - **CNPG clusters are capped at 5.**
-- **Public exposure** is only available through the Tinker Gateway annotations (`tinker.bes.au/expose`), not through traditional ingress controllers.
+- **HTTP exposure** goes through the Tinker Gateway (`tinker.bes.au/expose`). There is no traditional ingress controller available in this namespace.
+- **Non-HTTP exposure** goes through the Tailscale Service annotation (`tailscale.com/expose`). This is Tailscale-network-only.
 
 ## Teardown
-
-To remove your workload and free up resources:
 
 ```sh
 kubectl delete -f myapp.yaml
 ```
 
-If the Service had `tinker.bes.au/expose: "true"`, deleting the Service triggers the controller to deregister it from the gateway automatically. No manual cleanup of the gateway registration is needed.
+If the Service had `tinker.bes.au/expose: "true"`, deleting it triggers the controller to deregister it from the gateway automatically. No manual cleanup is needed.
 
-To verify the gateway registration was removed, check that the annotation is gone:
+To verify deregistration (if the Service still exists but the annotation was removed):
 
 ```sh
 kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/tinker-id}' 2>/dev/null || echo "deregistered"
