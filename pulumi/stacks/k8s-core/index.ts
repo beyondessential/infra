@@ -15,6 +15,7 @@ export const oidcProviderArn = oidcProvider.arn;
 export const opencostRoleArn = opencostRole.arn;
 export { spotDataFeedBucketName };
 
+import './awsBackup.ts';
 import './nodes/groups.ts';
 import './nodes/autoscaler.ts';
 import './nodes/monitor.ts';
@@ -23,7 +24,7 @@ import './storage/ebs.ts';
 import './storage/s3.ts';
 
 if (cfg.getBoolean('enableAwsLb') ?? true) {
- await import('./loadbalancer/ingress.ts');
+  await import('./loadbalancer/ingress.ts');
 }
 
 if (cfg.getBoolean('enableCertManager') ?? true) {
