@@ -2,6 +2,8 @@
 
 You are deploying experimental workloads to a shared Kubernetes cluster and optionally exposing them to the public internet via the Tinker Gateway. All resources go in the `tinker` namespace.
 
+> **Important:** Manage all tinker resources exclusively via `kubectl` and Kubernetes manifests. The Tinker Gateway management API and dashboard at `tinker.bes.au` use browser-based Tailscale authentication that cannot be used from scripts or agents. Do not attempt to call those endpoints directly.
+
 ## Prerequisites
 
 ### Install kubectl
@@ -64,9 +66,7 @@ Both should return `yes`. If not, request the `tinkerer` Tailscale group from Ka
 
 ### Tailscale
 
-You must be connected to the Tailscale network for:
-- kubectl access to the cluster
-- The Tinker Gateway management API (authenticated via Tailscale identity)
+You must be connected to the Tailscale network for kubectl access to the cluster.
 
 Verify you are connected:
 
@@ -178,9 +178,7 @@ If there is a name conflict, `tinker.bes.au/error: name-conflict` is set instead
 
 ## Retrieving the Public URL
 
-### Option 1: Read the annotation from the Service
-
-Wait a few seconds after applying, then:
+Wait a few seconds after applying, then read the annotation the controller writes back to the Service:
 
 ```sh
 kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/public-hostname}'
@@ -188,94 +186,13 @@ kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\
 
 This returns something like `myapp.tinker.bes.au`. The full URL is `https://myapp.tinker.bes.au`.
 
-To also check for errors:
+To check for a name conflict error:
 
 ```sh
 kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/error}'
 ```
 
-### Option 2: Use the Management API
-
-Look up the app by name (requires Tailscale authentication):
-
-```sh
-curl -s https://tinker.bes.au/api/manage/apps/myapp | jq .
-```
-
-Response:
-
-```json
-{
-  "tinker_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "tinker_name": "myapp",
-  "public_hostname": "myapp.tinker.bes.au",
-  "backend_address": "http://myapp.tinker.svc.cluster.local:80",
-  "public": true,
-  "request_count": 0,
-  "last_seen_at": null
-}
-```
-
-## Managing Apps via the Management API
-
-All management API endpoints require Tailscale authentication. The base URL is `https://tinker.bes.au`.
-
-### List all apps
-
-```sh
-curl -s https://tinker.bes.au/api/manage/apps | jq .
-```
-
-### Look up an app by name
-
-```sh
-curl -s https://tinker.bes.au/api/manage/apps/myapp | jq .
-```
-
-### Toggle public availability
-
-Toggle whether the app is publicly accessible (flips the `public` boolean). Uses the Tinker ID (UUID), not the name:
-
-```sh
-curl -s -X POST https://tinker.bes.au/api/manage/apps/<tinker_id>/public | jq .
-```
-
-Response:
-
-```json
-{
-  "tinker_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "public": false
-}
-```
-
-### Get stats
-
-```sh
-curl -s https://tinker.bes.au/api/manage/apps/<tinker_id>/stats | jq .
-```
-
-Response:
-
-```json
-{
-  "tinker_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "request_count": 42,
-  "last_seen_at": "2025-01-15T10:30:00Z"
-}
-```
-
-### Disconnect an app
-
-Remove the registration from the gateway entirely. Uses the Tinker ID:
-
-```sh
-curl -s -X DELETE https://tinker.bes.au/api/manage/apps/<tinker_id>
-```
-
-Returns 204 No Content on success, 404 if not found.
-
-Note: this only removes the gateway registration. The Service and its annotations still exist in Kubernetes. If the `tinker.bes.au/expose: "true"` annotation is still present, the controller will re-register the service on its next reconciliation loop (~5 minutes). To permanently disconnect, remove the expose annotation from the Service first.
+If this returns `name-conflict`, another Service already holds that name. Set a different `tinker.bes.au/name` annotation and re-apply.
 
 ## Tailscale-Only Ingress (Not Public)
 
@@ -388,10 +305,10 @@ kubectl delete -f myapp.yaml
 
 If the Service had `tinker.bes.au/expose: "true"`, deleting the Service triggers the controller to deregister it from the gateway automatically. No manual cleanup of the gateway registration is needed.
 
-To verify the gateway registration was removed:
+To verify the gateway registration was removed, check that the annotation is gone:
 
 ```sh
-curl -s https://tinker.bes.au/api/manage/apps/myapp
+kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/tinker-id}' 2>/dev/null || echo "deregistered"
 ```
 
-This should return 404.
+If the Service itself was deleted, this will simply return nothing.
