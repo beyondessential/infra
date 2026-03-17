@@ -7,4 +7,6 @@
 - ansible.builtin.include_tasks: version.yml
 - ansible.builtin.include_tasks: dns.yml
   when: tamanu_server_type != 'central'
+- ansible.builtin.include_tasks: ufw.yml
+  when: tamanu_ufw_firewall
 - ansible.builtin.include_tasks: backup.yml

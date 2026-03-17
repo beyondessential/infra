@@ -1,0 +1,134 @@
+- name: Install ufw
+  become: true
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Detect SSH listen port
+  become: true
+  ansible.builtin.shell: |
+    set -euo pipefail
+    grep -E '^\s*Port\s+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null \
+      | awk '{print $2}' | tail -1
+  args:
+    executable: /bin/bash
+  register: sshd_port_result
+  changed_when: false
+  failed_when: false
+
+- name: Set SSH port fact
+  ansible.builtin.set_fact:
+    tamanu_ssh_port: "{{ sshd_port_result.stdout | default('22', true) | trim | default('22', true) }}"
+
+- name: Check if Tailscale is connected
+  become: true
+  ansible.builtin.command: tailscale status
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+
+- name: Allow HTTP
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Allow HTTPS
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+
+- name: Allow HTTP/3
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: udp
+
+- name: Allow forwarding from podman network
+  become: true
+  community.general.ufw:
+    rule: allow
+    route: true
+    direction: in
+    interface: podman0
+
+- name: Allow container DNS to aardvark-dns
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    interface: podman0
+    port: "53"
+
+# When Tailscale is active, restrict SSH to LAN and Tailscale only.
+# When not, allow SSH from anywhere so we don't get locked out.
+- name: Allow SSH from anywhere (no Tailscale)
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "{{ tamanu_ssh_port }}"
+    proto: tcp
+  when: tailscale_status.rc != 0
+
+- name: Allow SSH from RFC1918 ranges
+  become: true
+  community.general.ufw:
+    rule: allow
+    src: "{{ item }}"
+    port: "{{ tamanu_ssh_port }}"
+    proto: tcp
+    comment: SSH from LAN
+  loop:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+  when: tailscale_status.rc == 0
+
+- name: Allow SSH from IPv6 ULA
+  become: true
+  community.general.ufw:
+    rule: allow
+    src: fc00::/7
+    port: "{{ tamanu_ssh_port }}"
+    proto: tcp
+    comment: SSH from LAN (IPv6)
+  when: tailscale_status.rc == 0
+
+- name: Allow all traffic from Tailscale
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    interface: tailscale0
+    comment: Tailscale
+  when: tailscale_status.rc == 0
+
+- name: Remove wide SSH rule if Tailscale is active
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "{{ tamanu_ssh_port }}"
+    proto: tcp
+    delete: true
+  when: tailscale_status.rc == 0
+
+- name: Set default incoming policy to deny
+  become: true
+  community.general.ufw:
+    policy: deny
+    direction: incoming
+
+- name: Set default routed policy to deny
+  become: true
+  community.general.ufw:
+    policy: deny
+    direction: routed
+
+- name: Enable ufw
+  become: true
+  community.general.ufw:
+    state: enabled
