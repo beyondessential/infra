@@ -76,6 +76,11 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         verbs: ['get', 'watch', 'list'],
       },
       {
+        apiGroups: ['gateway.networking.k8s.io'],
+        resources: ['gateways', 'httproutes', 'grpcroutes', 'tlsroutes', 'tcproutes', 'udproutes'],
+        verbs: ['get', 'watch', 'list'],
+      },
+      {
         apiGroups: [''],
         resources: ['nodes'],
         verbs: ['list', 'watch'],
@@ -136,6 +141,7 @@ new k8s.apps.v1.Deployment(
               args: [
                 '--source=service',
                 '--source=ingress',
+                '--source=gateway-httproute',
                 ...externalDnsZoneDomains.map((zone) => interpolate`--domain-filter=${zone}`),
                 '--provider=aws',
                 '--registry=txt',
