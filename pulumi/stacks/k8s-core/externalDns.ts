@@ -141,7 +141,7 @@ new k8s.apps.v1.Deployment(
               args: [
                 '--source=service',
                 '--source=ingress',
-                '--source=gateway-httproute',
+                // '--source=gateway-httproute', // this crashloops the pod
                 ...externalDnsZoneDomains.map((zone) => interpolate`--domain-filter=${zone}`),
                 '--provider=aws',
                 '--registry=txt',
