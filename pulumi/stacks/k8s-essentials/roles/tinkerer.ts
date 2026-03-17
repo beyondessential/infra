@@ -1,11 +1,13 @@
 import * as k8s from '@pulumi/kubernetes';
 
+// t[impl namespace.exists]
 const namespace = new k8s.core.v1.Namespace('tinker', {
   metadata: {
     name: 'tinker',
   },
 });
 
+// t[impl namespace.rbac.role]
 const role = new k8s.rbac.v1.Role('tinkerer', {
   metadata: {
     name: 'tinkerer',
@@ -75,6 +77,7 @@ const role = new k8s.rbac.v1.Role('tinkerer', {
   ],
 });
 
+// t[impl namespace.rbac.binding]
 new k8s.rbac.v1.RoleBinding('tinkerer', {
   metadata: {
     name: 'tinkerer',
@@ -93,6 +96,8 @@ new k8s.rbac.v1.RoleBinding('tinkerer', {
   ],
 });
 
+// t[impl namespace.admission.ingress-class]
+// t[impl namespace.admission.ingress-prefix]
 const admissionPolicy = new k8s.admissionregistration.v1.ValidatingAdmissionPolicy(
   'tinker-tailscale-ingress-only',
   {
@@ -141,6 +146,7 @@ new k8s.admissionregistration.v1.ValidatingAdmissionPolicyBinding('tinker-tailsc
   },
 });
 
+// t[impl namespace.quotas]
 new k8s.core.v1.ResourceQuota('tinker-no-loadbalancers', {
   metadata: {
     name: 'no-loadbalancers',
