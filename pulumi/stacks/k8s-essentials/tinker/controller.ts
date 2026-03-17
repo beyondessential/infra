@@ -4,11 +4,12 @@ import { controllerLabels } from './labels.ts';
 import { serviceAccount } from './rbac.ts';
 import { purposeAffinity } from '../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { namespace } from './namespace.ts';
 
 export const controller = new k8s.apps.v1.Deployment('tinker-controller', {
   metadata: {
     name: 'tinker-controller',
-    namespace: 'tinker-system',
+    namespace,
   },
   spec: {
     replicas: 1,

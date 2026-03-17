@@ -1,14 +1,14 @@
 import * as k8s from '@pulumi/kubernetes';
-import { image, gatewayReplicas, databaseName, tailscaleIngressUrl } from './config.ts';
+import { image, gatewayReplicas, gatewayTailscaleName } from './config.ts';
 import { gatewayLabels } from './labels.ts';
 import { dbCluster } from './database.ts';
 import { purposeAffinity } from '../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { namespace } from './namespace.ts';
 
 export const gateway = new k8s.apps.v1.Deployment('tinker-gateway', {
   metadata: {
-    name: 'tinker-gateway',
-    namespace: 'tinker-system',
+    namespace,
   },
   spec: {
     replicas: gatewayReplicas,
@@ -52,7 +52,7 @@ export const gateway = new k8s.apps.v1.Deployment('tinker-gateway', {
               },
               {
                 name: 'TAILSCALE_INGRESS_URL',
-                value: tailscaleIngressUrl,
+                value: `http://${gatewayTailscaleName}`,
               },
             ],
             ports: [

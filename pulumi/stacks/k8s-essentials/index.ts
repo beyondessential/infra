@@ -47,7 +47,7 @@ if (cfg.getBoolean('postgresRestoreEnabled') ?? false) {
   await import('./postgres/restore/index.ts');
 }
 
-if (cfg.getBoolean('tinkerGatewayEnabled') ?? false) {
+if (cfg.getBoolean('tinkerEnabled') ?? false) {
   await import('./tinker/index.ts');
 }
 

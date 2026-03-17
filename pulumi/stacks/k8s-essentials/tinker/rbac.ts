@@ -1,16 +1,13 @@
 import * as k8s from '@pulumi/kubernetes';
+import { namespace } from './namespace.ts';
 
 export const serviceAccount = new k8s.core.v1.ServiceAccount('tinker-controller', {
   metadata: {
-    name: 'tinker-controller',
-    namespace: 'tinker-system',
+    namespace,
   },
 });
 
 const clusterRole = new k8s.rbac.v1.ClusterRole('tinker-controller', {
-  metadata: {
-    name: 'tinker-controller',
-  },
   rules: [
     {
       apiGroups: [''],
@@ -21,9 +18,6 @@ const clusterRole = new k8s.rbac.v1.ClusterRole('tinker-controller', {
 });
 
 new k8s.rbac.v1.ClusterRoleBinding('tinker-controller', {
-  metadata: {
-    name: 'tinker-controller',
-  },
   roleRef: {
     apiGroup: 'rbac.authorization.k8s.io',
     kind: 'ClusterRole',
@@ -33,7 +27,7 @@ new k8s.rbac.v1.ClusterRoleBinding('tinker-controller', {
     {
       kind: 'ServiceAccount',
       name: serviceAccount.metadata.name,
-      namespace: 'tinker-system',
+      namespace,
     },
   ],
 });

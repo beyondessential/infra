@@ -1,12 +1,13 @@
 import * as k8s from '@pulumi/kubernetes';
-import { databaseName } from './config.ts';
+import { namespace } from './namespace.ts';
 
+// TODO: use the k8s-common code instead of doing this manually!!!!
 export const dbCluster = new k8s.apiextensions.CustomResource('tinker-gateway-db', {
   apiVersion: 'postgresql.cnpg.io/v1',
   kind: 'Cluster',
   metadata: {
-    name: databaseName,
-    namespace: 'tinker-system',
+    name: 'tinker-db',
+    namespace,
     labels: {
       'app.kubernetes.io/name': 'tinker-gateway',
       'app.kubernetes.io/component': 'database',

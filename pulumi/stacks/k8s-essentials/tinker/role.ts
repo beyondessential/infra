@@ -5,13 +5,12 @@ const namespace = new k8s.core.v1.Namespace('tinker', {
   metadata: {
     name: 'tinker',
   },
-});
+}).metadata.name;
 
 // t[impl namespace.rbac.role]
 const role = new k8s.rbac.v1.Role('tinkerer', {
   metadata: {
-    name: 'tinkerer',
-    namespace: namespace.metadata.name,
+    namespace,
   },
   rules: [
     {
@@ -80,8 +79,7 @@ const role = new k8s.rbac.v1.Role('tinkerer', {
 // t[impl namespace.rbac.binding]
 new k8s.rbac.v1.RoleBinding('tinkerer', {
   metadata: {
-    name: 'tinkerer',
-    namespace: namespace.metadata.name,
+    namespace,
   },
   roleRef: {
     apiGroup: 'rbac.authorization.k8s.io',
@@ -101,9 +99,6 @@ new k8s.rbac.v1.RoleBinding('tinkerer', {
 const admissionPolicy = new k8s.admissionregistration.v1.ValidatingAdmissionPolicy(
   'tinker-tailscale-ingress-only',
   {
-    metadata: {
-      name: 'tinker-tailscale-ingress-only',
-    },
     spec: {
       failurePolicy: 'Fail',
       matchConstraints: {
@@ -137,9 +132,6 @@ const admissionPolicy = new k8s.admissionregistration.v1.ValidatingAdmissionPoli
 );
 
 new k8s.admissionregistration.v1.ValidatingAdmissionPolicyBinding('tinker-tailscale-ingress-only', {
-  metadata: {
-    name: 'tinker-tailscale-ingress-only',
-  },
   spec: {
     policyName: admissionPolicy.metadata.name,
     validationActions: ['Deny'],
@@ -149,8 +141,7 @@ new k8s.admissionregistration.v1.ValidatingAdmissionPolicyBinding('tinker-tailsc
 // t[impl namespace.quotas]
 new k8s.core.v1.ResourceQuota('tinker-no-loadbalancers', {
   metadata: {
-    name: 'no-loadbalancers',
-    namespace: namespace.metadata.name,
+    namespace,
   },
   spec: {
     hard: {

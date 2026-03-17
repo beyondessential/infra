@@ -1,10 +1,10 @@
 import * as k8s from '@pulumi/kubernetes';
 import { gatewayLabels } from './labels.ts';
+import { namespace } from './namespace.ts';
 
 export const internalService = new k8s.core.v1.Service('tinker-gateway-internal', {
   metadata: {
-    name: 'tinker-gateway-internal',
-    namespace: 'tinker-system',
+    namespace,
   },
   spec: {
     type: 'ClusterIP',
@@ -15,8 +15,7 @@ export const internalService = new k8s.core.v1.Service('tinker-gateway-internal'
 
 export const publicService = new k8s.core.v1.Service('tinker-gateway-public', {
   metadata: {
-    name: 'tinker-gateway-public',
-    namespace: 'tinker-system',
+    namespace,
   },
   spec: {
     type: 'ClusterIP',

@@ -1,21 +1,21 @@
 import * as k8s from '@pulumi/kubernetes';
 import { publicService } from './services.ts';
+import { gatewayTailscaleName } from './config.ts';
 
 new k8s.networking.v1.Ingress('tinker-gateway-tailscale', {
   metadata: {
-    name: 'tinker-gateway-tailscale',
     namespace: 'tinker-system',
     annotations: {
-      'tailscale.com/hostname': 'tinker-gateway-detect',
+      'tailscale.com/hostname': gatewayTailscaleName,
       'tailscale.com/tags': 'tag:k8s,tag:tinker',
     },
   },
   spec: {
     ingressClassName: 'tailscale',
-    tls: [{ hosts: ['tinker-gateway-detect'] }],
+    tls: [{ hosts: [gatewayTailscaleName] }],
     rules: [
       {
-        host: 'tinker-gateway-detect',
+        host: gatewayTailscaleName,
         http: {
           paths: [
             {
