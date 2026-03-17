@@ -1,6 +1,6 @@
-# Skill: Deploy to the Tinker Namespace
+# Skill: Deploy to the Tinker Namespace (with Gateway)
 
-You are deploying experimental workloads to a shared Kubernetes cluster. All resources go in the `tinker` namespace.
+You are deploying experimental workloads to a shared Kubernetes cluster and optionally exposing them to the public internet via the Tinker Gateway. All resources go in the `tinker` namespace.
 
 ## Prerequisites
 
@@ -62,53 +62,54 @@ kubectl auth can-i create pods -n tinker
 
 Both should return `yes`. If not, request the `tinkerer` Tailscale group from Kamaka or Viti.
 
-## Deploying
+### Tailscale
 
-Create a single YAML file named `<nameofproject>.yaml` containing all the Kubernetes resources you need. Every resource must set `namespace: tinker` in its metadata.
+You must be connected to the Tailscale network for:
+- kubectl access to the cluster
+- The Tinker Gateway management API (authenticated via Tailscale identity)
 
-Separate multiple resources with `---`.
+Verify you are connected:
 
-Example structure:
+```sh
+tailscale status
+```
+
+## Deploying a Workload
+
+Create a single YAML file named `<project>.yaml` containing your Kubernetes resources. Every resource must set `namespace: tinker` in its metadata. Separate multiple resources with `---`.
+
+Minimal example with a Deployment and Service:
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: myproject-config
-  namespace: tinker
-data:
-  SOME_VAR: "some-value"
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: myproject
+  name: myapp
   namespace: tinker
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: myproject
+      app: myapp
   template:
     metadata:
       labels:
-        app: myproject
+        app: myapp
     spec:
       containers:
-      - name: myproject
-        image: registry.example.com/myproject:latest
-        envFrom:
-        - configMapRef:
-            name: myproject-config
+      - name: myapp
+        image: registry.example.com/myapp:latest
+        ports:
+        - containerPort: 8080
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: myproject
+  name: myapp
   namespace: tinker
 spec:
   selector:
-    app: myproject
+    app: myapp
   ports:
   - port: 80
     targetPort: 8080
@@ -117,84 +118,225 @@ spec:
 Apply it:
 
 ```sh
-kubectl apply -f myproject.yaml
+kubectl apply -f myapp.yaml
 ```
 
 Check status:
 
 ```sh
-kubectl get pods -n tinker
-kubectl logs -n tinker deployment/myproject
+kubectl get pods -n tinker -l app=myapp
+kubectl logs -n tinker deployment/myapp
 ```
 
-To update, edit the file and re-run `kubectl apply -f myproject.yaml`.
+To update, edit the file and re-run `kubectl apply -f myapp.yaml`.
 
-To access a service locally, use port-forwarding:
+To access a service locally without exposing it, use port-forwarding:
 
 ```sh
-kubectl port-forward -n tinker svc/myproject 8080:80
+kubectl port-forward -n tinker svc/myapp 8080:80
 ```
 
-### Exposing an HTTP service to the tailnet
+## Exposing via the Tinker Gateway (Public Internet)
 
-Create a Tailscale Ingress to make an HTTP service reachable to anyone on the Tailscale network. The first entry in `tls.hosts` becomes the machine name on the tailnet. All ingress hostnames must be prefixed with `tinker-`.
+To give your Service a public URL via the Tinker Gateway, add the `tinker.bes.au/expose` annotation to the **Service** resource:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: tinker
+  annotations:
+    tinker.bes.au/expose: "true"
+spec:
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+    targetPort: 8080
+```
+
+Optionally set a custom subdomain name with `tinker.bes.au/name`. If omitted, the Service name is used:
+
+```yaml
+  annotations:
+    tinker.bes.au/expose: "true"
+    tinker.bes.au/name: "my-custom-name"
+```
+
+Apply the change:
+
+```sh
+kubectl apply -f myapp.yaml
+```
+
+The gateway controller watches for these annotations, registers the service, and writes back:
+- `tinker.bes.au/tinker-id` — the assigned Tinker ID (a UUID)
+- `tinker.bes.au/public-hostname` — the public URL (e.g. `myapp.tinker.bes.au`)
+
+If there is a name conflict, `tinker.bes.au/error: name-conflict` is set instead. Choose a different name and re-apply.
+
+## Retrieving the Public URL
+
+### Option 1: Read the annotation from the Service
+
+Wait a few seconds after applying, then:
+
+```sh
+kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/public-hostname}'
+```
+
+This returns something like `myapp.tinker.bes.au`. The full URL is `https://myapp.tinker.bes.au`.
+
+To also check for errors:
+
+```sh
+kubectl get svc myapp -n tinker -o jsonpath='{.metadata.annotations.tinker\.bes\.au/error}'
+```
+
+### Option 2: Use the Management API
+
+Look up the app by name (requires Tailscale authentication):
+
+```sh
+curl -s https://tinker.bes.au/api/manage/apps/myapp | jq .
+```
+
+Response:
+
+```json
+{
+  "tinker_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "tinker_name": "myapp",
+  "public_hostname": "myapp.tinker.bes.au",
+  "backend_address": "http://myapp.tinker.svc.cluster.local:80",
+  "public": true,
+  "request_count": 0,
+  "last_seen_at": null
+}
+```
+
+## Managing Apps via the Management API
+
+All management API endpoints require Tailscale authentication. The base URL is `https://tinker.bes.au`.
+
+### List all apps
+
+```sh
+curl -s https://tinker.bes.au/api/manage/apps | jq .
+```
+
+### Look up an app by name
+
+```sh
+curl -s https://tinker.bes.au/api/manage/apps/myapp | jq .
+```
+
+### Toggle public availability
+
+Toggle whether the app is publicly accessible (flips the `public` boolean). Uses the Tinker ID (UUID), not the name:
+
+```sh
+curl -s -X POST https://tinker.bes.au/api/manage/apps/<tinker_id>/public | jq .
+```
+
+Response:
+
+```json
+{
+  "tinker_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "public": false
+}
+```
+
+### Get stats
+
+```sh
+curl -s https://tinker.bes.au/api/manage/apps/<tinker_id>/stats | jq .
+```
+
+Response:
+
+```json
+{
+  "tinker_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "request_count": 42,
+  "last_seen_at": "2025-01-15T10:30:00Z"
+}
+```
+
+### Disconnect an app
+
+Remove the registration from the gateway entirely. Uses the Tinker ID:
+
+```sh
+curl -s -X DELETE https://tinker.bes.au/api/manage/apps/<tinker_id>
+```
+
+Returns 204 No Content on success, 404 if not found.
+
+Note: this only removes the gateway registration. The Service and its annotations still exist in Kubernetes. If the `tinker.bes.au/expose: "true"` annotation is still present, the controller will re-register the service on its next reconciliation loop (~5 minutes). To permanently disconnect, remove the expose annotation from the Service first.
+
+## Tailscale-Only Ingress (Not Public)
+
+If you want your service reachable only on the Tailscale network (not the public internet), use a Tailscale Ingress instead of the gateway annotations. All ingress hostnames must be prefixed with `tinker-`.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: myproject
+  name: myapp
   namespace: tinker
   annotations:
     tailscale.com/tags: "tag:k8s,tag:tinker"
 spec:
   ingressClassName: tailscale
   rules:
-  - host: tinker-myproject
+  - host: tinker-myapp
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: myproject
+            name: myapp
             port:
               number: 80
   tls:
   - hosts:
-    - tinker-myproject
+    - tinker-myapp
 ```
 
 Only `ingressClassName: tailscale` is allowed in this namespace; other ingress classes will be rejected.
 
-Once the Ingress is ready, look up its URL from the status:
+Once the Ingress is ready, look up its URL:
 
 ```sh
-kubectl get ingress myproject -n tinker -o jsonpath='https://{.status.loadBalancer.ingress[0].hostname}'
+kubectl get ingress myapp -n tinker -o jsonpath='https://{.status.loadBalancer.ingress[0].hostname}'
 ```
 
-### Exposing a non-HTTP service to the tailnet
-
-For non-HTTP services (e.g. a raw TCP port), you can expose a Service directly by adding annotations instead of using an Ingress. Tailscale automatically prepends the namespace name, so a Service called `myproject` in `tinker` will appear as `tinker-myproject` on the tailnet.
+For non-HTTP services (raw TCP), expose via Tailscale annotations on the Service instead:
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: myproject
+  name: myapp
   namespace: tinker
   annotations:
     tailscale.com/expose: "true"
     tailscale.com/tags: "tag:k8s,tag:tinker"
 spec:
   selector:
-    app: myproject
+    app: myapp
   ports:
   - port: 80
     targetPort: 8080
 ```
 
-### PostgreSQL
+The service appears as `tinker-myapp` on the tailnet.
+
+## PostgreSQL via CNPG
 
 CNPG (CloudNativePG) is available. You can create a Postgres cluster as part of your YAML:
 
@@ -202,7 +344,7 @@ CNPG (CloudNativePG) is available. You can create a Postgres cluster as part of 
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: myproject-db
+  name: myapp-db
   namespace: tinker
 spec:
   instances: 1
@@ -210,27 +352,46 @@ spec:
     size: 5Gi
 ```
 
-Note: there are no database backups in this namespace. There is no IRSA role configured for `tinker`, so CNPG's backup-to-S3 functionality will not work. Treat all data as ephemeral.
+There are no database backups in this namespace. There is no IRSA role configured for `tinker`, so CNPG's backup-to-S3 functionality will not work. Treat all data as ephemeral.
+
+To connect from your app, CNPG creates a secret named `<cluster>-app` with connection details:
+
+```yaml
+env:
+- name: DATABASE_URL
+  valueFrom:
+    secretKeyRef:
+      name: myapp-db-app
+      key: uri
+```
 
 ## Restrictions
 
-The `tinker` namespace has the following restrictions in place:
+The `tinker` namespace has the following restrictions:
 
 - **Tailscale ingresses only.** You can create Ingress resources, but only with `ingressClassName: tailscale`. Internet-facing ingress classes (e.g. `nginx`) are blocked. All ingress hostnames must start with `tinker-`.
 - **No LoadBalancer or NodePort Services.** Only ClusterIP Services are allowed.
 - **No TLS certificate issuance.** cert-manager is not available in this namespace.
 - **No sub-namespace creation.** HNC SubnamespaceAnchors are not permitted.
-- **No Tailscale resources.** You cannot create Tailscale CRs.
+- **No Tailscale resources.** You cannot create Tailscale CRs directly.
 - **Storage is capped at 100Gi total** across all PVCs.
 - **CNPG clusters are capped at 5.**
+- **Public exposure** is only available through the Tinker Gateway annotations (`tinker.bes.au/expose`), not through traditional ingress controllers.
 
-## Next steps
+## Teardown
 
-Once the experimental phase is finished:
-
-- **To productivise:** Work with Kamaka to move your workload into a dedicated namespace with appropriate permissions, ingress, DNS, TLS, and monitoring. Do not run production workloads in `tinker`.
-- **To tear down:** Delete your resources to free up storage and quota for other experiments:
+To remove your workload and free up resources:
 
 ```sh
-kubectl delete -f myproject.yaml
+kubectl delete -f myapp.yaml
 ```
+
+If the Service had `tinker.bes.au/expose: "true"`, deleting the Service triggers the controller to deregister it from the gateway automatically. No manual cleanup of the gateway registration is needed.
+
+To verify the gateway registration was removed:
+
+```sh
+curl -s https://tinker.bes.au/api/manage/apps/myapp
+```
+
+This should return 404.
