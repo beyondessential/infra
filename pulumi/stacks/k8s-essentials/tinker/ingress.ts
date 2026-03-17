@@ -2,8 +2,6 @@ import * as k8s from '@pulumi/kubernetes';
 import { publicService } from './services.ts';
 import { namespace } from './namespace.ts';
 
-// TODO?: can we direct the traffic directly to the gateway instead of going via nginx?
-
 // t[impl dns.wildcard]
 // t[impl tls.wildcard]
 new k8s.networking.v1.Ingress('tinker-gateway', {

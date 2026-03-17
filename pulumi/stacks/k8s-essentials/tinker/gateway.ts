@@ -1,7 +1,8 @@
 import * as k8s from '@pulumi/kubernetes';
 import { image, gatewayReplicas, gatewayTailscaleName } from './config.ts';
 import { gatewayLabels } from './labels.ts';
-import { dbCluster } from './database.ts';
+import { dbReady } from './database.ts';
+import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.ts';
 import { purposeAffinity } from '../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import { namespace } from './namespace.ts';
@@ -44,10 +45,10 @@ export const gateway = new k8s.apps.v1.Deployment('tinker-gateway', {
               {
                 name: 'DATABASE_URL',
                 valueFrom: {
-                  secretKeyRef: {
-                    name: dbCluster.metadata.apply((m) => `${m.name}-app`),
-                    key: 'uri',
-                  },
+                  secretKeyRef: dbReady.apply((secret) => ({
+                    name: secret.metadata.name,
+                    key: PostgresUrlSecretKey.AppDbUrl,
+                  })),
                 },
               },
               {
