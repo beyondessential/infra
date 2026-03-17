@@ -38,7 +38,7 @@ export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void>
       );
     }
 
-    console.debug('Using tailscale proxy', kubeServer);
+    //console.debug('Using tailscale proxy', kubeServer);
     return;
   }
 
