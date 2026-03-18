@@ -2,6 +2,7 @@ import * as k8s from '@pulumi/kubernetes';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT } from '../common/k8s/affinities.ts';
 import { clusterName } from '../common/k8s/coreRef.ts';
+import { NGINXINGRESS_VERSION } from './versions.ts';
 
 const ns = new k8s.core.v1.Namespace('ingress-system', {
   metadata: {
@@ -13,7 +14,7 @@ new k8s.helm.v3.Release(
   'nginx-ingress',
   {
     chart: 'ingress-nginx',
-    version: '4.12.1',
+    version: NGINXINGRESS_VERSION,
     repositoryOpts: {
       repo: 'https://kubernetes.github.io/ingress-nginx',
     },

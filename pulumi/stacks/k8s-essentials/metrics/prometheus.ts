@@ -1,12 +1,13 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
+import { PROMETHEUS_VERSION } from '../versions.ts';
 
 new k8s.helm.v3.Release(
   'prometheus',
   {
     name: 'prometheus',
     chart: 'prometheus',
-    version: '28.6.0',
+    version: PROMETHEUS_VERSION,
     repositoryOpts: {
       repo: 'https://prometheus-community.github.io/helm-charts',
     },

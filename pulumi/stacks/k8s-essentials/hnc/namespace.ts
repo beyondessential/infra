@@ -1,7 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
 
-export const HNC_VERSION = '1.1.0';
-
 export const controlPlaneLabels = {
   'control-plane': 'controller-manager',
 };

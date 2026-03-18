@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { CNPG_VERSION } from '../versions.ts';
 
 const namespace = new k8s.core.v1.Namespace('cnpg-system', {
   metadata: {
@@ -9,7 +10,7 @@ const namespace = new k8s.core.v1.Namespace('cnpg-system', {
 const cnpg = new k8s.helm.v3.Chart('cloudnative-pg', {
   repo: 'cnpg',
   chart: 'cloudnative-pg',
-  version: '0.27.0',
+  version: CNPG_VERSION,
   fetchOpts: {
     repo: 'https://cloudnative-pg.github.io/charts',
   },

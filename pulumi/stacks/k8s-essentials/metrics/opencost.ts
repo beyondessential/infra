@@ -3,6 +3,7 @@ import { namespace } from './namespace.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
 import { $core, region } from '../../common/k8s/coreRef.ts';
+import { OPENCOST_VERSION } from '../versions.ts';
 
 const opencostRoleArn = $core.opencostRoleArn;
 const spotBucket = $core.spotDataFeedBucketName;
@@ -12,7 +13,7 @@ new k8s.helm.v3.Release(
   {
     name: 'opencost',
     chart: 'opencost',
-    version: '2.5.3',
+    version: OPENCOST_VERSION,
     repositoryOpts: {
       repo: 'https://opencost.github.io/opencost-helm-chart',
     },
