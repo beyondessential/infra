@@ -8,9 +8,7 @@ export const HNC_VERSION = '1.1.0';
 
 // https://github.com/kubernetes-sigs/gateway-api
 // tag on the repo
-export const GATEWAYAPI_VERSION = '0.8.1';
-// folder at config/crd in the repo
-export const GATEWAYAPI_CHANNEL = 'experimental';
+export const GATEWAYAPI_VERSION = '1.5.1';
 
 // https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
 // helm chart version
@@ -18,14 +16,14 @@ export const NGINXINGRESS_VERSION = '4.15.0';
 
 // https://artifacthub.io/packages/helm/opencost/opencost
 // helm chart version
-export const OPENCOST_VERSION = '2.5.3';
+export const OPENCOST_VERSION = '2.5.11';
 
 // https://artifacthub.io/packages/helm/prometheus-community/prometheus
 // helm chart version
-export const PROMETHEUS_VERSION = '28.6.0';
+export const PROMETHEUS_VERSION = '28.13.0';
 
 // https://artifacthub.io/packages/helm/cloudnative-pg/cloudnative-pg
 // helm chart version
-export const CNPG_VERSION = '0.27.0';
+export const CNPG_VERSION = '0.27.1';
 
 // PGRO version is in the pulumi config
