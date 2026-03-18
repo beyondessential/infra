@@ -3,6 +3,7 @@ import * as k8s from '@pulumi/kubernetes';
 import { cfg, clusterFullName } from '../common/k8s/coreRef.ts';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT } from '../common/k8s/affinities.ts';
+import { TAILSCALE_VERSION } from './versions.ts';
 
 const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
@@ -24,7 +25,7 @@ if (tailscaleEnabled) {
 
   new k8s.helm.v3.Release('tailscale', {
     chart: 'tailscale-operator',
-    version: '1.92.5',
+    version: TAILSCALE_VERSION,
     repositoryOpts: {
       repo: 'https://pkgs.tailscale.com/helmcharts',
     },
