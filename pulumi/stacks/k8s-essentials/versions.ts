@@ -12,7 +12,7 @@ export const GATEWAYAPI_VERSION = '1.5.1';
 
 // https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
 // helm chart version
-export const NGINXINGRESS_VERSION = '4.15.0';
+export const NGINXINGRESS_VERSION = '4.12.1';
 
 // https://artifacthub.io/packages/helm/opencost/opencost
 // helm chart version
