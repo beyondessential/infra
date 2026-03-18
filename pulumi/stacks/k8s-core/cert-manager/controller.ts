@@ -4,6 +4,7 @@ import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
 import { namespace } from './namespace.ts';
 import { provider } from '../kubeconfig.ts';
+import { CERTMANAGER_VERSION } from '../versions.ts';
 
 const externalDns = cfg.getBoolean('enableExternalDns') ?? true;
 
@@ -11,7 +12,7 @@ export const certManager = new k8s.helm.v3.Release(
   'cert-manager',
   {
     chart: 'cert-manager',
-    version: '1.19.2',
+    version: CERTMANAGER_VERSION,
     repositoryOpts: {
       repo: 'https://charts.jetstack.io',
     },

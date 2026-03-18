@@ -7,6 +7,7 @@ import { provider } from './kubeconfig.ts';
 import { cfg } from '../common/coreRef.ts';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.ts';
+import { EXTDNS_VERSION } from './versions.ts';
 
 const externalDnsZones: { [domain: string]: string } = cfg.requireObject('externalDnsZones');
 export const externalDnsZoneDomains = Object.keys(externalDnsZones);
@@ -137,7 +138,7 @@ new k8s.apps.v1.Deployment(
           containers: [
             {
               name: 'external-dns',
-              image: 'registry.k8s.io/external-dns/external-dns:v0.20.0',
+              image: `registry.k8s.io/external-dns/external-dns:v${EXTDNS_VERSION}`,
               args: [
                 '--source=service',
                 '--source=ingress',
