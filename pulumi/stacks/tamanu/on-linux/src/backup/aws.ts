@@ -40,7 +40,7 @@ export function applyBackup(resources: Input<string>[]) {
         ManagedBy: 'pulumi',
         Name: getStack(),
       },
-    });
+    }, { ignoreChanges: ['backupVaultName'] });
 
     const backup = new awsNative.backup.BackupPlan('backup-180days', {
       backupPlan: {
