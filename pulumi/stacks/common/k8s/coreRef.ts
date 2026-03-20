@@ -21,8 +21,15 @@ const upperCore = $core.coreStack.apply((name) => new CrossStack(`bes/core/${nam
 export const $network = upperCore.apply((core) => core.network());
 
 export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void> {
-  const kc = k8sConfig(kubeconfig);
-  const kubeServer = kc.getCurrentCluster()?.server;
+  const kubeServer = (() => {
+    try {
+      const kc = k8sConfig(kubeconfig);
+      return kc.getCurrentCluster()?.server;
+    } catch (err) {
+      console.error('This usually means your kubeconfig is broken');
+      throw err;
+    }
+  })();
 
   if (!kubeServer) {
     throw new Error('No current cluster');
