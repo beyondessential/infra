@@ -21,6 +21,7 @@ import {
   timezone,
 } from '../config.ts';
 import { runTasks } from './tasks.ts';
+import { runFhirWorker } from './fhir.ts';
 import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
@@ -110,6 +111,28 @@ export class FacilityServer extends ComponentResource {
         deviceId,
         podSpec,
         migratorJob,
+      });
+
+      runFhirWorker({
+        parent: this,
+        name: 'refresh',
+        deviceId,
+        podSpec,
+        migratorJob,
+        topics: [
+          'fhir.refresh.allFromUpstream',
+          'fhir.refresh.entireResource',
+          'fhir.refresh.fromUpstream',
+        ],
+      });
+
+      runFhirWorker({
+        parent: this,
+        name: 'resolver',
+        deviceId,
+        podSpec,
+        migratorJob,
+        topics: ['fhir.resolver'],
       });
     }
 
