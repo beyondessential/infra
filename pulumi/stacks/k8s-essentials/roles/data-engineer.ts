@@ -13,7 +13,7 @@ const role = new k8s.rbac.v1.ClusterRole('data-engineer', {
     {
       apiGroups: [''],
       resources: ['pods/portforward'],
-      verbs: ['create'],
+      verbs: ['get', 'create'],
     },
     {
       apiGroups: [''],
