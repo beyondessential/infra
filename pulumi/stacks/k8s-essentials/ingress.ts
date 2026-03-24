@@ -68,6 +68,11 @@ new k8s.helm.v3.Release(
           'use-proxy-protocol': 'true',
         },
         publishService: { enabled: true },
+        admissionWebhooks: {
+          certManager: {
+            enabled: true,
+          },
+        },
         service: {
           annotations: {
             'service.beta.kubernetes.io/aws-load-balancer-type': 'external',
