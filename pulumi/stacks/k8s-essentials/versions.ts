@@ -11,10 +11,6 @@ export const ENVOY_GATEWAY_VERSION = 'v1.4.1';
 // tag on the repo
 export const HNC_VERSION = '1.1.0';
 
-// https://github.com/kubernetes-sigs/gateway-api
-// tag on the repo
-export const GATEWAYAPI_VERSION = '1.5.1';
-
 // https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
 // helm chart version
 export const NGINXINGRESS_VERSION = '4.12.1';
