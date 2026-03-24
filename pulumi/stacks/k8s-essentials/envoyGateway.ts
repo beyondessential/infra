@@ -120,7 +120,6 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
     apiVersion: 'gateway.envoyproxy.io/v1alpha1',
     kind: 'EnvoyProxy',
     metadata: {
-      name: 'envoy-proxy',
       namespace: ns.metadata.name,
     },
     spec: {
@@ -250,21 +249,17 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
 // class, and points to the EnvoyProxy resource that sets the proxy fleet config
 // (NLB, scheduling, resources).  This is cluster-scoped.
 
-export const gatewayClass = new k8s.apiextensions.CustomResource(
-  'envoy-gateway-class',
-  {
-    apiVersion: 'gateway.networking.k8s.io/v1',
-    kind: 'GatewayClass',
-    metadata: { name: 'envoy-gateway' },
-    spec: {
-      controllerName: 'gateway.envoyproxy.io/gatewayclass-controller',
-      parametersRef: {
-        group: 'gateway.envoyproxy.io',
-        kind: 'EnvoyProxy',
-        name: 'envoy-proxy',
-        namespace: ns.metadata.name,
-      },
+export const gatewayClass = new k8s.apiextensions.CustomResource('envoy-gateway-class', {
+  apiVersion: 'gateway.networking.k8s.io/v1',
+  kind: 'GatewayClass',
+  metadata: { name: 'envoy-gateway' },
+  spec: {
+    controllerName: 'gateway.envoyproxy.io/gatewayclass-controller',
+    parametersRef: {
+      group: 'gateway.envoyproxy.io',
+      kind: 'EnvoyProxy',
+      name: envoyProxy.metadata.name,
+      namespace: ns.metadata.name,
     },
   },
-  { dependsOn: [envoyProxy] },
-);
+});
