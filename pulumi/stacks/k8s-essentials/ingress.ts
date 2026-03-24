@@ -13,6 +13,7 @@ const ns = new k8s.core.v1.Namespace('ingress-system', {
 new k8s.helm.v3.Release(
   'nginx-ingress',
   {
+    timeout: 900,
     chart: 'ingress-nginx',
     version: NGINXINGRESS_VERSION,
     repositoryOpts: {
