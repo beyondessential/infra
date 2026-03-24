@@ -19,15 +19,22 @@ export const certManager = new k8s.helm.v3.Release(
     namespace,
     values: {
       installCRDs: true,
+      // Enable Gateway API integration so cert-manager watches Gateway resources
+      // and auto-issues certificates for TLS listeners annotated with
+      // cert-manager.io/cluster-issuer.  Required for the Envoy Gateway migration.
+      // See: https://cert-manager.io/docs/usage/gateway/
+      featureGates: 'ExperimentalGatewayAPISupport=true',
       replicaCount: 2,
       podDisruptionBudget: {
         enabled: true,
         minAvailable: 1,
       },
-      serviceAccount: externalDns ? {
-        create: false,
-        name: (await import('./policy.ts')).sa.metadata.name,
-      } : { create: false },
+      serviceAccount: externalDns
+        ? {
+            create: false,
+            name: (await import('./policy.ts')).sa.metadata.name,
+          }
+        : { create: false },
       tolerations: [CAN_RUN_ON_SPOT],
       affinity: {
         nodeAffinity: {

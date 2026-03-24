@@ -1,3 +1,8 @@
+// https://gateway.envoyproxy.io/docs/install/install-helm/
+// helm chart version (OCI: oci://docker.io/envoyproxy/gateway-helm)
+// NOTE: for OCI charts the version tag includes the 'v' prefix
+export const ENVOY_GATEWAY_VERSION = 'v1.4.1';
+
 // The HNC project is essentially dead and this is the last version
 // We do depend on it for operational security, but eventually should probably migrate
 // away by physically separating the Kubernetes clusters, ie have one cluster entirely
@@ -31,4 +36,3 @@ export const CNPG_VERSION = '0.27.1';
 // https://tailscale.com/docs/features/kubernetes-operator
 // tailscale version
 export const TAILSCALE_VERSION = '1.94.2';
-

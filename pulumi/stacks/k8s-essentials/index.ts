@@ -24,7 +24,9 @@ await failIfIncorrectCluster();
 // During bootstrap, you'll also want to go to postgres/cnpg.ts and comment out the catalogs,
 // until the CNPG resource definitions are installed.
 
-import './gatewayApi.ts';
+if (cfg.getBoolean('envoyGatewayEnabled') ?? false) {
+  await import('./envoyGateway.ts');
+}
 
 import './metrics/prometheus.ts';
 import './metrics/opencost.ts';
