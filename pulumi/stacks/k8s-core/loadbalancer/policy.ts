@@ -1,4 +1,4 @@
-// From https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.7/docs/install/iam_policy.json
+// From https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.1.0/docs/install/iam_policy.json
 // With parametrisation recommended by https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/deploy/installation/
 
 import { all, type Input, type Output } from '@pulumi/pulumi';
@@ -58,6 +58,9 @@ const AWS_LB_POLICY: aws.iam.PolicyDocument = {
         'ec2:DescribeTags',
         'ec2:GetCoipPoolUsage',
         'ec2:DescribeCoipPools',
+        'ec2:GetSecurityGroupsForVpc',
+        'ec2:DescribeIpamPools',
+        'ec2:DescribeRouteTables',
         'elasticloadbalancing:DescribeLoadBalancers',
         'elasticloadbalancing:DescribeLoadBalancerAttributes',
         'elasticloadbalancing:DescribeListeners',
@@ -68,6 +71,9 @@ const AWS_LB_POLICY: aws.iam.PolicyDocument = {
         'elasticloadbalancing:DescribeTargetGroupAttributes',
         'elasticloadbalancing:DescribeTargetHealth',
         'elasticloadbalancing:DescribeTags',
+        'elasticloadbalancing:DescribeTrustStores',
+        'elasticloadbalancing:DescribeListenerAttributes',
+        'elasticloadbalancing:DescribeCapacityReservation',
       ],
       Resource: '*',
     },
@@ -215,6 +221,9 @@ const AWS_LB_POLICY: aws.iam.PolicyDocument = {
         'elasticloadbalancing:ModifyTargetGroup',
         'elasticloadbalancing:ModifyTargetGroupAttributes',
         'elasticloadbalancing:DeleteTargetGroup',
+        'elasticloadbalancing:ModifyListenerAttributes',
+        'elasticloadbalancing:ModifyCapacityReservation',
+        'elasticloadbalancing:ModifyIpPools',
       ],
       Resource: '*',
       Condition: {
@@ -236,6 +245,7 @@ const AWS_LB_POLICY: aws.iam.PolicyDocument = {
         'elasticloadbalancing:AddListenerCertificates',
         'elasticloadbalancing:RemoveListenerCertificates',
         'elasticloadbalancing:ModifyRule',
+        'elasticloadbalancing:SetRulePriorities',
       ],
       Resource: '*',
     },

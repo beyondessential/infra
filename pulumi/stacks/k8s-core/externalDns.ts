@@ -68,17 +68,17 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
     rules: [
       {
         apiGroups: [''],
-        resources: ['services', 'endpoints', 'pods'],
+        resources: ['services', 'pods'],
+        verbs: ['get', 'watch', 'list'],
+      },
+      {
+        apiGroups: ['discovery.k8s.io'],
+        resources: ['endpointslices'],
         verbs: ['get', 'watch', 'list'],
       },
       {
         apiGroups: ['extensions', 'networking.k8s.io'],
         resources: ['ingresses'],
-        verbs: ['get', 'watch', 'list'],
-      },
-      {
-        apiGroups: ['gateway.networking.k8s.io'],
-        resources: ['gateways', 'httproutes', 'grpcroutes', 'tlsroutes', 'tcproutes', 'udproutes'],
         verbs: ['get', 'watch', 'list'],
       },
       {
