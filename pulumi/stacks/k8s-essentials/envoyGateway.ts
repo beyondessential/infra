@@ -51,20 +51,22 @@ export const release = new k8s.helm.v3.Release(
                 nodeSelectorTerms: [{ matchExpressions: [purposeAffinity('ingress')] }],
               },
             },
-            // Spread controller replicas across AZs.
-            podAntiAffinity: {
-              requiredDuringSchedulingIgnoredDuringExecution: [
-                {
-                  labelSelector: {
-                    matchExpressions: [
-                      { key: 'app.kubernetes.io/name', operator: 'In', values: ['envoy-gateway'] },
-                    ],
-                  },
-                  topologyKey: 'topology.kubernetes.io/zone',
-                },
-              ],
-            },
           },
+          // Allow rolling updates to land on existing AZ nodes ([2,2] is fine),
+          // while still guaranteeing spread across at least 2 AZs at steady state.
+          topologySpreadConstraints: [
+            {
+              maxSkew: 1,
+              minDomains: 2,
+              topologyKey: 'topology.kubernetes.io/zone',
+              whenUnsatisfiable: 'DoNotSchedule',
+              labelSelector: {
+                matchExpressions: [
+                  { key: 'app.kubernetes.io/name', operator: 'In', values: ['envoy-gateway'] },
+                ],
+              },
+            },
+          ],
         },
         envoyGateway: {
           resources: {
@@ -122,7 +124,6 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
               rollingUpdate: { maxUnavailable: 1, maxSurge: 1 },
             },
             pod: {
-              // Custom label for the zone anti-affinity rule below.
               labels: { 'bes.gateway.role': 'proxy' },
               tolerations: [CAN_RUN_ON_SPOT],
               affinity: {
@@ -134,20 +135,22 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
                     nodeSelectorTerms: [{ matchExpressions: [purposeAffinity('ingress')] }],
                   },
                 },
-                // Hard requirement: one proxy pod per AZ.
-                podAntiAffinity: {
-                  requiredDuringSchedulingIgnoredDuringExecution: [
-                    {
-                      labelSelector: {
-                        matchExpressions: [
-                          { key: 'bes.gateway.role', operator: 'In', values: ['proxy'] },
-                        ],
-                      },
-                      topologyKey: 'topology.kubernetes.io/zone',
-                    },
-                  ],
-                },
               },
+              // Allow rolling updates to land on existing AZ nodes ([2,2] is fine),
+              // while still guaranteeing spread across at least 2 AZs at steady state.
+              topologySpreadConstraints: [
+                {
+                  maxSkew: 1,
+                  minDomains: 2,
+                  topologyKey: 'topology.kubernetes.io/zone',
+                  whenUnsatisfiable: 'DoNotSchedule',
+                  labelSelector: {
+                    matchExpressions: [
+                      { key: 'bes.gateway.role', operator: 'In', values: ['proxy'] },
+                    ],
+                  },
+                },
+              ],
             },
             container: {
               resources: {

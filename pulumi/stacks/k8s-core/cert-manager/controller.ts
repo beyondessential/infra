@@ -52,23 +52,20 @@ export const certManager = new k8s.helm.v3.Release(
             ],
           },
         },
-        podAntiAffinity: {
-          requiredDuringSchedulingIgnoredDuringExecution: [
-            {
-              labelSelector: {
-                matchExpressions: [
-                  {
-                    key: 'app.kubernetes.io/name',
-                    operator: 'In',
-                    values: ['cert-manager'],
-                  },
-                ],
-              },
-              topologyKey: 'topology.kubernetes.io/zone',
-            },
-          ],
-        },
       },
+      topologySpreadConstraints: [
+        {
+          maxSkew: 1,
+          minDomains: 2,
+          topologyKey: 'topology.kubernetes.io/zone',
+          whenUnsatisfiable: 'DoNotSchedule',
+          labelSelector: {
+            matchExpressions: [
+              { key: 'app.kubernetes.io/name', operator: 'In', values: ['cert-manager'] },
+            ],
+          },
+        },
+      ],
       strategy: {
         type: 'RollingUpdate',
         rollingUpdate: {
