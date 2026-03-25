@@ -1,5 +1,7 @@
 import type { Input } from '@pulumi/pulumi';
 import type { HTTPMethod } from '../consts/HTTPMethod.ts';
+import type { HTTPQueryParamMatch } from './HTTPQueryParamMatch.ts';
+import type { HTTPHeaderMatch } from './HTTPHeaderMatch.ts';
 
 /**
  * Defines the predicate used to match requests to a given action.
