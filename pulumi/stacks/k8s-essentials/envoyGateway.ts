@@ -114,6 +114,7 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
     },
     spec: {
       mergeGateways: true,
+      ipFamily: 'IPv6',
       provider: {
         type: 'Kubernetes',
         kubernetes: {
