@@ -269,10 +269,11 @@ export function Gateway(
   args: GatewayArgs,
   opts?: CustomResourceOptions,
 ): k8s.apiextensions.CustomResource {
+  const { clientTrafficPolicyExtraSpec, ...gatewayArgs } = args;
   const gateway = new k8s.apiextensions.CustomResource(
     name,
     {
-      ...args,
+      ...gatewayArgs,
       apiVersion: API_VERSION,
       kind: 'Gateway',
     },
@@ -298,7 +299,7 @@ export function Gateway(
       // Without this, envoy never reaches the TLS handshake and logs
       // filter_chain_not_found.
       enableProxyProtocol: true,
-      ...args.clientTrafficPolicyExtraSpec,
+      ...clientTrafficPolicyExtraSpec,
     },
   });
 
