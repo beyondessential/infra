@@ -8,7 +8,7 @@ import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN } from '../../../constants/internal.ts';
-import { Gateway } from '../../../common/k8s/gateway.ts';
+import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
