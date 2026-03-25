@@ -1,4 +1,4 @@
-import type { CustomResourceOptions, Input } from '@pulumi/pulumi';
+import { output, type CustomResourceOptions, type Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import type { Listener } from './interfaces/Listener.ts';
 import type { GatewaySpecAddress } from './interfaces/GatewaySpecAddress.ts';
@@ -6,7 +6,7 @@ import type { GatewayInfrastructure } from './interfaces/GatewayInfrastructure.t
 import type { AllowedListeners } from './interfaces/AllowedListeners.ts';
 import type { GatewayTLSConfig } from './interfaces/GatewayTLSConfig.ts';
 import type { GatewayDefaultScope } from './consts/GatewayDefaultScope.ts';
-import { API_VERSION } from './consts/API.ts';
+import { API_GROUP, API_VERSION } from './consts/API.ts';
 
 export interface GatewayArgs {
   metadata: Input<k8s.types.input.meta.v1.ObjectMeta>;
@@ -262,7 +262,7 @@ export function Gateway(
   args: GatewayArgs,
   opts?: CustomResourceOptions,
 ): k8s.apiextensions.CustomResource {
-  return new k8s.apiextensions.CustomResource(
+  const gateway = new k8s.apiextensions.CustomResource(
     name,
     {
       ...args,
@@ -271,4 +271,28 @@ export function Gateway(
     },
     opts,
   );
+
+  new k8s.apiextensions.CustomResource(`${name}-traffic-policy`, {
+    apiVersion: API_VERSION,
+    kind: 'ClientTrafficPolicy',
+    metadata: {
+      namespace: gateway.metadata.name,
+    },
+    spec: {
+      targetRefs: [
+        {
+          group: API_GROUP,
+          kind: gateway.kind,
+          name: gateway.metadata.name,
+        },
+      ],
+      // The AWS NLB is configured with proxy-protocol: '*', so every connection
+      // arriving at the envoy pod is prefixed with a PROXY protocol header.
+      // Without this, envoy never reaches the TLS handshake and logs
+      // filter_chain_not_found.
+      proxyProtocol: {},
+    },
+  });
+
+  return gateway;
 }
