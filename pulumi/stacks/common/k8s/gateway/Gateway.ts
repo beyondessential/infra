@@ -276,7 +276,7 @@ export function Gateway(
     apiVersion: EG_API_VERSION,
     kind: 'ClientTrafficPolicy',
     metadata: {
-      namespace: gateway.metadata.name,
+      namespace: gateway.metadata.namespace,
     },
     spec: {
       targetRefs: [
@@ -290,7 +290,7 @@ export function Gateway(
       // arriving at the envoy pod is prefixed with a PROXY protocol header.
       // Without this, envoy never reaches the TLS handshake and logs
       // filter_chain_not_found.
-      proxyProtocol: {},
+      enableProxyProtocol: true,
     },
   });
 
