@@ -287,6 +287,17 @@ export function Gateway(
       namespace: gateway.metadata.namespace,
     },
     spec: {
+      ...clientTrafficPolicyExtraSpec,
+
+      // Enable HTTP/3
+      http3: {},
+
+      // The AWS NLB is configured with proxy-protocol: '*', so every connection
+      // arriving at the envoy pod is prefixed with a PROXY protocol header.
+      // Without this, envoy never reaches the TLS handshake and logs
+      // filter_chain_not_found.
+      enableProxyProtocol: true,
+
       targetRefs: [
         {
           group: API_GROUP,
@@ -294,12 +305,6 @@ export function Gateway(
           name: gateway.metadata.name,
         },
       ],
-      // The AWS NLB is configured with proxy-protocol: '*', so every connection
-      // arriving at the envoy pod is prefixed with a PROXY protocol header.
-      // Without this, envoy never reaches the TLS handshake and logs
-      // filter_chain_not_found.
-      enableProxyProtocol: true,
-      ...clientTrafficPolicyExtraSpec,
     },
   });
 
