@@ -2,7 +2,7 @@ import type { CustomResourceOptions, Input } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import type { GatewayDefaultScope } from './consts/GatewayDefaultScope.ts';
 import type { ParentReference } from './interfaces/ParentReference.ts';
-import { HTTPRouteRule } from './interfaces/HTTPRouteRule.ts';
+import type { HTTPRouteRule } from './interfaces/HTTPRouteRule.ts';
 
 export interface HTTPRouteArgs {
   metadata: Input<k8s.types.input.meta.v1.ObjectMeta>;
@@ -148,7 +148,7 @@ export interface HTTPRouteSpec {
    *
    * _Support: Core_
    */
-  hostnames: Input<Array<Input<string>>>;
+  hostnames?: Input<Array<Input<string>>>;
 
   /**
    * Rules are a list of HTTP matchers, filters and actions.

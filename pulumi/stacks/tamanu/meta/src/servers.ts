@@ -9,6 +9,7 @@ import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN } from '../../../constants/internal.ts';
 import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
+import { HTTPRoute } from '../../../common/k8s/gateway/HTTPRoute.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -31,7 +32,7 @@ const publicSvc = new k8s.core.v1.Service(
   { replaceOnChanges: ['clusterIP'] },
 );
 
-Gateway('http', {
+const gateway = Gateway('http', {
   metadata: {
     namespace,
     annotations: {
@@ -47,6 +48,33 @@ Gateway('http', {
       port: 443,
       protocol: 'HTTPS',
     })),
+  },
+});
+
+HTTPRoute('http', {
+  metadata: {
+    namespace,
+  },
+  spec: {
+    parentRefs: [
+      {
+        group: gateway.apiVersion,
+        kind: gateway.kind,
+        namespace,
+        name: gateway.metadata.name,
+      },
+    ],
+    rules: [
+      {
+        backendRefs: [
+          {
+            namespace,
+            name: publicSvc.metadata.name,
+            port: 80,
+          },
+        ],
+      },
+    ],
   },
 });
 
