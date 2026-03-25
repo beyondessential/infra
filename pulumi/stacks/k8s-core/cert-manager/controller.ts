@@ -23,7 +23,7 @@ export const certManager = new k8s.helm.v3.Release(
       // and auto-issues certificates for TLS listeners annotated with
       // cert-manager.io/cluster-issuer.  Required for the Envoy Gateway migration.
       // See: https://cert-manager.io/docs/usage/gateway/
-      featureGates: 'ExperimentalGatewayAPISupport=true',
+      config: { enableGatewayAPI: true },
       replicaCount: 2,
       podDisruptionBudget: {
         enabled: true,
