@@ -40,6 +40,7 @@ const gateway = Gateway('http', {
     annotations: {
       'cert-manager.io/cluster-issuer': 'letsencrypt',
       'cert-manager.io/private-key-algorithm': 'ECDSA',
+      'pulumi.com/patchForce': 'true',
     },
   },
   spec: {
@@ -49,6 +50,10 @@ const gateway = Gateway('http', {
       hostname,
       port: 443,
       protocol: 'HTTPS',
+      tls: {
+        mode: 'Terminate',
+        certificateRefs: [{ kind: 'Secret', name: 'gateway-tls' }],
+      },
     })),
   },
 });
@@ -56,6 +61,9 @@ const gateway = Gateway('http', {
 HTTPRoute('http', {
   metadata: {
     namespace,
+    annotations: {
+      'pulumi.com/patchForce': 'true',
+    },
   },
   spec: {
     parentRefs: [
