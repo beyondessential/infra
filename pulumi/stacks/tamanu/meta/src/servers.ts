@@ -1,15 +1,17 @@
+import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { domains, normalizedStack, publicServerVersionsSecret, replicas } from './config.ts';
 
-import { namespace } from './namespace.ts';
-import { caRootCert } from './ca.ts';
-import { interpolate } from '@pulumi/pulumi';
-import { labels } from './labels.ts';
-import { migrator } from './jobs.ts';
-import { spec } from './spec.ts';
 import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN } from '../../../constants/internal.ts';
 import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
 import { HTTPRoute } from '../../../common/k8s/gateway/HTTPRoute.ts';
+import { API_GROUP as GATEWAY_API_GROUP } from '../../../common/k8s/gateway/consts/API.ts';
+
+import { namespace } from './namespace.ts';
+import { caRootCert } from './ca.ts';
+import { labels } from './labels.ts';
+import { migrator } from './jobs.ts';
+import { spec } from './spec.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -58,7 +60,7 @@ HTTPRoute('http', {
   spec: {
     parentRefs: [
       {
-        group: gateway.apiVersion,
+        group: GATEWAY_API_GROUP,
         kind: gateway.kind,
         namespace,
         name: gateway.metadata.name,

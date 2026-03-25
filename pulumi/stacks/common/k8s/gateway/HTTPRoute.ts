@@ -3,6 +3,7 @@ import * as k8s from '@pulumi/kubernetes';
 import type { GatewayDefaultScope } from './consts/GatewayDefaultScope.ts';
 import type { ParentReference } from './interfaces/ParentReference.ts';
 import type { HTTPRouteRule } from './interfaces/HTTPRouteRule.ts';
+import { API_VERSION } from './consts/API.ts';
 
 export interface HTTPRouteArgs {
   metadata: Input<k8s.types.input.meta.v1.ObjectMeta>;
@@ -177,7 +178,7 @@ export function HTTPRoute(
     name,
     {
       ...args,
-      apiVersion: 'gateway.networking.k8s.io/v1',
+      apiVersion: API_VERSION,
       kind: 'HTTPRoute',
     },
     opts,

@@ -6,6 +6,7 @@ import type { GatewayInfrastructure } from './interfaces/GatewayInfrastructure.t
 import type { AllowedListeners } from './interfaces/AllowedListeners.ts';
 import type { GatewayTLSConfig } from './interfaces/GatewayTLSConfig.ts';
 import type { GatewayDefaultScope } from './consts/GatewayDefaultScope.ts';
+import { API_VERSION } from './consts/API.ts';
 
 export interface GatewayArgs {
   metadata: Input<k8s.types.input.meta.v1.ObjectMeta>;
@@ -265,7 +266,7 @@ export function Gateway(
     name,
     {
       ...args,
-      apiVersion: 'gateway.networking.k8s.io/v1',
+      apiVersion: API_VERSION,
       kind: 'Gateway',
     },
     opts,
