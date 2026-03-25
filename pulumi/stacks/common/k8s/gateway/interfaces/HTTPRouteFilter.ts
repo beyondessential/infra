@@ -4,6 +4,9 @@ import type { HTTPExternalAuthFilter } from './HTTPExternalAuthFilter.ts';
 import type { HTTPCORSFilter } from './HTTPCORSFilter.ts';
 import type { HTTPURLRewriteFilter } from './HTTPURLRewriteFilter.ts';
 import type { HTTPRequestRedirectFilter } from './HTTPRequestRedirectFilter.ts';
+import type { HTTPRequestMirrorFilter } from './HTTPRequestMirrorFilter.ts';
+import type { HTTPHeaderFilter } from './HTTPHeaderFilter.ts';
+import type { HTTPRouteFilterType } from '../consts/HTTPRouteFilterType.ts';
 
 /**
  * Defines processing steps that must be completed during the request
