@@ -6,6 +6,7 @@ import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN } from '../../../constants/internal
 import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
 import { HTTPRoute } from '../../../common/k8s/gateway/HTTPRoute.ts';
 import { API_GROUP as GATEWAY_API_GROUP } from '../../../common/k8s/gateway/consts/API.ts';
+import { FrontendValidationModeType } from '../../../common/k8s/gateway/consts/FrontendValidationModeType.ts';
 
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
@@ -55,6 +56,32 @@ const gateway = Gateway('http', {
         certificateRefs: [{ kind: 'Secret', name: 'gateway-tls' }],
       },
     })),
+    tls: {
+      frontend: {
+        default: {
+          validation: {
+            // Issue a TLS CertificateRequest so clients can offer a cert,
+            // but accept connections regardless of whether the cert is absent
+            // or fails CA validation — equivalent to nginx's optional_no_ca.
+            caCertificateRefs: [
+              { group: '', kind: 'Secret', name: caRootCert.metadata.name, namespace },
+            ],
+            mode: FrontendValidationModeType.AllowInsecureFallback,
+          },
+        },
+      },
+    },
+  },
+  clientTrafficPolicyExtraSpec: {
+    headers: {
+      // Rewrite the x-forwarded-client-cert (XFCC) header with the client
+      // certificate presented during the TLS handshake (if any).
+      // The Cert field carries the full URL-encoded PEM certificate.
+      xForwardedClientCert: {
+        mode: 'SanitizeSet',
+        certDetailsToAdd: ['Cert'],
+      },
+    },
   },
 });
 

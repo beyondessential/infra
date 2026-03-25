@@ -11,6 +11,13 @@ import { API_GROUP, API_VERSION, EG_API_VERSION } from './consts/API.ts';
 export interface GatewayArgs {
   metadata: Input<k8s.types.input.meta.v1.ObjectMeta>;
   spec: Input<GatewaySpec>;
+  /**
+   * Extra fields to merge into the ClientTrafficPolicy spec that is
+   * automatically created alongside this Gateway. Use this to add
+   * settings (e.g. TLS clientValidation, headers.xForwardedClientCert)
+   * that are not part of the standard Gateway spec.
+   */
+  clientTrafficPolicyExtraSpec?: Record<string, unknown>;
 }
 
 export interface GatewaySpec {
@@ -291,6 +298,7 @@ export function Gateway(
       // Without this, envoy never reaches the TLS handshake and logs
       // filter_chain_not_found.
       enableProxyProtocol: true,
+      ...args.clientTrafficPolicyExtraSpec,
     },
   });
 
