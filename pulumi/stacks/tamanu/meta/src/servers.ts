@@ -7,7 +7,8 @@ import { interpolate } from '@pulumi/pulumi';
 import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
-import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
+import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN } from '../../../constants/internal.ts';
+import { Gateway } from '../../../common/k8s/gateway.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -29,6 +30,25 @@ const publicSvc = new k8s.core.v1.Service(
   },
   { replaceOnChanges: ['clusterIP'] },
 );
+
+Gateway('http', {
+  metadata: {
+    namespace,
+    annotations: {
+      'cert-manager.io/cluster-issuer': 'letsencrypt',
+      'cert-manager.io/private-key-algorithm': 'ECDSA',
+    },
+  },
+  spec: {
+    gatewayClassName: GATEWAY_CLASS_ENVOY,
+    listeners: domains.map((hostname) => ({
+      name: `${hostname}-public`,
+      hostname,
+      port: 443,
+      protocol: 'HTTPS',
+    })),
+  },
+});
 
 new k8s.networking.v1.Ingress('http', {
   metadata: {

@@ -3,6 +3,7 @@ import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.ts';
 import { clusterName } from '../common/k8s/coreRef.ts';
 import { ENVOY_GATEWAY_VERSION } from './versions.ts';
+import { GATEWAY_CLASS_ENVOY } from '../constants/internal.ts';
 
 // ── Namespace ─────────────────────────────────────────────────────────────────
 
@@ -159,8 +160,9 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
           envoyPDB: { minAvailable: 1 },
 
           envoyService: {
+            type: 'LoadBalancer',
+            loadBalancerClass: 'service.k8s.aws/nlb',
             annotations: {
-              'service.beta.kubernetes.io/aws-load-balancer-type': 'external',
               'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
               'service.beta.kubernetes.io/aws-load-balancer-ip-address-type': 'dualstack',
               'service.beta.kubernetes.io/aws-load-balancer-scheme': 'internet-facing',
@@ -179,7 +181,7 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
                   ].join(','),
                 ),
             },
-            externalTrafficPolicy: 'Local',
+            externalTrafficPolicy: 'Cluster',
             patch: {
               type: 'StrategicMerge',
               value: {
@@ -200,7 +202,7 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
 export const gatewayClass = new k8s.apiextensions.CustomResource('envoy-gateway-class', {
   apiVersion: 'gateway.networking.k8s.io/v1',
   kind: 'GatewayClass',
-  metadata: { name: 'envoy-gateway' },
+  metadata: { name: GATEWAY_CLASS_ENVOY },
   spec: {
     controllerName: 'gateway.envoyproxy.io/gatewayclass-controller',
     parametersRef: {
