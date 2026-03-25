@@ -1,7 +1,7 @@
 /**
- * Either one HTTP Method, or all of them.
+ * Any one HTTP Method.
  */
-export const HTTPMethodWithWildcard = {
+export const HTTPMethod = {
   GET: 'GET',
   POST: 'POST',
   PUT: 'PUT',
@@ -9,6 +9,14 @@ export const HTTPMethodWithWildcard = {
   PATCH: 'PATCH',
   OPTIONS: 'OPTIONS',
   HEAD: 'HEAD',
+} as const;
+export type HTTPMethod = (typeof HTTPMethod)[keyof typeof HTTPMethod];
+
+/**
+ * Either one HTTP Method, or all of them.
+ */
+export const HTTPMethodWithWildcard = {
+  ...HTTPMethod,
   ALL: '*',
 } as const;
 export type HTTPMethodWithWildcard =

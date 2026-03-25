@@ -2,6 +2,9 @@ import type { Input } from '@pulumi/pulumi';
 import type { SessionPersistence } from './SessionPersistence.ts';
 import type { HTTPRouteRetry } from './HTTPRouteRetry.ts';
 import type { HTTPRouteTimeouts } from './HTTPRouteTimeouts.ts';
+import type { HTTPBackendRef } from './HTTPBackendRef.ts';
+import type { HTTPRouteFilter } from './HTTPRouteFilter.ts';
+import type { HTTPRouteMatch } from './HTTPRouteMatch.ts';
 
 /**
  * HTTPRouteRule defines semantics for matching an HTTP request
@@ -16,7 +19,7 @@ export interface HTTPRouteRule {
    *
    * _Support: Extended_
    */
-  name?: Input<String>;
+  name?: Input<string>;
 
   /**
    * Matches define conditions used for matching the rule against incoming

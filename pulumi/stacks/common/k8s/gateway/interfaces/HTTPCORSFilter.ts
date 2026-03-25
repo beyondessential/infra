@@ -1,5 +1,5 @@
 import type { Input } from '@pulumi/pulumi';
-import type { HTTPMethodWithWildcard } from '../consts/HTTPMethodWithWildcard.ts';
+import type { HTTPMethodWithWildcard } from '../consts/HTTPMethod.ts';
 
 /**
  * Defines a filter that that configures Cross-Origin Request Sharing (CORS).
