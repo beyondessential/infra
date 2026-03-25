@@ -24,3 +24,4 @@ tamanu_caddy_tls: true
 tamanu_extra_certs: false # if true, the host's /etc/ssl/certs/ca-certificates.crt will be added to node inside the container
 tamanu_ufw_firewall: false
 tailnet: tail53aef
+tamanu_tailscale_tls: true

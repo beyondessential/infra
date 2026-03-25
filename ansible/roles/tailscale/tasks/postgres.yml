@@ -20,7 +20,7 @@
 - name: Allow tailscale access to postgres
   loop:
     - 100.64.0.0/10
-    - fd7a:115c:a1e0:ab12::/64
+    - fd7a:115c:a1e0::/56
   become: true
   community.postgresql.postgresql_pg_hba:
     dest: /etc/postgresql/current/main/pg_hba.conf
