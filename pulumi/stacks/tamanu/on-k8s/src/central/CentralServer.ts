@@ -21,7 +21,7 @@ export interface CentralServerArgs {
 
 export class CentralServer extends ComponentResource {
   readonly fqdn: string;
-  readonly ingress: k8s.networking.v1.Ingress;
+  readonly ingress: k8s.apiextensions.CustomResource;
   readonly provisioning: Output<Provisioning>;
   readonly api: k8s.core.v1.Service;
 

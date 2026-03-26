@@ -23,7 +23,7 @@ export interface FacilityServerArgs {
 }
 
 export class FacilityServer extends ComponentResource {
-  readonly ingress: k8s.networking.v1.Ingress;
+  readonly ingress: k8s.apiextensions.CustomResource;
 
   constructor(
     name: string,
