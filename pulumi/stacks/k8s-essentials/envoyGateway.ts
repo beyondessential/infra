@@ -243,6 +243,15 @@ const http3Policy = new k8s.apiextensions.CustomResource('envoy-gateway-require-
           'consistently, otherwise Envoy Gateway will not add a UDP port to the shared Service ' +
           'and HTTP/3 will silently break for every gateway in the cluster.',
       },
+      {
+        expression:
+          '!has(object.spec.enableProxyProtocol) || object.spec.enableProxyProtocol == false',
+        message:
+          'ClientTrafficPolicy must not set spec.enableProxyProtocol — the proxy_protocol ' +
+          'listener filter is TCP-only and Envoy rejects any QUIC listener that has it attached, ' +
+          'breaking HTTP/3. Client IP is preserved at the IP layer via preserve_client_ip.enabled ' +
+          'on the NLB target group instead.',
+      },
     ],
   },
 });
