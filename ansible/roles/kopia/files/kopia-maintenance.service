@@ -7,4 +7,4 @@ Type=oneshot
 User=kopia
 Group=kopia
 Environment=KOPIA_CHECK_FOR_UPDATES=false
-ExecStart=kopia maintenance run
+ExecStart=kopia maintenance run --full
