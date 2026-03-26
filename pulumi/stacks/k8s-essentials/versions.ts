@@ -1,7 +1,7 @@
 // https://gateway.envoyproxy.io/docs/install/install-helm/
 // helm chart version (OCI: oci://docker.io/envoyproxy/gateway-helm)
 // NOTE: for OCI charts the version tag includes the 'v' prefix
-export const ENVOY_GATEWAY_VERSION = 'v1.4.1';
+export const ENVOY_GATEWAY_VERSION = 'v1.7.1';
 
 // The HNC project is essentially dead and this is the last version
 // We do depend on it for operational security, but eventually should probably migrate
