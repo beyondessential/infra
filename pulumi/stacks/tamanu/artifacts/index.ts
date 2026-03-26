@@ -3,3 +3,4 @@ failIfIncorrectAccount();
 
 import './buckets.ts';
 import './github.ts';
+import './services.ts';
