@@ -214,9 +214,14 @@
       --socketdir=/tmp
       --check
     chdir: /var/lib/postgresql
-  register: pg_upgrade_check
+  register: pg_upgrade_check_retry
   changed_when: false
   ignore_errors: true
+
+- name: Update pg_upgrade_check with retry result
+  when: clone_failed
+  ansible.builtin.set_fact:
+    pg_upgrade_check: "{{ pg_upgrade_check_retry }}"
 
 - name: Get pg_upgrade server log contents
   when: pg_upgrade_check.rc != 0
