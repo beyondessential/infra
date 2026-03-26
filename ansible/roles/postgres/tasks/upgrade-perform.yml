@@ -34,7 +34,7 @@
   when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
   become: true
   ansible.builtin.command:
-    cmd: snapper -c postgres create --type pre --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
+    cmd: snapper -c postgres create --print-number --type pre --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
   register: snapper_pre_snapshot
 
 - name: Display snapshot information
