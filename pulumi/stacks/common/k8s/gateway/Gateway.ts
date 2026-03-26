@@ -292,11 +292,11 @@ export function Gateway(
       // Enable HTTP/3
       http3: {},
 
-      // The AWS NLB is configured with proxy-protocol: '*', so every connection
-      // arriving at the envoy pod is prefixed with a PROXY protocol header.
-      // Without this, envoy never reaches the TLS handshake and logs
-      // filter_chain_not_found.
-      enableProxyProtocol: true,
+      // Client IP is preserved at the IP layer via preserve_client_ip.enabled=true
+      // on the NLB target group, so Envoy sees the real client IP in the connection
+      // source address without needing PROXY protocol. Proxy protocol cannot be used
+      // alongside HTTP/3 because the proxy_protocol listener filter is TCP-only and
+      // Envoy rejects any QUIC listener that has it attached.
 
       targetRefs: [
         {

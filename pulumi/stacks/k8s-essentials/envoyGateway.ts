@@ -171,7 +171,7 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
               'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
               'service.beta.kubernetes.io/aws-load-balancer-ip-address-type': 'dualstack',
               'service.beta.kubernetes.io/aws-load-balancer-scheme': 'internet-facing',
-              'service.beta.kubernetes.io/aws-load-balancer-proxy-protocol': '*',
+
               'service.beta.kubernetes.io/aws-load-balancer-enable-prefix-for-ipv6-source-nat':
                 'on', // enable UDP
               'service.beta.kubernetes.io/aws-load-balancer-target-group-attributes':
