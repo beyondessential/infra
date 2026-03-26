@@ -30,6 +30,11 @@ const role = new k8s.rbac.v1.ClusterRole('data-engineer', {
       resources: ['clusters'],
       verbs: ['get', 'list', 'watch'],
     },
+    {
+      apiGroups: ['gateway.networking.k8s.io'],
+      resources: ['gateways', 'httproutes'],
+      verbs: ['get', 'list', 'watch'],
+    },
   ],
 });
 

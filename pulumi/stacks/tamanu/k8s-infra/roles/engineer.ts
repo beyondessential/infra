@@ -52,6 +52,16 @@ const role = new k8s.rbac.v1.ClusterRole('tamanu-engineer', {
       verbs: ['get', 'list', 'watch'],
     },
     {
+      apiGroups: ['gateway.networking.k8s.io'],
+      resources: ['gateways', 'httproutes'],
+      verbs: ['get', 'list', 'watch'],
+    },
+    {
+      apiGroups: ['gateway.envoyproxy.io'],
+      resources: ['clienttrafficpolicies'],
+      verbs: ['get', 'list', 'watch'],
+    },
+    {
       apiGroups: ['postgresql.cnpg.io'],
       resources: ['*'],
       verbs: ['get', 'list', 'watch'],

@@ -73,6 +73,16 @@ const role = new k8s.rbac.v1.ClusterRole('oncall', {
       verbs: ['get', 'list', 'watch', 'create', 'delete'],
     },
     {
+      apiGroups: ['gateway.networking.k8s.io'],
+      resources: ['*'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    {
+      apiGroups: ['gateway.envoyproxy.io'],
+      resources: ['*'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    {
       apiGroups: ['autoscaling'],
       resources: ['horizontalpodautoscalers'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
