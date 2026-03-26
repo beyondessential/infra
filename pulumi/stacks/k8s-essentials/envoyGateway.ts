@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { EG_API_GROUP } from '../common/k8s/gateway/consts/API.ts';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.ts';
 import { clusterName } from '../common/k8s/coreRef.ts';
@@ -203,6 +204,63 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
     },
   },
   { dependsOn: [release] },
+);
+
+// ── Admission policy ──────────────────────────────────────────────────────────
+//
+// With mergeGateways=true, all gateways share a single Envoy deployment and
+// Service. Envoy Gateway only adds the UDP port (needed for QUIC/HTTP3) to the
+// Service when ALL merged gateways consistently have http3 enabled. A single
+// ClientTrafficPolicy without http3 silently breaks HTTP/3 for every gateway.
+//
+// This ValidatingAdmissionPolicy (CEL, GA since k8s 1.28) rejects any
+// ClientTrafficPolicy that is missing spec.http3 at create/update time, turning
+// that silent runtime failure into a loud deploy-time error.
+
+const http3Policy = new k8s.apiextensions.CustomResource('envoy-gateway-require-http3-policy', {
+  apiVersion: 'admissionregistration.k8s.io/v1',
+  kind: 'ValidatingAdmissionPolicy',
+  metadata: {
+    name: 'require-http3-clienttrafficpolicy.gateway.envoyproxy.io',
+  },
+  spec: {
+    failurePolicy: 'Fail',
+    matchConstraints: {
+      resourceRules: [
+        {
+          apiGroups: [EG_API_GROUP],
+          apiVersions: ['*'],
+          operations: ['CREATE', 'UPDATE'],
+          resources: ['clienttrafficpolicies'],
+        },
+      ],
+    },
+    validations: [
+      {
+        expression: 'has(object.spec.http3)',
+        message:
+          'ClientTrafficPolicy must set spec.http3 — all merged gateways must enable HTTP/3 ' +
+          'consistently, otherwise Envoy Gateway will not add a UDP port to the shared Service ' +
+          'and HTTP/3 will silently break for every gateway in the cluster.',
+      },
+    ],
+  },
+});
+
+new k8s.apiextensions.CustomResource(
+  'envoy-gateway-require-http3-policy-binding',
+  {
+    apiVersion: 'admissionregistration.k8s.io/v1',
+    kind: 'ValidatingAdmissionPolicyBinding',
+    metadata: {
+      name: 'require-http3-clienttrafficpolicy.gateway.envoyproxy.io',
+    },
+    spec: {
+      policyName: http3Policy.metadata.name,
+      validationActions: ['Deny'],
+    },
+  },
+  { dependsOn: [http3Policy] },
 );
 
 export const gatewayClass = new k8s.apiextensions.CustomResource('envoy-gateway-class', {
