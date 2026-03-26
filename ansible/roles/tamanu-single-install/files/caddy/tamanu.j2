@@ -100,7 +100,16 @@ https://{{ tailscale_name }}.{{ tailnet }}.ts.net {
 {% endif %}
 
 {% for hostname in tamanu_caddy_extra_hostnames %}
-{% if tamanu_caddy_tls and not (hostname | regex_search('\.local$')) %}
+  {% if tamanu_caddy_tls and not (hostname | regex_search('\.local$')) %}
+    {% if tamanu_caddy_extra_hostnames_redirect %}
+https://{{ hostname }} {
+  redir https://{{ public_hostname }}{uri} 308
+}
+http://{{ hostname }} {
+  import bind80
+  redir https://{{ public_hostname }}{uri} 308
+}
+    {% else %}
 https://{{ hostname }} {
   import server
 }
@@ -108,10 +117,18 @@ http://{{ hostname }} {
   import bind80
   redir https://{host}{uri} 308
 }
-{% else %}
+    {% endif %}
+  {% else %}
+    {% if tamanu_caddy_extra_hostnames_redirect %}
+http://{{ hostname }} {
+  import bind80
+  redir http://{{ public_hostname }}{uri} 308
+}
+    {% else %}
 http://{{ hostname }} {
   import bind80
   import server
 }
-{% endif %}
+    {% endif %}
+  {% endif %}
 {% endfor %}
