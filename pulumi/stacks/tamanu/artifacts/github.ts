@@ -106,7 +106,6 @@ new awsClassic.iam.Role('gha-tamanu-tools-upload', {
           StringLike: {
             [`${url}:sub`]: [
               'repo:beyondessential/bestool:ref:refs/tags/v*.*.*',
-              'repo:beyondessential/linux-images:ref:refs/tags/v*.*.*',
               'repo:beyondessential/third-party-builds:ref:refs/heads/main',
             ],
           },
@@ -131,12 +130,83 @@ new awsClassic.iam.Role('gha-tamanu-tools-upload', {
           {
             Effect: 'Allow',
             Action: ['cloudfront:CreateInvalidation'],
-            Resource: [
-              tools.distribution.arn,
-            ],
+            Resource: [tools.distribution.arn],
           },
         ],
       }),
+    },
+  ],
+});
+
+new awsClassic.iam.Role('gha-linux-images-upload', {
+  name: 'gha-linux-images-upload',
+  assumeRolePolicy: {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'sts:AssumeRoleWithWebIdentity',
+        Principal: {
+          Federated: ghaOidc.arn,
+        },
+        Condition: ghaOidc.url.apply((url) => ({
+          StringEquals: {
+            [`${url}:aud`]: AWS_STS,
+          },
+          StringLike: {
+            [`${url}:sub`]: ['repo:beyondessential/linux-images:ref:refs/tags/v*.*.*'],
+          },
+        })),
+      },
+    ],
+  },
+  inlinePolicies: [
+    {
+      name: 'TamanuToolsReadWrite',
+      policy: jsonStringify({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: AWS_S3_DELETE_ACTIONS,
+            Resource: tools.bucket.bucket.apply((bucket) => [
+              `arn:aws:s3:::${bucket}`,
+              `arn:aws:s3:::${bucket}/*`,
+            ]),
+          },
+          {
+            Effect: 'Allow',
+            Action: ['cloudfront:CreateInvalidation'],
+            Resource: [tools.distribution.arn],
+          },
+        ],
+      }),
+    },
+    {
+      name: 'LinuxImagesAmiUpload',
+      policy: tools.bucket.bucket.apply((bucket) =>
+        JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 's3:DeleteObject',
+              Resource: `arn:aws:s3:::${bucket}/linux-images/*`,
+            },
+            {
+              Effect: 'Allow',
+              Action: [
+                'ec2:DescribeImages',
+                'ec2:ImportSnapshot',
+                'ec2:DescribeImportSnapshotTasks',
+                'ec2:RegisterImage',
+                'ec2:CreateTags',
+              ],
+              Resource: '*',
+            },
+          ],
+        }),
+      ),
     },
   ],
 });
