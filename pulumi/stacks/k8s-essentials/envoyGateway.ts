@@ -174,6 +174,11 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
 
               'service.beta.kubernetes.io/aws-load-balancer-enable-prefix-for-ipv6-source-nat':
                 'on', // enable UDP
+              // Create a TCP_UDP listener so the NLB forwards both TCP (HTTPS/HTTP2) and
+              // UDP (QUIC/HTTP3) traffic to the same Envoy target group on port 10443.
+              // Without this the LBC silently ignores the UDP service port and only
+              // creates a TCP listener. Requires LBC >= v2.13.0.
+              'service.beta.kubernetes.io/aws-load-balancer-enable-tcp-udp-listener': 'true',
               'service.beta.kubernetes.io/aws-load-balancer-target-group-attributes':
                 'preserve_client_ip.enabled=true',
               'service.beta.kubernetes.io/aws-load-balancer-attributes':
