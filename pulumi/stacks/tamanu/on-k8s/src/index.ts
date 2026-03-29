@@ -2,7 +2,7 @@ import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
 import { CentralServer } from './central/CentralServer.ts';
 import { FacilityServer } from './facility/FacilityServer.ts';
 import { WebFrontend } from './web/WebFrontend.ts';
-import { domains, facilityNames, patientPortalReplicas, replicas } from './config.ts';
+import { domains, facilityNames, patientPortalReplicas, replicas, syntheticTests } from './config.ts';
 import { ingress } from './common/ingress.ts';
 await failIfIncorrectCluster();
 
@@ -37,6 +37,10 @@ ingress({
   web: patientPortal.service,
   parent: patientPortal,
 });
+
+if (syntheticTests) {
+  await import('./syntheticTests.ts');
+}
 
 export const urls = Object.fromEntries(
   Object.entries(domains).map(([key, value]) => [

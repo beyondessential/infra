@@ -113,3 +113,5 @@ export const domains = {
 };
 
 export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2;
+
+export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
