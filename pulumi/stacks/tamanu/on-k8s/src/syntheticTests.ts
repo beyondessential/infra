@@ -7,10 +7,8 @@ import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/
 
 const image = `ghcr.io/beyondessential/tamanu-synthetic-tests:${imageTag}`;
 
-const targets = [
-  `https://${domains.central}`,
-  ...facilityNames.map((name) => `https://${domains[name]}`),
-].join(',');
+const centralTarget = `https://${domains.central}`;
+const facilityTargets = facilityNames.map((name) => `https://${domains[name]}`).join(',');
 
 new k8s.apps.v1.Deployment('synthetic-tests', {
   metadata: {
@@ -51,26 +49,14 @@ new k8s.apps.v1.Deployment('synthetic-tests', {
             },
           },
         },
-        initContainers: [
-          {
-            name: 'wait-for-central',
-            image,
-            command: [
-              'sh',
-              '-c',
-              'until curl -sf http://central-api/ > /dev/null 2>&1; do echo "Waiting for central API..."; sleep 5; done',
-            ],
-            resources: {
-              requests: { cpu: '5m', memory: '32Mi' },
-              limits: { cpu: '50m', memory: '64Mi' },
-            },
-          },
-        ],
         containers: [
           {
             name: 'artillery',
             image,
-            env: [{ name: 'TARGETS', value: targets }],
+            env: [
+              { name: 'CENTRAL_TARGETS', value: centralTarget },
+              { name: 'FACILITY_TARGETS', value: facilityTargets },
+            ],
             resources: {
               requests: { cpu: '50m', memory: '128Mi' },
               limits: { cpu: '500m', memory: '512Mi' },
