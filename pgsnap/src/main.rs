@@ -59,11 +59,12 @@ async fn main() -> anyhow::Result<()> {
             }))
             .route("/metrics", get(|| async {
                 let encoder = TextEncoder::new();
+                let content_type = encoder.format_type().to_owned();
                 let metric_families = prometheus::gather();
                 let mut buffer = Vec::new();
                 encoder.encode(&metric_families, &mut buffer).unwrap();
                 (
-                    [(axum::http::header::CONTENT_TYPE, encoder.format_type())],
+                    [(axum::http::header::CONTENT_TYPE, content_type)],
                     buffer,
                 )
             }));
