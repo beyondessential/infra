@@ -32,7 +32,7 @@ You should use `aws-sso`.
 
 ### Deploy
 
-1. Change into the desired project directory: `cd stacks/tamanu/on-k8s`
+1. Change into the desired project directory: `cd tamanu/on-k8s`
 2. Run your desired Pulumi command, e.g. `pulumi up`
 
 ### Stacks
