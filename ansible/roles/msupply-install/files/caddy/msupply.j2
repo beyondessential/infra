@@ -19,7 +19,6 @@
   }
 }
 
-{% if msupply_hostname is defined %}
 https://{{ msupply_hostname }} {
   import msupply_server
 }
@@ -28,4 +27,3 @@ http://{{ msupply_hostname }} {
   import bind80
   redir https://{host}{uri} 308
 }
-{% endif %}
