@@ -17,7 +17,7 @@
     group: msupply
     content: |
       # Controlled by Ansible; manual changes will be overwritten
-      MSUPPLY_VERSION={{ msupply_version }}
+      MSUPPLY_VERSION={{ msupply_tag }}
 
 - name: Add mSupply Caddy server
   become: true
