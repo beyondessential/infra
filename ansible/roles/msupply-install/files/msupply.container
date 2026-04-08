@@ -6,7 +6,7 @@ EnvironmentFile=/etc/msupply/env
 Image=msupplyfoundation/omsupply:${MSUPPLY_VERSION}
 Volume=/var/lib/msupply:/database
 Volume=/etc/machine-id:/etc/machine-id:ro
-NetworkAlias=msupply.tamanu.internal
+NetworkAlias=api.msupply.internal
 Sysctl=net.ipv4.tcp_slow_start_after_idle=0
 
 [Service]

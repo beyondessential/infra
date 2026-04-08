@@ -3,7 +3,7 @@ Name=podman0
 
 [Network]
 Description=Default podman network interface
-Domains=tamanu.internal
+Domains=tamanu.internal msupply.internal
 DefaultRouteOnDevice=no
 {% for subnet in podman_network_subnets %}
 Address={{ subnet.subnet }}
