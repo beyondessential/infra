@@ -1,4 +1,6 @@
 ---
+- ansible.builtin.include_tasks: facts.yml
+
 - when: msupply_enabled
   block:
     - ansible.builtin.include_tasks: user.yml
