@@ -70,3 +70,6 @@
       type: facility
       db_name: tamanu
       tags: [app, tamanu]
+
+    - role: msupply-install
+      tags: [app, msupply]

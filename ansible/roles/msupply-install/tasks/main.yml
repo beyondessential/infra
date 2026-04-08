@@ -1,0 +1,8 @@
+---
+- when: msupply_enabled
+  block:
+    - ansible.builtin.include_tasks: user.yml
+    - ansible.builtin.include_tasks: volume.yml
+    - ansible.builtin.include_tasks: quadlet.yml
+    - ansible.builtin.include_tasks: config.yml
+    - ansible.builtin.include_tasks: version.yml

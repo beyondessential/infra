@@ -1,0 +1,14 @@
+---
+- name: Add msupply group
+  become: true
+  ansible.builtin.group:
+    name: msupply
+    system: true
+
+- name: Add msupply user
+  become: true
+  ansible.builtin.user:
+    name: msupply
+    group: msupply
+    shell: /usr/bin/false
+    system: true

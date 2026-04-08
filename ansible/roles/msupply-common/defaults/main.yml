@@ -1,0 +1,4 @@
+---
+msupply_version: "v2.17.0"
+msupply_image: "msupplyfoundation/omsupply:{{ msupply_version }}"
+msupply_enabled: false

@@ -1,0 +1,9 @@
+---
+- when: msupply_enabled
+  block:
+    - name: Restart mSupply service
+      become: true
+      ansible.builtin.systemd:
+        name: msupply.service
+        state: restarted
+        enabled: true

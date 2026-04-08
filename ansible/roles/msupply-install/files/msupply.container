@@ -1,0 +1,18 @@
+[Unit]
+Description=Open mSupply server
+
+[Container]
+EnvironmentFile=/etc/msupply/env
+Image=msupplyfoundation/omsupply:${MSUPPLY_VERSION}
+Volume=/var/lib/msupply:/database
+Volume=/etc/machine-id:/etc/machine-id:ro
+NetworkAlias=msupply.tamanu.internal
+Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+
+[Service]
+EnvironmentFile=/etc/msupply/env
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

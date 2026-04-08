@@ -1,0 +1,5 @@
+---
+- name: Pull mSupply image
+  become: true
+  containers.podman.podman_image:
+    name: "{{ msupply_image }}"

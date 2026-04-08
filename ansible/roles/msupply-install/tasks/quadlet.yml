@@ -1,0 +1,7 @@
+---
+- name: Install mSupply container quadlet
+  become: true
+  ansible.builtin.copy:
+    src: msupply.container
+    dest: /etc/containers/systemd/msupply.container
+  notify: Reload systemd

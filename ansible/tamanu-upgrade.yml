@@ -28,6 +28,9 @@
       db_name: tamanu
       tags: [pre]
 
+    - role: msupply-install
+      tags: [pre]
+
 - name: Central upgrade
   hosts: central
   roles:
@@ -40,4 +43,7 @@
   roles:
     - role: tamanu-single-upgrade
       type: facility
+      tags: [go]
+
+    - role: msupply-upgrade
       tags: [go]

@@ -1,0 +1,27 @@
+---
+- name: Create msupply config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/msupply
+    state: directory
+    mode: "0770"
+    owner: msupply
+    group: msupply
+
+- name: Write msupply env file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/msupply/env
+    mode: "0660"
+    owner: msupply
+    group: msupply
+    content: |
+      # Controlled by Ansible; manual changes will be overwritten
+      MSUPPLY_VERSION={{ msupply_version }}
+
+- name: Add mSupply Caddy server
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/servers/msupply
+    src: "{{ lookup('ansible.builtin.fileglob', 'caddy/msupply.j2') }}"
+  notify: Reload caddy

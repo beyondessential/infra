@@ -1,0 +1,31 @@
+(msupply_server) {
+  log {
+    output stdout
+  }
+
+  encode zstd gzip
+
+  reverse_proxy {
+    dynamic a {
+      name msupply.tamanu.internal
+      port 8000
+      versions ipv4
+    }
+
+    transport http {
+      keepalive 90s
+      compression false
+    }
+  }
+}
+
+{% if msupply_hostname is defined %}
+https://{{ msupply_hostname }} {
+  import msupply_server
+}
+
+http://{{ msupply_hostname }} {
+  import bind80
+  redir https://{host}{uri} 308
+}
+{% endif %}

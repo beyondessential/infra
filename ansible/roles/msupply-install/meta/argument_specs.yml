@@ -1,0 +1,7 @@
+---
+argument_specs:
+  main:
+    description: |
+      Install Open mSupply on a facility server as a Podman quadlet,
+      with Caddy as a TLS-terminating reverse proxy.
+    options: {}
