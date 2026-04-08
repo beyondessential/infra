@@ -101,7 +101,7 @@ export interface Facility {
   tailscaleName?: Input<string>;
   external?: boolean;
   externalIps?: string[];
-  msupply?: boolean;
+  msupply?: boolean | string;
 }
 
 export interface Server extends Required<Facility> {
@@ -131,7 +131,9 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
     ...facility,
     fqdn: interpolate`${facility.subdomain}.${domainBase}`,
     msupplyFqdn: facility.msupply
-      ? interpolate`msupply.${facility.subdomain}.${domainBase}`
+      ? typeof facility.msupply === 'string'
+        ? interpolate`${facility.msupply}.${domainBase}`
+        : interpolate`msupply.${facility.subdomain}.${domainBase}`
       : undefined,
   }));
 
