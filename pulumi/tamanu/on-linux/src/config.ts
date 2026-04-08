@@ -89,7 +89,7 @@ export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
 });
 
 const defaultDisk: number = cfg.getNumber('disk') ?? cfg.getNumber('disks.root') ?? 50;
-const legacyDisk = cfg.getBoolean('legacyDisk') ?? true;
+const legacyDisk = cfg.getBoolean('legacyDisk') ?? false;
 
 export interface Facility {
   id: string;
