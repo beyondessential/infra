@@ -104,7 +104,7 @@ export interface Facility {
   msupply?: boolean | string;
 }
 
-export interface Server extends Required<Facility> {
+export interface Server extends Omit<Required<Facility>, 'msupply'> {
   fqdn: Output<string>;
   msupplyFqdn?: Output<string>;
   msupply?: boolean | string;
