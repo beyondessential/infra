@@ -1,6 +1,6 @@
 import { interpolate, output } from '@pulumi/pulumi';
 
-import { domainBase, instances, patientPortalDomain } from './config.ts';
+import { domainBase, instances, patientPortalDomain, type Server } from './config.ts';
 import { failIfIncorrectAccount } from '../../../common/coreRef.ts';
 failIfIncorrectAccount();
 
@@ -12,10 +12,13 @@ export { backupBucket, backupReadOnlyUser, backupUsers } from './backup/kopia.ts
 export { acmeDnsUsers } from './acme-dns.ts';
 
 export { tailscaleTags } from './config.ts';
+const formatName = (server: Server) =>
+  `${server.name[0].toUpperCase()}${server.name.slice(1).replace(/(\d)/, ' $1')}`;
+
 export const urls = Object.fromEntries(
   instances
     .map((server) => [
-      `${server.name[0].toUpperCase()}${server.name.slice(1).replace(/(\d)/, ' $1')}`,
+      formatName(server),
       {
         public: interpolate`https://${server.fqdn}`,
         tailscale: server.tailscaleName,
@@ -33,5 +36,16 @@ export const urls = Object.fromEntries(
             ],
           ]
         : [],
+    )
+    .concat(
+      instances
+        .filter((inst) => inst.msupplyFqdn)
+        .map((inst) => [
+          `${formatName(inst)} mSupply`,
+          {
+            public: interpolate`https://${inst.msupplyFqdn}`,
+            tailscale: inst.tailscaleName,
+          },
+        ]),
     ),
 );
