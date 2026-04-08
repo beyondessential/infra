@@ -19,6 +19,15 @@
       # Controlled by Ansible; manual changes will be overwritten
       MSUPPLY_VERSION={{ msupply_tag }}
 
+- name: Write msupply local.yaml
+  become: true
+  ansible.builtin.template:
+    dest: /etc/msupply/local.yaml
+    src: "{{ lookup('ansible.builtin.fileglob', 'local.yaml.j2') }}"
+    mode: "0660"
+    owner: msupply
+    group: msupply
+
 - name: Add mSupply Caddy server
   when: msupply_hostname is defined
   become: true

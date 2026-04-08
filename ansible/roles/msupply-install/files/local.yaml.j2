@@ -1,0 +1,8 @@
+# Controlled by Ansible; manual changes will be overwritten
+server:
+  danger_allow_http: {{ 'true' if msupply_hostname is defined else 'false' }}
+  base_dir: /database
+database:
+  database_name: /database/omsupply-database
+logging:
+  mode: All
