@@ -26,3 +26,11 @@
     dest: /etc/caddy/servers/msupply
     src: "{{ lookup('ansible.builtin.fileglob', 'caddy/msupply.j2') }}"
   notify: Reload caddy
+
+- name: Remove mSupply Caddy server
+  when: msupply_hostname is not defined
+  become: true
+  ansible.builtin.file:
+    path: /etc/caddy/servers/msupply
+    state: absent
+  notify: Reload caddy
