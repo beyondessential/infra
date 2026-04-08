@@ -15,15 +15,7 @@
   register: volume_device
   changed_when: false
 
-- name: Format volume {{ volume }}
-  when: volume_device.stdout != ''
-  become: true
-  community.general.filesystem:
-    fstype: "{{ fs_type }}"
-    dev: "{{ volume_device.stdout }}"
-    opts: "{{ fs_opts if fs_opts is defined else '' }}"
-
-- name: Detect actual filesystem type on {{ volume }}
+- name: Detect existing filesystem type on {{ volume }}
   when: volume_device.stdout != ''
   become: true
   ansible.builtin.shell: blkid -s TYPE -o value {{ volume_device.stdout }}
@@ -33,7 +25,15 @@
 - name: Set effective filesystem type for {{ volume }}
   when: volume_device.stdout != ''
   ansible.builtin.set_fact:
-    effective_fs_type: "{{ detected_fs_type.stdout | trim | default(fs_type) }}"
+    effective_fs_type: "{{ detected_fs_type.stdout | trim if detected_fs_type.stdout | trim != '' else fs_type }}"
+
+- name: Format volume {{ volume }}
+  when: volume_device.stdout != '' and detected_fs_type.stdout | trim == ''
+  become: true
+  community.general.filesystem:
+    fstype: "{{ fs_type }}"
+    dev: "{{ volume_device.stdout }}"
+    opts: "{{ fs_opts if fs_opts is defined else '' }}"
 
 - name: Figure out if {{ mount }} is already on a separate partition
   ansible.builtin.shell: grep -qs ' {{ mount }} ' /proc/mounts && echo 'true' || true
