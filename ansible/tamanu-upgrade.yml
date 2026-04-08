@@ -18,7 +18,7 @@
     - role: tamanu-single-install
       type: central
       db_name: tamanu
-      tags: [pre]
+      tags: [pre, tamanu]
 
 - name: Facility pre-upgrade  (if needed)
   hosts: facility
@@ -26,24 +26,24 @@
     - role: tamanu-single-install
       type: facility
       db_name: tamanu
-      tags: [pre]
+      tags: [pre, tamanu]
 
     - role: msupply-install
-      tags: [pre]
+      tags: [pre, msupply]
 
 - name: Central upgrade
   hosts: central
   roles:
     - role: tamanu-single-upgrade
       type: central
-      tags: [go]
+      tags: [go, tamanu]
 
 - name: Facility upgrade
   hosts: facility
   roles:
     - role: tamanu-single-upgrade
       type: facility
-      tags: [go]
+      tags: [go, tamanu]
 
     - role: msupply-upgrade
-      tags: [go]
+      tags: [go, msupply]
