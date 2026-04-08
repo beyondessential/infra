@@ -8,6 +8,11 @@ Volume=/var/lib/msupply:/database
 Volume=/etc/machine-id:/etc/machine-id:ro
 NetworkAlias=api.msupply.internal
 Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+{% if msupply_hostname is not defined %}
+PublishPort=0.0.0.0:8000:8000
+Environment=APP_SERVER__DANGER_ALLOW_HTTP=false
+Environment=APP_SERVER__BASE_DIR=/database
+{% endif %}
 
 [Service]
 EnvironmentFile=/etc/msupply/env

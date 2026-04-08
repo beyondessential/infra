@@ -1,7 +1,7 @@
 ---
 - name: Install mSupply container quadlet
   become: true
-  ansible.builtin.copy:
-    src: msupply.container
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.fileglob', 'msupply.container.j2') }}"
     dest: /etc/containers/systemd/msupply.container
   notify: Reload systemd

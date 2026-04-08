@@ -20,6 +20,7 @@
       MSUPPLY_VERSION={{ msupply_tag }}
 
 - name: Add mSupply Caddy server
+  when: msupply_hostname is defined
   become: true
   ansible.builtin.template:
     dest: /etc/caddy/servers/msupply
