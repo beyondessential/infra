@@ -8,3 +8,5 @@
     - ansible.builtin.include_tasks: quadlet.yml
     - ansible.builtin.include_tasks: config.yml
     - ansible.builtin.include_tasks: version.yml
+    - ansible.builtin.include_tasks: ufw.yml
+      when: tamanu_ufw_firewall
