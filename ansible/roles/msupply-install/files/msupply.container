@@ -3,7 +3,7 @@ Description=Open mSupply server
 
 [Container]
 EnvironmentFile=/etc/msupply/env
-Image=msupplyfoundation/omsupply:${MSUPPLY_VERSION}
+Image=docker.io/msupplyfoundation/omsupply:${MSUPPLY_VERSION}
 Volume=/var/lib/msupply:/database
 Volume=/etc/machine-id:/etc/machine-id:ro
 NetworkAlias=api.msupply.internal
