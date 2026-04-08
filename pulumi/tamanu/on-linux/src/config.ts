@@ -107,6 +107,7 @@ export interface Facility {
 export interface Server extends Required<Facility> {
   fqdn: Output<string>;
   msupplyFqdn?: Output<string>;
+  msupply?: boolean | string;
 }
 
 export const facilities: Server[] = (cfg.requireObject('facilities') as Facility[])
