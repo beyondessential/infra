@@ -7,8 +7,15 @@
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: psql.yml
 - ansible.builtin.include_tasks: access.yml
+- name: Detect filesystem type for PostgreSQL data directory
+  become: true
+  ansible.builtin.shell: findmnt -n -o FSTYPE /var/lib/postgresql
+  register: pg_data_fstype
+  changed_when: false
+  failed_when: false
+
 - ansible.builtin.include_tasks: btrfs-tune.yml
-  when: not (aws_postgres_uses_ext4 is defined and aws_postgres_uses_ext4)
+  when: pg_data_fstype.stdout | trim == 'btrfs'
 - ansible.builtin.include_tasks: wal.yml
 - ansible.builtin.include_tasks: backup.yml
 - ansible.builtin.set_fact:

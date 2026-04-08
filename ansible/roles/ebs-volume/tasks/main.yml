@@ -23,6 +23,18 @@
     dev: "{{ volume_device.stdout }}"
     opts: "{{ fs_opts if fs_opts is defined else '' }}"
 
+- name: Detect actual filesystem type on {{ volume }}
+  when: volume_device.stdout != ''
+  become: true
+  ansible.builtin.shell: blkid -s TYPE -o value {{ volume_device.stdout }}
+  register: detected_fs_type
+  changed_when: false
+
+- name: Set effective filesystem type for {{ volume }}
+  when: volume_device.stdout != ''
+  ansible.builtin.set_fact:
+    effective_fs_type: "{{ detected_fs_type.stdout | trim | default(fs_type) }}"
+
 - name: Figure out if {{ mount }} is already on a separate partition
   ansible.builtin.shell: grep -qs ' {{ mount }} ' /proc/mounts && echo 'true' || true
   register: is_already_partition
@@ -47,7 +59,7 @@
       ansible.posix.mount:
         src: "{{ volume_device.stdout }}"
         path: /mnt
-        fstype: "{{ fs_type }}"
+        fstype: "{{ effective_fs_type }}"
         opts: "{{ mount_opts if mount_opts is defined else '' }}"
         state: ephemeral
     - name: Copy old files to new volume
@@ -72,7 +84,7 @@
   ansible.posix.mount:
     src: "UUID={{ volume_uuid.stdout }}"
     path: "{{ mount }}"
-    fstype: "{{ fs_type }}"
+    fstype: "{{ effective_fs_type }}"
     opts: "{{ mount_opts if mount_opts is defined else '' }}"
     state: mounted
 
@@ -80,7 +92,7 @@
   when: volume_device.stdout != ''
   become: true
   community.general.filesystem:
-    fstype: "{{ fs_type }}"
+    fstype: "{{ effective_fs_type }}"
     dev: "{{ volume_device.stdout }}"
     opts: "{{ fs_opts if fs_opts is defined else '' }}"
     resizefs: true

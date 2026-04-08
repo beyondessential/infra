@@ -21,7 +21,7 @@
       when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_Partitioning is defined and ansible_ec2_tag_Partitioning == 'split-data-logs'
       volume: sdp
       mount: /var/lib/postgresql
-      fs_type: "{{ 'ext4' if (aws_postgres_uses_ext4 is defined and aws_postgres_uses_ext4) else 'btrfs' }}"
+      fs_type: btrfs
       mount_opts: defaults,noatime,discard
       tags: [base, volumes]
 
