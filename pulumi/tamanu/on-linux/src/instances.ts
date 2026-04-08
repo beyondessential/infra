@@ -67,6 +67,10 @@ for (const [i, inst] of instances.entries()) {
     tags.PatientPortalFQDN = patientPortalDomain;
   }
 
+  if (inst.msupplyFqdn) {
+    tags.MsupplyFQDN = inst.msupplyFqdn;
+  }
+
   const vm = new aws.ec2.Instance(
     inst.id,
     {
@@ -174,6 +178,15 @@ for (const [i, inst] of instances.entries()) {
       records: [inst.fqdn],
     });
   }
+
+  if (inst.msupplyFqdn) {
+    records.set(`${inst.id}-msupply-cname`, {
+      name: inst.msupplyFqdn,
+      type: aws.route53.RecordType.CNAME,
+      ttl: 300,
+      records: [inst.fqdn],
+    });
+  }
 }
 
 for (const inst of instances) {
@@ -203,6 +216,15 @@ for (const inst of instances) {
   if (patientPortalDomain && inst.id === 'central') {
     records.set('patient-portal-cname', {
       name: patientPortalDomain,
+      type: aws.route53.RecordType.CNAME,
+      ttl: 300,
+      records: [inst.fqdn],
+    });
+  }
+
+  if (inst.msupplyFqdn) {
+    records.set(`${inst.id}-msupply-cname`, {
+      name: inst.msupplyFqdn,
       type: aws.route53.RecordType.CNAME,
       ttl: 300,
       records: [inst.fqdn],
