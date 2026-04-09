@@ -11,6 +11,8 @@ const ns = new k8s.core.v1.Namespace('tamanu-seed', {
   },
 });
 
+export const namespace = ns.metadata.name;
+
 new k8s.rbac.v1.RoleBinding('tamanu-seed-deploy', {
   metadata: {
     name: 'tamanu-deploy',
