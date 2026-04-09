@@ -20,6 +20,10 @@ use tracing::{error, info};
 // s[runtime.binary]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
     tracing_subscriber::fmt()
         .json()
         .with_env_filter(
