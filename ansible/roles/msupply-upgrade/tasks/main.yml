@@ -7,3 +7,5 @@
         name: msupply.service
         state: restarted
         enabled: true
+      notify:
+        - Reload caddy
