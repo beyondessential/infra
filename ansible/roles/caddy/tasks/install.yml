@@ -75,12 +75,19 @@
     name: "caddy={{ caddy_version }}"
     state: present
     allow_downgrade: true
+    allow_change_held_packages: true
     update_cache: true
   notify:
     - Reload systemd
     - Regenerate caddy manpages
     - Regenerate caddy completions
     - Restart caddy
+
+- name: Hold caddy package to prevent unattended upgrades
+  become: true
+  ansible.builtin.dpkg_selections:
+    name: caddy
+    selection: hold
 
 - name: Ensure tailscale environment variable for caddy
   become: true
