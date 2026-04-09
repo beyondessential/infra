@@ -4,4 +4,4 @@ await failIfIncorrectCluster();
 import './system.ts';
 import './superns.ts';
 import './roles/index.ts';
-import './pgsnap.ts';
+import './seed/index.ts';

@@ -1,8 +1,8 @@
 import * as k8s from '@pulumi/kubernetes';
 import { Config } from '@pulumi/pulumi';
-import { namespace } from './roles/seed.ts';
-import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { namespace } from './namespace.ts';
+import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
 
 const pgsnapCfg = new Config('pgsnap');
 const imageTag = pgsnapCfg.require('imageTag');
