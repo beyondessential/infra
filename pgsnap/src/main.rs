@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
                 )
             }));
 
-        let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+        let addr = SocketAddr::from((std::net::Ipv6Addr::UNSPECIFIED, 8080));
         info!(%addr, "health server listening");
         let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
         axum::serve(listener, app).await.unwrap();
