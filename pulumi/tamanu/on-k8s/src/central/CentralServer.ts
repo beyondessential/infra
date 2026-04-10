@@ -10,7 +10,14 @@ import { runApi } from './api.ts';
 import { runFhirWorker } from './fhir.ts';
 import { WebFrontend } from '../web/WebFrontend.ts';
 import { ingress } from '../common/ingress.ts';
-import { type ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
+import {
+  type ReplicaConfig,
+  dbBackups,
+  dbExpose,
+  dbStorage,
+  normalizedStack,
+  timezone,
+} from '../config.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
 
@@ -137,5 +144,39 @@ export class CentralServer extends ComponentResource {
       web: web.service,
       api: api.service,
     });
+
+    if (dbExpose) {
+      new k8s.core.v1.Service(
+        'central-db-tailscale',
+        {
+          metadata: {
+            namespace,
+            annotations: {
+              // k8s-pg and tamanu are the same length so we don't need to retruncate the name
+              'tailscale.com/hostname': `k8s-pg-${normalizedStack}`,
+              'tailscale.com/tags': 'tag:k8s-proxy,tag:server,tag:server-tamanu',
+            },
+          },
+          spec: {
+            type: 'LoadBalancer',
+            loadBalancerClass: 'tailscale',
+            selector: {
+              'cnpg.io/cluster': 'central-db',
+              'cnpg.io/instanceRole': 'primary',
+            },
+            allocateLoadBalancerNodePorts: false,
+            ports: [
+              {
+                protocol: 'TCP',
+                port: 5432,
+                targetPort: 5432,
+                name: 'postgresql',
+              },
+            ],
+          },
+        },
+        { parent: this },
+      );
+    }
   }
 }
