@@ -141,6 +141,22 @@
       loop: "{{ subvol_mount_mapping.stdout_lines }}"
       when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
 
+    - name: Run snapper cleanup for all configs
+      become: true
+      vars:
+        config_name: "{{ item.split(':')[0] }}"
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          if [ ! -f "/etc/snapper/configs/{{ config_name }}" ]; then
+            exit 0
+          fi
+          snapper -c "{{ config_name }}" cleanup timeline
+          snapper -c "{{ config_name }}" cleanup number
+      loop: "{{ subvol_mount_mapping.stdout_lines }}"
+      when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
+      changed_when: false
+
     - name: Enable snapper timeline timer
       become: true
       ansible.builtin.systemd:
