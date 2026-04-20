@@ -109,7 +109,7 @@
 
           snapper -c "{{ config_name }}" create-config "{{ mount_point }}"
           echo "Created config {{ config_name }} for {{ mount_point }}"
-      loop: "{{ subvol_mount_mapping.stdout_lines }}"
+      loop: "{{ subvol_mount_mapping.stdout_lines | select('match', '^(root|postgres):') | list }}"
       register: snapper_create_result
       changed_when: "'Created config' in snapper_create_result.stdout"
       when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
@@ -138,7 +138,7 @@
           snapper -c "{{ config_name }}" set-config \
             TIMELINE_CREATE=$TIMELINE_CREATE \
             {{ snapper_timeline_settings | dict2items | map(attribute='key') | zip(snapper_timeline_settings | dict2items | map(attribute='value')) | map('join', '=') | join(' ') }}
-      loop: "{{ subvol_mount_mapping.stdout_lines }}"
+      loop: "{{ subvol_mount_mapping.stdout_lines | select('match', '^(root|postgres):') | list }}"
       when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
 
     - name: Run snapper cleanup for all configs
@@ -153,9 +153,16 @@
           fi
           snapper -c "{{ config_name }}" cleanup timeline
           snapper -c "{{ config_name }}" cleanup number
-      loop: "{{ subvol_mount_mapping.stdout_lines }}"
+      loop: "{{ subvol_mount_mapping.stdout_lines | select('match', '^(root|postgres):') | list }}"
       when: subvol_mount_mapping.stdout_lines | default([]) | length > 0
       changed_when: false
+
+    - name: Remove snapper configs for non-root/postgres subvolumes
+      become: true
+      ansible.builtin.shell: |
+        snapper -c "{{ item }}" delete-config
+      loop: "{{ existing_snapper_configs.stdout_lines | reject('match', '^(root|postgres)$') | list }}"
+      when: existing_snapper_configs.stdout_lines | reject('match', '^(root|postgres)$') | list | length > 0
 
     - name: Enable snapper timeline timer
       become: true
