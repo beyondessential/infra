@@ -18,8 +18,6 @@ tamanu_country_alpha3: UTO
 tamanu_ipv6: true
 tamanu_central_hostname: "{{ tamanu_central_canonical_url | urlsplit('hostname') }}"
 tamanu_central_ip: false
-tamanu_cache_central_dns: true
-tamanu_cache_central_as_tailscale: false # if true, resolve central's Tailscale hostname to IPs and cache as canonical hostname in /etc/hosts
 tamanu_caddy_tls: true
 tamanu_caddy_extra_hostnames: []
 tamanu_caddy_extra_hostnames_redirect: true
