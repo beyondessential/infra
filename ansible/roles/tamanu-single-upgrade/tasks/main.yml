@@ -27,6 +27,14 @@
   failed_when: false
   notify: Reload caddy
 
+- name: Remove old single facility quadlet
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-facility.container
+    state: absent
+  notify: Reload systemd
+
 - name: Reload caddy
   meta: flush_handlers
 
