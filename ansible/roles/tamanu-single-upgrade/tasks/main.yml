@@ -35,6 +35,16 @@
     state: absent
   notify: Reload systemd
 
+- name: Mask old single facility service
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/tamanu-facility.service
+    src: /dev/null
+    state: link
+    force: true
+  notify: Reload systemd
+
 - name: Reload caddy
   meta: flush_handlers
 
