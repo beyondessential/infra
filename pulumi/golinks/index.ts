@@ -49,6 +49,9 @@ new k8s.apps.v1.Deployment('golinks', {
   },
   spec: {
     replicas: 1,
+    strategy: {
+      type: 'Recreate',
+    },
     selector: {
       matchLabels: labels,
     },
@@ -84,9 +87,12 @@ new k8s.apps.v1.Deployment('golinks', {
           },
         ],
         securityContext: {
-          runAsNonRoot: true,
-          fsGroup: 65532,
           // https://github.com/tailscale/golink#running-in-production
+          runAsNonRoot: true,
+          runAsUser: 65532,
+          runAsGroup: 65532,
+          fsGroup: 65532,
+          fsGroupChangePolicy: 'OnRootMismatch',
         },
         containers: [
           {
