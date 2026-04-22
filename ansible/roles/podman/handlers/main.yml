@@ -1,0 +1,21 @@
+---
+# Applies an IPv6-disable to already-running containers when the bridge is
+# being switched to v4-only. The container's network namespace keeps its ULA
+# address until it restarts, which lets glibc's AI_ADDRCONFIG keep returning
+# AAAAs — flipping this sysctl in each netns drops the v6 addresses without
+# stopping the container. The enable direction is deliberately not handled
+# here; re-adding v6 requires the bridge to allocate a new address, which
+# only happens on container start.
+- name: Disable IPv6 in running podman containers
+  when: not (podman_ipv6_enabled | bool)
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      {% raw %}set -euo pipefail
+      podman ps -q | while read -r id; do
+        pid=$(podman inspect --format '{{.State.Pid}}' "$id")
+        if [ -n "$pid" ] && [ "$pid" != "0" ]; then
+          nsenter -t "$pid" -n sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null
+        fi
+      done{% endraw %}

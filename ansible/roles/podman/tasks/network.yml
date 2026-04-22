@@ -10,6 +10,7 @@
   ansible.builtin.template:
     src: "{{ lookup('ansible.builtin.fileglob', 'networks-podman.json.j2') }}"
     dest: /etc/containers/networks/podman.json
+  notify: Disable IPv6 in running podman containers
 
 - name: Configure resolved to look into the podman network
   become: true

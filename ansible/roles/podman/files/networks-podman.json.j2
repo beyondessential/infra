@@ -4,7 +4,7 @@
   "driver": "bridge",
   "network_interface": "podman0",
   "subnets": {{ podman_network_subnets | tojson(indent=2) }},
-  "ipv6_enabled": true,
+  "ipv6_enabled": {{ podman_ipv6_enabled | bool | tojson }},
   "internal": false,
   "dns_enabled": true,
   "ipam_options": {
