@@ -1,0 +1,17 @@
+{
+  "name": "bes-k8s-policies",
+  "version": "0.1.0",
+  "main": "bin/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@pulumi/kubernetes": "^4.29.0",
+    "@pulumi/policy": "^1.13.0",
+    "@pulumi/pulumi": "^3.182.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.3"
+  }
+}
