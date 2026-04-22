@@ -1,0 +1,41 @@
+---
+- name: Install chrony
+  become: true
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Disable systemd-timesyncd
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    enabled: false
+    masked: true
+    state: stopped
+  failed_when: false
+
+- name: Configure chrony pool.ntp.org source
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/chrony/sources.d/pool-ntp-org.sources
+    mode: "0644"
+    content: |
+      pool pool.ntp.org iburst
+  notify: Reload chrony sources
+
+- name: Use Amazon Time Sync Service on EC2
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/chrony/sources.d/amazon.sources
+    mode: "0644"
+    content: |
+      server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4
+  when: ansible_facts['system_vendor'] == 'Amazon EC2'
+  notify: Reload chrony sources
+
+- name: Enable chrony
+  become: true
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started

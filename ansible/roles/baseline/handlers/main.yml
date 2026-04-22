@@ -15,3 +15,8 @@
   ansible.builtin.systemd:
     name: systemd-journald
     state: restarted
+
+- name: Reload chrony sources
+  become: true
+  ansible.builtin.command:
+    cmd: chronyc reload sources
