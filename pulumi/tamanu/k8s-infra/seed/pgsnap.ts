@@ -109,6 +109,9 @@ new k8s.apps.v1.Deployment('pgsnap-operator', {
           {
             name: 'operator',
             image,
+            env: [
+              { name: 'RUST_LOG', value: 'pgsnap=info,kube=info' },
+            ],
             ports: [{ containerPort: 8080, name: 'health' }],
             livenessProbe: {
               httpGet: { path: '/livez', port: 'health' },
