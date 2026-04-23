@@ -12,14 +12,17 @@ import { WebFrontend } from '../web/WebFrontend.ts';
 import { ingress } from '../common/ingress.ts';
 import {
   type ReplicaConfig,
+  appVersion,
   dbBackups,
   dbExpose,
   dbStorage,
   normalizedStack,
+  seedSnapshot,
   timezone,
 } from '../config.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
+import { cloneSeedSnapshot } from './seedSnapshot.ts';
 
 export interface CentralServerArgs {
   fqdn: string;
@@ -45,6 +48,10 @@ export class CentralServer extends ComponentResource {
       server: 'central',
     });
 
+    const seedSnapshotName = seedSnapshot
+      ? cloneSeedSnapshot({ parent: this, namespace, appVersion })
+      : undefined;
+
     const dbReady = runPostgres({
       parent: this,
       namespace,
@@ -55,6 +62,7 @@ export class CentralServer extends ComponentResource {
       backupSchedule: dbBackups,
       roles: roles.roles,
       initSql: roles.initSql,
+      seedSnapshotName,
     });
 
     const appConfig = templatedConfig({

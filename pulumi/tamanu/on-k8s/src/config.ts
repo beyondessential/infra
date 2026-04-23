@@ -116,3 +116,6 @@ export const domains = {
 export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2;
 
 export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
+
+export const seedSnapshot: boolean = cfg.getBoolean('seedSnapshot') ?? false;
+export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;

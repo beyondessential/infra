@@ -13,6 +13,13 @@ const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy-cluster', {
       resources: ['namespaces'],
       verbs: ['get', 'list', 'watch'],
     },
+    // VolumeSnapshotContents are cluster-scoped; we need to clone one pointing
+    // at a seed snapshot's handle so CNPG can restore inside the deploy ns.
+    {
+      apiGroups: ['snapshot.storage.k8s.io'],
+      resources: ['volumesnapshotcontents'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
   ],
 });
 
@@ -87,6 +94,13 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
     {
       apiGroups: ['gateway.envoyproxy.io'],
       resources: ['clienttrafficpolicies'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    // Namespace-scoped VolumeSnapshots in the deploy namespace, used as the
+    // local handle for CNPG's volumeSnapshot recovery bootstrap.
+    {
+      apiGroups: ['snapshot.storage.k8s.io'],
+      resources: ['volumesnapshots'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
   ],
