@@ -1,8 +1,8 @@
 ---
 - name: Set msupply image tag
   ansible.builtin.set_fact:
-    msupply_tag: "{{ msupply_version }}{{ '-arm64' if ansible_facts['architecture'] == 'aarch64' else '' }}"
-    msupply_image: "docker.io/msupplyfoundation/omsupply:{{ msupply_version }}{{ '-arm64' if ansible_facts['architecture'] == 'aarch64' else '' }}"
+    msupply_tag: "{{ msupply_version_arm64 if ansible_facts['architecture'] == 'aarch64' else msupply_version_amd64 }}"
+    msupply_image: "docker.io/msupplyfoundation/omsupply:{{ msupply_version_arm64 if ansible_facts['architecture'] == 'aarch64' else msupply_version_amd64 }}"
 
 - name: Fetch MsupplyFQDN EC2 tag
   ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
