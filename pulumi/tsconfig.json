@@ -1,6 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "include": ["./**/*.ts"],
+  "exclude": ["policies"],
   "compilerOptions": {
     "noEmit": true,
     "declaration": true,
