@@ -70,6 +70,16 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
         .map(|s| s.as_str())
         .unwrap_or(util::DEFAULT_STORAGE_SIZE);
 
+    let cpu = annotations
+        .get(util::ANNOTATION_CPU)
+        .map(|s| s.as_str())
+        .unwrap_or(util::DEFAULT_CPU);
+
+    let memory = annotations
+        .get(util::ANNOTATION_MEMORY)
+        .map(|s| s.as_str())
+        .unwrap_or(util::DEFAULT_MEMORY);
+
     let cluster_name = annotations
         .get(util::ANNOTATION_CLUSTER_NAME)
         .cloned()
@@ -80,7 +90,15 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
             info!(job = %name, "starting pgsnap workflow");
 
             // s[create.cluster]
-            cnpg::create_cluster(&ctx.client, &ctx.namespace, &cluster_name, storage_size).await?;
+            cnpg::create_cluster(
+                &ctx.client,
+                &ctx.namespace,
+                &cluster_name,
+                storage_size,
+                cpu,
+                memory,
+            )
+            .await?;
 
             set_annotations(&ctx.client, &ctx.namespace, &name, &[
                 (util::ANNOTATION_PHASE, Phase::ClusterCreating.as_str()),

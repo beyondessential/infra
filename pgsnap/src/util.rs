@@ -5,6 +5,8 @@ use anyhow::{Context, Result};
 pub const ANNOTATION_PREFIX: &str = "pgsnap.bes.au/";
 pub const ANNOTATION_CREATE: &str = "pgsnap.bes.au/create";
 pub const ANNOTATION_SIZE: &str = "pgsnap.bes.au/size";
+pub const ANNOTATION_CPU: &str = "pgsnap.bes.au/cpu";
+pub const ANNOTATION_MEMORY: &str = "pgsnap.bes.au/memory";
 pub const ANNOTATION_PHASE: &str = "pgsnap.bes.au/phase";
 pub const ANNOTATION_CLUSTER_NAME: &str = "pgsnap.bes.au/cluster-name";
 pub const ANNOTATION_SNAPSHOT_NAME: &str = "pgsnap.bes.au/snapshot-name";
@@ -15,12 +17,16 @@ pub const LABEL_CREATE: &str = "pgsnap.bes.au/create";
 pub const LABEL_MANAGED: &str = "pgsnap.bes.au/managed";
 
 pub const DEFAULT_STORAGE_SIZE: &str = "20Gi";
+pub const DEFAULT_CPU: &str = "250m";
+pub const DEFAULT_MEMORY: &str = "1Gi";
 pub const SNAPSHOT_CLASS: &str = "ebs-retain";
 
 // s[annotation.passthrough]
 pub const EXCLUDED_ANNOTATIONS: &[&str] = &[
     ANNOTATION_CREATE,
     ANNOTATION_SIZE,
+    ANNOTATION_CPU,
+    ANNOTATION_MEMORY,
     ANNOTATION_PHASE,
     ANNOTATION_CLUSTER_NAME,
     ANNOTATION_SNAPSHOT_NAME,

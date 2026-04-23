@@ -11,6 +11,8 @@ pub async fn create_cluster(
     namespace: &str,
     cluster_name: &str,
     storage_size: &str,
+    cpu: &str,
+    memory: &str,
 ) -> anyhow::Result<()> {
     let api: Api<kube::api::DynamicObject> = Api::namespaced_with(
         client.clone(),
@@ -41,8 +43,8 @@ pub async fn create_cluster(
             "primaryUpdateStrategy": "unsupervised",
             "storage": { "size": storage_size },
             "resources": {
-                "requests": { "memory": "1Gi", "cpu": "250m" },
-                "limits": { "memory": "1Gi", "cpu": "250m" },
+                "requests": { "memory": memory, "cpu": cpu },
+                "limits": { "memory": memory, "cpu": cpu },
             },
             "postgresql": {
                 "parameters": {

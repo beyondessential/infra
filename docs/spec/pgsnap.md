@@ -22,9 +22,19 @@ s[annotation.size]
 The annotation `pgsnap.bes.au/size` specifies the PVC storage size for the
 ephemeral CNPG cluster. Defaults to `20Gi` if absent.
 
+s[annotation.cpu]
+The annotation `pgsnap.bes.au/cpu` specifies the CPU request and limit for
+the ephemeral CNPG cluster's PostgreSQL container. Defaults to `250m` if
+absent.
+
+s[annotation.memory]
+The annotation `pgsnap.bes.au/memory` specifies the memory request and
+limit for the ephemeral CNPG cluster's PostgreSQL container. Defaults to
+`1Gi` if absent.
+
 s[annotation.passthrough]
-All `pgsnap.bes.au/*` annotations on the Job except `/create` and `/size`
-are copied to the resulting VolumeSnapshot.
+All `pgsnap.bes.au/*` annotations on the Job except `/create`, `/size`,
+`/cpu`, and `/memory` are copied to the resulting VolumeSnapshot.
 
 s[annotation.created-at]
 The operator adds `pgsnap.bes.au/created-at` to the VolumeSnapshot with the
@@ -40,8 +50,10 @@ database is accepting connections and the connection Secret exists.
 
 s[create.cluster]
 The operator creates a CNPG Cluster with a single instance, using the
-storage size from `pgsnap.bes.au/size` (default `20Gi`). The cluster is
-ephemeral and owned by the operator's workflow for this Job.
+storage size from `pgsnap.bes.au/size` (default `20Gi`), CPU from
+`pgsnap.bes.au/cpu` (default `250m`), and memory from `pgsnap.bes.au/memory`
+(default `1Gi`). The cluster is ephemeral and owned by the operator's
+workflow for this Job.
 
 s[create.cluster.ready]
 The operator waits for the CNPG Cluster's read-write service endpoint to
