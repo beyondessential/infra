@@ -1,5 +1,5 @@
 import * as awsNative from '@pulumi/aws-native';
-import { jsonStringify } from '@pulumi/pulumi';
+import { all, jsonStringify } from '@pulumi/pulumi';
 import { instances, zoneId } from './config.ts';
 
 const tags = [
@@ -37,6 +37,13 @@ const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy(
 export const acmeDnsPersistPolicy = instances
   .filter((inst) => inst.external && inst.externalIps && inst.externalIps.length > 0)
   .map((inst) => {
+    const persistNames = inst.msupplyFqdn
+      ? all([inst.fqdn, inst.msupplyFqdn]).apply(([fqdn, msupplyFqdn]) => [
+          `_validation-persist.${fqdn}`,
+          `_validation-persist.${msupplyFqdn}`,
+        ])
+      : inst.fqdn.apply((fqdn) => [`_validation-persist.${fqdn}`]);
+
     return new awsNative.iam.ManagedPolicy(
       `acme-dns-persist-policy-${inst.id}`,
       {
@@ -49,9 +56,7 @@ export const acmeDnsPersistPolicy = instances
               Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
               Condition: {
                 'ForAllValues:StringLike': {
-                  'route53:ChangeResourceRecordSetsNormalizedRecordNames': [
-                    inst.fqdn.apply((fqdn) => `_validation-persist.${fqdn}`),
-                  ],
+                  'route53:ChangeResourceRecordSetsNormalizedRecordNames': persistNames,
                   'route53:ChangeResourceRecordSetsRecordTypes': ['TXT'],
                 },
               },
@@ -80,6 +85,13 @@ export const acmeDnsUsers = instances
       { parent: acmeDnsReadPolicy },
     );
 
+    const challengeNames = inst.msupplyFqdn
+      ? all([inst.fqdn, inst.msupplyFqdn]).apply(([fqdn, msupplyFqdn]) => [
+          `_acme-challenge.${fqdn}`,
+          `_acme-challenge.${msupplyFqdn}`,
+        ])
+      : inst.fqdn.apply((fqdn) => [`_acme-challenge.${fqdn}`]);
+
     new awsNative.iam.UserPolicy(
       `acme-dns-change-policy-${inst.id}`,
       {
@@ -93,9 +105,7 @@ export const acmeDnsUsers = instances
               Resource: zoneId.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
               Condition: {
                 'ForAllValues:StringLike': {
-                  'route53:ChangeResourceRecordSetsNormalizedRecordNames': [
-                    inst.fqdn.apply((fqdn) => `_acme-challenge.${fqdn}`),
-                  ],
+                  'route53:ChangeResourceRecordSetsNormalizedRecordNames': challengeNames,
                   'route53:ChangeResourceRecordSetsRecordTypes': ['TXT'],
                 },
               },
