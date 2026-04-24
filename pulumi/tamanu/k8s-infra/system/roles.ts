@@ -50,6 +50,11 @@ new k8s.rbac.v1.RoleBinding('tamanu-system-engineer', {
   subjects: [
     {
       kind: 'Group',
+      name: 'tailscale:engineer',
+    },
+    // TODO: delete after 2026-05-01 once the old group name is fully retired
+    {
+      kind: 'Group',
       name: 'tailscale:tamanu-engineer',
     },
   ],
