@@ -44,7 +44,7 @@ export const urls = Object.fromEntries(
           `${formatName(inst)} mSupply`,
           {
             public: interpolate`https://${inst.msupplyFqdn}`,
-            tailscale: inst.tailscaleName,
+            tailscale: inst.msupplyTailscaleName ?? inst.tailscaleName,
           },
         ]),
     ),

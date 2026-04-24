@@ -9,6 +9,11 @@
   vars:
     ec2_tag_name: MsupplyFQDN
 
+- name: Fetch MsupplyTailscaleService EC2 tag
+  ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
+  vars:
+    ec2_tag_name: MsupplyTailscaleService
+
 - name: Set msupply enabled fact
   ansible.builtin.set_fact:
     msupply_enabled: "{{ msupply_enabled if msupply_enabled is defined else (ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined) }}"
@@ -17,3 +22,18 @@
   when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined
   ansible.builtin.set_fact:
     msupply_hostname: "{{ ansible_ec2_tag_MsupplyFQDN }}"
+
+- name: Set msupply tailscale service from EC2 tag
+  when:
+    - msupply_tailscale_service is not defined
+    - ansible_facts['system_vendor'] == 'Amazon EC2'
+    - ansible_ec2_tag_MsupplyTailscaleService is defined
+  ansible.builtin.set_fact:
+    msupply_tailscale_service: "{{ ansible_ec2_tag_MsupplyTailscaleService }}"
+
+- name: Normalise msupply tailscale service prefix
+  when:
+    - msupply_tailscale_service is defined
+    - not msupply_tailscale_service.startswith('svc:')
+  ansible.builtin.set_fact:
+    msupply_tailscale_service: "svc:{{ msupply_tailscale_service }}"

@@ -1,5 +1,6 @@
 import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
 import { cfg, zone } from '../../../common/coreRef.ts';
+import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
 
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined;
 
@@ -88,6 +89,25 @@ export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   return defaultTags;
 });
 
+export const msupplyTailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
+  const tags = cfg.get('msupplyTailscaleTags')?.split(/,\s*/);
+  if (tags) {
+    return [...new Set(tags).values()];
+  }
+
+  const defaultTags = ['tag:server-msupply'];
+
+  if (root) {
+    defaultTags.push(`tag:server-msupply-${root}`);
+  }
+
+  if (typeGuess) {
+    defaultTags.push(`tag:server-msupply-${typeGuess}`);
+  }
+
+  return defaultTags;
+});
+
 const defaultDisk: number = cfg.getNumber('disk') ?? cfg.getNumber('disks.root') ?? 50;
 const legacyDisk = cfg.getBoolean('legacyDisk') ?? false;
 
@@ -107,6 +127,9 @@ export interface Facility {
 export interface Server extends Omit<Required<Facility>, 'msupply'> {
   fqdn: Output<string>;
   msupplyFqdn?: Output<string>;
+  msupplyTailscaleService?: Output<string>;
+  msupplyTailscaleName?: Output<string>;
+  msupplyTailscaleFqdn?: Output<string>;
   msupply?: boolean | string;
 }
 
@@ -135,6 +158,15 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
       ? typeof facility.msupply === 'string'
         ? interpolate`${facility.msupply}.${domainBase}`
         : interpolate`msupply.${facility.subdomain}.${domainBase}`
+      : undefined,
+    msupplyTailscaleService: facility.msupply
+      ? interpolate`svc:${facility.tailscaleName}-svc-msupply`
+      : undefined,
+    msupplyTailscaleName: facility.msupply
+      ? interpolate`${facility.tailscaleName}-svc-msupply`
+      : undefined,
+    msupplyTailscaleFqdn: facility.msupply
+      ? interpolate`${facility.tailscaleName}-svc-msupply.${TAILNET_DOMAIN}`
       : undefined,
   }));
 

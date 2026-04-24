@@ -1,0 +1,35 @@
+---
+- name: Install msupply tailscale-serve unit
+  when: msupply_tailscale_service is defined
+  become: true
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.fileglob', 'msupply-tailscale-serve.service.j2') }}"
+    dest: /etc/systemd/system/msupply-tailscale-serve.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable msupply tailscale-serve unit
+  when: msupply_tailscale_service is defined
+  become: true
+  ansible.builtin.systemd:
+    name: msupply-tailscale-serve.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Remove msupply tailscale-serve unit
+  when: msupply_tailscale_service is not defined
+  become: true
+  block:
+    - name: Stop and disable msupply tailscale-serve unit
+      ansible.builtin.systemd:
+        name: msupply-tailscale-serve.service
+        enabled: false
+        state: stopped
+      failed_when: false
+
+    - name: Remove msupply tailscale-serve unit file
+      ansible.builtin.file:
+        path: /etc/systemd/system/msupply-tailscale-serve.service
+        state: absent
+      notify: Reload systemd

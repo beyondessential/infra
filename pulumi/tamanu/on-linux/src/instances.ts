@@ -3,7 +3,8 @@ import { all, type Input, type Output, secret } from '@pulumi/pulumi';
 
 import { $network } from '../../../common/coreRef.ts';
 import { tailscaleKey } from '../../../common/tailscaleKey.ts';
-import { AMI_UBUNTU_ARM64 } from '../../../constants/internal.ts';
+import { TailscaleVipService } from '../../../common/tailscaleVipService.ts';
+import { AMI_UBUNTU_ARM64, TAILNET_DOMAIN } from '../../../constants/internal.ts';
 import {
   cloudInitYaml,
   hostnameCommands,
@@ -18,6 +19,7 @@ import {
   namePrefix,
   hardDelete,
   tailscaleTags,
+  msupplyTailscaleTags,
   normalizedStack,
   patientPortalDomain,
 } from './config.ts';
@@ -69,6 +71,10 @@ for (const [i, inst] of instances.entries()) {
 
   if (inst.msupplyFqdn) {
     tags.MsupplyFQDN = inst.msupplyFqdn;
+  }
+
+  if (inst.msupplyTailscaleService) {
+    tags.MsupplyTailscaleService = inst.msupplyTailscaleService;
   }
 
   const vm = new aws.ec2.Instance(
@@ -230,6 +236,17 @@ for (const inst of instances) {
       records: [inst.fqdn],
     });
   }
+}
+
+for (const inst of instances) {
+  if (!inst.msupply || !inst.msupplyTailscaleService) continue;
+
+  new TailscaleVipService(`${inst.id}-msupply`, {
+    name: inst.msupplyTailscaleService,
+    ports: ['tcp:80', 'tcp:443'],
+    tags: msupplyTailscaleTags,
+    comment: `mSupply on ${normalizedStack} ${inst.id}`,
+  });
 }
 
 applyBackup(backupResources);

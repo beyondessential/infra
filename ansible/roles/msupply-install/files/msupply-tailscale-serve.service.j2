@@ -1,0 +1,15 @@
+[Unit]
+Description=Advertise mSupply as a Tailscale service
+After=tailscaled.service
+Requires=tailscaled.service
+Wants=msupply.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/tailscale serve --service={{ msupply_tailscale_service }} --https=443 http://127.0.0.1:8000
+ExecStart=/usr/bin/tailscale serve --service={{ msupply_tailscale_service }} --http=80 http://127.0.0.1:8000
+ExecStop=/usr/bin/tailscale serve --service={{ msupply_tailscale_service }} off
+
+[Install]
+WantedBy=multi-user.target
