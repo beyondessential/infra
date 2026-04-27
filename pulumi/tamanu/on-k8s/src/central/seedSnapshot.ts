@@ -3,6 +3,7 @@ import {
   type Input,
   type Output,
   all,
+  interpolate,
   log,
   output,
 } from '@pulumi/pulumi';
@@ -50,6 +51,13 @@ export function cloneSeedSnapshot({
 }: CloneSeedSnapshotArgs): Output<string> {
   const source: Output<SnapshotSource> = output(findSnapshotSource(appVersion));
 
+  // VolumeSnapshotContent is cluster-scoped, so include the deploy namespace
+  // in the name to keep it unique across concurrent tamanu deploys. We name
+  // it explicitly (rather than reading `content.metadata.name` back off the
+  // resource) because `apiextensions.CustomResource` doesn't populate
+  // `.metadata` on the JS instance when the args omit it.
+  const contentName = interpolate`${SNAPSHOT_NAME}-${namespace}`;
+
   // Immutable fields (driver, snapshotHandle) require replace rather than
   // patch whenever the source snapshot changes. deleteBeforeReplace ensures
   // we never collide on the cluster-scoped content name during replacement.
@@ -58,6 +66,9 @@ export function cloneSeedSnapshot({
     {
       apiVersion: SNAPSHOT_API_VERSION,
       kind: 'VolumeSnapshotContent',
+      metadata: {
+        name: contentName,
+      },
       spec: {
         driver: source.driver,
         deletionPolicy: 'Retain',
@@ -85,11 +96,12 @@ export function cloneSeedSnapshot({
         namespace,
       },
       spec: {
-        source: { volumeSnapshotContentName: content.metadata.name },
+        source: { volumeSnapshotContentName: contentName },
       },
     },
     {
       parent,
+      dependsOn: [content],
       replaceOnChanges: ['spec.source.volumeSnapshotContentName'],
       deleteBeforeReplace: true,
     },
