@@ -107,7 +107,13 @@ export function runPostgres({
           ? {
               recovery: {
                 volumeSnapshots: {
-                  storage: { name: seedSnapshotName },
+                  // CNPG's CRD validates this as a core/v1 TypedLocalObjectReference,
+                  // which requires apiGroup + kind as strings (null fails validation).
+                  storage: {
+                    apiGroup: 'snapshot.storage.k8s.io',
+                    kind: 'VolumeSnapshot',
+                    name: seedSnapshotName,
+                  },
                 },
               },
             }
