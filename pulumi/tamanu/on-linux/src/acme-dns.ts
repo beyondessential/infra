@@ -1,6 +1,6 @@
 import * as awsNative from '@pulumi/aws-native';
-import { all, jsonStringify } from '@pulumi/pulumi';
-import { instances, zoneId } from './config.ts';
+import { all, jsonStringify, type Output } from '@pulumi/pulumi';
+import { instances, patientPortalDomain, zoneId } from './config.ts';
 
 const tags = [
   {
@@ -37,12 +37,12 @@ const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy(
 export const acmeDnsPersistPolicy = instances
   .filter((inst) => inst.external && inst.externalIps && inst.externalIps.length > 0)
   .map((inst) => {
-    const persistNames = inst.msupplyFqdn
-      ? all([inst.fqdn, inst.msupplyFqdn]).apply(([fqdn, msupplyFqdn]) => [
-          `_validation-persist.${fqdn}`,
-          `_validation-persist.${msupplyFqdn}`,
-        ])
-      : inst.fqdn.apply((fqdn) => [`_validation-persist.${fqdn}`]);
+    const fqdns: Output<string>[] = [inst.fqdn];
+    if (inst.msupplyFqdn) fqdns.push(inst.msupplyFqdn);
+    if (patientPortalDomain && inst.id === 'central') fqdns.push(patientPortalDomain);
+    const persistNames = all(fqdns).apply((names) =>
+      names.map((fqdn) => `_validation-persist.${fqdn}`),
+    );
 
     return new awsNative.iam.ManagedPolicy(
       `acme-dns-persist-policy-${inst.id}`,
@@ -85,12 +85,12 @@ export const acmeDnsUsers = instances
       { parent: acmeDnsReadPolicy },
     );
 
-    const challengeNames = inst.msupplyFqdn
-      ? all([inst.fqdn, inst.msupplyFqdn]).apply(([fqdn, msupplyFqdn]) => [
-          `_acme-challenge.${fqdn}`,
-          `_acme-challenge.${msupplyFqdn}`,
-        ])
-      : inst.fqdn.apply((fqdn) => [`_acme-challenge.${fqdn}`]);
+    const fqdns: Output<string>[] = [inst.fqdn];
+    if (inst.msupplyFqdn) fqdns.push(inst.msupplyFqdn);
+    if (patientPortalDomain && inst.id === 'central') fqdns.push(patientPortalDomain);
+    const challengeNames = all(fqdns).apply((names) =>
+      names.map((fqdn) => `_acme-challenge.${fqdn}`),
+    );
 
     new awsNative.iam.UserPolicy(
       `acme-dns-change-policy-${inst.id}`,
