@@ -121,6 +121,7 @@ export interface Facility {
   tailscaleName?: Input<string>;
   external?: boolean;
   externalIps?: string[];
+  dnsUser?: boolean;
   msupply?: boolean | string;
 }
 
@@ -145,6 +146,7 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
       tailscaleName: interpolate`${tailscaleBase}-facility-${id.replace(/^facility-/, '')}`,
       legacyDisk,
       disk: defaultDisk,
+      dnsUser: false,
       ...facility,
       externalIps,
       external: hasExternalIps || facility.external || false,
@@ -182,6 +184,7 @@ export const central: Server = {
   tailscaleName: interpolate`${tailscaleBase}-central`,
   legacyDisk,
   disk: defaultDisk,
+  dnsUser: false,
   ...cfgCentral,
   externalIps: centralExternalIps,
   id: 'central',

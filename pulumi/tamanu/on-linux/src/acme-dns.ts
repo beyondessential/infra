@@ -74,7 +74,7 @@ export const acmeDnsPersistPolicy = instances
   });
 
 export const acmeDnsUsers = instances
-  .filter((inst) => inst.external && inst.externalIps && inst.externalIps.length > 0)
+  .filter((inst) => inst.dnsUser || (inst.external && inst.externalIps && inst.externalIps.length > 0))
   .map((inst) => {
     const user = new awsNative.iam.User(
       `tamanu-acme-dns-${inst.id}`,
