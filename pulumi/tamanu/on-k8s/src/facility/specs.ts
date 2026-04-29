@@ -4,6 +4,7 @@ import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
 import type { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
+import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
 import { architecture, nodeEnv } from '../config.ts';
 import { image, imageTag } from '../image.ts';
 import { compact } from 'lodash-es';
@@ -72,6 +73,7 @@ export function podSpecFactory({
           name: appConfig,
         },
       },
+      cryptoVolume,
       ...volumes,
     ],
     containers: [
@@ -85,10 +87,12 @@ export function podSpecFactory({
             name: 'config-volume',
             mountPath: '/config',
           },
+          cryptoVolumeMount,
           ...vms,
         ]),
         env: compact([
           ...env,
+          ...cryptoEnv,
           {
             name: 'TZ',
             value: timezone,
@@ -211,5 +215,9 @@ export const CONFIG_FROM_ENV = {
   },
   errors: {
     apiKey: 'BUGSNAG_API_KEY',
+  },
+  crypto: {
+    keyFile: 'CRYPTO_KEY_FILE',
+    settingsPsk: 'CRYPTO_SETTINGS_PSK',
   },
 };
