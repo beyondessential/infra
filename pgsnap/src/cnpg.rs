@@ -5,6 +5,11 @@ use tracing::info;
 
 use crate::util;
 
+pub struct JobOwner<'a> {
+    pub name: &'a str,
+    pub uid: &'a str,
+}
+
 // s[create.cluster]
 pub async fn create_cluster(
     client: &Client,
@@ -13,6 +18,7 @@ pub async fn create_cluster(
     storage_size: &str,
     cpu: &str,
     memory: &str,
+    owner: &JobOwner<'_>,
 ) -> anyhow::Result<()> {
     let api: Api<kube::api::DynamicObject> = Api::namespaced_with(
         client.clone(),
@@ -31,6 +37,7 @@ pub async fn create_cluster(
         "metadata": {
             "name": cluster_name,
             "namespace": namespace,
+            "ownerReferences": [job_owner_ref(owner)],
         },
         "spec": {
             "imageCatalogRef": {
@@ -95,6 +102,7 @@ pub async fn create_connection_secret(
     namespace: &str,
     job_name: &str,
     cluster_name: &str,
+    owner: &JobOwner<'_>,
 ) -> anyhow::Result<()> {
     let secret_api: Api<Secret> = Api::namespaced(client.clone(), namespace);
     let secret_name = util::secret_name_for_job(job_name);
@@ -123,6 +131,7 @@ pub async fn create_connection_secret(
         "metadata": {
             "name": secret_name,
             "namespace": namespace,
+            "ownerReferences": [job_owner_ref(owner)],
         },
         "stringData": {
             "DB_HOST": db_host,
@@ -172,4 +181,18 @@ fn cnpg_cluster_resource() -> kube::discovery::ApiResource {
         kind: "Cluster".into(),
         plural: "clusters".into(),
     }
+}
+
+// s[create.cleanup]
+// blockOwnerDeletion=false: don't hold the Job alive on the dependent's account.
+// controller=false: this Job is not the reconciling controller for the resource.
+fn job_owner_ref(owner: &JobOwner<'_>) -> serde_json::Value {
+    json!({
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "name": owner.name,
+        "uid": owner.uid,
+        "blockOwnerDeletion": false,
+        "controller": false,
+    })
 }

@@ -92,7 +92,10 @@ The operator waits for the VolumeSnapshot's `status.readyToUse` to become
 
 s[create.cleanup]
 After the snapshot is ready (or if the Job fails), the operator deletes the
-ephemeral CNPG Cluster. The VolumeSnapshot persists independently.
+ephemeral CNPG Cluster. The VolumeSnapshot persists independently. The
+ephemeral CNPG Cluster and connection Secret are also `ownerReferenced` to
+the Job so that any leftover from interrupted runs is garbage-collected by
+Kubernetes when the Job itself is removed (e.g. by `ttlSecondsAfterFinished`).
 
 s[create.failure]
 If the Job fails, the operator still cleans up the CNPG Cluster but does

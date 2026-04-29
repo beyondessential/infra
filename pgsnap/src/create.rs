@@ -60,6 +60,16 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
     let name = job.name_any();
     let annotations = job.annotations();
 
+    // s[create.cleanup]
+    // The Job's uid stamps ownerReferences on the Cluster + Secret so kube
+    // GC cascades their deletion if the Job is removed (TTL or manual)
+    // before the reconciler has cleaned up.
+    let job_uid = job
+        .metadata
+        .uid
+        .clone()
+        .ok_or_else(|| Error::Other(anyhow::anyhow!("job {name} has no uid")))?;
+
     let phase = annotations
         .get(util::ANNOTATION_PHASE)
         .map(|s| Phase::from_str(s))
@@ -97,6 +107,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                 storage_size,
                 cpu,
                 memory,
+                &cnpg::JobOwner { name: &name, uid: &job_uid },
             )
             .await?;
 
@@ -118,8 +129,14 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
             info!(job = %name, "CNPG Cluster ready");
 
             // s[create.secret]
-            cnpg::create_connection_secret(&ctx.client, &ctx.namespace, &name, &cluster_name)
-                .await?;
+            cnpg::create_connection_secret(
+                &ctx.client,
+                &ctx.namespace,
+                &name,
+                &cluster_name,
+                &cnpg::JobOwner { name: &name, uid: &job_uid },
+            )
+            .await?;
 
             // s[create.unsuspend]
             unsuspend_job(&ctx.client, &ctx.namespace, &name).await?;
