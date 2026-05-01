@@ -21,6 +21,16 @@ You also need a Kubernetes/kubectl connection config to the cluster (see below).
 - `ipAllowList` - Experimental, do not use.
 - `architecture` - Defaults to `amd64`, use `arm64`.
 - `configTemplate` - Advanced usage, defaults to `basic`.
+- `schedule` - When the deployment should be running. One of:
+  - `business-hours` (default) — Mon-Fri 07:00-19:00, covering both NZ and
+    Melbourne/Sydney timezones (including DST). Scaled down nights and weekends.
+  - `weekdays` — running 24h Mon-Fri, scaled down on weekends.
+  - `always-on` — never scaled down.
+
+  Storage (Postgres, PVCs) stays running regardless. The schedule is enforced
+  by the cluster's [py-kube-downscaler] via annotations on the namespace.
+
+[py-kube-downscaler]: https://github.com/caas-team/py-kube-downscaler
 
 ```
 export const domainBase =
