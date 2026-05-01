@@ -26,7 +26,10 @@ function setupNamespace(): Output<string> {
       {
         metadata: {
           name,
-          annotations: scheduleAnnotations,
+          annotations: {
+            ...scheduleAnnotations,
+            'pulumi.com/patchForce': 'true',
+          },
         },
       },
       { parent: ns },
