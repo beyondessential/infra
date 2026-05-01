@@ -118,7 +118,7 @@ function hibernationCronJob(
               containers: [
                 {
                   name,
-                  image: 'bitnami/kubectl:1.31',
+                  image: 'registry.k8s.io/kubectl:v1.34.7',
                   command: ['kubectl'],
                   args: [
                     'annotate',
