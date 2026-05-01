@@ -59,3 +59,7 @@ if (cfg.getBoolean('hncEnabled') ?? true) {
   await import('./hnc/manager.ts');
   await import('./hnc/webhooks.ts');
 }
+
+if (cfg.getBoolean('downscalerEnabled') ?? true) {
+  await import('./downscaler.ts');
+}

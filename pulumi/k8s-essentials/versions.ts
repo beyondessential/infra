@@ -32,3 +32,7 @@ export const CNPG_VERSION = '0.27.1';
 // https://tailscale.com/docs/features/kubernetes-operator
 // tailscale version
 export const TAILSCALE_VERSION = '1.94.2';
+
+// https://github.com/caas-team/helm-charts/tree/main/charts/py-kube-downscaler
+// helm chart version
+export const KUBE_DOWNSCALER_VERSION = '0.4.0';
