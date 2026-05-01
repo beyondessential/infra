@@ -1,6 +1,11 @@
 import * as k8s from '@pulumi/kubernetes';
 import { domains, replicas } from './config.ts';
 
+import { GATEWAY_CLASS_ENVOY } from '../../../constants/internal.ts';
+import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
+import { HTTPRoute } from '../../../common/k8s/gateway/HTTPRoute.ts';
+import { API_GROUP as GATEWAY_API_GROUP } from '../../../common/k8s/gateway/consts/API.ts';
+
 import { namespace } from './namespace.ts';
 import { labels } from './labels.ts';
 import { spec } from './spec.ts';
@@ -26,37 +31,57 @@ const publicSvc = new k8s.core.v1.Service(
   { replaceOnChanges: ['clusterIP'] },
 );
 
-new k8s.networking.v1.Ingress('http', {
+const gateway = Gateway('http', {
   metadata: {
     namespace,
-    name: 'dhis2',
     annotations: {
       'cert-manager.io/cluster-issuer': 'letsencrypt',
       'cert-manager.io/private-key-algorithm': 'ECDSA',
+      'pulumi.com/patchForce': 'true',
     },
   },
   spec: {
-    ingressClassName: 'nginx',
-    tls: [{ hosts: domains, secretName: 'http-tls' }],
-    rules: domains.map((host) => ({
-      host,
-      http: {
-        paths: [
+    gatewayClassName: GATEWAY_CLASS_ENVOY,
+    listeners: domains.map((hostname) => ({
+      name: `${hostname}-public`,
+      hostname,
+      port: 443,
+      protocol: 'HTTPS',
+      tls: {
+        mode: 'Terminate',
+        certificateRefs: [{ kind: 'Secret', name: 'gateway-tls' }],
+      },
+    })),
+  },
+});
+
+HTTPRoute('http', {
+  metadata: {
+    namespace,
+    annotations: {
+      'pulumi.com/patchForce': 'true',
+    },
+  },
+  spec: {
+    parentRefs: [
+      {
+        group: GATEWAY_API_GROUP,
+        kind: gateway.kind,
+        namespace,
+        name: gateway.metadata.name,
+      },
+    ],
+    rules: [
+      {
+        backendRefs: [
           {
-            path: '/',
-            pathType: 'Prefix',
-            backend: {
-              service: {
-                name: publicSvc.metadata.name,
-                port: {
-                  name: 'http',
-                },
-              },
-            },
+            namespace,
+            name: publicSvc.metadata.name,
+            port: 80,
           },
         ],
       },
-    })),
+    ],
   },
 });
 
