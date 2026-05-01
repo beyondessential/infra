@@ -119,3 +119,9 @@ export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
 
 export const seedSnapshot: boolean = cfg.getBoolean('seedSnapshot') ?? false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
+
+export type Schedule = 'business-hours' | 'weekdays' | 'always-on';
+export const schedule: Schedule = (cfg.get('schedule') ?? 'business-hours') as Schedule;
+if (!['business-hours', 'weekdays', 'always-on'].includes(schedule)) {
+  throw new Error(`Invalid schedule: ${schedule}`);
+}
