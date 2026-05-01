@@ -50,6 +50,7 @@ function dbPassword(
 export const PostgresUrlSecretKey = {
   AppPassword: 'app.password',
   AppDbUrl: 'app.dburl',
+  AppJdbcUrl: 'app.jdbc',
   AppRoDbUrl: 'app.rodburl',
   AppRocket: 'app.rocket',
   AppLocalDbUrl: 'app.localdburl',
@@ -85,6 +86,7 @@ export function postgresUrlSecret({
       stringData: {
         [PostgresUrlSecretKey.AppPassword]: interpolate`${appPassword}`,
         [PostgresUrlSecretKey.AppDbUrl]: interpolate`postgres://app:${appPassword}@${name}-db-rw/app`,
+        [PostgresUrlSecretKey.AppJdbcUrl]: interpolate`jdbc:postgresql://${name}-db-rw/app?user=app&password=${appPassword}`,
         [PostgresUrlSecretKey.AppRoDbUrl]: interpolate`postgres://app:${appPassword}@${name}-db-ro/app?sslmode=disable`,
         [PostgresUrlSecretKey.AppLocalDbUrl]: interpolate`postgres://app:${appPassword}@localhost:5433/app`,
         [PostgresUrlSecretKey.AppLocalJdbc]: interpolate`jdbc:postgresql://localhost:5433/app?user=app&password=${appPassword}`,

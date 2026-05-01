@@ -127,6 +127,8 @@ export function runPostgres({
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
+            // postgis no longer publishes arm64 images
+            ...(postgis ? { 'bes.node.arch': 'amd64' } : {}),
           },
           tolerations: [CAN_RUN_ON_SPOT],
           nodeAffinity: {
