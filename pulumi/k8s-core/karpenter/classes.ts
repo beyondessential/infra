@@ -7,6 +7,14 @@ import { karpenter } from './controller.ts';
 // EC2NodeClass `role` takes the role name, not ARN.
 const nodeRoleName = nodeRole.name;
 
+// Karpenter rejects EC2NodeClass.spec.tags entries with restricted keys
+// (kubernetes.io/cluster/*, karpenter.sh/*, karpenter.k8s.aws/ec2nodeclass).
+// Strip them out of the inherited tag set.
+const restrictedTagPrefixes = ['kubernetes.io/cluster/', 'karpenter.sh/', 'karpenter.k8s.aws/'];
+const inheritedTags = Object.fromEntries(
+  Object.entries(tags).filter(([k]) => !restrictedTagPrefixes.some((p) => k.startsWith(p))),
+);
+
 // k[imds.v2-required] k[imds.ipv6]
 const commonMetadataOptions = {
   httpEndpoint: 'enabled',
@@ -53,7 +61,7 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
       tags: {
         'bes.node.purpose': 'workload',
         Purpose: 'k8s-workload',
-        ...tags,
+        ...inheritedTags,
       },
     },
   },
@@ -84,7 +92,7 @@ export const ingressNodeClass = new k8s.apiextensions.CustomResource(
       tags: {
         'bes.node.purpose': 'ingress',
         Purpose: 'k8s-ingress',
-        ...tags,
+        ...inheritedTags,
       },
     },
   },
@@ -115,7 +123,7 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
       tags: {
         'bes.node.purpose': 'system',
         Purpose: 'k8s-system',
-        ...tags,
+        ...inheritedTags,
       },
     },
   },
