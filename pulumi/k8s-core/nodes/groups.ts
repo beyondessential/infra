@@ -164,6 +164,11 @@ const standardGroups: NodeGroup[] =
               },
             ]),
         // k[capacity.system-on-demand]
+        // minPerAz: 0 lets CA scale down empty managed system nodes during
+        // the Karpenter migration. The Karpenter controller's affinity
+        // (karpenter.sh/nodepool DoesNotExist) pins at least one managed
+        // system node alive — so this won't fully eliminate the managed
+        // system fleet, just shrink it to ~1-2 nodes.
         {
           groupName: systemSpot ? 'system-arm-spot-v1' : 'system-arm-v2',
           purpose: 'system',
@@ -186,7 +191,7 @@ const standardGroups: NodeGroup[] =
                 'ondemand',
                 100,
               ).map((i) => i.instance_type),
-          minPerAz: 1,
+          minPerAz: 0,
           maxPerAz: 10,
         },
       ];
