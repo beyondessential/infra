@@ -33,11 +33,11 @@ new k8s.helm.v3.Release(
         resources: {
           requests: {
             cpu: '1000m',
-            memory: '2000Mi',
+            memory: '4Gi',
           },
           limits: {
             cpu: '2000m',
-            memory: '5000Mi',
+            memory: '12Gi',
           },
         },
         affinity: {
