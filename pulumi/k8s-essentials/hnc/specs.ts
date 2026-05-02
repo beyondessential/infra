@@ -69,6 +69,11 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
           requests: { cpu: '500m', memory: '1Gi' },
           limits: { memory: '2Gi' },
         },
+        securityContext: {
+          allowPrivilegeEscalation: false,
+          capabilities: { drop: ['ALL'] },
+          seccompProfile: { type: 'RuntimeDefault' },
+        },
         volumeMounts: [
           {
             mountPath: '/hnc-bin',
