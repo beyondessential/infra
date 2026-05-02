@@ -355,6 +355,7 @@ new k8s.apps.v1.Deployment(
                 '--cloud-provider=aws',
                 '--skip-nodes-with-local-storage=false',
                 '--skip-nodes-with-system-pods=false',
+                '--skip-nodes-with-custom-controller-pods=false',
                 '--expander=priority,most-pods,random',
                 '--balance-similar-node-groups',
                 `--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled`,
