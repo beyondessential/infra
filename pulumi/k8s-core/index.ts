@@ -43,3 +43,7 @@ if (cfg.getBoolean('enableCertManager') ?? true) {
 if (cfg.getBoolean('enableExternalDns') ?? true) {
   await import('./externalDns.ts');
 }
+
+if (cfg.getBoolean('useKarpenter') ?? false) {
+  await import('./karpenter/discovery.ts');
+}
