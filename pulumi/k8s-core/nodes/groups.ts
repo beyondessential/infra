@@ -19,9 +19,6 @@ const azLimit = cfg.getNumber('azLimit');
 // Use spot instances for system nodes (default: false, uses on-demand)
 const systemSpot = cfg.getBoolean('systemSpot') ?? false;
 
-// Whether HNC is enabled - if false, skip x86 system nodes (default: true)
-const hncEnabled = cfg.getBoolean('hncEnabled') ?? true;
-
 // Whether to use custom launch templates with IPv6 IMDS support (default: true)
 const withLaunchTemplate = cfg.getBoolean('withLaunchTemplate') ?? true;
 
@@ -161,7 +158,7 @@ const standardGroups: NodeGroup[] =
                 maxPerAz: 10,
               },
             ]),
-        // k[capacity.system-default-ondemand]
+        // k[capacity.system-on-demand]
         {
           groupName: systemSpot ? 'system-arm-spot-v1' : 'system-arm-v2',
           purpose: 'system',
@@ -187,29 +184,6 @@ const standardGroups: NodeGroup[] =
           minPerAz: 1,
           maxPerAz: 10,
         },
-        // x86 system nodes are only needed for HNC (which requires x86)
-        ...(hncEnabled
-          ? [
-              {
-                groupName: 'system-x86-v2',
-                purpose: 'system' as const,
-                schedule: 'spot' as const,
-                arch: 'amd64' as const,
-                diskSize: 25,
-                instanceTypes: upToMonthly(
-                  spotWithinOnDemandPrice(
-                    nonBurst(instancesSizedAtLeast(region, 'x86_64', 2, 4)),
-                    'linux',
-                  ),
-                  'linux',
-                  'spot',
-                  40,
-                ).map((i) => i.instance_type),
-                minPerAz: 0,
-                maxPerAz: 10,
-              },
-            ]
-          : []),
       ];
 
 for (const {
