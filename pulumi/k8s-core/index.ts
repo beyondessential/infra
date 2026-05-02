@@ -47,4 +47,5 @@ if (cfg.getBoolean('enableExternalDns') ?? true) {
 if (cfg.getBoolean('useKarpenter') ?? false) {
   await import('./karpenter/discovery.ts');
   await import('./karpenter/controller.ts');
+  await import('./karpenter/classes.ts');
 }
