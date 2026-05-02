@@ -38,7 +38,7 @@ new k8s.apps.v1.Deployment(
       namespace,
     },
     spec: {
-      replicas: 1,
+      replicas: 2,
       selector: {
         matchLabels: webhooksLabels,
       },

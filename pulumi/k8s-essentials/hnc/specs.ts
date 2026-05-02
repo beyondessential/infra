@@ -1,7 +1,7 @@
 // Converted from HNC v1.1.0 default-cm.yaml
 import * as k8s from '@pulumi/kubernetes';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../common/k8s/affinities.ts';
+import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
 import { HNC_VERSION } from '../versions.ts';
 import { SERVING_CERT_SECRET_NAME } from './cert.ts';
 
@@ -19,8 +19,10 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
         requiredDuringSchedulingIgnoredDuringExecution: {
           nodeSelectorTerms: [
             {
-              // No ARM64 support: https://github.com/kubernetes-sigs/hierarchical-namespaces/issues/201
-              matchExpressions: [archAffinity('amd64'), purposeAffinity('system')],
+              // Upstream ships an amd64-only image, but the source is pure
+              // CGO-disabled Go and cross-compiles cleanly. The init container
+              // below builds for the node's native arch on each pod start.
+              matchExpressions: [purposeAffinity('system')],
             },
           ],
         },
@@ -43,6 +45,38 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
         ],
       } : {},
     },
+    initContainers: [
+      {
+        name: 'build',
+        // Debian-based golang image ships git pre-installed, so this works
+        // under the pod-level non-root securityContext without needing apk.
+        image: 'golang:1.21',
+        command: ['sh', '-ec'],
+        args: [
+          [
+            `git clone --depth 1 -b v${HNC_VERSION} https://github.com/kubernetes-sigs/hierarchical-namespaces.git /tmp/src`,
+            'cd /tmp/src',
+            'CGO_ENABLED=0 go build -o /hnc-bin/manager ./cmd/manager/main.go',
+          ].join(' && '),
+        ],
+        env: [
+          // Pod runs as UID 1000, which has no $HOME in this image; point Go's
+          // build cache somewhere writable.
+          { name: 'HOME', value: '/tmp' },
+          { name: 'GOCACHE', value: '/tmp/.cache/go-build' },
+        ],
+        resources: {
+          requests: { cpu: '500m', memory: '1Gi' },
+          limits: { memory: '2Gi' },
+        },
+        volumeMounts: [
+          {
+            mountPath: '/hnc-bin',
+            name: 'hnc-bin',
+          },
+        ],
+      },
+    ],
     containers: [
       {
         args: [
@@ -57,8 +91,8 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
           '--nopropagation-label=cattle.io/creator=norman',
           ...args,
         ],
-        command: ['/manager'],
-        image: `gcr.io/k8s-staging-multitenancy/hnc-manager:v${HNC_VERSION}`,
+        command: ['/hnc-bin/manager'],
+        image: 'gcr.io/distroless/static:nonroot',
         livenessProbe: {
           failureThreshold: 1,
           httpGet: {
@@ -127,6 +161,11 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
             name: 'cert',
             readOnly: true,
           },
+          {
+            mountPath: '/hnc-bin',
+            name: 'hnc-bin',
+            readOnly: true,
+          },
         ],
       },
     ],
@@ -143,6 +182,10 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
           defaultMode: 420,
           secretName: SERVING_CERT_SECRET_NAME,
         },
+      },
+      {
+        name: 'hnc-bin',
+        emptyDir: {},
       },
     ],
   };
