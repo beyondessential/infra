@@ -74,7 +74,7 @@ export function runPostgres({
         imageCatalogRef: {
           apiGroup: 'postgresql.cnpg.io',
           kind: 'ClusterImageCatalog',
-          name: postgis ? 'postgis' : 'postgresql',
+          name: postgis ? 'postgis-system-bookworm' : 'postgresql',
           major: majorVersion,
         },
         instances: replicas,
