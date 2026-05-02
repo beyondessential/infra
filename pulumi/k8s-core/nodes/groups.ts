@@ -22,6 +22,12 @@ const systemSpot = cfg.getBoolean('systemSpot') ?? false;
 // Whether to use custom launch templates with IPv6 IMDS support (default: true)
 const withLaunchTemplate = cfg.getBoolean('withLaunchTemplate') ?? true;
 
+// One-shot seed nodegroup for bootstrapping a fresh cluster onto Karpenter.
+// Set to true on initial cluster creation, then back to false once Karpenter
+// has migrated onto its own provisioned system node. See docs/kubernetes.md
+// §3.1. Dormant in steady-state clusters.
+const bootstrap = cfg.getBoolean('bootstrap') ?? false;
+
 // Create a standard set of initially-empty node groups for workload autoscaling:
 // - on-demand ARM64 nodes
 // - on-demand x86 nodes
@@ -65,6 +71,25 @@ const standardGroups: NodeGroup[] =
   cfg.getBoolean('standardNodeGroups') === false
     ? []
     : [
+        ...(bootstrap
+          ? [
+              {
+                groupName: 'bootstrap-system',
+                purpose: 'system' as NodeGroupPurpose,
+                schedule: 'ondemand' as NodeGroupSchedule,
+                arch: 'arm64' as NodeGroupArch,
+                diskSize: 25,
+                instanceTypes: upToMonthly(
+                  onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+                  'linux',
+                  'ondemand',
+                  100,
+                ).map((i) => i.instance_type),
+                minPerAz: 1,
+                maxPerAz: 1,
+              },
+            ]
+          : []),
         {
           groupName: 'workload-arm-ondemand-small-v2',
           purpose: 'workload',
