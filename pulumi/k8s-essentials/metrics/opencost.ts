@@ -1,3 +1,4 @@
+import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
@@ -7,6 +8,7 @@ import { OPENCOST_VERSION } from '../versions.ts';
 
 const opencostRoleArn = $core.opencostRoleArn;
 const spotBucket = $core.spotDataFeedBucketName;
+const exportBucket = $core.opencostExportBucketName;
 
 new k8s.helm.v3.Release(
   'opencost',
@@ -62,6 +64,9 @@ new k8s.helm.v3.Release(
             AWS_SPOT_DATA_BUCKET: spotBucket,
             AWS_SPOT_DATA_REGION: region,
             AWS_SPOT_DATA_PREFIX: 'spot-pricing',
+            EXPORT_CSV_FILE: interpolate`s3://${exportBucket}/allocation.csv`,
+            EXPORT_CSV_LABELS_ALL: 'true',
+            EXPORT_CSV_MAX_DAYS: '365',
           },
           resources: {
             requests: {
