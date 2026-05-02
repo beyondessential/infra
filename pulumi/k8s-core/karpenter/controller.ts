@@ -336,9 +336,10 @@ const karpenterSa = new k8s.core.v1.ServiceAccount(
 // chart releases more often — bump deliberately.
 const KARPENTER_VERSION = '1.12.0';
 
-// Karpenter must not schedule onto Karpenter-provisioned nodes (consolidation
-// would evict the controller and there'd be no controller to bring it back).
-// This is enforced via `karpenter.sh/nodepool: DoesNotExist`.
+// Karpenter is allowed to run on Karpenter-provisioned system nodes. The
+// `karpenter.sh/do-not-disrupt` annotation tells Karpenter not to consolidate
+// or drift-replace its own pod, so it doesn't evict itself. This is the
+// official pattern for self-hosted Karpenter (per upstream docs).
 export const karpenter = new k8s.helm.v3.Release(
   'karpenter',
   {
@@ -360,6 +361,9 @@ export const karpenter = new k8s.helm.v3.Release(
           limits: { memory: '512Mi' },
         },
       },
+      podAnnotations: {
+        'karpenter.sh/do-not-disrupt': 'true',
+      },
       affinity: {
         nodeAffinity: {
           requiredDuringSchedulingIgnoredDuringExecution: {
@@ -367,7 +371,6 @@ export const karpenter = new k8s.helm.v3.Release(
               {
                 matchExpressions: [
                   { key: 'bes.node.purpose', operator: 'In', values: ['system'] },
-                  { key: 'karpenter.sh/nodepool', operator: 'DoesNotExist' },
                 ],
               },
             ],
