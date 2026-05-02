@@ -100,7 +100,15 @@ function hibernationCronJob(
   value: 'on' | 'off',
 ): void {
   new k8s.batch.v1.CronJob(name, {
-    metadata: { name, namespace },
+    metadata: {
+      name,
+      namespace,
+      // Opt out of kube-downscaler: the namespace's uptime window inherits onto
+      // every CronJob, but the hibernation crons are deliberately scheduled
+      // just outside that window — without this, the downscaler suspends them
+      // exactly when they're meant to fire.
+      annotations: { 'downscaler/exclude': 'true' },
+    },
     spec: {
       schedule: when.schedule,
       timeZone: when.timeZone,
