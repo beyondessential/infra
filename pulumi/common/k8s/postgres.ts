@@ -127,6 +127,11 @@ export function runPostgres({
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
+            // arm64 is the default workload arch; both the standard cnpg
+            // postgres image and the postgis variant publish arm64. Pinning
+            // here so CA scales the arm pool in the right AZ rather than
+            // letting the scheduler land on a leftover amd64 node.
+            'bes.node.arch': 'arm64',
           },
           tolerations: [CAN_RUN_ON_SPOT],
           nodeAffinity: {
