@@ -1,4 +1,4 @@
-import { failIfIncorrectCluster, cfg } from '../common/k8s/coreRef.ts';
+import { failIfIncorrectCluster, cfg, envoyGatewayEnabled } from '../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 // When bootstrapping a new cluster, you need to deploy k8s-essentials
 // without the tailscale proxy being up. First call:
@@ -24,7 +24,7 @@ await failIfIncorrectCluster();
 // During bootstrap, you'll also want to go to postgres/cnpg.ts and comment out the catalogs,
 // until the CNPG resource definitions are installed.
 
-if (cfg.getBoolean('envoyGatewayEnabled') ?? false) {
+if (envoyGatewayEnabled) {
   await import('./envoyGateway.ts');
 }
 

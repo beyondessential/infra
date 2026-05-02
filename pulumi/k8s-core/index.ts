@@ -19,6 +19,11 @@ export const oidcProviderArn = oidcProvider.arn;
 export const opencostRoleArn = opencostRole.arn;
 export { spotDataFeedBucketName, opencostExportBucketName };
 
+// Single source of truth for "is Envoy Gateway part of this cluster's stack?"
+// k8s-essentials reads this back to gate envoyGateway.ts; k8s-core uses it
+// to gate cert-manager's Gateway API integration.
+export const envoyGatewayEnabled = cfg.getBoolean('envoyGatewayEnabled') ?? false;
+
 import './awsBackup.ts';
 import './nodes/groups.ts';
 import './nodes/monitor.ts';

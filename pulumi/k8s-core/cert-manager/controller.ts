@@ -9,13 +9,12 @@ import { CERTMANAGER_VERSION } from '../versions.ts';
 const externalDns = cfg.getBoolean('enableExternalDns') ?? true;
 
 // Gateway API integration is for the Envoy Gateway TLS auto-issuance flow.
-// cert-manager v1.20+ does a hard preflight check on startup: if the
-// Gateway API CRDs aren't present, it exits and crash-loops. Envoy Gateway
-// in k8s-essentials installs those CRDs, but only when its own
-// envoyGatewayEnabled config is true — so cert-manager has to be gated to
-// match. Default false; flip true on stacks where Envoy Gateway is also
-// enabled.
-const enableGatewayAPI = cfg.getBoolean('enableCertManagerGateway') ?? false;
+// cert-manager v1.20+ does a hard preflight check on startup: if it's set
+// and the Gateway API CRDs aren't present, it crash-loops. Those CRDs are
+// installed by Envoy Gateway in k8s-essentials, so we gate this on the
+// same config. Single source of truth: k8s-core:envoyGatewayEnabled, which
+// k8s-essentials reads back via the cross-stack ref.
+const enableGatewayAPI = cfg.getBoolean('envoyGatewayEnabled') ?? false;
 
 export const certManager = new k8s.helm.v3.Release(
   'cert-manager',

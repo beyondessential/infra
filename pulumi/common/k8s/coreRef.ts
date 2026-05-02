@@ -6,6 +6,11 @@ export { cfg };
 const core = new CrossStack(cfg.require('k8s-core'));
 export const $core = core.k8sCoreOutput();
 
+// Resolved sync at module-load time so it can be used in `if (...)` gates
+// directly. Source of truth lives in k8s-core's config; k8s-essentials
+// follows.
+export const envoyGatewayEnabled = ((await core.getValue<boolean>('envoyGatewayEnabled')) ?? false);
+
 export const clusterName = $core.name;
 export const clusterFullName = core.name.split('/')[2];
 export const tags = $core.tags;

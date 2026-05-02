@@ -42,6 +42,7 @@ export interface CrossStackK8sCoreOutput {
   opencostRoleArn: Output<string>;
   spotDataFeedBucketName: Output<string>;
   opencostExportBucketName: Output<string>;
+  envoyGatewayEnabled: Output<boolean>;
 }
 
 export class CrossStack {
@@ -130,6 +131,7 @@ export class CrossStack {
       opencostRoleArn: this.get('opencostRoleArn'),
       spotDataFeedBucketName: this.get('spotDataFeedBucketName'),
       opencostExportBucketName: this.get('opencostExportBucketName'),
+      envoyGatewayEnabled: this.get('envoyGatewayEnabled'),
     };
   }
 }
