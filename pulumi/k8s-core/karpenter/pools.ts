@@ -57,6 +57,17 @@ const systemArm = upToMonthly(
   100,
 ).map((i) => i.instance_type);
 
+// k[lifecycle.disruption-budgets]
+// Budgets cap how many nodes Karpenter can disrupt at once for consolidation,
+// drift, or empty-cleanup. `schedule` + `duration` create freeze windows
+// (cron + duration); leaving them off makes the budget always-on.
+interface DisruptionBudget {
+  nodes: string; // count or percentage, e.g. "1" or "10%"
+  reasons?: ('Underutilized' | 'Empty' | 'Drifted')[];
+  schedule?: string;
+  duration?: string;
+}
+
 interface PoolArgs {
   purpose: 'workload' | 'ingress' | 'system';
   schedule: 'spot' | 'ondemand' | 'mixed';
@@ -69,6 +80,7 @@ interface PoolArgs {
   spotTaint?: boolean;
   capacityTypes: ('spot' | 'on-demand')[];
   limits: { cpu: number; memory: string };
+  budgets?: DisruptionBudget[];
 }
 
 function pool(name: string, args: PoolArgs) {
@@ -84,6 +96,7 @@ function pool(name: string, args: PoolArgs) {
     spotTaint = false,
     capacityTypes,
     limits,
+    budgets,
   } = args;
 
   return new k8s.apiextensions.CustomResource(
@@ -122,7 +135,7 @@ function pool(name: string, args: PoolArgs) {
         },
         limits,
         // k[lifecycle.consolidation]
-        disruption: { consolidationPolicy, consolidateAfter },
+        disruption: { consolidationPolicy, consolidateAfter, ...(budgets ? { budgets } : {}) },
         weight,
       },
     },
@@ -180,7 +193,9 @@ pool('workload-x86-ondemand', {
   weight: 10,
 });
 
-// Slower consolidation for ingress — LB target churn is expensive.
+// Slower consolidation for ingress — LB target churn is expensive. The fleet
+// is small (typically 2-3 nodes), so a percentage budget rounds badly; cap to
+// one node at a time.
 pool('ingress-arm', {
   purpose: 'ingress',
   schedule: 'mixed',
@@ -191,6 +206,7 @@ pool('ingress-arm', {
   consolidateAfter: '10m',
   limits: { cpu: 100, memory: '200Gi' },
   weight: 50,
+  budgets: [{ nodes: '1' }],
 });
 
 // k[capacity.system-on-demand]
