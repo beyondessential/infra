@@ -2,7 +2,6 @@ import { compact } from 'lodash-es';
 import * as awsClassic from '@pulumi/aws';
 import { AWS_EC2, AWS_EKS } from '../constants/external.ts';
 import { pascalStackName, $core, tags, stackName } from '../common/coreRef.ts';
-import { autoscalerPolicy } from './nodes/policy.ts';
 
 export const controlPlaneRole = new awsClassic.iam.Role('control-plane', {
   namePrefix: `EKS${pascalStackName}ControlPlane-`,
@@ -43,7 +42,6 @@ export const nodeRole = new awsClassic.iam.Role('node', {
     'arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy',
     'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess',
     $core.get('eksCniV6Policy'),
-    autoscalerPolicy.arn,
   ]),
   tags,
 });

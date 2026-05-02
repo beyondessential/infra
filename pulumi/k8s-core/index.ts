@@ -21,7 +21,6 @@ export { spotDataFeedBucketName, opencostExportBucketName };
 
 import './awsBackup.ts';
 import './nodes/groups.ts';
-import './nodes/autoscaler.ts';
 import './nodes/monitor.ts';
 
 import './storage/ebs.ts';

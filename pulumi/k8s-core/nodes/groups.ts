@@ -4,20 +4,11 @@ import { nodeRole } from '../roles.ts';
 import { clusterName, tags } from '../cluster.ts';
 import { region } from '../../common/awsAccount.ts';
 import { nativeTags } from '../../common/tags.ts';
-import {
-  upToMonthly,
-  spotWithinOnDemandPrice,
-  nonBurst,
-  onlyBurst,
-  instancesSizedAtLeast,
-} from '../../common/k8s/instanceTypeGroups.ts';
+import { upToMonthly, onlyBurst, instancesSizedAtLeast } from '../../common/k8s/instanceTypeGroups.ts';
 import { Output } from '@pulumi/pulumi';
 
 // Limit the number of AZs to use for node groups (default: use all available)
 const azLimit = cfg.getNumber('azLimit');
-
-// Use spot instances for system nodes (default: false, uses on-demand)
-const systemSpot = cfg.getBoolean('systemSpot') ?? false;
 
 // Whether to use custom launch templates with IPv6 IMDS support (default: true)
 const withLaunchTemplate = cfg.getBoolean('withLaunchTemplate') ?? true;
@@ -25,21 +16,9 @@ const withLaunchTemplate = cfg.getBoolean('withLaunchTemplate') ?? true;
 // One-shot seed nodegroup for bootstrapping a fresh cluster onto Karpenter.
 // Set to true on initial cluster creation, then back to false once Karpenter
 // has migrated onto its own provisioned system node. See docs/kubernetes.md
-// §3.1. Dormant in steady-state clusters.
+// §3.1. Dormant in steady-state clusters — node provisioning is otherwise
+// fully Karpenter-managed (see ../karpenter/).
 const bootstrap = cfg.getBoolean('bootstrap') ?? false;
-
-// Create a standard set of initially-empty node groups for workload autoscaling:
-// - on-demand ARM64 nodes
-// - on-demand x86 nodes
-// - spot ARM64 nodes
-// - spot x86 nodes
-//
-// and a standard set of initially-provisioned node groups for system workloads:
-// - smaller burstable ARM64 in nat subnets for ingresses
-// - smaller burstable ARM64 in workload subnets for storage, autoscaling, etc
-//
-// Additional node groups can be added by setting the `nodeGroups` config, and
-// the standard set can be disabled by setting `standardNodeGroups` to false.
 
 type NodeGroupPurpose = 'workload' | 'ingress' | 'system';
 type NodeGroupSchedule = 'ondemand' | 'spot';
@@ -58,168 +37,25 @@ export interface NodeGroup {
   diskSize?: number;
 }
 
-// to recreate nodegroups, bump their version in the groupName.
-// more gracefully, copy the old nodegroup with a new version, up,
-// and then delete the old one in a subsequent up.
-
-// Karpenter migration: workload + ingress groups are being wound down. maxPerAz
-// is capped to leave headroom above current usage but well below original
-// (which was 30). CA can still scale these as a fallback if Karpenter is
-// unhealthy. Final removal is Phase 7. System group is unchanged — system
-// nodes migrate last.
-const standardGroups: NodeGroup[] =
-  cfg.getBoolean('standardNodeGroups') === false
-    ? []
-    : [
-        ...(bootstrap
-          ? [
-              {
-                groupName: 'bootstrap-system',
-                purpose: 'system' as NodeGroupPurpose,
-                schedule: 'ondemand' as NodeGroupSchedule,
-                arch: 'arm64' as NodeGroupArch,
-                diskSize: 25,
-                instanceTypes: upToMonthly(
-                  onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-                  'linux',
-                  'ondemand',
-                  100,
-                ).map((i) => i.instance_type),
-                minPerAz: 1,
-                maxPerAz: 1,
-              },
-            ]
-          : []),
-        {
-          groupName: 'workload-arm-ondemand-small-v2',
-          purpose: 'workload',
-          schedule: 'ondemand',
-          arch: 'arm64',
-          diskSize: 25,
-          instanceTypes: upToMonthly(
-            instancesSizedAtLeast(region, 'arm64', 2, 4),
-            'linux',
-            'ondemand',
-            75,
-          ).map((i) => i.instance_type),
-          maxPerAz: 3,
-        },
-        {
-          groupName: 'workload-x86-ondemand-small-v2',
-          purpose: 'workload',
-          schedule: 'ondemand',
-          arch: 'amd64',
-          diskSize: 25,
-          instanceTypes: upToMonthly(
-            instancesSizedAtLeast(region, 'x86_64', 2, 4),
-            'linux',
-            'ondemand',
-            75,
-          ).map((i) => i.instance_type),
-          maxPerAz: 3,
-        },
-        // k[capacity.workload-spot-preferred] k[capacity.spot-price-cap] k[capacity.no-burstable-large]
-        {
-          groupName: 'workload-arm-spot-large-v3',
-          purpose: 'workload',
-          schedule: 'spot',
-          arch: 'arm64',
-          diskSize: 60,
-          instanceTypes: upToMonthly(
-            spotWithinOnDemandPrice(
-              nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 16)),
-              'linux',
-            ),
-            'linux',
-            'spot',
-            100,
-          ).map((i) => i.instance_type),
-          maxPerAz: 5,
-        },
-        {
-          groupName: 'workload-x86-spot-large-v2',
-          purpose: 'workload',
-          schedule: 'spot',
-          arch: 'amd64',
-          diskSize: 60,
-          instanceTypes: upToMonthly(
-            spotWithinOnDemandPrice(
-              nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)),
-              'linux',
-            ),
-            'linux',
-            'spot',
-            75,
-          ).map((i) => i.instance_type),
-          maxPerAz: 5,
-        },
-        {
-          groupName: 'ingress-arm-spot-v2',
-          purpose: 'ingress',
-          schedule: 'spot',
-          arch: 'arm64',
-          diskSize: 25,
-          instanceTypes: upToMonthly(
-            spotWithinOnDemandPrice(
-              nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-              'linux',
-            ),
-            'linux',
-            'spot',
-            50,
-          ).map((i) => i.instance_type),
-          maxPerAz: 3,
-        },
-        ...(systemSpot
-          ? []
-          : [
-              {
-                groupName: 'ingress-arm-ondemand-v3',
-                purpose: 'ingress' as NodeGroupPurpose,
-                schedule: 'ondemand' as NodeGroupSchedule,
-                arch: 'arm64' as NodeGroupArch,
-                diskSize: 25,
-                instanceTypes: upToMonthly(
-                  instancesSizedAtLeast(region, 'arm64', 2, 8),
-                  'linux',
-                  'ondemand',
-                  100,
-                ).map((i) => i.instance_type),
-                maxPerAz: 3,
-              },
-            ]),
-        // k[capacity.system-stable-fallback]
-        // minPerAz: 0 lets CA scale down empty managed system nodes during
-        // the Karpenter migration. The Karpenter controller's affinity
-        // (karpenter.sh/nodepool DoesNotExist) pins at least one managed
-        // system node alive — so this won't fully eliminate the managed
-        // system fleet, just shrink it to ~1-2 nodes.
-        {
-          groupName: systemSpot ? 'system-arm-spot-v1' : 'system-arm-v2',
-          purpose: 'system',
-          schedule: systemSpot ? 'spot' : 'ondemand',
-          arch: 'arm64',
-          diskSize: 25,
-          instanceTypes: systemSpot
-            ? upToMonthly(
-                spotWithinOnDemandPrice(
-                  onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-                  'linux',
-                ),
-                'linux',
-                'spot',
-                100,
-              ).map((i) => i.instance_type)
-            : upToMonthly(
-                onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
-                'linux',
-                'ondemand',
-                100,
-              ).map((i) => i.instance_type),
-          minPerAz: 0,
-          maxPerAz: 10,
-        },
-      ];
+const bootstrapGroups: NodeGroup[] = bootstrap
+  ? [
+      {
+        groupName: 'bootstrap-system',
+        purpose: 'system',
+        schedule: 'ondemand',
+        arch: 'arm64',
+        diskSize: 25,
+        instanceTypes: upToMonthly(
+          onlyBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)),
+          'linux',
+          'ondemand',
+          100,
+        ).map((i) => i.instance_type),
+        minPerAz: 1,
+        maxPerAz: 1,
+      },
+    ]
+  : [];
 
 for (const {
   groupName,
@@ -232,7 +68,7 @@ for (const {
   initial,
   amiType = arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64',
   diskSize = 100,
-} of [...standardGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
+} of [...bootstrapGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
   // k[placement.ingress-subnets] k[placement.workload-subnets]
   const allSubnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
   allSubnets.apply((subnets) => {
@@ -240,7 +76,6 @@ for (const {
     limitedSubnets.forEach((subnet, az0) => {
       const az = az0 + 1;
 
-      // Create launch template with IPv6 IMDS support
       const launchTemplate = withLaunchTemplate
         ? new aws.ec2.LaunchTemplate(`${groupName}-az${az}-lt`, {
             launchTemplateName: `${groupName}-az${az}`,
@@ -252,16 +87,9 @@ for (const {
                 httpPutResponseHopLimit: 2,
                 httpProtocolIpv6: 'enabled',
               },
-              monitoring: {
-                enabled: true,
-              },
-              creditSpecification:
-                schedule === 'ondemand'
-                  ? {
-                      cpuCredits: 'unlimited',
-                    }
-                  : undefined,
-              // k[storage.workload-disk-size] k[storage.system-ingress-disk-size] k[storage.encryption]
+              monitoring: { enabled: true },
+              creditSpecification: schedule === 'ondemand' ? { cpuCredits: 'unlimited' } : undefined,
+              // k[storage.system-ingress-disk-size] k[storage.encryption]
               blockDeviceMappings: [
                 {
                   deviceName: '/dev/xvdb',
@@ -274,14 +102,8 @@ for (const {
                 },
               ],
               tagSpecifications: [
-                {
-                  resourceType: 'instance',
-                  tags: nativeTags(tags),
-                },
-                {
-                  resourceType: 'volume',
-                  tags: nativeTags(tags),
-                },
+                { resourceType: 'instance', tags: nativeTags(tags) },
+                { resourceType: 'volume', tags: nativeTags(tags) },
               ],
             },
           })
@@ -290,12 +112,10 @@ for (const {
       new aws.eks.Nodegroup(
         `${groupName}-az${az}`,
         {
-          // the fixed name forces upgrades that can't be done inline to have to use versions
           nodegroupName: withLaunchTemplate ? `${groupName}-az${az}` : undefined,
           clusterName,
           nodeRole: nodeRole.arn,
           subnets: [subnet],
-          // k[interruption.spot-handling] — EKS managed nodegroups auto-cordon-and-drain on spot interruption
           capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
           amiType,
           instanceTypes,
@@ -309,9 +129,7 @@ for (const {
               }
             : undefined,
           // k[interruption.health-events]
-          nodeRepairConfig: {
-            enabled: true,
-          },
+          nodeRepairConfig: { enabled: true },
           scalingConfig: {
             minSize: minPerAz,
             desiredSize: initial ?? minPerAz,
@@ -321,13 +139,7 @@ for (const {
           taints:
             schedule === 'ondemand'
               ? []
-              : [
-                  {
-                    key: 'spotInstance',
-                    value: 'true',
-                    effect: 'PREFER_NO_SCHEDULE',
-                  },
-                ],
+              : [{ key: 'spotInstance', value: 'true', effect: 'PREFER_NO_SCHEDULE' }],
           updateConfig: maxPerAz >= 5 ? { maxUnavailablePercentage: 20 } : { maxUnavailable: 1 },
           // k[node.label.purpose] k[node.label.schedule] k[node.label.arch] k[node.label.group]
           labels: {
@@ -337,30 +149,8 @@ for (const {
             'bes.node.arch': arch,
           },
           tags: {
-            EKSCluster: clusterName, // for IAM permissions
-
-            // for billing:
             ...tags,
             Purpose: `k8s-${purpose}`,
-
-            'k8s.io/cluster-autoscaler/enabled': 'true', // for autodiscovery (value doesn't matter)
-            'k8s.io/cluster-autoscaler/cluster': clusterName, // for autodiscovery
-            'k8s.io/cluster-autoscaler/node-template/resources/ephemeral-storage': `${Math.max(5, diskSize - 5)}G`,
-
-            ...(schedule === 'ondemand'
-              ? {}
-              : {
-                  // Used by the cluster-autoscaler to prefer spot instances
-                  'k8s.io/cluster-autoscaler/node-template/taint/spotInstance':
-                    'true:PreferNoSchedule',
-                }),
-
-            // These labels can be used to target specific node groups for workloads
-            // and will be understood by the auto-scaler for min=0 node groups.
-            'k8s.io/cluster-autoscaler/node-template/label/bes.node.group': groupName,
-            'k8s.io/cluster-autoscaler/node-template/label/bes.node.purpose': purpose,
-            'k8s.io/cluster-autoscaler/node-template/label/bes.node.schedule': schedule,
-            'k8s.io/cluster-autoscaler/node-template/label/bes.node.arch': arch,
           },
         },
         {
