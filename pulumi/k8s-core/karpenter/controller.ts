@@ -1,23 +1,20 @@
 import { all, interpolate } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { cfg, pascalStackName } from '../../common/coreRef.ts';
+import { pascalStackName } from '../../common/coreRef.ts';
 import { region, accountId, partition } from '../../common/awsAccount.ts';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { provider } from '../kubeconfig.ts';
 import { clusterName, oidcProvider, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
 
-// Karpenter must run on on-demand system nodes. Spot system nodes create a
-// chicken-and-egg during interruption: when the controller's own node is
-// reclaimed, no controller is running to react.
-const systemSpot = cfg.getBoolean('systemSpot') ?? false;
-if (systemSpot) {
-  throw new Error(
-    'systemSpot cannot be enabled when using Karpenter. ' +
-      'Karpenter must run on on-demand system nodes to avoid interruption issues.',
-  );
-}
+// Spot system nodes are allowed; the design relies on:
+// (1) replicas: 2 (chart default), spread across capacity types via the
+//     topologySpreadConstraints below — at least one replica stays alive
+//     during a spot capacity drought,
+// (2) the system-arm Karpenter NodePool always existing as an on-demand
+//     fallback (see pools.ts), so even if spot is exhausted, Karpenter can
+//     provision a fresh on-demand system node to recover onto.
 
 // k[interruption.spot-handling] k[interruption.health-events]
 // SQS queue receiving spot interruption notices, rebalance recommendations,
@@ -377,6 +374,33 @@ export const karpenter = new k8s.helm.v3.Release(
           },
         },
       },
+      // Spread replicas across capacity types so a spot drought can't take
+      // every controller down at once. Default chart spread is hostname-only;
+      // we add a capacity-type axis on top.
+      topologySpreadConstraints: [
+        {
+          maxSkew: 1,
+          topologyKey: 'kubernetes.io/hostname',
+          whenUnsatisfiable: 'ScheduleAnyway',
+          labelSelector: {
+            matchLabels: {
+              'app.kubernetes.io/instance': 'karpenter',
+              'app.kubernetes.io/name': 'karpenter',
+            },
+          },
+        },
+        {
+          maxSkew: 1,
+          topologyKey: 'karpenter.sh/capacity-type',
+          whenUnsatisfiable: 'ScheduleAnyway',
+          labelSelector: {
+            matchLabels: {
+              'app.kubernetes.io/instance': 'karpenter',
+              'app.kubernetes.io/name': 'karpenter',
+            },
+          },
+        },
+      ],
       tolerations: [{ key: 'CriticalAddonsOnly', operator: 'Exists' }],
     },
   },

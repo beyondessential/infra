@@ -188,7 +188,7 @@ const standardGroups: NodeGroup[] =
                 maxPerAz: 3,
               },
             ]),
-        // k[capacity.system-on-demand]
+        // k[capacity.system-stable-fallback]
         // minPerAz: 0 lets CA scale down empty managed system nodes during
         // the Karpenter migration. The Karpenter controller's affinity
         // (karpenter.sh/nodepool DoesNotExist) pins at least one managed
