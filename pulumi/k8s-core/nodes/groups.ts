@@ -96,7 +96,7 @@ const standardGroups: NodeGroup[] =
           purpose: 'workload',
           schedule: 'spot',
           arch: 'arm64',
-          diskSize: 50,
+          diskSize: 60,
           instanceTypes: upToMonthly(
             spotWithinOnDemandPrice(
               nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 16)),
@@ -113,7 +113,7 @@ const standardGroups: NodeGroup[] =
           purpose: 'workload',
           schedule: 'spot',
           arch: 'amd64',
-          diskSize: 50,
+          diskSize: 60,
           instanceTypes: upToMonthly(
             spotWithinOnDemandPrice(
               nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)),
