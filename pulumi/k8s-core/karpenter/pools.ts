@@ -1,5 +1,4 @@
 import * as k8s from '@pulumi/kubernetes';
-import { cfg } from '../../common/coreRef.ts';
 import { provider } from '../kubeconfig.ts';
 import { region } from '../../common/awsAccount.ts';
 import {
@@ -10,11 +9,6 @@ import {
   instancesSizedAtLeast,
 } from '../../common/k8s/instanceTypeGroups.ts';
 import { workloadNodeClass, ingressNodeClass, systemNodeClass } from './classes.ts';
-
-// Whether to add a spot system NodePool alongside the on-demand one. Pre-Phase
-// 7 the same config also picks managed-nodegroup capacity for system; the
-// semantic ("I want my system on spot when possible") carries over.
-const systemSpot = cfg.getBoolean('systemSpot') ?? false;
 
 // Instance type lists, mirroring what nodes/groups.ts uses for the equivalent
 // managed nodegroups. The helpers price-cap spot against on-demand and exclude
@@ -239,21 +233,22 @@ pool('system-arm', {
   weight: 40,
 });
 
-// Optional spot system pool, enabled by `systemSpot: true`. Higher weight than
-// the on-demand pool so Karpenter prefers spot for new system pods. Weight
-// only competes among system pools (other purposes are filtered by labels).
-if (systemSpot) {
-  pool('system-arm-spot', {
-    purpose: 'system',
-    schedule: 'spot',
-    arch: 'arm64',
-    nodeClassRef: systemNodeClass,
-    instanceTypes: systemArmSpot,
-    capacityTypes: ['spot'],
-    spotTaint: true,
-    consolidateAfter: '30m',
-    consolidationPolicy: 'WhenEmpty',
-    limits: { cpu: 50, memory: '100Gi' },
-    weight: 45,
-  });
-}
+// Spot system pool. Higher weight than the on-demand pool so Karpenter prefers
+// spot for new system pods. Karpenter's controller is forced (via
+// topologySpreadConstraints in controller.ts) to keep at least one replica on
+// on-demand, so a spot capacity drought can't take all controllers down at
+// once. Weight only competes among system pools (other purposes are filtered
+// by labels).
+pool('system-arm-spot', {
+  purpose: 'system',
+  schedule: 'spot',
+  arch: 'arm64',
+  nodeClassRef: systemNodeClass,
+  instanceTypes: systemArmSpot,
+  capacityTypes: ['spot'],
+  spotTaint: true,
+  consolidateAfter: '30m',
+  consolidationPolicy: 'WhenEmpty',
+  limits: { cpu: 50, memory: '100Gi' },
+  weight: 45,
+});

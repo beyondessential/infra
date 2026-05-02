@@ -8,13 +8,14 @@ import { provider } from '../kubeconfig.ts';
 import { clusterName, oidcProvider, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
 
-// Spot system nodes are allowed; the design relies on:
-// (1) replicas: 2 (chart default), spread across capacity types via the
-//     topologySpreadConstraints below — at least one replica stays alive
-//     during a spot capacity drought,
-// (2) the system-arm Karpenter NodePool always existing as an on-demand
-//     fallback (see pools.ts), so even if spot is exhausted, Karpenter can
-//     provision a fresh on-demand system node to recover onto.
+// HA design for the controller:
+// (1) replicas: 2 (chart default).
+// (2) capacity-type spread (DoNotSchedule, see below) — exactly one replica
+//     on spot, exactly one on on-demand. A spot drought can take down at
+//     most one controller at a time.
+// (3) system-arm NodePool (on-demand) and system-arm-spot NodePool both
+//     unconditionally present in pools.ts — Karpenter always has somewhere
+//     to provision either capacity type when a controller pod is pending.
 
 // k[interruption.spot-handling] k[interruption.health-events]
 // SQS queue receiving spot interruption notices, rebalance recommendations,
@@ -374,9 +375,13 @@ export const karpenter = new k8s.helm.v3.Release(
           },
         },
       },
-      // Spread replicas across capacity types so a spot drought can't take
-      // every controller down at once. Default chart spread is hostname-only;
-      // we add a capacity-type axis on top.
+      // With replicas: 2 and capacity-type maxSkew: 1 + DoNotSchedule, exactly
+      // one replica is forced onto each capacity type. A pending replica
+      // wanting on-demand triggers Karpenter (running on the other replica) to
+      // provision an on-demand system node from the system-arm pool. So a spot
+      // drought can never take both controllers down — the on-demand replica
+      // survives, provisions replacement spot capacity, and the spot replica
+      // reschedules.
       topologySpreadConstraints: [
         {
           maxSkew: 1,
@@ -392,7 +397,7 @@ export const karpenter = new k8s.helm.v3.Release(
         {
           maxSkew: 1,
           topologyKey: 'karpenter.sh/capacity-type',
-          whenUnsatisfiable: 'ScheduleAnyway',
+          whenUnsatisfiable: 'DoNotSchedule',
           labelSelector: {
             matchLabels: {
               'app.kubernetes.io/instance': 'karpenter',
