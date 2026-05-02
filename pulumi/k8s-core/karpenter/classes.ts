@@ -66,7 +66,7 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
       tags: {
         'bes.node.purpose': 'workload',
         Name: `${namePrefix} workload`,
-        Purpose: `${namePrefix} workload`,
+        Purpose: 'k8s-workload',
         ...inheritedTags,
       },
     },
@@ -98,7 +98,7 @@ export const ingressNodeClass = new k8s.apiextensions.CustomResource(
       tags: {
         'bes.node.purpose': 'ingress',
         Name: `${namePrefix} ingress`,
-        Purpose: `${namePrefix} ingress`,
+        Purpose: 'k8s-ingress',
         ...inheritedTags,
       },
     },
@@ -130,7 +130,7 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
       tags: {
         'bes.node.purpose': 'system',
         Name: `${namePrefix} system`,
-        Purpose: `${namePrefix} system`,
+        Purpose: 'k8s-system',
         ...inheritedTags,
       },
     },
