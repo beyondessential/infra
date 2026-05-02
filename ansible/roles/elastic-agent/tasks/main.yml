@@ -19,7 +19,7 @@
       ignore_errors: true
 
 - name: Uninstall Elastic security agent
-  when: elastic_agent_enabled and not elastic_agent_enrollment_token
+  when: (not elastic_agent_enabled) or (elastic_agent_enrollment_token is not defined)
   block:
     - name: Stop Elastic agent
       become: true
@@ -43,7 +43,7 @@
         state: absent
 
 - name: Install Elastic security agent
-  when: elastic_agent_enabled and elastic_agent_enrollment_token
+  when: (elastic_agent_enabled) and (elastic_agent_enrollment_token is defined)
   block:
     - name: Set elastic_architecture
       set_fact:
