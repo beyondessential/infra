@@ -56,6 +56,11 @@ export interface NodeGroup {
 // more gracefully, copy the old nodegroup with a new version, up,
 // and then delete the old one in a subsequent up.
 
+// Karpenter migration: workload + ingress groups are being wound down. maxPerAz
+// is capped to leave headroom above current usage but well below original
+// (which was 30). CA can still scale these as a fallback if Karpenter is
+// unhealthy. Final removal is Phase 7. System group is unchanged — system
+// nodes migrate last.
 const standardGroups: NodeGroup[] =
   cfg.getBoolean('standardNodeGroups') === false
     ? []
@@ -72,7 +77,7 @@ const standardGroups: NodeGroup[] =
             'ondemand',
             75,
           ).map((i) => i.instance_type),
-          maxPerAz: 30,
+          maxPerAz: 3,
         },
         {
           groupName: 'workload-x86-ondemand-small-v2',
@@ -86,7 +91,7 @@ const standardGroups: NodeGroup[] =
             'ondemand',
             75,
           ).map((i) => i.instance_type),
-          maxPerAz: 30,
+          maxPerAz: 3,
         },
         // k[capacity.workload-spot-preferred] k[capacity.spot-price-cap] k[capacity.no-burstable-large]
         {
@@ -104,7 +109,7 @@ const standardGroups: NodeGroup[] =
             'spot',
             100,
           ).map((i) => i.instance_type),
-          maxPerAz: 30,
+          maxPerAz: 5,
         },
         {
           groupName: 'workload-x86-spot-large-v2',
@@ -121,7 +126,7 @@ const standardGroups: NodeGroup[] =
             'spot',
             75,
           ).map((i) => i.instance_type),
-          maxPerAz: 30,
+          maxPerAz: 5,
         },
         {
           groupName: 'ingress-arm-spot-v2',
@@ -138,7 +143,7 @@ const standardGroups: NodeGroup[] =
             'spot',
             50,
           ).map((i) => i.instance_type),
-          maxPerAz: 10,
+          maxPerAz: 3,
         },
         ...(systemSpot
           ? []
@@ -155,7 +160,7 @@ const standardGroups: NodeGroup[] =
                   'ondemand',
                   100,
                 ).map((i) => i.instance_type),
-                maxPerAz: 10,
+                maxPerAz: 3,
               },
             ]),
         // k[capacity.system-on-demand]
