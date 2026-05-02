@@ -41,6 +41,7 @@ export interface CrossStackK8sCoreOutput {
   oidcProviderArn: Output<string>;
   opencostRoleArn: Output<string>;
   spotDataFeedBucketName: Output<string>;
+  opencostExportBucketName: Output<string>;
 }
 
 export class CrossStack {
@@ -128,6 +129,7 @@ export class CrossStack {
       oidcProviderArn: this.get('oidcProviderArn'),
       opencostRoleArn: this.get('opencostRoleArn'),
       spotDataFeedBucketName: this.get('spotDataFeedBucketName'),
+      opencostExportBucketName: this.get('opencostExportBucketName'),
     };
   }
 }

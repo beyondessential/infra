@@ -5,7 +5,11 @@ failIfIncorrectAccount();
 import { cluster, oidcProvider } from './cluster.ts';
 export { clusterName as name, tags, version } from './cluster.ts';
 import { bucket as backupsBucketObj, role as backupsRole } from './backups.ts';
-import { role as opencostRole, spotDataFeedBucketName } from './opencost.ts';
+import {
+  role as opencostRole,
+  spotDataFeedBucketName,
+  opencostExportBucketName,
+} from './opencost.ts';
 export const arn = cluster.arn;
 export const endpoint = cluster.endpoint;
 export const ca = cluster.certificateAuthorityData;
@@ -13,7 +17,7 @@ export const backupsBucket = backupsBucketObj.bucket;
 export const backupsServiceAccountArn = backupsRole.arn;
 export const oidcProviderArn = oidcProvider.arn;
 export const opencostRoleArn = opencostRole.arn;
-export { spotDataFeedBucketName };
+export { spotDataFeedBucketName, opencostExportBucketName };
 
 import './awsBackup.ts';
 import './nodes/groups.ts';
