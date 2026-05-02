@@ -281,6 +281,7 @@ const priorities = new k8s.core.v1.ConfigMap(
   { provider },
 );
 
+// k[lifecycle.consolidation] k[lifecycle.disruption-budgets]
 new k8s.apps.v1.Deployment(
   'autoscaler',
   {

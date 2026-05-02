@@ -91,6 +91,7 @@ const standardGroups: NodeGroup[] =
           ).map((i) => i.instance_type),
           maxPerAz: 30,
         },
+        // k[capacity.workload-spot-preferred] k[capacity.spot-price-cap] k[capacity.no-burstable-large]
         {
           groupName: 'workload-arm-spot-large-v3',
           purpose: 'workload',
@@ -160,6 +161,7 @@ const standardGroups: NodeGroup[] =
                 maxPerAz: 10,
               },
             ]),
+        // k[capacity.system-default-ondemand]
         {
           groupName: systemSpot ? 'system-arm-spot-v1' : 'system-arm-v2',
           purpose: 'system',
@@ -222,6 +224,7 @@ for (const {
   amiType = arch === 'arm64' ? 'BOTTLEROCKET_ARM_64' : 'BOTTLEROCKET_x86_64',
   diskSize = 100,
 } of [...standardGroups, ...(cfg.getObject<NodeGroup[]>('nodeGroups') ?? [])]) {
+  // k[placement.ingress-subnets] k[placement.workload-subnets]
   const allSubnets = purpose === 'ingress' ? $network.natSubnetIds : $network.workloadSubnetIds;
   allSubnets.apply((subnets) => {
     const limitedSubnets = azLimit ? subnets.slice(0, azLimit) : subnets;
@@ -233,6 +236,7 @@ for (const {
         ? new aws.ec2.LaunchTemplate(`${groupName}-az${az}-lt`, {
             launchTemplateName: `${groupName}-az${az}`,
             launchTemplateData: {
+              // k[imds.v2-required] k[imds.ipv6]
               metadataOptions: {
                 httpEndpoint: 'enabled',
                 httpTokens: 'required',
@@ -248,6 +252,7 @@ for (const {
                       cpuCredits: 'unlimited',
                     }
                   : undefined,
+              // k[storage.workload-disk-size] k[storage.system-ingress-disk-size] k[storage.encryption]
               blockDeviceMappings: [
                 {
                   deviceName: '/dev/xvdb',
@@ -281,6 +286,7 @@ for (const {
           clusterName,
           nodeRole: nodeRole.arn,
           subnets: [subnet],
+          // k[interruption.spot-handling] — EKS managed nodegroups auto-cordon-and-drain on spot interruption
           capacityType: schedule === 'ondemand' ? 'ON_DEMAND' : 'SPOT',
           amiType,
           instanceTypes,
@@ -293,6 +299,7 @@ for (const {
                 ),
               }
             : undefined,
+          // k[interruption.health-events]
           nodeRepairConfig: {
             enabled: true,
           },
@@ -301,6 +308,7 @@ for (const {
             desiredSize: initial ?? minPerAz,
             maxSize: maxPerAz,
           },
+          // k[node.taint.spot]
           taints:
             schedule === 'ondemand'
               ? []
@@ -312,6 +320,7 @@ for (const {
                   },
                 ],
           updateConfig: maxPerAz >= 5 ? { maxUnavailablePercentage: 20 } : { maxUnavailable: 1 },
+          // k[node.label.purpose] k[node.label.schedule] k[node.label.arch] k[node.label.group]
           labels: {
             'bes.node.group': groupName,
             'bes.node.purpose': purpose,
