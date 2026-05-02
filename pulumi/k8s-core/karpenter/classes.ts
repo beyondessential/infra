@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { stackName } from '../../common/coreRef.ts';
 import { provider } from '../kubeconfig.ts';
 import { clusterName, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
@@ -6,6 +7,10 @@ import { karpenter } from './controller.ts';
 
 // EC2NodeClass `role` takes the role name, not ARN.
 const nodeRoleName = nodeRole.name;
+
+// Prefix for EC2 instance Name tags. Distinguishes Karpenter-provisioned
+// nodes from other EC2 instances in the AWS console.
+const namePrefix = `[Kubernetes ${stackName}]`;
 
 // Karpenter rejects EC2NodeClass.spec.tags entries with restricted keys
 // (kubernetes.io/cluster/*, karpenter.sh/*, karpenter.k8s.aws/ec2nodeclass).
@@ -60,7 +65,8 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
       blockDeviceMappings: ebs('60Gi'),
       tags: {
         'bes.node.purpose': 'workload',
-        Purpose: 'k8s-workload',
+        Name: `${namePrefix} workload`,
+        Purpose: `${namePrefix} workload`,
         ...inheritedTags,
       },
     },
@@ -91,7 +97,8 @@ export const ingressNodeClass = new k8s.apiextensions.CustomResource(
       blockDeviceMappings: ebs('15Gi'),
       tags: {
         'bes.node.purpose': 'ingress',
-        Purpose: 'k8s-ingress',
+        Name: `${namePrefix} ingress`,
+        Purpose: `${namePrefix} ingress`,
         ...inheritedTags,
       },
     },
@@ -122,7 +129,8 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
       blockDeviceMappings: ebs('15Gi'),
       tags: {
         'bes.node.purpose': 'system',
-        Purpose: 'k8s-system',
+        Name: `${namePrefix} system`,
+        Purpose: `${namePrefix} system`,
         ...inheritedTags,
       },
     },
