@@ -24,6 +24,11 @@ const role = new k8s.rbac.v1.ClusterRole('tamanu-gha-dbt-build', {
       resources: ['secrets'],
       verbs: ['get'],
     },
+    {
+      apiGroups: [''],
+      resources: ['services'],
+      verbs: ['get'],
+    },
   ],
 });
 
