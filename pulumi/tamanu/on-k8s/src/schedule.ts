@@ -27,11 +27,18 @@ export const scheduleAnnotations: Record<string, string> = (() => {
 })();
 
 // CNPG hibernation timing — DB straddles the workload window:
-// - business-hours: wake 08:00 NZT (30min before earliest workload start, NZ
-//   08:30) and hibernate 19:00 Sydney (15min after latest workload end, Syd
-//   18:45). Each CronJob lives in its own timezone for clarity.
-// - weekdays: wake Sun 23:45 NZT, hibernate Sat 00:15 NZT.
+// - business-hours: wake from 08:00 NZT (30min before earliest workload
+//   start, NZ 08:30); hibernate from 19:00 Sydney (15min after latest
+//   workload end, Syd 18:45). Each CronJob lives in its own timezone.
+// - weekdays: wake from Sun 22:00 NZT; hibernate from Sat 01:00 NZT.
 // - always-on: no CronJobs.
+//
+// Both wake and hibernate fire every 15 min over a ~2h window (8 firings)
+// so a transient failure of one firing (cluster mid-rotation, CNPG webhook
+// not ready, flaky API server) doesn't leave the DB stuck in the wrong
+// state. Subsequent firings re-apply the same annotation — applying
+// `hibernation=off` to an already-on cluster (or `=on` to an already-off
+// one) is a no-op. concurrencyPolicy: Forbid prevents retries piling up.
 type CronWindow = { wake: CronTime; hibernate: CronTime };
 type CronTime = { schedule: string; timeZone: string };
 
@@ -39,13 +46,13 @@ const cronWindow: CronWindow | null = (() => {
   switch (schedule) {
     case 'business-hours':
       return {
-        wake: { schedule: '0 8 * * 1-5', timeZone: 'Pacific/Auckland' },
-        hibernate: { schedule: '0 19 * * 1-5', timeZone: 'Australia/Sydney' },
+        wake: { schedule: '*/15 8-9 * * 1-5', timeZone: 'Pacific/Auckland' },
+        hibernate: { schedule: '*/15 19-20 * * 1-5', timeZone: 'Australia/Sydney' },
       };
     case 'weekdays':
       return {
-        wake: { schedule: '45 23 * * 0', timeZone: 'Pacific/Auckland' },
-        hibernate: { schedule: '15 0 * * 6', timeZone: 'Pacific/Auckland' },
+        wake: { schedule: '*/15 22-23 * * 0', timeZone: 'Pacific/Auckland' },
+        hibernate: { schedule: '*/15 1-2 * * 6', timeZone: 'Pacific/Auckland' },
       };
     case 'always-on':
       return null;
