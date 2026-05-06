@@ -27,11 +27,18 @@ export const scheduleAnnotations: Record<string, string> = (() => {
 })();
 
 // CNPG hibernation timing — DB straddles the workload window:
-// - business-hours: wake 08:00 NZT (30min before earliest workload start, NZ
-//   08:30) and hibernate 19:00 Sydney (15min after latest workload end, Syd
-//   18:45). Each CronJob lives in its own timezone for clarity.
-// - weekdays: wake Sun 23:45 NZT, hibernate Sat 00:15 NZT.
+// - business-hours: wake from 08:00 NZT (30min before earliest workload
+//   start, NZ 08:30); hibernate 19:00 Sydney (15min after latest workload
+//   end, Syd 18:45). Each CronJob lives in its own timezone for clarity.
+// - weekdays: wake from Sun 22:00 NZT; hibernate Sat 00:15 NZT.
 // - always-on: no CronJobs.
+//
+// Wake fires every 15 min over a ~2h window (8 firings) so a transient
+// failure of one firing (e.g. cluster mid-rotation, CNPG webhook not
+// yet ready) doesn't leave the DB hibernated for the day. Subsequent
+// firings re-apply the same annotation — already-on is a no-op.
+// Hibernate fires once: a missed hibernate just costs an evening of
+// uptime, not a day of unavailability.
 type CronWindow = { wake: CronTime; hibernate: CronTime };
 type CronTime = { schedule: string; timeZone: string };
 
@@ -39,12 +46,12 @@ const cronWindow: CronWindow | null = (() => {
   switch (schedule) {
     case 'business-hours':
       return {
-        wake: { schedule: '0 8 * * 1-5', timeZone: 'Pacific/Auckland' },
+        wake: { schedule: '*/15 8-9 * * 1-5', timeZone: 'Pacific/Auckland' },
         hibernate: { schedule: '0 19 * * 1-5', timeZone: 'Australia/Sydney' },
       };
     case 'weekdays':
       return {
-        wake: { schedule: '45 23 * * 0', timeZone: 'Pacific/Auckland' },
+        wake: { schedule: '*/15 22-23 * * 0', timeZone: 'Pacific/Auckland' },
         hibernate: { schedule: '15 0 * * 6', timeZone: 'Pacific/Auckland' },
       };
     case 'always-on':
