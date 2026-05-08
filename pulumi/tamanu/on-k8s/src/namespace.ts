@@ -2,12 +2,13 @@ import * as k8s from '@pulumi/kubernetes';
 import { Output } from '@pulumi/pulumi';
 import { cfg } from '../../../common/k8s/coreRef.ts';
 import { normalizedStack } from './config.ts';
-import { scheduleAnnotations } from './schedule.ts';
 
 const name = cfg.get('namespace') ?? `tamanu-${normalizedStack}`;
 if (name === 'system' || name === 'super') {
   throw new Error(`Namespace name ${name} is reserved`);
 }
+
+export const namespaceName = name;
 
 // When true, assumes the namespace was created externally (e.g., by GitHub Actions
 // via SubnamespaceAnchor) and HNC manages the parent relationship.
@@ -26,10 +27,7 @@ function setupNamespace(): Output<string> {
       {
         metadata: {
           name,
-          annotations: {
-            ...scheduleAnnotations,
-            'pulumi.com/patchForce': 'true',
-          },
+          annotations: { 'pulumi.com/patchForce': 'true' },
         },
       },
       { parent: ns },
@@ -43,10 +41,7 @@ function setupNamespace(): Output<string> {
   const ns = new k8s.core.v1.Namespace(
     `tamanu-${normalizedStack}`,
     {
-      metadata: {
-        name,
-        annotations: scheduleAnnotations,
-      },
+      metadata: { name },
     },
     { ignoreChanges: ['metadata.name'] },
   );

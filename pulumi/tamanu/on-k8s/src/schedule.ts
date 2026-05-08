@@ -1,76 +1,47 @@
 import * as k8s from '@pulumi/kubernetes';
 import { Output } from '@pulumi/pulumi';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
-import { schedule } from './config.ts';
+import { ttlHours } from './config.ts';
+import { namespaceName } from './namespace.ts';
 
-// Schedule windows are expressed as "08:30-18:45 in either NZ or Sydney
-// (whichever is the user's local TZ)" via a union of two kube-downscaler
-// uptime specs. The CNPG hibernation CronJobs straddle that with a margin —
-// DB up before any user logs in, DB down after every user logs off.
+// On every `pulumi up` with `ttlHours > 0`, the deployment's expiry is
+// re-anchored to "now + ttlHours hours". A hibernate CronJob fires every
+// 15 min for ~2h starting at expiresAt. Each firing annotates every
+// Deployment in the namespace with `downscaler/force-downtime=true` (which
+// kube-downscaler then scales to zero) and sets `cnpg.io/hibernation=on`
+// on every CNPG cluster (which the CNPG operator hibernates). A wake-up
+// Job runs on every up to reverse those annotations, so an expired
+// deployment is revived by the next push.
 //
-// User TZ assumed to be one of Pacific/Auckland or Australia/Sydney.
-
-// kube-downscaler annotations applied to the namespace (inherited by every
-// deployment / statefulset / HPA / cronjob inside it).
-export const scheduleAnnotations: Record<string, string> = (() => {
-  switch (schedule) {
-    case 'business-hours':
-      return {
-        'downscaler/uptime':
-          'Mon-Fri 08:30-18:45 Pacific/Auckland,Mon-Fri 08:30-18:45 Australia/Sydney',
-      };
-    case 'weekdays':
-      return { 'downscaler/uptime': 'Mon-Fri 00:00-24:00 Pacific/Auckland' };
-    case 'always-on':
-      return { 'downscaler/exclude': 'true' };
-  }
-})();
-
-// CNPG hibernation timing — DB straddles the workload window:
-// - business-hours: wake from 08:00 NZT (30min before earliest workload
-//   start, NZ 08:30); hibernate from 19:00 Sydney (15min after latest
-//   workload end, Syd 18:45). Each CronJob lives in its own timezone.
-// - weekdays: wake from Sun 22:00 NZT; hibernate from Sat 01:00 NZT.
-// - always-on: no CronJobs.
+// Suspension is driven entirely by workload-level annotations. The
+// namespace itself is intentionally left without `downscaler/exclude` —
+// per py-kube-downscaler, namespace-level exclude takes precedence and
+// would short-circuit our workload-level force-downtime. With no
+// namespace annotation and no kube-downscaler default downtime, untouched
+// workloads stay up; force-downtime'd workloads scale to zero.
 //
-// Both wake and hibernate fire every 15 min over a ~2h window (8 firings)
-// so a transient failure of one firing (cluster mid-rotation, CNPG webhook
-// not ready, flaky API server) doesn't leave the DB stuck in the wrong
-// state. Subsequent firings re-apply the same annotation — applying
-// `hibernation=off` to an already-on cluster (or `=on` to an already-off
-// one) is a no-op. concurrencyPolicy: Forbid prevents retries piling up.
-type CronWindow = { wake: CronTime; hibernate: CronTime };
-type CronTime = { schedule: string; timeZone: string };
+// All RBAC is namespace-scoped: this avoids needing
+// ClusterRole/ClusterRoleBinding, which the gha deploy role can't create.
 
-const cronWindow: CronWindow | null = (() => {
-  switch (schedule) {
-    case 'business-hours':
-      return {
-        wake: { schedule: '*/15 8-9 * * 1-5', timeZone: 'Pacific/Auckland' },
-        hibernate: { schedule: '*/15 19-20 * * 1-5', timeZone: 'Australia/Sydney' },
-      };
-    case 'weekdays':
-      return {
-        wake: { schedule: '*/15 22-23 * * 0', timeZone: 'Pacific/Auckland' },
-        hibernate: { schedule: '*/15 1-2 * * 6', timeZone: 'Pacific/Auckland' },
-      };
-    case 'always-on':
-      return null;
-  }
-})();
+export function setupTtlHibernation(namespace: Output<string>): void {
+  if (ttlHours === 0) return;
 
-export function setupCnpgHibernation(namespace: Output<string>): void {
-  if (!cronWindow) return;
+  const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000);
+  const expiresAtUnix = Math.floor(expiresAt.getTime() / 1000);
+  const labels = { 'app.kubernetes.io/name': 'tamanu-ttl' };
 
-  const labels = { 'app.kubernetes.io/name': 'cnpg-hibernation' };
-
-  const sa = new k8s.core.v1.ServiceAccount('cnpg-hibernation', {
-    metadata: { name: 'cnpg-hibernation', namespace, labels },
+  const sa = new k8s.core.v1.ServiceAccount('tamanu-ttl', {
+    metadata: { namespace, labels },
   });
 
-  const role = new k8s.rbac.v1.Role('cnpg-hibernation', {
-    metadata: { name: 'cnpg-hibernation', namespace, labels },
+  const role = new k8s.rbac.v1.Role('tamanu-ttl', {
+    metadata: { namespace, labels },
     rules: [
+      {
+        apiGroups: ['apps'],
+        resources: ['deployments'],
+        verbs: ['get', 'list', 'patch'],
+      },
       {
         apiGroups: ['postgresql.cnpg.io'],
         resources: ['clusters'],
@@ -79,8 +50,8 @@ export function setupCnpgHibernation(namespace: Output<string>): void {
     ],
   });
 
-  new k8s.rbac.v1.RoleBinding('cnpg-hibernation', {
-    metadata: { name: 'cnpg-hibernation', namespace, labels },
+  new k8s.rbac.v1.RoleBinding('tamanu-ttl', {
+    metadata: { namespace, labels },
     roleRef: {
       apiGroup: 'rbac.authorization.k8s.io',
       kind: 'Role',
@@ -89,33 +60,65 @@ export function setupCnpgHibernation(namespace: Output<string>): void {
     subjects: [{ kind: 'ServiceAccount', name: sa.metadata.name, namespace }],
   });
 
-  hibernationCronJob('cnpg-wake', namespace, sa, cronWindow.wake, 'off');
-  hibernationCronJob(
-    'cnpg-hibernate',
-    namespace,
-    sa,
-    cronWindow.hibernate,
-    'on',
-  );
+  for (const [i, when] of cronGroupsForHibernate(expiresAt).entries()) {
+    hibernateCronJob(`cnpg-hibernate-${i + 1}`, namespace, sa, when);
+  }
+
+  wakeJob(namespace, sa, expiresAtUnix);
 }
 
-function hibernationCronJob(
+type CronTime = { schedule: string; timeZone: 'UTC' };
+
+// 8 quarter-hour firings starting at expiresAt, grouped by UTC hour. A
+// single cron expression with comma-separated minutes within one hour
+// fires exactly the times we want; spanning two hours via cross product
+// would double-fire, so we emit one CronJob per UTC hour (up to 3 when the
+// expiresAt minute pushes the window across hour boundaries).
+export function cronGroupsForHibernate(expiresAt: Date): CronTime[] {
+  type Firing = { month: number; day: number; hour: number; minute: number };
+  const firings: Firing[] = [];
+  for (let i = 0; i < 8; i++) {
+    const t = new Date(expiresAt.getTime() + i * 15 * 60_000);
+    firings.push({
+      month: t.getUTCMonth() + 1,
+      day: t.getUTCDate(),
+      hour: t.getUTCHours(),
+      minute: t.getUTCMinutes(),
+    });
+  }
+
+  const groups = new Map<string, Firing[]>();
+  for (const f of firings) {
+    const key = `${f.month}-${f.day}-${f.hour}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(f);
+    groups.set(key, arr);
+  }
+
+  return [...groups.values()].map((group) => {
+    const minutes = [...new Set(group.map((f) => f.minute))].sort((a, b) => a - b);
+    const f0 = group[0];
+    return {
+      schedule: `${minutes.join(',')} ${f0.hour} ${f0.day} ${f0.month} *`,
+      timeZone: 'UTC',
+    };
+  });
+}
+
+const KUBECTL_IMAGE = 'registry.k8s.io/kubectl:v1.34.7';
+const CONTAINER_RESOURCES = {
+  requests: { cpu: '10m', memory: '32Mi' },
+  limits: { memory: '128Mi' },
+};
+
+function hibernateCronJob(
   name: string,
   namespace: Output<string>,
   sa: k8s.core.v1.ServiceAccount,
   when: CronTime,
-  value: 'on' | 'off',
 ): void {
   new k8s.batch.v1.CronJob(name, {
-    metadata: {
-      name,
-      namespace,
-      // Opt out of kube-downscaler: the namespace's uptime window inherits onto
-      // every CronJob, but the hibernation crons are deliberately scheduled
-      // just outside that window — without this, the downscaler suspends them
-      // exactly when they're meant to fire.
-      annotations: { 'downscaler/exclude': 'true' },
-    },
+    metadata: { namespace },
     spec: {
       schedule: when.schedule,
       timeZone: when.timeZone,
@@ -132,24 +135,59 @@ function hibernationCronJob(
               tolerations: [CAN_RUN_ON_SPOT],
               containers: [
                 {
-                  name,
-                  image: 'registry.k8s.io/kubectl:v1.34.7',
-                  command: ['kubectl'],
+                  name: 'hibernate',
+                  image: KUBECTL_IMAGE,
+                  command: ['sh', '-c'],
                   args: [
-                    'annotate',
-                    'cluster.postgresql.cnpg.io',
-                    '--all',
-                    `cnpg.io/hibernation=${value}`,
-                    '--overwrite',
+                    [
+                      `kubectl annotate deployment --all -n ${namespaceName} downscaler/force-downtime=true --overwrite`,
+                      `kubectl annotate cluster.postgresql.cnpg.io --all -n ${namespaceName} cnpg.io/hibernation=on --overwrite`,
+                    ].join(' && '),
                   ],
-                  resources: {
-                    requests: { cpu: '10m', memory: '32Mi' },
-                    limits: { memory: '128Mi' },
-                  },
+                  resources: CONTAINER_RESOURCES,
                 },
               ],
             },
           },
+        },
+      },
+    },
+  });
+}
+
+function wakeJob(
+  namespace: Output<string>,
+  sa: k8s.core.v1.ServiceAccount,
+  expiresAtUnix: number,
+): void {
+  // Per-up unique pulumi name so each `pulumi up` deletes the previous
+  // Job and creates a fresh one — Jobs are immutable and can't be re-run.
+  // ttlSecondsAfterFinished cleans up the underlying k8s Job a few minutes
+  // after success so old Jobs don't accumulate if pulumi state lags.
+  new k8s.batch.v1.Job(`cnpg-wake-${expiresAtUnix}`, {
+    metadata: { namespace },
+    spec: {
+      ttlSecondsAfterFinished: 600,
+      backoffLimit: 2,
+      template: {
+        spec: {
+          serviceAccountName: sa.metadata.name,
+          restartPolicy: 'Never',
+          tolerations: [CAN_RUN_ON_SPOT],
+          containers: [
+            {
+              name: 'wake',
+              image: KUBECTL_IMAGE,
+              command: ['sh', '-c'],
+              args: [
+                [
+                  `kubectl annotate deployment --all -n ${namespaceName} downscaler/force-downtime- --overwrite`,
+                  `kubectl annotate cluster.postgresql.cnpg.io --all -n ${namespaceName} cnpg.io/hibernation=off --overwrite`,
+                ].join(' && '),
+              ],
+              resources: CONTAINER_RESOURCES,
+            },
+          ],
         },
       },
     },

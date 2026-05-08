@@ -120,8 +120,13 @@ export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
 export const seedSnapshot: boolean = cfg.getBoolean('seedSnapshot') ?? false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
-export type Schedule = 'business-hours' | 'weekdays' | 'always-on';
-export const schedule: Schedule = (cfg.get('schedule') ?? 'business-hours') as Schedule;
-if (!['business-hours', 'weekdays', 'always-on'].includes(schedule)) {
-  throw new Error(`Invalid schedule: ${schedule}`);
+// 0 (default) means no TTL — deployment stays up forever. Any positive value
+// sets a per-deploy lifetime in hours, re-anchored to the moment of every
+// `pulumi up`. After the TTL elapses without a fresh `pulumi up`, the
+// namespace is suspended (kube-downscaler scales workloads to zero) and the
+// CNPG databases are hibernated. Pushing to the branch — or otherwise
+// re-running pulumi up — restores the deployment.
+export const ttlHours = cfg.getNumber('ttlHours') ?? 0;
+if (!Number.isInteger(ttlHours) || ttlHours < 0) {
+  throw new Error(`ttlHours must be a non-negative integer, got: ${ttlHours}`);
 }
