@@ -6,6 +6,8 @@ import { region } from '../common/awsAccount.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { AMI_UBUNTU_ARM64, TAILNET_DOMAIN } from '../constants/internal.ts';
 import * as securityGroupRules from '../common/securityGroupRules.ts';
+import { workloadAlertsCentralArn } from '../common/alertsHubRef.ts';
+import { ec2StatusAlarms } from '../common/ec2StatusAlarms.ts';
 import {
   cloudInitYaml,
   hostnameCommands,
@@ -89,6 +91,16 @@ const box = new aws.ec2.Instance(
     parent: authKey,
     ignoreChanges: ['ami'],
   },
+);
+
+ec2StatusAlarms(
+  'ts-relay',
+  {
+    instanceId: box.id,
+    notifyTopicArns: [$core.alertsTopicArn(), workloadAlertsCentralArn],
+    tags,
+  },
+  { parent: box },
 );
 
 const eip = new aws.ec2.Eip('ts-relay', {
