@@ -124,6 +124,12 @@ function pool(name: string, args: PoolArgs) {
             },
           },
           spec: {
+            // rotate nodes at least every week, for patches and recosting
+            expireAfter: '168h', // 7 days
+
+            // how long do pods have to vacate before they're force-terminated
+            terminationGracePeriod: '30m',
+
             nodeClassRef: {
               group: 'karpenter.k8s.aws',
               kind: 'EC2NodeClass',
