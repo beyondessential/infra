@@ -60,6 +60,9 @@ new k8s.apps.v1.Deployment(
       labels,
       name: 'postgres-restore-operator',
       namespace,
+      annotations: {
+        'pulumi.com/patchForce': 'true',
+      },
     },
     spec: {
       replicas: 1,
