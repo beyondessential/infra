@@ -103,6 +103,11 @@ export class CrossStack {
     return this.get('region');
   }
 
+  // from core
+  alertsTopicArn(): Output<string> {
+    return this.get('alertsTopicArn');
+  }
+
   // from k8s-core
   async k8sCore(): Promise<CrossStackK8sCore> {
     return {

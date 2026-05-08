@@ -18,6 +18,7 @@ export const pascalStackName = upperFirst(camelCase(stackName));
 
 export const ghaOidc = $core.ghaOidc();
 export const zone = $core.zone();
+export const alertsTopicArn = $core.alertsTopicArn();
 export { region } from './awsAccount.ts';
 
 export function failIfIncorrectAccount(): void {
