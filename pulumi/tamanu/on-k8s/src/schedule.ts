@@ -5,13 +5,17 @@ import { ttlHours } from './config.ts';
 import { namespaceName } from './namespace.ts';
 
 // On every `pulumi up` with `ttlHours > 0`, the deployment's expiry is
-// re-anchored to "now + ttlHours hours". A hibernate CronJob fires every
-// 15 min for ~2h starting at expiresAt. Each firing annotates every
-// Deployment in the namespace with `downscaler/force-downtime=true` (which
-// kube-downscaler then scales to zero) and sets `cnpg.io/hibernation=on`
-// on every CNPG cluster (which the CNPG operator hibernates). A wake-up
-// Job runs on every up to reverse those annotations, so an expired
-// deployment is revived by the next push.
+// re-anchored to "now + ttlHours hours". A hibernate CronJob fires twice
+// — at the next 00/20/40-minute slot at-or-after expiresAt and 10 min
+// later — so the schedule fits in one cron expression within a single
+// hour, with one retry against transient failures. Each firing annotates
+// every Deployment in the namespace with `downscaler/force-downtime=true`
+// (which kube-downscaler then scales to zero) and sets
+// `cnpg.io/hibernation=on` on every CNPG cluster (which the CNPG operator
+// hibernates). A wake-up Job runs on every up to reverse those
+// annotations, so an expired deployment is revived by the next push.
+// The actual hibernation time is therefore expiresAt rounded up to the
+// next 20-min boundary — up to ~20 min of slop past the configured TTL.
 //
 // Suspension is driven entirely by workload-level annotations. The
 // namespace itself is intentionally left without `downscaler/exclude` —
@@ -60,49 +64,23 @@ export function setupTtlHibernation(namespace: Output<string>): void {
     subjects: [{ kind: 'ServiceAccount', name: sa.metadata.name, namespace }],
   });
 
-  for (const [i, when] of cronGroupsForHibernate(expiresAt).entries()) {
-    hibernateCronJob(`cnpg-hibernate-${i + 1}`, namespace, sa, when);
-  }
-
+  hibernateCronJob('ttl-hibernate', namespace, sa, cronTimeForHibernate(expiresAt));
   wakeJob(namespace, sa, expiresAtUnix);
 }
 
 type CronTime = { schedule: string; timeZone: 'UTC' };
 
-// 8 quarter-hour firings starting at expiresAt, grouped by UTC hour. A
-// single cron expression with comma-separated minutes within one hour
-// fires exactly the times we want; spanning two hours via cross product
-// would double-fire, so we emit one CronJob per UTC hour (up to 3 when the
-// expiresAt minute pushes the window across hour boundaries).
-export function cronGroupsForHibernate(expiresAt: Date): CronTime[] {
-  type Firing = { month: number; day: number; hour: number; minute: number };
-  const firings: Firing[] = [];
-  for (let i = 0; i < 8; i++) {
-    const t = new Date(expiresAt.getTime() + i * 15 * 60_000);
-    firings.push({
-      month: t.getUTCMonth() + 1,
-      day: t.getUTCDate(),
-      hour: t.getUTCHours(),
-      minute: t.getUTCMinutes(),
-    });
-  }
-
-  const groups = new Map<string, Firing[]>();
-  for (const f of firings) {
-    const key = `${f.month}-${f.day}-${f.hour}`;
-    const arr = groups.get(key) ?? [];
-    arr.push(f);
-    groups.set(key, arr);
-  }
-
-  return [...groups.values()].map((group) => {
-    const minutes = [...new Set(group.map((f) => f.minute))].sort((a, b) => a - b);
-    const f0 = group[0];
-    return {
-      schedule: `${minutes.join(',')} ${f0.hour} ${f0.day} ${f0.month} *`,
-      timeZone: 'UTC',
-    };
-  });
+// Round expiresAt up to the next :00/:20/:40 UTC slot, then fire there
+// and 10 min later. Both firings live in the same UTC hour, so the
+// schedule is one cron expression and never crosses an hour boundary.
+export function cronTimeForHibernate(expiresAt: Date): CronTime {
+  const SLOT_MS = 20 * 60 * 1000;
+  const fireAt = new Date(Math.ceil(expiresAt.getTime() / SLOT_MS) * SLOT_MS);
+  const firstMinute = fireAt.getUTCMinutes();
+  return {
+    schedule: `${firstMinute},${firstMinute + 10} ${fireAt.getUTCHours()} ${fireAt.getUTCDate()} ${fireAt.getUTCMonth() + 1} *`,
+    timeZone: 'UTC',
+  };
 }
 
 const KUBECTL_IMAGE = 'registry.k8s.io/kubectl:v1.34.7';
@@ -182,7 +160,7 @@ function wakeJob(
   // Job and creates a fresh one — Jobs are immutable and can't be re-run.
   // ttlSecondsAfterFinished cleans up the underlying k8s Job a few minutes
   // after success so old Jobs don't accumulate if pulumi state lags.
-  new k8s.batch.v1.Job(`cnpg-wake-${expiresAtUnix}`, {
+  new k8s.batch.v1.Job(`ttl-wake-${expiresAtUnix}`, {
     metadata: { namespace },
     spec: {
       ttlSecondsAfterFinished: 600,
