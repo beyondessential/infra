@@ -133,7 +133,7 @@ function hibernateCronJob(
               serviceAccountName: sa.metadata.name,
               restartPolicy: 'Never',
               tolerations: [CAN_RUN_ON_SPOT],
-              initContainers: [
+              containers: [
                 {
                   name: 'hibernate-deployments',
                   image: KUBECTL_IMAGE,
@@ -149,8 +149,6 @@ function hibernateCronJob(
                   ],
                   resources: CONTAINER_RESOURCES,
                 },
-              ],
-              containers: [
                 {
                   name: 'hibernate-cnpg',
                   image: KUBECTL_IMAGE,
@@ -194,7 +192,7 @@ function wakeJob(
           serviceAccountName: sa.metadata.name,
           restartPolicy: 'Never',
           tolerations: [CAN_RUN_ON_SPOT],
-          initContainers: [
+          containers: [
             {
               name: 'wake-deployments',
               image: KUBECTL_IMAGE,
@@ -210,8 +208,6 @@ function wakeJob(
               ],
               resources: CONTAINER_RESOURCES,
             },
-          ],
-          containers: [
             {
               name: 'wake-cnpg',
               image: KUBECTL_IMAGE,
