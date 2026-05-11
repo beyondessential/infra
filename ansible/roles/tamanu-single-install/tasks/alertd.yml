@@ -1,0 +1,27 @@
+---
+- name: Create host-level alerts directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu/alerts
+    state: directory
+    owner: tamanu
+    group: tamanu
+    mode: "0775"
+
+- name: Install bestool-alertd systemd unit
+  become: true
+  ansible.builtin.copy:
+    src: bestool-alertd.service
+    dest: /etc/systemd/system/bestool-alertd.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart bestool-alertd
+
+- name: Enable and start bestool-alertd
+  become: true
+  ansible.builtin.systemd:
+    name: bestool-alertd.service
+    state: started
+    enabled: true
+    daemon_reload: true

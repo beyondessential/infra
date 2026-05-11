@@ -73,6 +73,7 @@
     group: tamanu
     state: link
     force: true
+  notify: Restart bestool-alertd
 
 - name: Add version file
   become: true

@@ -1,0 +1,14 @@
+[Unit]
+Description=Tamanu alert daemon
+After=network.target
+
+[Service]
+Type=simple
+User=tamanu
+Group=tamanu
+ExecStart=/usr/bin/bestool tamanu alertd run --glob /etc/tamanu/current/alerts --glob /etc/tamanu/alerts
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
