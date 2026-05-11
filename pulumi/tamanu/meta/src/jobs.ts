@@ -73,6 +73,32 @@ new k8s.apps.v1.Deployment(
   { dependsOn: [migrator] },
 );
 
+new k8s.apps.v1.Deployment(
+  'reachability',
+  {
+    metadata: {
+      labels: labels('reachability'),
+      namespace,
+    },
+    spec: {
+      replicas: 1,
+      strategy: {
+        type: 'Recreate',
+      },
+      selector: {
+        matchLabels: labels('reachability'),
+      },
+      template: {
+        metadata: {
+          labels: labels('reachability'),
+        },
+        spec: spec('reachability', ['reachability']),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
+
 new k8s.batch.v1.CronJob('chrome-versions', {
   metadata: {
     namespace,
