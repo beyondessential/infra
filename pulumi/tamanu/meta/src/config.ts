@@ -27,3 +27,6 @@ export const publicServerVersionsSecret = cfg.requireSecret('publicServerVersion
 
 export const slackerOpenUrl = cfg.require('slackerOpenUrl');
 export const slackerCloseUrl = cfg.require('slackerCloseUrl');
+
+export const tailscaleClientId = cfg.require('tailscaleClientId');
+export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');

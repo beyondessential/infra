@@ -10,6 +10,7 @@ export const AMI_UBUNTU_ARM64 = {
 
 export const AWS_TAMANU_INTERNAL_CERTBOT_POLICY = 'arn:aws:iam::143295493206:policy/CertbotRenewal';
 
+export const TAILNET_ID = 'TZAJWRvY3B11CNTRL';
 export const TAILNET_DOMAIN = 'tail53aef.ts.net';
 
 export const LOGS_BUCKETS = {

@@ -1,8 +1,8 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { domains, normalizedStack, publicServerVersionsSecret, replicas } from './config.ts';
+import { domains, normalizedStack, publicServerVersionsSecret, replicas, tailscaleClientId, tailscaleClientSecret } from './config.ts';
 
-import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN } from '../../../constants/internal.ts';
+import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN, TAILNET_ID } from '../../../constants/internal.ts';
 import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
 import { HTTPRoute } from '../../../common/k8s/gateway/HTTPRoute.ts';
 import { API_GROUP as GATEWAY_API_GROUP } from '../../../common/k8s/gateway/consts/API.ts';
@@ -282,12 +282,20 @@ new k8s.apps.v1.Deployment(
               value: 'ConnectInfo',
             },
             {
-              name: 'LEPTOS_OUTPUT_NAME',
-              value: 'private-server',
-            },
-            {
               name: 'SERVER_VERSIONS_SECRET',
               value: publicServerVersionsSecret,
+            },
+            {
+              name: 'TAILSCALE_OAUTH_CLIENT_ID',
+              value: tailscaleClientId,
+            },
+            {
+              name: 'TAILSCALE_OAUTH_CLIENT_SECRET',
+              value: tailscaleClientSecret,
+            },
+            {
+              name: 'TAILSCALE_TAILNET',
+              value: TAILNET_ID,
             },
           ],
           // Wait up to 60 seconds for the server to start...
