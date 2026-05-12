@@ -119,7 +119,7 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: labels('slacker'),
         },
-        spec: spec('slacker', ['slacker'], {
+        spec: spec('slacker', ['slacker_outbox'], {
           env: [
             { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
             { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
