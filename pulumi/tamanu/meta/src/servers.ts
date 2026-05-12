@@ -279,7 +279,7 @@ new k8s.apps.v1.Deployment(
             },
             {
               name: 'CLIENT_IP_SOURCE',
-              value: 'ConnectInfo',
+              value: 'RightmostXForwardedFor',
             },
             {
               name: 'SERVER_VERSIONS_SECRET',
