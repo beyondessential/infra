@@ -2,6 +2,7 @@
 Description=Create postgres-consistent btrfs snapshot via snapper
 Requires=postgresql.service
 After=postgresql.service
+ConditionPathExists=/etc/snapper/configs/postgres
 
 [Service]
 Type=oneshot
