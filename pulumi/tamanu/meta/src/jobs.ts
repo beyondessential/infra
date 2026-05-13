@@ -123,7 +123,7 @@ new k8s.apps.v1.Deployment(
           env: [
             { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
             { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
-            { name: 'SLACK_WEBHOOK_CLOSE_URL', value: slackerCloseUrl },
+            { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
           ],
         }),
       },
