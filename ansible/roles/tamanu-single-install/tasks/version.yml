@@ -73,6 +73,7 @@
     group: tamanu
     state: link
     force: true
+  notify: Restart bestool-alertd
 
 - name: Add version file
   become: true
@@ -92,3 +93,15 @@
   loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"
   containers.podman.podman_image:
     name: "{{ item }}"
+
+- name: Extract bundled alert definitions from tamanu image
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      mkdir -p /etc/tamanu/{{ tamanu_version }}/alerts
+      cid=$(podman create {{ tamanu_image_server }})
+      trap 'podman rm "$cid" >/dev/null' EXIT
+      podman cp "$cid:/app/alerts/." /etc/tamanu/{{ tamanu_version }}/alerts/
+    creates: /etc/tamanu/{{ tamanu_version }}/alerts
+    executable: /bin/bash

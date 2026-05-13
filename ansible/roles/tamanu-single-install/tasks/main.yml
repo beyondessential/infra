@@ -10,3 +10,4 @@
 - ansible.builtin.include_tasks: ufw.yml
   when: tamanu_ufw_firewall
 - ansible.builtin.include_tasks: backup.yml
+- ansible.builtin.include_tasks: alertd.yml
