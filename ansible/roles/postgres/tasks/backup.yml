@@ -4,17 +4,9 @@
   register: postgresql_filesystem_type
   changed_when: false
 
-- name: Check if snapper has a postgres configuration
-  when: postgresql_filesystem_type.stdout == 'btrfs'
-  become: true
-  ansible.builtin.shell: snapper -c postgres list >/dev/null 2>&1
-  register: snapper_postgres_config
-  changed_when: false
-  ignore_errors: true
-
 - name: Set backup method based on filesystem
   ansible.builtin.set_fact:
-    postgres_backup_method: "{{ 'btrfs' if (postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config is defined and snapper_postgres_config.rc == 0) else 'ext4' }}"
+    postgres_backup_method: "{{ 'btrfs' if postgresql_filesystem_type.stdout == 'btrfs' else 'ext4' }}"
 
 - name: Display backup method
   ansible.builtin.debug:
