@@ -1,10 +1,11 @@
 import * as k8s from '@pulumi/kubernetes';
+import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
+import { postgresCronJob } from '../../../common/k8s/postgresCron.ts';
 import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
-import { architecture } from './config.ts';
-import { postgresCronJob } from '../../../common/k8s/postgresCron.ts';
+import { architecture, slackerOpenUrl, slackerCloseUrl, normalizedStack } from './config.ts';
 
 export const migrator = new k8s.batch.v1.Job('migrator', {
   metadata: {
@@ -67,6 +68,64 @@ new k8s.apps.v1.Deployment(
           labels: labels('pingtask'),
         },
         spec: spec('pingtask', ['pingtask']),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
+
+new k8s.apps.v1.Deployment(
+  'reachability',
+  {
+    metadata: {
+      labels: labels('reachability'),
+      namespace,
+    },
+    spec: {
+      replicas: 1,
+      strategy: {
+        type: 'Recreate',
+      },
+      selector: {
+        matchLabels: labels('reachability'),
+      },
+      template: {
+        metadata: {
+          labels: labels('reachability'),
+        },
+        spec: spec('reachability', ['reachability']),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
+
+new k8s.apps.v1.Deployment(
+  'slacker',
+  {
+    metadata: {
+      labels: labels('slacker'),
+      namespace,
+    },
+    spec: {
+      replicas: 1,
+      strategy: {
+        type: 'Recreate',
+      },
+      selector: {
+        matchLabels: labels('slacker'),
+      },
+      template: {
+        metadata: {
+          labels: labels('slacker'),
+        },
+        spec: spec('slacker', ['slacker_outbox'], {
+          env: [
+            { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
+            { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
+            { name: 'SLACK_WEBHOOK_CLOSE_URL', value: slackerCloseUrl },
+          ],
+        }),
       },
     },
   },

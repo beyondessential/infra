@@ -1,0 +1,6 @@
+name: k8s-db-proxy
+description: Tailscale-exposed proxies for databases reachable only inside the data VPC
+runtime:
+  name: nodejs
+  options:
+    typescript: false

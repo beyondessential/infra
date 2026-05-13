@@ -5,12 +5,12 @@ import { WebFrontend } from './web/WebFrontend.ts';
 import { domains, facilityNames, patientPortalReplicas, replicas, syntheticTests } from './config.ts';
 import { ingress } from './common/ingress.ts';
 import { namespace } from './namespace.ts';
-import { setupCnpgHibernation } from './schedule.ts';
+import { setupTtlHibernation } from './schedule.ts';
 await failIfIncorrectCluster();
 
 import './secrets.ts';
 
-setupCnpgHibernation(namespace);
+setupTtlHibernation(namespace);
 
 const central = new CentralServer('central', {
   fqdn: domains.central,

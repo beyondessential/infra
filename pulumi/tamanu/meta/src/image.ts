@@ -2,5 +2,5 @@ import { cfg } from '../../../common/k8s/coreRef.ts';
 
 export const imageTag = cfg.require('imageTag');
 export function image(): string {
-  return `ghcr.io/beyondessential/tamanu-meta:${imageTag}`;
+  return `ghcr.io/beyondessential/canopy:${imageTag}`;
 }

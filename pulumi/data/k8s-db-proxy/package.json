@@ -1,0 +1,5 @@
+{
+  "name": "@besdata/k8s-db-proxy",
+  "type": "module",
+  "main": "src/index.ts"
+}

@@ -1,5 +1,4 @@
 import './passwords.ts';
-import './alerts.ts';
 import './ebs-encryption.ts';
 import './cloudtrail.ts';
 
@@ -14,3 +13,4 @@ export { eksCniV6Policy } from './policy.ts';
 export { network, dbSubnetGroup } from './network.ts';
 export { zoneId, zoneNS, zoneMgmtPolicy } from './zone.ts';
 export { spotDataFeed } from './spot-data-feed.ts';
+export { alertsTopicArn } from './alerts.ts';

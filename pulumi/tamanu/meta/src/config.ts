@@ -24,3 +24,9 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 
 export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
 export const publicServerVersionsSecret = cfg.requireSecret('publicServerVersionsSecret');
+
+export const slackerOpenUrl = cfg.require('slackerOpenUrl');
+export const slackerCloseUrl = cfg.require('slackerCloseUrl');
+
+export const tailscaleClientId = cfg.require('tailscaleClientId');
+export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');

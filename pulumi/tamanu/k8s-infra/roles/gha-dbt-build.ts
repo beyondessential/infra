@@ -19,6 +19,16 @@ const role = new k8s.rbac.v1.ClusterRole('tamanu-gha-dbt-build', {
       resources: ['pods/portforward'],
       verbs: ['create'],
     },
+    {
+      apiGroups: [''],
+      resources: ['secrets'],
+      verbs: ['get'],
+    },
+    {
+      apiGroups: [''],
+      resources: ['services'],
+      verbs: ['get'],
+    },
   ],
 });
 

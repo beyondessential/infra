@@ -18,12 +18,14 @@ import {
   tailscaleUpCommands,
   emergencySshKeyCommands,
 } from './cloudInit.ts';
+import { ec2StatusAlarms } from './ec2StatusAlarms.ts';
 
 export interface TailscaleBoxArgs {
   tailscaleTags: Input<Input<string>[]>;
   instanceArgs: InstanceArgs;
   tailscaleName?: Input<string>;
   tags?: { [key: string]: string };
+  alertTopicArns?: Input<string>[];
 }
 
 // If you need to recreate the box without destroying the rest of the stack,
@@ -47,6 +49,7 @@ export class TailscaleBox extends ComponentResource {
     this.#args = {
       tailscaleName: this.#name,
       tags: {},
+      alertTopicArns: [],
       ...args,
     };
 
@@ -117,5 +120,17 @@ export class TailscaleBox extends ComponentResource {
       },
       { parent: authKey },
     );
+
+    if (args.alertTopicArns && args.alertTopicArns.length > 0) {
+      ec2StatusAlarms(
+        this.#name,
+        {
+          instanceId: this.box.id,
+          notifyTopicArns: args.alertTopicArns,
+          tags: this.#args.tags,
+        },
+        { parent: this.box },
+      );
+    }
   }
 }

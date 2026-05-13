@@ -5,6 +5,8 @@ export const topic = new aws.sns.Topic('workload-alerts', {
   displayName: `[${getStack()}] Workload Alerts`,
 });
 
+export const alertsTopicArn = topic.arn;
+
 new aws.sns.TopicSubscription(
   'send-to-devlead',
   {

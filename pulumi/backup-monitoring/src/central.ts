@@ -103,3 +103,34 @@ new aws.cloudwatch.EventTarget('backup-failure-sns-target', {
 export const eventBusArn = centralEventBus.arn;
 export const eventBusName = centralEventBus.name;
 export const snsTopicArn = snsTopic.topicArn;
+
+export const workloadAlertsCentral = new awsNative.sns.Topic('workload-alerts-central', {
+  topicName: 'workload-alerts-central',
+  displayName: 'Workload Alerts (org-wide)',
+  tags: nativeTags(tags),
+});
+
+new aws.sns.TopicPolicy('workload-alerts-central-policy', {
+  arn: workloadAlertsCentral.topicArn,
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'AllowOrgCloudWatchPublish',
+        Effect: 'Allow',
+        Principal: {
+          Service: 'cloudwatch.amazonaws.com',
+        },
+        Action: 'SNS:Publish',
+        Resource: workloadAlertsCentral.topicArn,
+        Condition: {
+          StringEquals: {
+            'aws:PrincipalOrgID': AWS_ORG_ID,
+          },
+        },
+      },
+    ],
+  }),
+});
+
+export const workloadAlertsCentralArn = workloadAlertsCentral.topicArn;
