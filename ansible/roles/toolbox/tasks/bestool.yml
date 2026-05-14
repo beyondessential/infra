@@ -10,7 +10,7 @@
   changed_when: false
 
 - name: Remove old bestool binary (migration only)
-  when: ansible_user != 'iti' and bestool_install_type.stdout == "custom"
+  when: not (is_iti | default(false)) and bestool_install_type.stdout == "custom"
   become: true
   ansible.builtin.file:
     path: /usr/local/bin/bestool
@@ -39,7 +39,7 @@
     path: /usr/local/bin/tb
     state: absent
 
-- when: ansible_user == 'iti'
+- when: is_iti | default(false)
   name: Download bestool for iti
   become: true
   ansible.builtin.get_url:
@@ -47,7 +47,7 @@
     dest: /usr/local/bin/bestool
     mode: a=rx,u=rwx
 
-- when: ansible_user == 'iti'
+- when: is_iti | default(false)
   name: Update iti LCD scripts
   become: true
   loop:
@@ -60,7 +60,7 @@
     mode: a=rx,u=rwx
   notify: Restart iti services
 
-- when: ansible_user == 'iti'
+- when: is_iti | default(false)
   name: Update iti LCD services
   become: true
   loop:
