@@ -1,29 +1,29 @@
 ---
-- ansible.builtin.include_tasks: locale.yml
+- ansible.builtin.import_tasks: locale.yml
   tags: locale
-- ansible.builtin.include_tasks: timezone.yml
+- ansible.builtin.import_tasks: timezone.yml
   tags: timezone
-- ansible.builtin.include_tasks: bes-repo.yml
+- ansible.builtin.import_tasks: bes-repo.yml
   tags: bes-repo
-- ansible.builtin.include_tasks: packages.yml
+- ansible.builtin.import_tasks: packages.yml
   tags: packages
-- ansible.builtin.include_tasks: chrony.yml
+- ansible.builtin.import_tasks: chrony.yml
   tags: chrony
-- ansible.builtin.include_tasks: network.yml
+- ansible.builtin.import_tasks: network.yml
   tags: network
-- ansible.builtin.include_tasks: accounting.yml
+- ansible.builtin.import_tasks: accounting.yml
   tags: accounting
-- ansible.builtin.include_tasks: bash-history.yml
+- ansible.builtin.import_tasks: bash-history.yml
   tags: bash-history
-- ansible.builtin.include_tasks: journald.yml
+- ansible.builtin.import_tasks: journald.yml
   tags: journald
-- ansible.builtin.include_tasks: kopia-user.yml
+- ansible.builtin.import_tasks: kopia-user.yml
   tags: kopia-user
-- ansible.builtin.include_tasks: tuning.yml
+- ansible.builtin.import_tasks: tuning.yml
   tags: tuning
-- ansible.builtin.include_tasks: btrfs-maintenance.yml
+- ansible.builtin.import_tasks: btrfs-maintenance.yml
   tags: btrfs
-- ansible.builtin.include_tasks: btrfs-swap.yml
+- ansible.builtin.import_tasks: btrfs-swap.yml
   tags: btrfs
-- ansible.builtin.include_tasks: btrfs-snapshots.yml
+- ansible.builtin.import_tasks: btrfs-snapshots.yml
   tags: btrfs
