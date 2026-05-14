@@ -13,3 +13,14 @@
   when: patient_portal_enabled
   ansible.builtin.set_fact:
     patient_portal_fqdn: "{{ ansible_ec2_tag_PatientPortalFQDN | default(patient_portal_fqdn) }}"
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Set bestool installed version fact
+  when: "'bestool' in ansible_facts.packages"
+  ansible.builtin.set_fact:
+    # Strip any Debian-style revision/build suffix so `is version()` compares
+    # against pure upstream semver.
+    bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"

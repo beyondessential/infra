@@ -1,0 +1,8 @@
+[Unit]
+Description=Send Tamanu status to meta server via bestool doctor
+
+[Service]
+Type=oneshot
+User=tamanu
+Group=tamanu
+ExecStart=/usr/bin/bestool tamanu doctor --send

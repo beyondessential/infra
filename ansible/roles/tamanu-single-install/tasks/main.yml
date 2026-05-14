@@ -9,3 +9,5 @@
   when: tamanu_server_type != 'central'
 - ansible.builtin.include_tasks: backup.yml
 - ansible.builtin.include_tasks: alertd.yml
+- ansible.builtin.include_tasks: doctor.yml
+  when: bestool_installed_version is defined and bestool_installed_version is version('1.8.0', '>=')

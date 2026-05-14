@@ -1,0 +1,9 @@
+[Unit]
+Description=Send Tamanu status to meta server every minute
+
+[Timer]
+OnCalendar=minutely
+Persistent=false
+
+[Install]
+WantedBy=timers.target

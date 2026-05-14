@@ -1,0 +1,26 @@
+---
+- name: Install bestool-doctor service
+  become: true
+  ansible.builtin.copy:
+    src: bestool-doctor.service
+    dest: /etc/systemd/system/bestool-doctor.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+
+- name: Install bestool-doctor timer
+  become: true
+  ansible.builtin.copy:
+    src: bestool-doctor.timer
+    dest: /etc/systemd/system/bestool-doctor.timer
+    mode: "0644"
+  notify:
+    - Reload systemd
+
+- name: Enable and start bestool-doctor timer
+  become: true
+  ansible.builtin.systemd:
+    name: bestool-doctor.timer
+    state: started
+    enabled: true
+    daemon_reload: true
