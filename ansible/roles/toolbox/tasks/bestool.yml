@@ -10,7 +10,7 @@
   changed_when: false
 
 - name: Remove old bestool binary (migration only)
-  when: not (is_iti | default(false)) and bestool_install_type.stdout == "custom"
+  when: bestool_install_type.stdout == "custom"
   become: true
   ansible.builtin.file:
     path: /usr/local/bin/bestool
@@ -21,8 +21,6 @@
   ansible.builtin.apt:
     name: bestool
     state: present
-  notify:
-    - Restart iti services
 
 - name: Set up bestool auto-update
   become: true
@@ -39,13 +37,19 @@
     path: /usr/local/bin/tb
     state: absent
 
+# The deb in bes-tools doesn't include the iti subcommand; the iti LCD scripts
+# and units need a full bestool build. Install it as iti-bestool so the apt
+# bestool stays the canonical `bestool` in PATH, and patch the iti scripts and
+# unit files (which upstream reference plain `bestool` / /usr/local/bin/bestool)
+# to call iti-bestool instead.
 - when: is_iti | default(false)
-  name: Download bestool for iti
+  name: Download iti-bestool
   become: true
   ansible.builtin.get_url:
     url: https://tools.ops.tamanu.io/bestool/{{ bestool_version }}/aarch64-unknown-linux-musl/bestool
-    dest: /usr/local/bin/bestool
+    dest: /usr/bin/iti-bestool
     mode: a=rx,u=rwx
+  notify: Restart iti services
 
 - when: is_iti | default(false)
   name: Update iti LCD scripts
@@ -58,6 +62,19 @@
     url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}
     dest: /usr/local/bin/{{ item }}
     mode: a=rx,u=rwx
+  notify: Restart iti services
+
+- when: is_iti | default(false)
+  name: Re-target iti LCD scripts to iti-bestool
+  become: true
+  loop:
+    - iti-addresses
+    - iti-lcd-wifi
+    - iti-localtime
+  ansible.builtin.replace:
+    path: /usr/local/bin/{{ item }}
+    regexp: '(?<![\w/-])bestool\b'
+    replace: iti-bestool
   notify: Restart iti services
 
 - when: is_iti | default(false)
@@ -75,6 +92,25 @@
     url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}.service
     dest: /etc/systemd/system/{{ item }}
     mode: a=r,u=rw
+  notify:
+    - Reload systemd
+    - Restart iti services
+
+- when: is_iti | default(false)
+  name: Re-target iti LCD services to iti-bestool
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.replace:
+    path: /etc/systemd/system/{{ item }}
+    regexp: '/usr/local/bin/bestool\b'
+    replace: /usr/bin/iti-bestool
   notify:
     - Reload systemd
     - Restart iti services
