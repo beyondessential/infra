@@ -4,6 +4,47 @@
     name: ufw
     state: present
 
+# ufw 0.36+ on Ubuntu 26.04 expects rule comments stored in /etc/ufw/user*.rules
+# to be hex-encoded. The community.general.ufw module auto-generates plain-text
+# comments for some service-port combos (HTTP, TCP_HTTPS, UDP_HTTPS__HTTP/3_),
+# which then poison ufw status with a hex-decode error and silently break
+# subsequent rule adds. Strip any comment value that isn't pure hex so ufw can
+# parse its own state.
+- name: Strip non-hex ufw rule comments
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      python3 - <<'PY'
+      import re, sys
+      changed = False
+      for path in ('/etc/ufw/user.rules', '/etc/ufw/user6.rules'):
+          try:
+              with open(path) as f:
+                  content = f.read()
+          except FileNotFoundError:
+              continue
+          def clean(m):
+              return m.group(0) if re.fullmatch(r'[0-9a-fA-F]+', m.group(1)) else ''
+          new = re.sub(r' comment=(\S+)', clean, content)
+          if new != content:
+              with open(path, 'w') as f:
+                  f.write(new)
+              changed = True
+      print('CHANGED' if changed else 'UNCHANGED')
+      PY
+  register: ufw_comment_scrub
+  changed_when: "'CHANGED' in ufw_comment_scrub.stdout"
+
+- name: Reload ufw after stripping bad comments
+  when: ufw_comment_scrub is changed
+  become: true
+  ansible.builtin.command: ufw reload
+  register: ufw_reload_result
+  changed_when: ufw_reload_result.rc == 0
+  failed_when:
+    - ufw_reload_result.rc != 0
+    - "'Firewall not enabled' not in ufw_reload_result.stderr"
+
 - name: Detect SSH listen port
   become: true
   ansible.builtin.shell: |
@@ -33,6 +74,7 @@
     rule: allow
     port: "80"
     proto: tcp
+    comment: ""
 
 - name: Allow HTTPS
   become: true
@@ -40,6 +82,7 @@
     rule: allow
     port: "443"
     proto: tcp
+    comment: ""
 
 - name: Allow HTTP/3
   become: true
@@ -47,6 +90,7 @@
     rule: allow
     port: "443"
     proto: udp
+    comment: ""
 
 - name: Allow mDNS on iti
   when: is_iti | default(false)
