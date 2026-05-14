@@ -48,6 +48,18 @@
       - xz-utils # for .deb installs via ansible
   notify: Update package facts
 
+# Raspberry Pi userland tools — provides vcgencmd, which bestool's
+# iti temperature/battery subcommands shell out to. On 26.04+ vcgencmd
+# lives in raspi-utils-core (Pi 5-era split); on older Ubuntu it was
+# in libraspberrypi-bin.
+- when: is_iti | default(false)
+  name: Install Raspberry Pi userland tools
+  become: true
+  ansible.builtin.apt:
+    name: raspi-utils-core
+    state: present
+  notify: Update package facts
+
 - name: Set apt repo auto-update
   become: true
   ansible.builtin.copy:
