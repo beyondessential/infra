@@ -20,6 +20,12 @@
     name: systemd-networkd
     state: reloaded
 
+- name: Restart systemd-resolved
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+
 - name: Restart postgres
   when: postgresql_installed_version is defined
   become: true

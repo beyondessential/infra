@@ -71,3 +71,7 @@
 
     - role: msupply-install
       tags: [app, msupply]
+
+    - role: iti
+      when: is_iti | default(false)
+      tags: [base, iti]

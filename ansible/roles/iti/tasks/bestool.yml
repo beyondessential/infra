@@ -1,0 +1,109 @@
+---
+# The deb in bes-tools doesn't include the iti subcommand; the iti LCD scripts
+# and units need a full bestool build. Install it as iti-bestool so the apt
+# bestool stays the canonical `bestool` in PATH, and patch the iti scripts and
+# unit files (which upstream reference plain `bestool` / /usr/local/bin/bestool)
+# to call iti-bestool instead.
+- name: Download iti-bestool
+  become: true
+  ansible.builtin.get_url:
+    url: https://tools.ops.tamanu.io/bestool/{{ bestool_version }}/aarch64-unknown-linux-musl/bestool
+    dest: /usr/bin/iti-bestool
+    mode: a=rx,u=rwx
+  notify: Restart iti services
+
+- name: Update iti LCD scripts
+  become: true
+  loop:
+    - iti-addresses
+    - iti-lcd-wifi
+    - iti-localtime
+  ansible.builtin.get_url:
+    url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}
+    dest: /usr/local/bin/{{ item }}
+    mode: a=rx,u=rwx
+  notify: Restart iti services
+
+- name: Re-target iti LCD scripts to iti-bestool
+  become: true
+  loop:
+    - iti-addresses
+    - iti-lcd-wifi
+    - iti-localtime
+  ansible.builtin.replace:
+    path: /usr/local/bin/{{ item }}
+    regexp: '(?<![\w/-])bestool\b'
+    replace: iti-bestool
+  notify: Restart iti services
+
+- name: Remove iti LCD units with missing .service extension
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.file:
+    path: /etc/systemd/system/{{ item }}
+    state: absent
+  notify:
+    - Reload systemd
+
+- name: Update iti LCD services
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.get_url:
+    url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}.service
+    dest: /etc/systemd/system/{{ item }}.service
+    mode: a=r,u=rw
+  notify:
+    - Reload systemd
+    - Restart iti services
+
+- name: Re-target iti LCD services to iti-bestool
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.replace:
+    path: /etc/systemd/system/{{ item }}.service
+    regexp: '/usr/local/bin/bestool\b'
+    replace: /usr/bin/iti-bestool
+  notify:
+    - Reload systemd
+    - Restart iti services
+
+# Dropping the unit file into /etc/systemd/system/ only loads it; an explicit
+# enable is what creates the .wants symlink that boot follows. The upstream
+# units carry `preset: enabled` but that's only a recommendation honoured by
+# `systemctl preset`, which the playbook doesn't run.
+- name: Enable and start iti LCD services
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true

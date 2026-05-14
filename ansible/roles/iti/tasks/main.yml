@@ -1,0 +1,9 @@
+---
+- ansible.builtin.import_tasks: pi-tools.yml
+  tags: pi-tools
+- ansible.builtin.import_tasks: avahi.yml
+  tags: avahi
+- ansible.builtin.import_tasks: bestool.yml
+  tags: bestool
+- ansible.builtin.import_tasks: ufw.yml
+  tags: ufw

@@ -1,0 +1,14 @@
+---
+- name: Restart iti services
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - iti-lcd-server
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
