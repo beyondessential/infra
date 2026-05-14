@@ -11,6 +11,16 @@
     path: /etc/hosts
     line: "127.0.1.1 {{ public_hostname }}"
 
+# The system hostname has .local stripped, so without a matching entry every
+# `gethostname()`-then-resolve dance (sudo, ssh login, journalctl, …) falls
+# through to DNS and eats a multi-second timeout.
+- name: Add short hostname to /etc/hosts
+  when: public_hostname != (public_hostname | regex_replace('\\.local$'))
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "127.0.1.1 {{ public_hostname | regex_replace('\\.local$') }}"
+
 - name: Install resolved
   become: true
   ansible.builtin.apt:
