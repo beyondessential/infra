@@ -78,6 +78,23 @@
   notify: Restart iti services
 
 - when: is_iti | default(false)
+  name: Remove iti LCD units with missing .service extension
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.file:
+    path: /etc/systemd/system/{{ item }}
+    state: absent
+  notify:
+    - Reload systemd
+
+- when: is_iti | default(false)
   name: Update iti LCD services
   become: true
   loop:
@@ -90,7 +107,7 @@
     - iti-temperature
   ansible.builtin.get_url:
     url: https://github.com/beyondessential/bestool/raw/refs/tags/v{{ bestool_version }}/services/{{ item }}.service
-    dest: /etc/systemd/system/{{ item }}
+    dest: /etc/systemd/system/{{ item }}.service
     mode: a=r,u=rw
   notify:
     - Reload systemd
@@ -108,7 +125,7 @@
     - iti-sparks
     - iti-temperature
   ansible.builtin.replace:
-    path: /etc/systemd/system/{{ item }}
+    path: /etc/systemd/system/{{ item }}.service
     regexp: '/usr/local/bin/bestool\b'
     replace: /usr/bin/iti-bestool
   notify:
