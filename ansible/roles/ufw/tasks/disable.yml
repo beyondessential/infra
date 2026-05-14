@@ -1,0 +1,19 @@
+---
+# When the playbook isn't managing ufw, actively disable it — otherwise a
+# half-managed ufw left over from an earlier era (or an out-of-band install)
+# silently blocks traffic the playbook expects to flow. Set
+# `dangerously_leave_ufw_alone: true` per-host or in inventory to opt out
+# (gates the entire role at the playbook level).
+- name: Check whether ufw is installed
+  ansible.builtin.command: which ufw
+  register: ufw_binary_check
+  changed_when: false
+  failed_when: false
+
+- name: Disable ufw when not managed by playbook
+  when: ufw_binary_check.rc == 0
+  become: true
+  ansible.builtin.systemd:
+    name: ufw
+    state: stopped
+    enabled: false

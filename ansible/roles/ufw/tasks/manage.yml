@@ -1,3 +1,4 @@
+---
 - name: Install ufw
   become: true
   ansible.builtin.apt:
@@ -59,7 +60,7 @@
 
 - name: Set SSH port fact
   ansible.builtin.set_fact:
-    tamanu_ssh_port: "{{ sshd_port_result.stdout | default('22', true) | trim | default('22', true) }}"
+    ssh_port: "{{ sshd_port_result.stdout | default('22', true) | trim | default('22', true) }}"
 
 - name: Check if Tailscale is connected
   become: true
@@ -114,7 +115,7 @@
   become: true
   community.general.ufw:
     rule: allow
-    port: "{{ tamanu_ssh_port }}"
+    port: "{{ ssh_port }}"
     proto: tcp
   when: tailscale_status.rc != 0
 
@@ -123,7 +124,7 @@
   community.general.ufw:
     rule: allow
     src: "{{ item }}"
-    port: "{{ tamanu_ssh_port }}"
+    port: "{{ ssh_port }}"
     proto: tcp
     comment: SSH from LAN
   loop:
@@ -137,7 +138,7 @@
   community.general.ufw:
     rule: allow
     src: fc00::/7
-    port: "{{ tamanu_ssh_port }}"
+    port: "{{ ssh_port }}"
     proto: tcp
     comment: SSH from LAN (IPv6)
   when: tailscale_status.rc == 0
@@ -155,7 +156,7 @@
   become: true
   community.general.ufw:
     rule: allow
-    port: "{{ tamanu_ssh_port }}"
+    port: "{{ ssh_port }}"
     proto: tcp
     delete: true
   when: tailscale_status.rc == 0

@@ -1,6 +1,6 @@
 ---
 - name: Allow mDNS on iti
-  when: tamanu_ufw_firewall
+  when: ufw_managed
   become: true
   community.general.ufw:
     rule: allow

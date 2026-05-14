@@ -45,6 +45,13 @@
     - role: elastic-agent
       tags: [base, elastic]
 
+    - role: ufw
+      when: not (dangerously_leave_ufw_alone | default(false))
+      tags: [base, ufw]
+    - role: iti
+      when: is_iti | default(false)
+      tags: [base, iti]
+
 - name: Central server setup
   hosts: central
   roles:
@@ -71,7 +78,3 @@
 
     - role: msupply-install
       tags: [app, msupply]
-
-    - role: iti
-      when: is_iti | default(false)
-      tags: [base, iti]
