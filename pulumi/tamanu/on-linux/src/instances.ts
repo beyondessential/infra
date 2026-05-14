@@ -29,7 +29,7 @@ import { applyDNS } from './dns.ts';
 import { region } from '../../../common/awsAccount.ts';
 import { alertsTopicArn } from '../../../common/coreRef.ts';
 import { workloadAlertsCentralArn } from '../../../common/alertsHubRef.ts';
-import { ec2StatusAlarms } from '../../../common/ec2StatusAlarms.ts';
+//import { ec2StatusAlarms } from '../../../common/ec2StatusAlarms.ts';
 
 const LEGACY_DISKS = [
   {
@@ -120,7 +120,7 @@ for (const [i, inst] of instances.entries()) {
 
   backupResources.push(vm.arn);
 
-  ec2StatusAlarms(
+  /* ec2StatusAlarms(
     inst.id,
     {
       instanceId: vm.id,
@@ -128,7 +128,7 @@ for (const [i, inst] of instances.entries()) {
       tags,
     },
     { parent: vm },
-  );
+  ); */ // FIXME
 
   if (inst.legacyDisk) {
     for (const { name, size, device } of LEGACY_DISKS) {
