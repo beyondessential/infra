@@ -10,4 +10,4 @@
     - ansible.builtin.include_tasks: tailscale.yml
     - ansible.builtin.include_tasks: version.yml
     - ansible.builtin.include_tasks: ufw.yml
-      when: tamanu_ufw_firewall
+      when: tamanu_ufw_firewall and not (dangerously_leave_ufw_alone | default(false))

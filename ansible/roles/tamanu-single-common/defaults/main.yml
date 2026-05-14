@@ -22,6 +22,7 @@ tamanu_caddy_tls: true
 tamanu_caddy_extra_hostnames: []
 tamanu_caddy_extra_hostnames_redirect: true
 tamanu_extra_certs: false # if true, the host's /etc/ssl/certs/ca-certificates.crt will be added to node inside the container
+# TODO: flip default to true once we know this works fully
 tamanu_ufw_firewall: false
 tailnet: tail53aef
 tamanu_tailscale_tls: true

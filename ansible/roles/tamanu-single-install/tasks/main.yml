@@ -8,6 +8,28 @@
 - ansible.builtin.include_tasks: dns.yml
   when: tamanu_server_type != 'central'
 - ansible.builtin.include_tasks: ufw.yml
-  when: tamanu_ufw_firewall
+  when: tamanu_ufw_firewall and not (dangerously_leave_ufw_alone | default(false))
+
+# When the playbook isn't managing ufw, actively disable it — otherwise a
+# half-managed ufw left over from an earlier era (or an out-of-band install)
+# silently blocks traffic the playbook expects to flow. Set
+# `dangerously_leave_ufw_alone: true` per-host or in inventory to opt out.
+- name: Check whether ufw is installed
+  when: not tamanu_ufw_firewall and not (dangerously_leave_ufw_alone | default(false))
+  ansible.builtin.command: which ufw
+  register: ufw_binary_check
+  changed_when: false
+  failed_when: false
+
+- name: Disable ufw when not managed by playbook
+  when:
+    - not tamanu_ufw_firewall
+    - not (dangerously_leave_ufw_alone | default(false))
+    - ufw_binary_check.rc == 0
+  become: true
+  ansible.builtin.systemd:
+    name: ufw
+    state: stopped
+    enabled: false
 - ansible.builtin.include_tasks: backup.yml
 - ansible.builtin.include_tasks: alertd.yml
