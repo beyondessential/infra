@@ -71,6 +71,19 @@
     line: firewall_driver = "nftables"
     regexp: '^#?firewall_driver\s*='
 
+# Aardvark's own default port is 5533. netavark is meant to pass -p 53 so
+# aardvark binds to the conventional DNS port and containers can query it
+# without a 53→5533 DNAT detour — but with the documented default left
+# commented out, netavark 1.17.0 ends up letting aardvark fall back to 5533.
+# Setting it explicitly forces netavark to actually pass -p 53 along.
+- name: Bind aardvark-dns to port 53
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    insertafter: '^\[network\]'
+    line: dns_bind_port = 53
+    regexp: '^#?dns_bind_port\s*='
+
 - name: Use host timezone by default for containers
   become: true
   ansible.builtin.lineinfile:
