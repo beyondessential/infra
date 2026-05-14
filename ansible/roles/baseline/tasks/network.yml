@@ -21,6 +21,22 @@
     path: /etc/hosts
     line: "127.0.1.1 {{ public_hostname | regex_replace('\\.local$') }}"
 
+# Belt-and-braces: nss-myhostname tracks `gethostname()` automatically so a
+# hostname change doesn't re-introduce the multi-second resolution timeout
+# even before the playbook re-runs.
+- name: Install libnss-myhostname
+  become: true
+  ansible.builtin.apt:
+    name: libnss-myhostname
+    state: present
+
+- name: Consult myhostname in nsswitch before mdns/dns fallbacks
+  become: true
+  ansible.builtin.replace:
+    path: /etc/nsswitch.conf
+    regexp: '^(hosts:\s+files)(?!\s+myhostname)(\s+.*)'
+    replace: '\1 myhostname\2'
+
 - name: Install resolved
   become: true
   ansible.builtin.apt:
