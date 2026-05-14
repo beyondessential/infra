@@ -4,7 +4,11 @@ Name=podman0
 [Network]
 Description=Default podman network interface
 Domains=tamanu.internal msupply.internal
-DefaultRouteOnDevice=no
+# Without this, resolved treats the podman link's DNS (aardvark at the
+# bridge gateway) as a global upstream and forwards arbitrary queries to it.
+# Aardvark then forwards back to resolved, which tries aardvark first → loop.
+# DNSDefaultRoute=no restricts use of aardvark to queries matching Domains=.
+DNSDefaultRoute=no
 {% for subnet in podman_network_subnets %}
 Address={{ subnet.subnet }}
 DNS={{ subnet.gateway }}
