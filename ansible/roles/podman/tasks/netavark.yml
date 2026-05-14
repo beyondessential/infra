@@ -22,4 +22,5 @@
     name:
       - aardvark-dns
       - netavark
-    state: present
+    state: latest
+    update_cache: true
