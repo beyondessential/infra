@@ -48,6 +48,15 @@
     port: "443"
     proto: udp
 
+- name: Allow mDNS on iti
+  when: is_iti | default(false)
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "5353"
+    proto: udp
+    comment: mDNS for tamanu-iti.local
+
 - name: Allow forwarding from podman network
   become: true
   community.general.ufw:

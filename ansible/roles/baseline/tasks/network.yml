@@ -49,3 +49,41 @@
     src: /run/systemd/resolve/stub-resolv.conf
     dest: /etc/resolv.conf
     state: link
+
+# avahi-daemon publishes the host's .local name on the LAN — Raspbian ITIs ship
+# with this enabled by default, Ubuntu doesn't. Free port 5353 from resolved
+# first so avahi can bind it; libnss-mdns routes local .local lookups straight
+# to avahi via NSS.
+- when: is_iti | default(false)
+  name: Create resolved config drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+
+- when: is_iti | default(false)
+  name: Disable resolved mDNS to leave port 5353 for avahi
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/90-no-mdns.conf
+    content: |
+      [Resolve]
+      MulticastDNS=no
+  notify: Restart systemd-resolved
+
+- when: is_iti | default(false)
+  name: Install avahi-daemon
+  become: true
+  ansible.builtin.apt:
+    name:
+      - avahi-daemon
+      - libnss-mdns
+    state: present
+
+- when: is_iti | default(false)
+  name: Enable avahi-daemon
+  become: true
+  ansible.builtin.systemd:
+    name: avahi-daemon
+    enabled: true
+    state: started
