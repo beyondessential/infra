@@ -1,8 +1,47 @@
 ---
-- name: Download msedit
+- name: Ensure zstd is installed
   become: true
-  ansible.builtin.unarchive:
-    remote_src: true
-    src: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture'] }}-linux-gnu.tar.zst
-    dest: /usr/local/bin
-    mode: a=rx,u=rwx
+  ansible.builtin.apt:
+    name: zstd
+    state: present
+
+- name: Check installed msedit version
+  ansible.builtin.command:
+    cmd: cat /usr/local/share/msedit.version
+  register: msedit_installed_version
+  changed_when: false
+  failed_when: false
+
+- name: Download and install msedit
+  when: msedit_installed_version.stdout != edit_version
+  block:
+    - name: Download msedit archive
+      become: true
+      ansible.builtin.get_url:
+        url: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture'] }}-linux-gnu.tar.zst
+        dest: /tmp/msedit-{{ edit_version }}.tar.zst
+        mode: "0644"
+
+    - name: Extract msedit
+      become: true
+      ansible.builtin.command:
+        cmd: tar --zstd -xf /tmp/msedit-{{ edit_version }}.tar.zst -C /usr/local/bin
+
+    - name: Set msedit permissions
+      become: true
+      ansible.builtin.file:
+        path: /usr/local/bin/edit
+        mode: a=rx,u=rwx
+
+    - name: Record installed msedit version
+      become: true
+      ansible.builtin.copy:
+        dest: /usr/local/share/msedit.version
+        content: "{{ edit_version }}"
+        mode: "0644"
+
+    - name: Clean up msedit archive
+      become: true
+      ansible.builtin.file:
+        path: /tmp/msedit-{{ edit_version }}.tar.zst
+        state: absent
