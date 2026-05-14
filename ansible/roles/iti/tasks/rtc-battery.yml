@@ -1,0 +1,31 @@
+---
+# Pi 5 itis ship with a rechargeable RTC battery (ML2032 or similar) wired to
+# the J5 connector. The bootloader-level charging setting defaults to 0
+# (disabled); set it to 3.0V so the battery stays topped up while the host is
+# powered, and so the RTC keeps the clock through brief outages.
+- name: Install rpi-eeprom
+  become: true
+  ansible.builtin.apt:
+    name: rpi-eeprom
+    state: present
+
+- name: Read current bootloader config
+  become: true
+  ansible.builtin.command: rpi-eeprom-config
+  register: rpi_eeprom_current
+  changed_when: false
+
+- name: Enable RTC battery charging at 3.0V
+  when: "'RTC_BBAT_VCHG=3000000' not in rpi_eeprom_current.stdout"
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      tmp=$(mktemp)
+      trap 'rm -f "$tmp"' EXIT
+      rpi-eeprom-config > "$tmp"
+      sed -i '/^RTC_BBAT_VCHG=/d' "$tmp"
+      echo 'RTC_BBAT_VCHG=3000000' >> "$tmp"
+      rpi-eeprom-config --apply "$tmp"
+    executable: /bin/bash
+  notify: Reboot
