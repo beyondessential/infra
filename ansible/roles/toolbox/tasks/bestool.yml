@@ -131,3 +131,24 @@
   notify:
     - Reload systemd
     - Restart iti services
+
+# Dropping the unit file into /etc/systemd/system/ only loads it; an explicit
+# enable is what creates the .wants symlink that boot follows. The upstream
+# units carry `preset: enabled` but that's only a recommendation honoured by
+# `systemctl preset`, which the playbook doesn't run.
+- when: is_iti | default(false)
+  name: Enable and start iti LCD services
+  become: true
+  loop:
+    - iti-addresses
+    - iti-battery
+    - iti-lcd-server
+    - iti-lcd-wifi
+    - iti-localtime
+    - iti-sparks
+    - iti-temperature
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
