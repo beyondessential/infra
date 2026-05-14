@@ -34,7 +34,13 @@
 - name: Make sure podman runs
   ansible.builtin.shell: podman --version
 
+- name: Stat /usr/local/bin/podman
+  ansible.builtin.stat:
+    path: /usr/local/bin/podman
+  register: podman_local_bin
+
 - name: Create symlink for quadlet compatibility
+  when: podman_local_bin.stat.exists
   become: true
   ansible.builtin.file:
     src: /usr/local/bin/podman
