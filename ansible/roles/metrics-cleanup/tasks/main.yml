@@ -1,7 +1,0 @@
----
-# This role now only contains cleanup tasks to remove osquery and otelcol
-# Run the playbook to clean up these components from all systems
-# Once cleanup is complete, this entire role can be deleted
-
-- ansible.builtin.include_tasks: osquery.yml
-- ansible.builtin.include_tasks: otelcol.yml

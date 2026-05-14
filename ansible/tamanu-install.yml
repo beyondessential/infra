@@ -44,8 +44,6 @@
       tags: [base, kopia]
     - role: elastic-agent
       tags: [base, elastic]
-    - role: metrics-cleanup
-      tags: [base, metrics]
 
 - name: Central server setup
   hosts: central
