@@ -22,13 +22,7 @@ export { v4 };
 let stackName = getStack();
 let domain = cfg.get('domain');
 if (!domain) {
-  if (stackName === 'tamanu-internal') {
-    domain = 'tamanu.app';
-  } else if (stackName === 'tupaia-internal') {
-    domain = 'tamanu.org';
-  } else if (stackName === 'data-internal') {
-    domain = 'data.bes.au';
-  } else if (stackName.startsWith('tamanu-')) {
+  if (stackName.startsWith('tamanu-')) {
     let prefix = stackName.replace(/^tamanu-/, '');
     if (stackName.endsWith('-prod')) {
       prefix = prefix.replace(/-prod$/, '');
