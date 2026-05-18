@@ -3,6 +3,18 @@
   ansible.builtin.set_fact:
     patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
 
+# tamanu_version_changed / tamanu_frontend_version_changed are set in
+# tamanu-single-install/tasks/facts.yml during the pre-upgrade play.
+# A frontend-only bump (tamanu_version unchanged) skips API service churn,
+# patient portal restart, and DB migration — only the frontend reloads.
+- name: Report what this upgrade will do
+  ansible.builtin.debug:
+    msg: >-
+      tamanu_version: {{ previous_tamanu_version | default('(none)') }} -> {{ tamanu_version }}
+      ({{ 'changed' if tamanu_version_changed else 'unchanged' }});
+      tamanu_frontend_version: {{ previous_tamanu_frontend_version | default('(none)') }} -> {{ tamanu_frontend_version }}
+      ({{ 'changed' if tamanu_frontend_version_changed else 'unchanged' }})
+
 - name: Collect which services are running
   ansible.builtin.service_facts:
 - name: Print service facts
@@ -10,6 +22,7 @@
     msg: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
 
 - name: Stop the application services
+  when: tamanu_version_changed
   loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
   become: true
   ansible.builtin.systemd:
@@ -48,7 +61,11 @@
 - name: Reload caddy
   meta: flush_handlers
 
+# Frontend pods mount /etc/tamanu/${TAMANU_VERSION}:/config, so a tamanu_version
+# bump also forces a frontend restart even when the frontend image tag itself
+# is unchanged.
 - name: Upgrade the frontend service A
+  when: tamanu_version_changed or tamanu_frontend_version_changed
   become: true
   ansible.builtin.systemd:
     name: tamanu-frontend@a
@@ -60,6 +77,7 @@
   meta: flush_handlers
 
 - name: Wait for new frontend to start
+  when: tamanu_version_changed or tamanu_frontend_version_changed
   ansible.builtin.wait_for:
     timeout: 10
     # This used to be a check for the frontend to exist in DNS, but that was
@@ -68,6 +86,7 @@
     # but it's better than nothing.
 
 - name: Upgrade the frontend service B
+  when: tamanu_version_changed or tamanu_frontend_version_changed
   become: true
   ansible.builtin.systemd:
     name: tamanu-frontend@b
@@ -78,8 +97,12 @@
 - name: Reload caddy
   meta: flush_handlers
 
+# Patient portal is pinned to tamanu_version (not tamanu_frontend_version),
+# so a frontend-only bump doesn't touch it.
 - name: Upgrade the patient portal service
-  when: patient_portal_enabled
+  when:
+    - patient_portal_enabled
+    - tamanu_version_changed
   become: true
   ansible.builtin.systemd:
     name: tamanu-patientportal
@@ -107,6 +130,7 @@
   meta: flush_handlers
 
 - name: Migrate the database
+  when: tamanu_version_changed
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
 
 # we ensure that the standard loadout is up
@@ -114,7 +138,9 @@
 # existed on the machine, but that led to drift
 
 - name: Start the standard facility services
-  when: tamanu_server_type == 'facility'
+  when:
+    - tamanu_server_type == 'facility'
+    - tamanu_version_changed
   loop:
     - "api@1"
     - "api@2"
@@ -128,7 +154,9 @@
   notify: Reload caddy
 
 - name: Start the standard central services
-  when: tamanu_server_type == 'central'
+  when:
+    - tamanu_server_type == 'central'
+    - tamanu_version_changed
   loop:
     - "api@1"
     - "api@2"
