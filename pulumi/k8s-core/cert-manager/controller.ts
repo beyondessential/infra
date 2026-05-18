@@ -5,6 +5,7 @@ import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
 import { namespace } from './namespace.ts';
 import { provider } from '../kubeconfig.ts';
 import { CERTMANAGER_VERSION } from '../versions.ts';
+import { withBootstrap } from '../nodes/groups.ts';
 
 const externalDns = cfg.getBoolean('enableExternalDns') ?? true;
 
@@ -80,5 +81,5 @@ export const certManager = new k8s.helm.v3.Release(
       },
     },
   },
-  { provider },
+  { provider, dependsOn: withBootstrap() },
 );

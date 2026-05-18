@@ -9,6 +9,7 @@ import { awsLbPolicy } from './policy.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import { LBC_VERSION } from '../versions.ts';
+import { withBootstrap } from '../nodes/groups.ts';
 
 const SERVICE_ACCOUNT_NAME = 'awslbc';
 
@@ -41,7 +42,7 @@ const sa = new k8s.core.v1.ServiceAccount(
   { provider },
 );
 
-new k8s.helm.v3.Release(
+export const lbc = new k8s.helm.v3.Release(
   'lbc',
   {
     chart: 'aws-load-balancer-controller',
@@ -102,7 +103,7 @@ new k8s.helm.v3.Release(
   },
   {
     provider,
-    dependsOn: [sa],
+    dependsOn: withBootstrap([sa]),
     // otherwise it updates on every up, it's annoying
     ignoreChanges: ['checksum'],
   },

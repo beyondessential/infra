@@ -1,4 +1,4 @@
-import { type Output, output } from '@pulumi/pulumi';
+import { type Input, type Output, type Resource, output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import { $network, cfg } from '../../common/coreRef.ts';
 import { nodeRole } from '../roles.ts';
@@ -24,6 +24,13 @@ const bootstrap = cfg.getBoolean('bootstrap') ?? false;
 export const bootstrapNodegroups: Output<aws.eks.Nodegroup[]> = bootstrap
   ? createBootstrapNodegroups()
   : output<aws.eks.Nodegroup[]>([]);
+
+// Combine the bootstrap nodegroups with caller-supplied dependencies into a
+// single dependsOn-compatible value. Cleaner than threading
+// `bootstrapNodegroups.apply((ngs) => [...others, ...ngs])` at every site.
+export function withBootstrap(extra: Input<Resource>[] = []): Output<Input<Resource>[]> {
+  return bootstrapNodegroups.apply((ngs) => [...extra, ...ngs]);
+}
 
 function createBootstrapNodegroups(): Output<aws.eks.Nodegroup[]> {
   const azLimit = cfg.getNumber('azLimit');
