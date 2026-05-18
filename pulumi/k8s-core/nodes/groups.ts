@@ -1,3 +1,4 @@
+import { type Output, output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import { $network, cfg } from '../../common/coreRef.ts';
 import { nodeRole } from '../roles.ts';
@@ -16,7 +17,15 @@ import { upToMonthly, onlyBurst, instancesSizedAtLeast } from '../../common/k8s/
 // ../karpenter/).
 const bootstrap = cfg.getBoolean('bootstrap') ?? false;
 
-if (bootstrap) {
+// Resources that need a node available before they can be scheduled use this
+// as `dependsOn`. Resolves to the bootstrap nodegroup set when bootstrap is
+// on; resolves to an empty list in steady state (where Karpenter handles all
+// node provisioning).
+export const bootstrapNodegroups: Output<aws.eks.Nodegroup[]> = bootstrap
+  ? createBootstrapNodegroups()
+  : output<aws.eks.Nodegroup[]>([]);
+
+function createBootstrapNodegroups(): Output<aws.eks.Nodegroup[]> {
   const azLimit = cfg.getNumber('azLimit');
   const withLaunchTemplate = cfg.getBoolean('withLaunchTemplate') ?? true;
   const groupName = 'bootstrap-system';
@@ -29,9 +38,9 @@ if (bootstrap) {
   ).map((i) => i.instance_type);
 
   // k[placement.workload-subnets]
-  $network.workloadSubnetIds.apply((subnets) => {
+  return $network.workloadSubnetIds.apply((subnets) => {
     const limitedSubnets = azLimit ? subnets.slice(0, azLimit) : subnets;
-    limitedSubnets.forEach((subnet, az0) => {
+    return limitedSubnets.map((subnet, az0) => {
       const az = az0 + 1;
 
       const launchTemplate = withLaunchTemplate
@@ -67,7 +76,7 @@ if (bootstrap) {
           })
         : undefined;
 
-      new aws.eks.Nodegroup(
+      return new aws.eks.Nodegroup(
         `${groupName}-az${az}`,
         {
           nodegroupName: withLaunchTemplate ? `${groupName}-az${az}` : undefined,
