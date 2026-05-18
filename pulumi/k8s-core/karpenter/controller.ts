@@ -1,12 +1,13 @@
-import { all, interpolate } from '@pulumi/pulumi';
+import { all, interpolate, type Input, type Resource } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { pascalStackName } from '../../common/coreRef.ts';
+import { cfg, pascalStackName } from '../../common/coreRef.ts';
 import { region, accountId, partition } from '../../common/awsAccount.ts';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { provider } from '../kubeconfig.ts';
 import { clusterName, oidcProvider, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
+import { withBootstrap } from '../nodes/groups.ts';
 
 // HA design for the controller:
 // (1) replicas: 2 (chart default).
@@ -334,6 +335,16 @@ const karpenterSa = new k8s.core.v1.ServiceAccount(
 // chart releases more often — bump deliberately.
 const KARPENTER_VERSION = '1.12.0';
 
+// LBC must be installed before Karpenter — index.ts imports them in that
+// order today, but the dependency is implicit. Re-import here (cached module,
+// no extra resource creation) so we can wire it as an explicit dependsOn on
+// the Karpenter helm release. Skipped when LBC is disabled.
+const extraDeps: Input<Resource>[] = [];
+if (cfg.getBoolean('enableAwsLb') ?? true) {
+  const { lbc } = await import('../loadbalancer/ingress.ts');
+  extraDeps.push(lbc);
+}
+
 // Karpenter is allowed to run on Karpenter-provisioned system nodes. The
 // `karpenter.sh/do-not-disrupt` annotation tells Karpenter not to consolidate
 // or drift-replace its own pod, so it doesn't evict itself. This is the
@@ -409,5 +420,5 @@ export const karpenter = new k8s.helm.v3.Release(
       tolerations: [{ key: 'CriticalAddonsOnly', operator: 'Exists' }],
     },
   },
-  { provider },
+  { provider, dependsOn: withBootstrap(extraDeps) },
 );
