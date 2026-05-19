@@ -7,7 +7,17 @@ import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
 import { runServer } from './server.ts';
 import { ingress } from '../common/ingress.ts';
 import { WebFrontend } from '../web/WebFrontend.ts';
-import { type ReplicaConfig, dbBackups, dbStorage, timezone } from '../config.ts';
+import {
+  type ReplicaConfig,
+  BARMAN_BACKUP_BUCKET,
+  BARMAN_BACKUP_ROLE_ARN,
+  backupRetentionDays,
+  backupsEnabled,
+  dbBackups,
+  dbStorage,
+  normalizedStack,
+  timezone,
+} from '../config.ts';
 import { runTasks } from './tasks.ts';
 import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
@@ -47,6 +57,10 @@ export class FacilityServer extends ComponentResource {
       backupSchedule: dbBackups,
       roles: roles.roles,
       initSql: roles.initSql,
+      barmanRoleArn: BARMAN_BACKUP_ROLE_ARN,
+      barmanBackup: backupsEnabled
+        ? { bucket: BARMAN_BACKUP_BUCKET, deployName: normalizedStack, retentionDays: backupRetentionDays }
+        : undefined,
     });
 
     const appConfig = provisioning.apply((provisioning) =>
