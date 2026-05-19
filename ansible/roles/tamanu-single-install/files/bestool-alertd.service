@@ -7,6 +7,7 @@ Type=simple
 User=tamanu
 Group=tamanu
 ExecStart=/usr/bin/bestool tamanu alertd run --glob /etc/tamanu/current/alerts --glob /etc/tamanu/alerts
+MemoryMax=500M
 Restart=always
 RestartSec=10
 
