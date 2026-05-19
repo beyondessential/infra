@@ -164,6 +164,36 @@
     name: "postgresql@{{ postgresql_desired_version }}-main"
     state: stopped
 
+- name: Check data checksum status on old cluster
+  become: true
+  become_user: postgres
+  ansible.builtin.shell:
+    cmd: >
+      /usr/lib/postgresql/{{ installed_postgresql_version }}/bin/pg_controldata
+      /var/lib/postgresql/{{ installed_postgresql_version }}/main
+      | awk -F': *' '/Data page checksum version/ {print $2}'
+  register: old_cluster_checksum_version
+  changed_when: false
+
+- name: Notify before enabling data checksums
+  when: old_cluster_checksum_version.stdout | trim == '0'
+  ansible.builtin.debug:
+    msg: >-
+      Data checksums are disabled on the old cluster. Enabling them now with
+      pg_checksums; this rewrites every page and may take a long time on large
+      databases.
+
+- name: Enable data checksums on old cluster
+  when: old_cluster_checksum_version.stdout | trim == '0'
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: >
+      /usr/lib/postgresql/{{ installed_postgresql_version }}/bin/pg_checksums
+      --enable
+      --pgdata=/var/lib/postgresql/{{ installed_postgresql_version }}/main
+  register: pg_checksums_result
+
 - name: Check upgrade compatibility
   become: true
   become_user: postgres
