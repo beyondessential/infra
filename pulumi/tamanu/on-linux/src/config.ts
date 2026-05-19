@@ -52,6 +52,12 @@ export const namePrefix = cfg.get('namePrefix') ?? '';
 export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
 
+// When set, this stack does not provision its own kopia bucket, IAM users, or
+// role; it re-exports the referenced stack's outputs. AWS Backup, EC2, DNS,
+// and ACME-DNS users are unaffected. Expected value is a fully-qualified
+// stack reference, e.g. `bes/tamanu-on-linux/palau-prod`.
+export const cloneOf = cfg.get('cloneOf') ?? null;
+
 const patientPortalDomainName = cfg.get('patientPortalDomain') ?? 'patient';
 export const patientPortalDomain =
   patientPortalDomainName && interpolate`${patientPortalDomainName}.${domainBase}`;
