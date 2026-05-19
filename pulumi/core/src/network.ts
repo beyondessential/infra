@@ -13,6 +13,16 @@ import {
   v6,
 } from './config.ts';
 
+// `karpenter.sh/*` and `karpenter.k8s.aws/*` tags on subnets, route tables,
+// and security groups are owned by downstream stacks (k8s-core). Ignoring
+// them at the provider level keeps core from treating them as drift and
+// stripping them on every `pulumi up`.
+const networkAws = new awsClassic.Provider('core-network-aws', {
+  ignoreTags: {
+    keyPrefixes: ['karpenter.sh/', 'karpenter.k8s.aws/'],
+  },
+});
+
 const logGroup = new awsClassic.cloudwatch.LogGroup('core-network-flow-logs', {
   name: '/aws/vpc/flowlogs/core-network',
   retentionInDays: 30,
@@ -22,15 +32,19 @@ const logGroup = new awsClassic.cloudwatch.LogGroup('core-network-flow-logs', {
 const $network = accountId.apply((id) => {
   const ipv4Cidr = v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;
 
-  return new Network('core-network', {
-    ipv4Cidr,
-    v6,
-    privateSubnets,
-    publicSubnets,
-    eksSubnetTags: forEksCluster ? {} : false,
-    enableDnsHostnames,
-    tags,
-  });
+  return new Network(
+    'core-network',
+    {
+      ipv4Cidr,
+      v6,
+      privateSubnets,
+      publicSubnets,
+      eksSubnetTags: forEksCluster ? {} : false,
+      enableDnsHostnames,
+      tags,
+    },
+    { providers: [networkAws] },
+  );
 });
 export const network = $network.outputs;
 
