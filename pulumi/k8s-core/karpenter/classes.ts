@@ -1,9 +1,21 @@
 import * as k8s from '@pulumi/kubernetes';
-import { stackName } from '../../common/coreRef.ts';
+import { $network, stackName } from '../../common/coreRef.ts';
 import { provider } from '../kubeconfig.ts';
-import { clusterName, tags } from '../cluster.ts';
+import { cluster, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
 import { karpenter } from './controller.ts';
+
+// Subnet and security group selection runs off resource IDs from the IaC
+// graph (network cross-stack, EKS cluster object). Tag-based discovery is
+// fragile — when a tag goes missing or drifts, every NodeClass flips
+// SubnetsNotFound and Karpenter stops provisioning. IDs can't drift.
+const workloadSubnetTerms = $network.workloadSubnetIds.apply((ids) =>
+  ids.map((id) => ({ id })),
+);
+const natSubnetTerms = $network.natSubnetIds.apply((ids) =>
+  ids.map((id) => ({ id })),
+);
+const clusterSgTerm = [{ id: cluster.clusterSecurityGroupId }];
 
 // EC2NodeClass `role` takes the role name, not ARN.
 const nodeRoleName = nodeRole.name;
@@ -52,15 +64,8 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
     spec: {
       role: nodeRoleName,
       amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
-      subnetSelectorTerms: [
-        {
-          tags: {
-            'karpenter.sh/discovery': clusterName,
-            Purpose: 'workload',
-          },
-        },
-      ],
-      securityGroupSelectorTerms: [{ tags: { 'karpenter.sh/discovery': clusterName } }],
+      subnetSelectorTerms: workloadSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
       blockDeviceMappings: ebs('60Gi'),
       tags: {
@@ -84,15 +89,8 @@ export const ingressNodeClass = new k8s.apiextensions.CustomResource(
     spec: {
       role: nodeRoleName,
       amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
-      subnetSelectorTerms: [
-        {
-          tags: {
-            'karpenter.sh/discovery': clusterName,
-            Purpose: 'nat',
-          },
-        },
-      ],
-      securityGroupSelectorTerms: [{ tags: { 'karpenter.sh/discovery': clusterName } }],
+      subnetSelectorTerms: natSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
       blockDeviceMappings: ebs('15Gi'),
       tags: {
@@ -116,15 +114,8 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
     spec: {
       role: nodeRoleName,
       amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
-      subnetSelectorTerms: [
-        {
-          tags: {
-            'karpenter.sh/discovery': clusterName,
-            Purpose: 'workload',
-          },
-        },
-      ],
-      securityGroupSelectorTerms: [{ tags: { 'karpenter.sh/discovery': clusterName } }],
+      subnetSelectorTerms: workloadSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
       blockDeviceMappings: ebs('15Gi'),
       tags: {
