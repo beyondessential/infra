@@ -67,3 +67,32 @@
       {{ (previous_tamanu_frontend_version_cmd.stdout | trim
           or previous_tamanu_version_cmd.stdout | trim)
          != tamanu_frontend_version }}
+
+# Only compare when both sides are v-prefixed semver. SHA-pinned versions and
+# fresh installs (empty previous) are skipped.
+- name: Forbid tamanu_version downgrade
+  when:
+    - not (tamanu_allow_downgrade | default(false) | bool)
+    - tamanu_version is string
+    - tamanu_version.startswith('v')
+    - previous_tamanu_version is string
+    - previous_tamanu_version.startswith('v')
+    - tamanu_version[1:] is version(previous_tamanu_version[1:], '<')
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to downgrade tamanu_version from {{ previous_tamanu_version }}
+      to {{ tamanu_version }}. Set tamanu_allow_downgrade=true to override.
+
+- name: Forbid tamanu_frontend_version downgrade
+  when:
+    - not (tamanu_allow_downgrade | default(false) | bool)
+    - tamanu_frontend_version is string
+    - tamanu_frontend_version.startswith('v')
+    - previous_tamanu_frontend_version is string
+    - previous_tamanu_frontend_version.startswith('v')
+    - tamanu_frontend_version[1:] is version(previous_tamanu_frontend_version[1:], '<')
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to downgrade tamanu_frontend_version from
+      {{ previous_tamanu_frontend_version }} to {{ tamanu_frontend_version }}.
+      Set tamanu_allow_downgrade=true to override.
