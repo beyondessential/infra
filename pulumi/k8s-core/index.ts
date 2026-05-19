@@ -53,4 +53,5 @@ if (cfg.getBoolean('useKarpenter') ?? false) {
   await import('./karpenter/controller.ts');
   await import('./karpenter/classes.ts');
   await import('./karpenter/pools.ts');
+  await import('./karpenter/placeholders.ts');
 }
