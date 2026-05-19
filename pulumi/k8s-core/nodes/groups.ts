@@ -1,4 +1,4 @@
-import { all, type Input, type Output, type Resource, output } from '@pulumi/pulumi';
+import { all, type Input, type Output, type Resource } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws-native';
 import { $network, cfg } from '../../common/coreRef.ts';
 import { nodeRole } from '../roles.ts';
@@ -7,12 +7,7 @@ import { region } from '../../common/awsAccount.ts';
 import { nativeTags } from '../../common/tags.ts';
 import { upToMonthly, onlyBurst, instancesSizedAtLeast } from '../../common/k8s/instanceTypeGroups.ts';
 
-// Seed nodegroups for bootstrapping a fresh cluster onto Karpenter. Set
-// bootstrap: true on initial cluster creation (alongside useKarpenter: true),
-// then back to false once Karpenter has migrated onto its own provisioned
-// nodes. See docs/kubernetes.md §3.1.
-//
-// Two purposes are seeded:
+// Standby nodegroups for bootstrap *and* recovery. Two purposes are seeded:
 //
 // - system: where Karpenter itself, external-dns, and other cluster-wide
 //   workloads run.
@@ -21,7 +16,15 @@ import { upToMonthly, onlyBurst, instancesSizedAtLeast } from '../../common/k8s/
 //   which only Karpenter can otherwise produce — and Karpenter depends on
 //   LBC, so we'd deadlock).
 //
-// Steady state: zero managed nodegroups — Karpenter handles everything.
+// The nodegroups exist in every state. The `bootstrap` config flag only
+// controls the *initial* desiredSize: true → 1 (seed nodes for a fresh
+// cluster), false → 0 (parked). Once the resource is created, desiredSize
+// is in `ignoreChanges` so manual scaling sticks — meaning operators can
+// recover a wedged cluster (e.g. Karpenter drops every ingress node, taking
+// Tailscale and the API down with it) by bumping the relevant bootstrap
+// nodegroup's desired in the AWS console.
+//
+// See docs/kubernetes.md §3.1.
 const bootstrap = cfg.getBoolean('bootstrap') ?? false;
 
 // Two AZs is the minimum that satisfies the `minDomains: 2` topology spread
@@ -31,12 +34,11 @@ const bootstrap = cfg.getBoolean('bootstrap') ?? false;
 const BOOTSTRAP_AZS = 2;
 
 // Resources that need a node available before they can be scheduled use this
-// as `dependsOn`. Resolves to the bootstrap nodegroup set when bootstrap is
-// on; resolves to an empty list in steady state (where Karpenter handles all
-// node provisioning).
-export const bootstrapNodegroups: Output<aws.eks.Nodegroup[]> = bootstrap
-  ? createBootstrapNodegroups()
-  : output<aws.eks.Nodegroup[]>([]);
+// as `dependsOn`. Always populated now; the standby nodegroups are present in
+// steady state too. With them parked at desired=0 the dependency is satisfied
+// at resource-creation time without forcing any actual nodes to exist.
+export const bootstrapNodegroups: Output<aws.eks.Nodegroup[]> =
+  createBootstrapNodegroups();
 
 // Combine the bootstrap nodegroups with caller-supplied dependencies into a
 // single dependsOn-compatible value. Cleaner than threading
@@ -142,7 +144,10 @@ function makeBootstrapNodegroups(
           : undefined,
         // k[interruption.health-events]
         nodeRepairConfig: { enabled: true },
-        scalingConfig: { minSize: 1, desiredSize: 1, maxSize: 1 },
+        // Initial desired comes from the bootstrap flag; `ignoreChanges` below
+        // protects manual scaling (both bootstrap-completion and incident
+        // recovery) from being clobbered by later `pulumi up` runs.
+        scalingConfig: { minSize: 0, desiredSize: bootstrap ? 1 : 0, maxSize: 1 },
         updateConfig: { maxUnavailable: 1 },
         // k[node.label.purpose] k[node.label.schedule] k[node.label.arch] k[node.label.group]
         labels: {
