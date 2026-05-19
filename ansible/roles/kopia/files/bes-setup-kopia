@@ -202,7 +202,7 @@ fi
 # NOTE: These policies must be kept in sync with Ansible
 # See: ops/ansible/roles/kopia/tasks/policy.yml
 log_info "Setting compression policy..."
-sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --add-ignore 'lost+found' --global
+sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --add-ignore 'lost+found' --global || log_info "Failed to set compression policy (repo may be read-only); continuing"
 
 # Check available disk space and set cache limits for small disks
 AVAILABLE_GB=$(df -BG /var/lib/kopia | tail -1 | awk '{print $4}' | sed 's/G//')

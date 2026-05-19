@@ -18,3 +18,4 @@
     KOPIA_CHECK_FOR_UPDATES: "false"
   when: kopia_config.stat.exists
   changed_when: true
+  failed_when: false
