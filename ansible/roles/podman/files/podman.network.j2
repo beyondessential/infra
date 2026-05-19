@@ -3,7 +3,7 @@ Name=podman0
 
 [Network]
 Description=Default podman network interface
-Domains=tamanu.internal msupply.internal
+Domains=tamanu.internal{% if msupply_enabled | default(false) %} msupply.internal{% endif %}
 # Without this, resolved treats the podman link's DNS (aardvark at the
 # bridge gateway) as a global upstream and forwards arbitrary queries to it.
 # Aardvark then forwards back to resolved, which tries aardvark first → loop.
