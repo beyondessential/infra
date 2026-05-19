@@ -8,19 +8,6 @@
     group: tamanu
     state: directory
 
-- name: Copy legacy app config to new version
-  become: true
-  ansible.builtin.copy:
-    remote_src: true
-    src: /etc/tamanu/production.json5
-    dest: /etc/tamanu/{{ tamanu_version }}/production.json5
-    mode: '0660'
-    owner: tamanu
-    group: tamanu
-    force: false # preserve modifications
-  ignore_errors: true
-  notify: Legacy rm app config
-
 - name: Copy current app config to new version
   become: true
   ansible.builtin.copy:
