@@ -90,6 +90,8 @@
       TZ={{ timezone }}
       TAMANU_VERSION={{ tamanu_version }}
       TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
+      TAMANU_FRONTEND_VERSION={{ tamanu_frontend_version }}
+      TAMANU_FRONTEND_VERSION_DOMAIN={{ tamanu_frontend_version | replace('.', '-') }}
 
 - name: Pull the Tamanu images
   become: true
