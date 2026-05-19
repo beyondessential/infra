@@ -3,6 +3,10 @@
   // Modifications will be overwritten!
   // Use the production.json5 instead.
 
+  proxy: {
+    trusted: "loopback, linklocal, uniquelocal",
+  },
+
   db: {
     name: "{{ tamanu_db_name }}",
     verbose: false,
