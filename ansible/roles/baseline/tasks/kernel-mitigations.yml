@@ -1,0 +1,31 @@
+---
+# Block load of kernel modules implicated in the May 2026 Linux LPE cluster:
+#   - Dirty Frag  CVE-2026-43284 + CVE-2026-43500  (esp4, esp6, rxrpc)
+#   - Fragnesia   CVE-2026-46300                   (esp4, esp6)
+# Copy Fail (CVE-2026-31431, algif_aead) is mitigated by the distro kmod
+# package and so is not handled here. Remove this file once patched kernels
+# are deployed across the fleet.
+
+- name: Block vulnerable kernel modules
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/cve-2026-linux-lpe.conf
+    mode: "0644"
+    content: |
+      # Managed by ansible (baseline/kernel-mitigations.yml).
+      # Dirty Frag  (CVE-2026-43284, CVE-2026-43500): esp4, esp6, rxrpc
+      # Fragnesia   (CVE-2026-46300):                 esp4, esp6
+      install esp4 /bin/false
+      install esp6 /bin/false
+      install rxrpc /bin/false
+  notify: Rebuild initramfs
+
+- name: Unload vulnerable kernel modules if currently loaded
+  become: true
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - esp4
+    - esp6
+    - rxrpc

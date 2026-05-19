@@ -21,6 +21,8 @@
   tags: kopia-user
 - ansible.builtin.import_tasks: tuning.yml
   tags: tuning
+- ansible.builtin.import_tasks: kernel-mitigations.yml
+  tags: kernel-mitigations
 - ansible.builtin.import_tasks: btrfs-maintenance.yml
   tags: btrfs
 - ansible.builtin.import_tasks: btrfs-swap.yml

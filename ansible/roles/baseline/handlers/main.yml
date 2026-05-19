@@ -14,3 +14,8 @@
   become: true
   ansible.builtin.command:
     cmd: chronyc reload sources
+
+- name: Rebuild initramfs
+  become: true
+  ansible.builtin.command:
+    cmd: update-initramfs -u -k all
