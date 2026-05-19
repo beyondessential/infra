@@ -3,6 +3,7 @@
 - ansible.builtin.include_tasks: netavark.yml
 - ansible.builtin.include_tasks: podman.yml
 - ansible.builtin.include_tasks: network.yml
+  tags: [podman-network]
 - ansible.builtin.set_fact:
     podman_configured: true
     podman_version: "{{ podman_version }}"

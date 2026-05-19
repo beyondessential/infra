@@ -16,4 +16,6 @@
   ansible.builtin.template:
     src: "{{ lookup('ansible.builtin.fileglob', 'podman.network.j2') }}"
     dest: /etc/systemd/network/podman.network
-  notify: Reload systemd-networkd
+  notify:
+    - Reload systemd-networkd
+    - Restart systemd-resolved
