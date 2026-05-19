@@ -1,0 +1,145 @@
+---
+# Check exposure to the May 2026 Linux kernel LPE cluster:
+#   - Copy Fail   CVE-2026-31431                      (algif_aead)
+#   - Dirty Frag  CVE-2026-43284 + CVE-2026-43500     (esp4, esp6, rxrpc)
+#   - Fragnesia   CVE-2026-46300                      (esp4, esp6)
+#
+# Read-only. Reports per-host whether each vulnerable module is loaded,
+# loadable on demand, or has a modprobe install/blacklist mitigation in place.
+#
+# Set lpe_fail_on_exposed=true to fail the play on any unmitigated exposure.
+
+- name: Check Linux kernel LPE exposure (Copy Fail / Dirty Frag / Fragnesia)
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    lpe_checks:
+      - cve: CVE-2026-31431
+        name: Copy Fail
+        modules: [algif_aead]
+      - cve: CVE-2026-43284,CVE-2026-43500
+        name: Dirty Frag
+        modules: [esp4, esp6, rxrpc]
+      - cve: CVE-2026-46300
+        name: Fragnesia
+        modules: [esp4, esp6]
+    lpe_all_modules: "{{ lpe_checks | map(attribute='modules') | flatten | unique | list }}"
+
+  tasks:
+    - name: Read /proc/modules
+      ansible.builtin.slurp:
+        src: /proc/modules
+      register: lpe_proc_modules
+
+    - name: Collect names of currently loaded modules
+      ansible.builtin.set_fact:
+        lpe_loaded: >-
+          {{ (lpe_proc_modules.content | b64decode).splitlines()
+             | map('regex_search', '^[^ ]+') | select | list }}
+
+    - name: Probe each module on disk (modinfo)
+      ansible.builtin.command:
+        cmd: "modinfo -F filename {{ item }}"
+      register: lpe_modinfo
+      changed_when: false
+      failed_when: false
+      loop: "{{ lpe_all_modules }}"
+
+    - name: Look for modprobe install/blacklist mitigations
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          grep -rEh "^[[:space:]]*(install|blacklist)[[:space:]]+{{ item }}([[:space:]]|$)" \
+            /etc/modprobe.d /run/modprobe.d /usr/lib/modprobe.d /lib/modprobe.d 2>/dev/null \
+            | grep -E "^[[:space:]]*(blacklist[[:space:]]+{{ item }}|install[[:space:]]+{{ item }}[[:space:]]+/bin/(false|true))([[:space:]]|$)" \
+            || true
+        executable: /bin/bash
+      register: lpe_mitigations
+      changed_when: false
+      loop: "{{ lpe_all_modules }}"
+
+    - name: Build per-module status map
+      ansible.builtin.set_fact:
+        lpe_module_status: >-
+          {%- set out = {} -%}
+          {%- for r in lpe_modinfo.results -%}
+            {%- set mod = r.item -%}
+            {%- set on_disk = (r.rc == 0) -%}
+            {%- set mit = (lpe_mitigations.results | selectattr('item', 'equalto', mod) | first).stdout | trim -%}
+            {%- set _ = out.update({mod: {
+                'on_disk': on_disk,
+                'loaded': mod in lpe_loaded,
+                'blocked': (mit | length) > 0,
+              }}) -%}
+          {%- endfor -%}
+          {{ out }}
+
+    - name: Build per-CVE verdicts
+      ansible.builtin.set_fact:
+        lpe_verdicts: >-
+          {%- set verdicts = [] -%}
+          {%- for c in lpe_checks -%}
+            {%- set loaded = [] -%}
+            {%- set autoload = [] -%}
+            {%- set blocked = [] -%}
+            {%- set absent = [] -%}
+            {%- for m in c.modules -%}
+              {%- set s = lpe_module_status[m] -%}
+              {%- if s.loaded -%}
+                {%- set _ = loaded.append(m) -%}
+              {%- elif s.blocked -%}
+                {%- set _ = blocked.append(m) -%}
+              {%- elif s.on_disk -%}
+                {%- set _ = autoload.append(m) -%}
+              {%- else -%}
+                {%- set _ = absent.append(m) -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- if loaded -%}
+              {%- set status = 'EXPOSED_LOADED' -%}
+            {%- elif autoload -%}
+              {%- set status = 'EXPOSED_AUTOLOAD' -%}
+            {%- elif blocked -%}
+              {%- set status = 'MITIGATED' -%}
+            {%- else -%}
+              {%- set status = 'NOT_APPLICABLE' -%}
+            {%- endif -%}
+            {%- set _ = verdicts.append({
+                'cve': c.cve, 'name': c.name, 'status': status,
+                'loaded': loaded, 'autoload': autoload,
+                'blocked': blocked, 'absent': absent,
+              }) -%}
+          {%- endfor -%}
+          {{ verdicts }}
+
+    - name: Build report lines
+      ansible.builtin.set_fact:
+        lpe_report: >-
+          {%- set lines = [
+              inventory_hostname ~ ' (' ~ ansible_distribution ~ ' ' ~ ansible_distribution_version
+                ~ ', kernel ' ~ ansible_kernel ~ ')'
+            ] -%}
+          {%- for v in lpe_verdicts -%}
+            {%- set parts = ['- ' ~ v.name ~ ' (' ~ v.cve ~ '): ' ~ v.status] -%}
+            {%- if v.loaded -%}{%- set _ = parts.append('loaded=' ~ (v.loaded | join(','))) -%}{%- endif -%}
+            {%- if v.autoload -%}{%- set _ = parts.append('autoload-capable=' ~ (v.autoload | join(','))) -%}{%- endif -%}
+            {%- if v.blocked -%}{%- set _ = parts.append('blocked=' ~ (v.blocked | join(','))) -%}{%- endif -%}
+            {%- if v.absent -%}{%- set _ = parts.append('absent=' ~ (v.absent | join(','))) -%}{%- endif -%}
+            {%- set _ = lines.append(parts | join(' ')) -%}
+          {%- endfor -%}
+          {{ lines }}
+
+    - name: Report per-host summary
+      ansible.builtin.debug:
+        msg: "{{ lpe_report }}"
+
+    - name: Fail when host has unmitigated exposure
+      ansible.builtin.fail:
+        msg: >-
+          {{ inventory_hostname }} exposed to:
+          {{ lpe_verdicts | selectattr('status', 'in', ['EXPOSED_LOADED', 'EXPOSED_AUTOLOAD'])
+             | map(attribute='name') | join(', ') }}
+      when:
+        - lpe_fail_on_exposed | default(false) | bool
+        - lpe_verdicts | selectattr('status', 'in', ['EXPOSED_LOADED', 'EXPOSED_AUTOLOAD']) | list | length > 0
