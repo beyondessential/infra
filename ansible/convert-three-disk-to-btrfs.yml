@@ -1219,22 +1219,49 @@
                   max_end = end;
                 }
               }
-              END { print max_start }
+              END { print max_start " " max_end }
             '
-          register: largest_free_start
+          register: largest_free_block
           changed_when: false
+
+        - name: Parse largest free block
+          ansible.builtin.set_fact:
+            largest_free_start: "{{ largest_free_block.stdout.split()[0] }}"
+            largest_free_end: "{{ largest_free_block.stdout.split()[1] }}"
+
+        - name: Compute gap size and required headroom
+          ansible.builtin.set_fact:
+            gap_bytes: "{{ (largest_free_end | int - largest_free_start | int + 1) * sector_size | int }}"
+            required_bytes: "{{ (actual_usage_bytes.stdout | int * 105 / 100) | int }}"
 
         - name: Display size info
           ansible.builtin.debug:
             msg:
-              - "Current usage: {{ (actual_usage_bytes.stdout | int / 1024 / 1024 / 1024) | round(1) }}GB"
-              - "Final partition size: {{ ((final_partition_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}GB"
-              - "Largest free space starts at sector: {{ largest_free_start.stdout }}"
-              - "Target end sector: {{ final_end_sector }}"
+              - "Current usage on intermediate: {{ (actual_usage_bytes.stdout | int / 1024 / 1024 / 1024) | round(1) }}GB"
+              - "Required (usage + 5% headroom): {{ (required_bytes | int / 1024 / 1024 / 1024) | round(1) }}GB"
+              - "Largest free block: {{ largest_free_start }}s -> {{ largest_free_end }}s ({{ (gap_bytes | int / 1024 / 1024 / 1024) | round(1) }}GB)"
+              - "Phase-1 estimate (informational only): {{ ((final_partition_size_sectors | int * sector_size | int) / 1024 / 1024 / 1024) | round(1) }}GB"
 
-        - name: Create final btrfs partition
+        - name: Fail if free gap is too small to hold the intermediate data
+          ansible.builtin.fail:
+            msg: |
+              The largest free block on {{ root_device }} is {{ (gap_bytes | int / 1024 / 1024 / 1024) | round(2) }}GB,
+              but the data currently on the intermediate btrfs uses {{ (actual_usage_bytes.stdout | int / 1024 / 1024 / 1024) | round(2) }}GB
+              ({{ (required_bytes | int / 1024 / 1024 / 1024) | round(2) }}GB with 5% headroom).
+
+              Phase 9 would not be able to rsync intermediate -> final.
+
+              Options:
+                - Free space on the intermediate (logs, postgres WALs, container images) and re-run phase8.
+                - Relocate the intermediate partition to the disk tail using btrfs device add/remove,
+                  then re-run phase8 against the larger gap that opens up.
+                - Extend the EBS volume AND relocate intermediate as above (the new EBS space lands
+                  after the existing intermediate, not in the gap, so extension alone won't help).
+          when: gap_bytes | int < required_bytes | int
+
+        - name: Create final btrfs partition spanning the entire gap
           ansible.builtin.shell: |
-            parted -s {{ root_device }} unit s mkpart primary {{ largest_free_start.stdout }} {{ final_end_sector }}
+            parted -s {{ root_device }} unit s mkpart primary {{ largest_free_start }} {{ largest_free_end }}
           register: partition_create
           changed_when: true
 
@@ -1244,7 +1271,7 @@
 
         - name: Find newly created partition by start sector
           ansible.builtin.shell: |
-            lsblk -p -l -n -o NAME,START {{ root_device }} | awk -v start="{{ largest_free_start.stdout }}" '$2 == start {print $1}'
+            lsblk -p -l -n -o NAME,START {{ root_device }} | awk -v start="{{ largest_free_start }}" '$2 == start {print $1}'
           register: final_partition_device
           changed_when: false
           retries: 5
@@ -1267,7 +1294,7 @@
           ansible.builtin.set_fact:
             final_uuid: "{{ final_ids.stdout | regex_search('uuid=(.+)', '\\1') | default([''], true) | first }}"
             final_partuuid: "{{ final_ids.stdout | regex_search('partuuid=(.+)', '\\1') | default([''], true) | first }}"
-            final_start_sector: "{{ largest_free_start.stdout }}"
+            final_start_sector: "{{ largest_free_start }}"
 
         - name: Update metadata with final partition IDs and start sector
           ansible.builtin.shell: |
