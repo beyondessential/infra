@@ -82,6 +82,11 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
       resources: ['clusters', 'scheduledbackups'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
+    {
+      apiGroups: ['barmancloud.cnpg.io'],
+      resources: ['objectstores'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
     // SubnamespaceAnchors for namespace lifecycle management.
     // Creating an anchor in tamanu-super causes HNC to create the child namespace.
     // Deleting the anchor cascades to delete the namespace.
