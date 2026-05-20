@@ -151,6 +151,7 @@ sudo -u kopia \
   --add-ignore="postmaster.pid" \
   --add-ignore="*.log" \
   --add-ignore="pg_stat_tmp/*" \
+  --add-ignore="lost+found" \
   "$KOPIA_MOUNT"
 
 sudo -u kopia \

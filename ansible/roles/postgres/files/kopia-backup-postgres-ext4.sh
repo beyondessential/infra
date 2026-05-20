@@ -89,6 +89,7 @@ kopia policy set \
   --add-ignore="postmaster.pid" \
   --add-ignore="*.log" \
   --add-ignore="pg_stat_tmp/*" \
+  --add-ignore="lost+found" \
   $mountoverlay
 
 : take a snapshot of postgres
