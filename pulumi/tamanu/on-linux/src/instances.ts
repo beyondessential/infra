@@ -22,6 +22,7 @@ import {
   msupplyTailscaleTags,
   normalizedStack,
   patientPortalDomain,
+  cloneOf,
 } from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
@@ -67,6 +68,10 @@ for (const [i, inst] of instances.entries()) {
     Purpose: 'tamanu-server',
     ManagedBy: 'pulumi',
   };
+
+  if (cloneOf) {
+    tags.TamanuCloneOf = cloneOf;
+  }
 
   if (patientPortalDomain && inst.id === 'central') {
     tags.PatientPortalFQDN = patientPortalDomain;
