@@ -5,6 +5,6 @@ ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 [Service]
 Type=oneshot
 User=kopia
-Group=kopia
+Group=postgres
 Environment=KOPIA_CHECK_FOR_UPDATES=false
 ExecStart=kopia snapshot create --tags area:postgres-config --description="%H Postgres config" /etc/postgresql
