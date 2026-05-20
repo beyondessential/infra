@@ -438,3 +438,9 @@
   loop:
     - postgresql-{{ postgresql_desired_version }}
     - postgresql-client-{{ postgresql_desired_version }}
+
+- name: Refresh version facts so later tasks and handlers use the new version
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_desired_version }}"
+    postgresql_installed_version: "{{ postgresql_desired_version }}"
+    postgresql_version: "{{ postgresql_desired_version }}"
