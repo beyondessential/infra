@@ -4,6 +4,7 @@ ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 
 [Service]
 Type=oneshot
+RemainAfterExit=yes
 User=root
 Group=root
 ExecStart=/var/lib/kopia/backup-postgres.sh
