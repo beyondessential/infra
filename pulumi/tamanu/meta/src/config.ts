@@ -30,3 +30,4 @@ export const slackerCloseUrl = cfg.require('slackerCloseUrl');
 
 export const tailscaleClientId = cfg.require('tailscaleClientId');
 export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
+export const tailscaleHostname = cfg.require('tailscaleHostname');
