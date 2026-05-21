@@ -79,7 +79,7 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
     },
     {
       apiGroups: ['postgresql.cnpg.io'],
-      resources: ['clusters', 'scheduledbackups'],
+      resources: ['clusters', 'scheduledbackups', 'backups'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
     {
