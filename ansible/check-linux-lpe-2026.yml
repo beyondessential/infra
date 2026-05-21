@@ -3,7 +3,7 @@
 #   - Copy Fail   CVE-2026-31431                      (algif_aead)
 #   - Dirty Frag  CVE-2026-43284 + CVE-2026-43500     (esp4, esp6, rxrpc)
 #   - Fragnesia   CVE-2026-46300                      (esp4, esp6)
-#   - PinTheft    (no CVE assigned yet)               (rds)
+#   - PinTheft    CVE-2026-43494                      (rds, rds_tcp)
 #
 # Read-only. Reports per-host whether each vulnerable module is loaded,
 # loadable on demand, or has a modprobe install/blacklist mitigation in place.
@@ -25,7 +25,7 @@
       - cve: CVE-2026-46300
         name: Fragnesia
         modules: [esp4, esp6]
-      - cve: pending
+      - cve: CVE-2026-43494
         name: PinTheft
         modules: [rds, rds_tcp]
     lpe_all_modules: "{{ lpe_checks | map(attribute='modules') | flatten | unique | list }}"
