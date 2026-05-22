@@ -180,7 +180,6 @@ export function runPostgres({
           : {}),
         backup: {
           ...(backupSchedule ? { volumeSnapshot: { className: 'ebs' } } : {}),
-          ...(barmanBackup ? { retentionPolicy: `${barmanBackup.retentionDays}d` } : {}),
         },
         // logLevel: 'trace',
       },
@@ -234,12 +233,13 @@ export function runPostgres({
             },
             wal: {
               compression: 'gzip',
-              maxParallel: 2,
             },
             data: {
               compression: 'gzip',
-              jobs: 2,
             },
+          },
+          instanceSidecarConfiguration: {
+            retentionPolicy: `${barmanBackup.retentionDays}d`,
           },
         },
       },
