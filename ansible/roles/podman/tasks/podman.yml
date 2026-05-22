@@ -31,6 +31,44 @@
     state: present
     update_cache: true
 
+# On 26.04 the bes-tools podman is uninstallable (depends on libsubid4 but
+# 26.04 ships libsubid5), so apt resolves to the stock package at /usr/bin/podman.
+# Hosts that previously ran with bes-tools podman can be left with a stale
+# /usr/bin/podman → /usr/local/bin/podman symlink pointing at nothing. Detect
+# that and let the stock package reclaim the path.
+- name: Stat /usr/bin/podman
+  ansible.builtin.stat:
+    path: /usr/bin/podman
+  register: podman_usr_bin
+
+- name: Detect installed podman source
+  ansible.builtin.shell: |
+    if ! dpkg -s podman >/dev/null 2>&1; then
+      echo "none"
+    elif dpkg -L podman | grep -qx /usr/local/bin/podman; then
+      echo "bes-tools"
+    elif dpkg -L podman | grep -qx /usr/bin/podman; then
+      echo "stock"
+    else
+      echo "unknown"
+    fi
+  register: podman_source
+  changed_when: false
+
+- name: Repair stale /usr/bin/podman symlink left from bes-tools install
+  become: true
+  when:
+    - podman_source.stdout == "stock"
+    - podman_usr_bin.stat.islnk | default(false)
+  block:
+    - name: Remove stale /usr/bin/podman symlink
+      ansible.builtin.file:
+        path: /usr/bin/podman
+        state: absent
+    - name: Reinstall podman to restore /usr/bin/podman
+      ansible.builtin.command:
+        cmd: apt-get install --reinstall -y podman
+
 - name: Make sure podman runs
   ansible.builtin.shell: podman --version
 
