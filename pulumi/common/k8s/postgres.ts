@@ -226,6 +226,7 @@ export function runPostgres({
           namespace,
         },
         spec: {
+          retentionPolicy: `${barmanBackup.retentionDays}d`,
           configuration: {
             destinationPath: `s3://${barmanBackup.bucket}/${barmanBackup.deployName}/${name}-db/`,
             s3Credentials: {
@@ -237,9 +238,6 @@ export function runPostgres({
             data: {
               compression: 'gzip',
             },
-          },
-          instanceSidecarConfiguration: {
-            retentionPolicy: `${barmanBackup.retentionDays}d`,
           },
         },
       },
