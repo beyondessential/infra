@@ -1,5 +1,9 @@
 ---
+# bestool < 1.11.0: doctor --send is the meta-sender; install the timer.
+# bestool >= 1.11.0: alertd takes over sending; remove the timer.
+
 - name: Install bestool-doctor service
+  when: bestool_installed_version is version('1.11.0', '<')
   become: true
   ansible.builtin.copy:
     src: bestool-doctor.service
@@ -9,6 +13,7 @@
     - Reload systemd
 
 - name: Install bestool-doctor timer
+  when: bestool_installed_version is version('1.11.0', '<')
   become: true
   ansible.builtin.copy:
     src: bestool-doctor.timer
@@ -18,9 +23,45 @@
     - Reload systemd
 
 - name: Enable and start bestool-doctor timer
+  when: bestool_installed_version is version('1.11.0', '<')
   become: true
   ansible.builtin.systemd:
     name: bestool-doctor.timer
     state: started
     enabled: true
     daemon_reload: true
+
+- name: Check for existing bestool-doctor timer unit
+  when: bestool_installed_version is version('1.11.0', '>=')
+  become: true
+  ansible.builtin.stat:
+    path: /etc/systemd/system/bestool-doctor.timer
+  register: bestool_doctor_timer_unit
+
+- name: Stop and disable bestool-doctor timer
+  when:
+    - bestool_installed_version is version('1.11.0', '>=')
+    - bestool_doctor_timer_unit.stat.exists
+  become: true
+  ansible.builtin.systemd:
+    name: bestool-doctor.timer
+    state: stopped
+    enabled: false
+
+- name: Remove bestool-doctor timer
+  when: bestool_installed_version is version('1.11.0', '>=')
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-doctor.timer
+    state: absent
+  notify:
+    - Reload systemd
+
+- name: Remove bestool-doctor service
+  when: bestool_installed_version is version('1.11.0', '>=')
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-doctor.service
+    state: absent
+  notify:
+    - Reload systemd
