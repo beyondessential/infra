@@ -1,10 +1,15 @@
 [Match]
 Name=podman0
 
+# The spaces are defensive against Ansible's stupid templating
+
 [Network]
 Description=Default podman network interface
+
 Domains=tamanu.internal{% if msupply_enabled | default(false) %} msupply.internal{% endif %}
+
 DNSDefaultRoute=no
+
 {% for subnet in podman_network_subnets %}
 Address={{ subnet.subnet }}
 DNS={{ subnet.gateway }}
