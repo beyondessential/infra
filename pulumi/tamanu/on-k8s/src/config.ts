@@ -117,7 +117,9 @@ export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2
 
 export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
 
-export const backupsEnabled = cfg.getBoolean('backupsEnabled') ?? false;
+const _backupsRaw = cfg.get('backupsEnabled');
+export const backupsEnabled =
+  _backupsRaw != null && _backupsRaw !== 'null' ? (cfg.getBoolean('backupsEnabled') ?? false) : false;
 export const backupRetentionDays = cfg.getNumber('backupRetentionDays') ?? 3;
 
 // IAM role that CNPG pods assume (via IRSA) to write Barman backups to S3.
