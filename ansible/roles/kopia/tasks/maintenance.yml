@@ -22,3 +22,16 @@
     daemon_reload: true
     state: started
     enabled: true
+
+# Disable kopia's built-in automatic maintenance so it only runs via the timer
+# above, not opportunistically during other operations.
+- name: Disable automatic kopia maintenance
+  become: true
+  become_user: kopia
+  ansible.builtin.command:
+    cmd: kopia maintenance set --enable-full=false --enable-quick=false
+  environment:
+    KOPIA_CHECK_FOR_UPDATES: "false"
+  when: kopia_config.stat.exists
+  changed_when: true
+  failed_when: false
