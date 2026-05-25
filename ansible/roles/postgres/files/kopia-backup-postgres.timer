@@ -2,7 +2,7 @@
 Description=Regularly take a snapshot of postgres
 
 [Timer]
-OnCalendar=hourly
+OnCalendar=00/6:00:00
 Persistent=true
 
 [Install]
