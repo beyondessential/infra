@@ -13,6 +13,10 @@ import { ingress } from '../common/ingress.ts';
 import {
   type ReplicaConfig,
   appVersion,
+  BARMAN_BACKUP_BUCKET,
+  BARMAN_BACKUP_ROLE_ARN,
+  backupRetentionDays,
+  backupsEnabled,
   dbBackups,
   dbExpose,
   dbStorage,
@@ -63,6 +67,10 @@ export class CentralServer extends ComponentResource {
       roles: roles.roles,
       initSql: roles.initSql,
       seedSnapshotName,
+      barmanRoleArn: BARMAN_BACKUP_ROLE_ARN,
+      barmanBackup: backupsEnabled
+        ? { bucket: BARMAN_BACKUP_BUCKET, deployName: normalizedStack, retentionDays: backupRetentionDays }
+        : undefined,
     });
 
     const appConfig = templatedConfig({

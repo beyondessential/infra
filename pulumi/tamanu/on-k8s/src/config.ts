@@ -117,6 +117,15 @@ export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2
 
 export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
 
+export const backupsEnabled = cfg.getBoolean('backupsEnabled') ?? false;
+export const backupRetentionDays = cfg.getNumber('backupRetentionDays') ?? 3;
+
+// IAM role that CNPG pods assume (via IRSA) to write Barman backups to S3.
+// Always set on the serviceAccountTemplate so the annotation is ready before
+// backupsEnabled is flipped on.
+export const BARMAN_BACKUP_ROLE_ARN = 'arn:aws:iam::143295493206:role/tamanu-db-backups-staging';
+export const BARMAN_BACKUP_BUCKET = 'tamanu-db-backups-staging';
+
 export const seedSnapshot: boolean = cfg.getBoolean('seedSnapshot') ?? false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
