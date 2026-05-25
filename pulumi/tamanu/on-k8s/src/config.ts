@@ -120,7 +120,9 @@ export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
 const _backupsRaw = cfg.get('backupsEnabled');
 export const backupsEnabled =
   _backupsRaw != null && _backupsRaw !== 'null' ? (cfg.getBoolean('backupsEnabled') ?? false) : false;
-export const backupRetentionDays = cfg.getNumber('backupRetentionDays') ?? 3;
+const _retentionRaw = cfg.get('backupRetentionDays');
+export const backupRetentionDays =
+  _retentionRaw != null && _retentionRaw !== 'null' ? (cfg.getNumber('backupRetentionDays') ?? 3) : 3;
 
 // IAM role that CNPG pods assume (via IRSA) to write Barman backups to S3.
 // Always set on the serviceAccountTemplate so the annotation is ready before
@@ -128,7 +130,11 @@ export const backupRetentionDays = cfg.getNumber('backupRetentionDays') ?? 3;
 export const BARMAN_BACKUP_ROLE_ARN = 'arn:aws:iam::143295493206:role/tamanu-db-backups-staging';
 export const BARMAN_BACKUP_BUCKET = 'tamanu-db-backups-staging';
 
-export const seedSnapshot: boolean = cfg.getBoolean('seedSnapshot') ?? false;
+const _seedSnapshotRaw = cfg.get('seedSnapshot');
+export const seedSnapshot: boolean =
+  _seedSnapshotRaw != null && _seedSnapshotRaw !== 'null'
+    ? (cfg.getBoolean('seedSnapshot') ?? false)
+    : false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
 // 0 (default) means no TTL — deployment stays up forever. Any positive value
