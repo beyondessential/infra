@@ -65,9 +65,15 @@
     - name: Add Elastic repo
       become: true
       ansible.builtin.apt_repository:
-        repo: deb [signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
+        repo: deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
         state: present
         filename: elastic
+
+    - name: Remove duplicate Elastic apt source
+      become: true
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/artifacts_elastic_co_packages_9_x_apt.list
+        state: absent
 
     - name: Prioritise Elastic repo
       become: true

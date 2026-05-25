@@ -18,7 +18,7 @@
 - name: Remove duplicate tailscale repo
   become: true
   ansible.builtin.file:
-    path: /etc/apt/sources.list.d/pkgs_tailscale_com_stable_ubuntu.list
+    path: /etc/apt/sources.list.d/pkgs_tailscale_com_stable_{{ ansible_facts['distribution'] | lower }}.list
     state: absent
 
 - name: Remove duplicate tailscale apt source line
