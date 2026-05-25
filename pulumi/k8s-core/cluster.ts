@@ -32,6 +32,7 @@ export const cluster = new aws.eks.Cluster(
     tags: nativeTags(tags, {
       Purpose: 'k8s-system',
     }),
+    bootstrapSelfManagedAddons: false,
     logging: {
       clusterLogging: {
         enabledTypes: [
@@ -47,7 +48,7 @@ export const cluster = new aws.eks.Cluster(
   {
     // changing this Cluster in any way causes pulumi to throw a tantrum,
     // so protect it and ignore certain bits forcefully
-    ignoreChanges: ['tags', 'resourcesVpcConfig', 'version'],
+    ignoreChanges: ['tags', 'resourcesVpcConfig', 'version', 'bootstrapSelfManagedAddons'],
     // protect: true, // actually that's more annoying than useful
   },
 );
