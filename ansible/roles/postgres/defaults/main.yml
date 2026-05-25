@@ -4,3 +4,5 @@ postgresql_cleanup_old_cluster: false
 mergerfs_version: "2.40.2"
 postgresql_upgrade_detect_only: false
 postgresql_upgrade_enabled: false
+postgresql_tune_enabled: true
+postgresql_tune_max_connections: 100
