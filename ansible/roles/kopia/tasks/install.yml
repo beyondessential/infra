@@ -12,6 +12,12 @@
     state: present
     filename: kopia
 
+- name: Remove duplicate kopia apt source
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/packages_kopia_io_apt.list
+    state: absent
+
 - name: Prioritise kopia repo
   become: true
   ansible.builtin.copy:

@@ -12,6 +12,12 @@
     state: present
     filename: bes-tools
 
+- name: Remove duplicate bes-tools apt source
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/tools_ops_tamanu_io_apt.list
+    state: absent
+
 - name: Prioritise bes-tools repo
   become: true
   ansible.builtin.copy:

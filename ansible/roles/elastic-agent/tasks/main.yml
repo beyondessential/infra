@@ -69,6 +69,12 @@
         state: present
         filename: elastic
 
+    - name: Remove duplicate Elastic apt source
+      become: true
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/artifacts_elastic_co_packages_9_x_apt.list
+        state: absent
+
     - name: Prioritise Elastic repo
       become: true
       ansible.builtin.copy:
