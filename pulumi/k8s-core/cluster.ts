@@ -35,6 +35,8 @@ export const cluster = new aws.eks.Cluster(
     bootstrapSelfManagedAddons: false,
     logging: {
       clusterLogging: {
+        // when new logging types are added, add them here too
+        // because somehow "log everything" isn't the default
         enabledTypes: [
           { type: 'api' },
           { type: 'audit' },
@@ -43,6 +45,10 @@ export const cluster = new aws.eks.Cluster(
           { type: 'scheduler' },
         ],
       },
+    },
+    accessConfig: {
+      // required for backups to work and somehow not the default
+      authenticationMode: 'API_AND_CONFIG_MAP',
     },
   },
   {
