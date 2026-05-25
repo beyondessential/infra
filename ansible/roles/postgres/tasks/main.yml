@@ -17,6 +17,8 @@
 - ansible.builtin.include_tasks: btrfs-tune.yml
   when: pg_data_fstype.stdout | trim == 'btrfs'
 - ansible.builtin.include_tasks: wal.yml
+- ansible.builtin.include_tasks: tune.yml
+  when: postgresql_tune_enabled
 - ansible.builtin.include_tasks: backup.yml
 - ansible.builtin.set_fact:
     postgresql_configured: true
