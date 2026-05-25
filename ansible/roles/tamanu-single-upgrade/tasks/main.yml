@@ -5,8 +5,9 @@
 
 # tamanu_version_changed / tamanu_frontend_version_changed are set in
 # tamanu-single-install/tasks/facts.yml during the pre-upgrade play.
-# A frontend-only bump (tamanu_version unchanged) skips API service churn,
-# patient portal restart, and DB migration — only the frontend reloads.
+# A frontend-only bump (tamanu_version unchanged) skips API service churn
+# and patient portal restart — only the frontend reloads. DB migration
+# always runs (idempotent) so a partial-failure rerun still applies it.
 - name: Report what this upgrade will do
   ansible.builtin.debug:
     msg: >-
@@ -130,7 +131,6 @@
   meta: flush_handlers
 
 - name: Migrate the database
-  when: tamanu_version_changed
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
 
 # we ensure that the standard loadout is up
