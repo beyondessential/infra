@@ -4,7 +4,6 @@ ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
 User=kopia
 Group=kopia
 Environment=PGDATA=/var/lib/kopia/pgdata
