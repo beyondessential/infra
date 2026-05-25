@@ -31,37 +31,48 @@
     state: present
     update_cache: true
 
-# On 26.04 the bes-tools podman is uninstallable (depends on libsubid4 but
-# 26.04 ships libsubid5), so apt resolves to the stock package at /usr/bin/podman.
-# Hosts that previously ran with bes-tools podman can be left with a stale
-# /usr/bin/podman → /usr/local/bin/podman symlink pointing at nothing. Detect
-# that and let the stock package reclaim the path.
 - name: Stat /usr/bin/podman
   ansible.builtin.stat:
     path: /usr/bin/podman
+    follow: false
   register: podman_usr_bin
 
+# Three layouts to support:
+# - "package-owns-usr-bin": current bes-tools podman (ships /usr/bin/podman as
+#   the real binary and /usr/local/bin/podman as a package-owned symlink), or
+#   stock Ubuntu podman on 26.04+ (only /usr/bin/podman). dpkg -L lists
+#   /usr/bin/podman either way.
+# - "package-owns-usr-local-bin": legacy bes-tools podman that only shipped
+#   /usr/local/bin/podman; ansible has to add a /usr/bin/podman symlink for
+#   quadlet compatibility.
+# - "none"/"unknown": shouldn't happen after the apt install above.
 - name: Detect installed podman source
   ansible.builtin.shell: |
     if ! dpkg -s podman >/dev/null 2>&1; then
       echo "none"
-    elif dpkg -L podman | grep -qx /usr/local/bin/podman; then
-      echo "bes-tools"
     elif dpkg -L podman | grep -qx /usr/bin/podman; then
-      echo "stock"
+      echo "package-owns-usr-bin"
+    elif dpkg -L podman | grep -qx /usr/local/bin/podman; then
+      echo "package-owns-usr-local-bin"
     else
       echo "unknown"
     fi
   register: podman_source
   changed_when: false
 
-- name: Repair stale /usr/bin/podman symlink left from bes-tools install
+# When the package owns /usr/bin/podman it should be a regular file. If it's a
+# symlink, a prior run of this role's quadlet-compat step replaced the real
+# binary with a symlink to /usr/local/bin/podman — harmless on stock 26.04 (just
+# stale), but on current bes-tools it forms a loop with the package-owned
+# /usr/local/bin/podman → /usr/bin/podman symlink, breaking `podman` entirely
+# ("Too many levels of symbolic links"). Either way, reinstall to restore.
+- name: Repair /usr/bin/podman if a prior ansible run replaced it with a symlink
   become: true
   when:
-    - podman_source.stdout == "stock"
+    - podman_source.stdout == "package-owns-usr-bin"
     - podman_usr_bin.stat.islnk | default(false)
   block:
-    - name: Remove stale /usr/bin/podman symlink
+    - name: Remove broken /usr/bin/podman symlink
       ansible.builtin.file:
         path: /usr/bin/podman
         state: absent
@@ -75,10 +86,19 @@
 - name: Stat /usr/local/bin/podman
   ansible.builtin.stat:
     path: /usr/local/bin/podman
+    follow: false
   register: podman_local_bin
 
-- name: Create symlink for quadlet compatibility
-  when: podman_local_bin.stat.exists
+# Only needed for the legacy bes-tools layout where /usr/local/bin/podman is the
+# real binary. Current bes-tools and stock both leave /usr/bin/podman as the
+# real file (and current bes-tools owns the /usr/local/bin/podman symlink
+# itself), so a forced symlink here would either be redundant or build the loop
+# the repair step above just undid.
+- name: Create /usr/bin/podman symlink for quadlet compatibility (legacy bes-tools)
+  when:
+    - podman_source.stdout == "package-owns-usr-local-bin"
+    - podman_local_bin.stat.exists
+    - not (podman_local_bin.stat.islnk | default(false))
   become: true
   ansible.builtin.file:
     src: /usr/local/bin/podman
