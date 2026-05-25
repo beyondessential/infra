@@ -204,6 +204,14 @@ fi
 log_info "Setting compression policy..."
 sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia policy set --compression=zstd-fastest --add-ignore 'lost+found' --global || log_info "Failed to set compression policy (repo may be read-only); continuing"
 
+# Disable kopia's built-in automatic maintenance on central; the systemd
+# kopia-maintenance.timer runs `kopia maintenance run --full` explicitly.
+# Must be kept in sync with ops/ansible/roles/kopia/tasks/maintenance.yml
+if [ "$IS_CENTRAL" = true ]; then
+    log_info "Disabling automatic kopia maintenance (timer-driven only)..."
+    sudo -u "$KOPIA_USER" env KOPIA_CHECK_FOR_UPDATES=false kopia maintenance set --enable-full=false --enable-quick=false || log_info "Failed to set maintenance config; continuing"
+fi
+
 # Check available disk space and set cache limits for small disks
 AVAILABLE_GB=$(df -BG /var/lib/kopia | tail -1 | awk '{print $4}' | sed 's/G//')
 
