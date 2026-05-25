@@ -25,6 +25,18 @@
     # against pure upstream semver.
     bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
 
+# The boot oneshot and the upgrade-role bestool calls require lifecycle
+# subcommands (start/stop/restart) plus patient-portal awareness, which
+# landed in 1.13.0. Older hosts must update before re-running this role.
+- name: Require bestool >= 1.13.0
+  ansible.builtin.assert:
+    that:
+      - bestool_installed_version is defined
+      - bestool_installed_version is version('1.13.0', '>=')
+    fail_msg: >-
+      Tamanu install/upgrade requires bestool >= 1.13.0
+      (found {{ bestool_installed_version | default('none') }}).
+
 # Capture the versions currently in /etc/tamanu/env *before* version.yml
 # overwrites the file. Consumed by the upgrade role to decide whether a
 # frontend-only bump can skip API service churn and DB migration. Empty
