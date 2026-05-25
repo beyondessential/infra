@@ -7,10 +7,6 @@ import { nativeTags } from '../common/tags.ts';
 import { controlPlaneRole } from './roles.ts';
 
 export const version = cfg.require('version');
-if (parseInt(version.split('.')?.[1]) < 21) {
-  // 1.20 and below don't support IPv6 in AWS
-  throw new Error('EKS version must be >= 1.21');
-}
 
 export const tags = {
   Cluster: `k8s-${stackName}`,
@@ -36,6 +32,17 @@ export const cluster = new aws.eks.Cluster(
     tags: nativeTags(tags, {
       Purpose: 'k8s-system',
     }),
+    logging: {
+      clusterLogging: {
+        enabledTypes: [
+          { type: 'api' },
+          { type: 'audit' },
+          { type: 'authenticator' },
+          { type: 'controllerManager' },
+          { type: 'scheduler' },
+        ],
+      },
+    },
   },
   {
     // changing this Cluster in any way causes pulumi to throw a tantrum,
