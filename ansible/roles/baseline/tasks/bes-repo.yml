@@ -8,7 +8,7 @@
 - name: Add bes-tools apt repo
   become: true
   ansible.builtin.apt_repository:
-    repo: deb [signed-by=/etc/apt/keyrings/bes-tools.gpg] https://tools.ops.tamanu.io/apt stable main
+    repo: deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/bes-tools.gpg] https://tools.ops.tamanu.io/apt stable main
     state: present
     filename: bes-tools
 
