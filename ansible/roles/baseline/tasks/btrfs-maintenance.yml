@@ -61,8 +61,10 @@
       [Service]
       Type=oneshot
       ExecStart=/usr/bin/btrfs balance start -dusage=50 -musage=50 /
+      Slice=background.slice
       Nice=19
       IOSchedulingClass=idle
+      OOMScoreAdjust=500
   when: is_btrfs
 
 - name: Create btrfs balance timer
@@ -96,8 +98,10 @@
       [Service]
       Type=oneshot
       ExecStart=/usr/bin/btrfs scrub start -B -d /
+      Slice=background.slice
       Nice=19
       IOSchedulingClass=idle
+      OOMScoreAdjust=500
   when: is_btrfs
 
 - name: Create btrfs scrub timer
