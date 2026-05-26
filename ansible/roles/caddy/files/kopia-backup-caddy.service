@@ -8,3 +8,7 @@ User=kopia
 Group=kopia
 Environment=KOPIA_CHECK_FOR_UPDATES=false
 ExecStart=kopia snapshot create --tags area:caddy-config --description="%H Caddy config" /etc/caddy
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

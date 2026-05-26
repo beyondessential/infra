@@ -14,3 +14,7 @@ ExecStart=!/usr/bin/bindfs -r -u kopia /var/lib/postgresql/current $PGDATA
 ExecStart=/var/lib/kopia/backup-postgres.sh
 ExecStopPost=-!/usr/bin/fusermount -u $PGDATA
 ExecStopPost=-!rm -rf $TMPDIR
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

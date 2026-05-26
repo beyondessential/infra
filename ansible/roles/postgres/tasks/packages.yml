@@ -8,6 +8,26 @@
     - Update package facts
     - Restart postgres
 
+- name: Create postgresql QoS drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/postgresql@.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install postgresql QoS drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/postgresql@.service.d/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMScoreAdjust=-500
+  notify:
+    - Reload systemd
+    - Restart postgres
+
 # during first install, the service is not started (handlers are not run) until
 # after the play completes, and thus the symlink step below fails. Workaround by
 # forcing the handlers to run now.

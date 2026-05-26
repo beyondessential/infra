@@ -83,9 +83,44 @@
     state: absent
   notify: Reload systemd
 
-- name: Remove old container-specific override directory
+- name: Create QoS drop-in directories
   become: true
-  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  when: tamanu_server_type == item.server_type
+  loop:
+    - { server_type: central, dir: tamanu-central-api@.container.d }
+    - { server_type: facility, dir: tamanu-facility-api@.container.d }
+    - { server_type: central, dir: tamanu-central-fhir-.container.d }
+    - { server_type: facility, dir: tamanu-facility-sync.container.d }
   ansible.builtin.file:
-    path: /etc/containers/systemd/{{ item | basename }}.d
-    state: absent
+    path: /etc/containers/systemd/{{ item.dir }}
+    state: directory
+    mode: "0755"
+
+- name: Install critical QoS drop-ins
+  become: true
+  when: tamanu_server_type == item.server_type
+  loop:
+    - { server_type: central, dir: tamanu-central-api@.container.d }
+    - { server_type: facility, dir: tamanu-facility-api@.container.d }
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/{{ item.dir }}/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMScoreAdjust=-500
+  notify: Reload systemd
+
+- name: Install elevated QoS drop-ins
+  become: true
+  when: tamanu_server_type == item.server_type
+  loop:
+    - { server_type: central, dir: tamanu-central-fhir-.container.d }
+    - { server_type: facility, dir: tamanu-facility-sync.container.d }
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/{{ item.dir }}/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=elevated.slice
+  notify: Reload systemd

@@ -109,3 +109,23 @@
   ansible.builtin.systemd_service:
     name: caddy.service
     enabled: false
+
+- name: Create caddy QoS drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install caddy QoS drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMScoreAdjust=-500
+  notify:
+    - Reload systemd
+    - Restart caddy

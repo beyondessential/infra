@@ -8,3 +8,7 @@ User=kopia
 Group=tamanu
 Environment=KOPIA_CHECK_FOR_UPDATES=false
 ExecStart=kopia snapshot create --description="%H Tamanu config" /etc/tamanu
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

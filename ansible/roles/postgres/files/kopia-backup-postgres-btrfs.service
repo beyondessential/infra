@@ -7,3 +7,7 @@ Type=oneshot
 User=root
 Group=root
 ExecStart=/var/lib/kopia/backup-postgres.sh
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

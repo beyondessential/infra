@@ -1,0 +1,12 @@
+---
+- name: Install QoS slice units
+  become: true
+  loop:
+    - critical.slice
+    - elevated.slice
+    - background.slice
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/systemd/system/{{ item }}
+    mode: "0644"
+  notify: Reload systemd
