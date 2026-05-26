@@ -8,7 +8,20 @@ import { TAILSCALE_VERSION } from './versions.ts';
 const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
   const tailscaleClientId = cfg.require('tailscaleClientId');
-  const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
+  // Two auth paths to the Tailscale API, preferring the legacy static-secret
+  // path when configured so existing clusters keep working unchanged:
+  //   - tailscaleClientSecret set  → static OAuth (legacy)
+  //   - tailscaleAudience set      → workload identity federation; the
+  //     operator pod mints an OIDC token from its service account against
+  //     the cluster's OIDC issuer and exchanges it for a short-lived
+  //     Tailscale API token. No long-lived secret stored.
+  const tailscaleClientSecret = cfg.getSecret('tailscaleClientSecret');
+  const tailscaleAudience = cfg.get('tailscaleAudience');
+  if (!tailscaleClientSecret && !tailscaleAudience) {
+    throw new Error(
+      'tailscale: set either tailscaleClientSecret (legacy static OAuth) or tailscaleAudience (workload identity federation)',
+    );
+  }
   const tailscaleProxyDefaultTags: string[] = cfg.getObject('tailscaleProxyDefaultTags') ?? [
     'tag:k8s',
     'tag:k8s-proxy',
@@ -68,10 +81,9 @@ if (tailscaleEnabled) {
           },
         },
       },
-      oauth: {
-        clientId: tailscaleClientId,
-        clientSecret: tailscaleClientSecret,
-      },
+      oauth: tailscaleClientSecret
+        ? { clientId: tailscaleClientId, clientSecret: tailscaleClientSecret }
+        : { clientId: tailscaleClientId, audience: tailscaleAudience },
       apiServerProxyConfig: {
         mode: 'true',
       },
