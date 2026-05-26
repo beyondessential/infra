@@ -54,10 +54,14 @@ function cleanup {
   set -e
 
   kill $psql_pid || true
-  fusermount -u $mountlow || true
-  fusermount -u $mountoverlay || true
+  # Mounts may already have been torn down inline; silence the
+  # "not found in mtab" warning when they have.
+  fusermount -u $mountlow 2>/dev/null || true
+  fusermount -u $mountoverlay 2>/dev/null || true
 
-  rm -rf $tmpdir || true
+  # $tmpdir lives directly under /run (root-owned); only the systemd
+  # ExecStopPost step can unlink it. Clear contents here.
+  find "$tmpdir" -mindepth 1 -delete 2>/dev/null || true
 
   # exit once we finish cleanup;
   # without this the script continues!
