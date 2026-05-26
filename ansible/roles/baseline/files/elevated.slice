@@ -1,0 +1,11 @@
+# IOWeight requires bfq or io.cost on the underlying block device to take
+# effect; on the default mq-deadline scheduler it is inert. CPUWeight works
+# regardless.
+
+[Unit]
+Description=Elevated workloads (tamanu FHIR workers, sync)
+Before=slices.target
+
+[Slice]
+CPUWeight=150
+IOWeight=150
