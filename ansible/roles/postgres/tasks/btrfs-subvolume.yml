@@ -112,25 +112,6 @@
         cmd: mount /var/lib/postgresql
       changed_when: true
 
-    - name: Create snapper config for postgres subvolume
-      become: true
-      ansible.builtin.shell: |
-        if ! command -v snapper >/dev/null 2>&1; then
-          echo "snapper not installed"
-          exit 0
-        fi
-        if [ -f "/etc/snapper/configs/postgres" ]; then
-          echo "already exists"
-          exit 0
-        fi
-        snapper -c postgres create-config /var/lib/postgresql
-        snapper -c postgres set-config \
-          TIMELINE_CREATE=no \
-          {{ snapper_timeline_settings | dict2items | map(attribute='key') | zip(snapper_timeline_settings | dict2items | map(attribute='value')) | map('join', '=') | join(' ') }}
-        echo "created"
-      register: snapper_pg_config
-      changed_when: "'created' in snapper_pg_config.stdout"
-
     - name: Start postgresql after migration
       become: true
       ansible.builtin.systemd:

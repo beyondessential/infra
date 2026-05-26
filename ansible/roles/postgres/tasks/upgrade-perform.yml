@@ -22,42 +22,13 @@
   ansible.builtin.debug:
     msg: "Using pg_upgrade method: {{ pg_upgrade_method }} (filesystem: {{ postgresql_filesystem_type.stdout }})"
 
-- name: Check if snapper is installed
-  when: postgresql_filesystem_type.stdout == 'btrfs'
-  ansible.builtin.shell:
-    cmd: command -v snapper
-  register: snapper_binary_check
-  changed_when: false
-  failed_when: false
-
-- name: Check if snapper has a postgres configuration
-  when:
-    - postgresql_filesystem_type.stdout == 'btrfs'
-    - snapper_binary_check.rc == 0
-  become: true
-  ansible.builtin.shell: snapper -c postgres list >/dev/null 2>&1
-  register: snapper_postgres_config
-  changed_when: false
-  ignore_errors: true
-
 - name: Determine snapshot method for upgrade
   ansible.builtin.set_fact:
-    postgresql_snapshot_method: >-
-      {%- if postgresql_filesystem_type.stdout != 'btrfs' -%}none
-      {%- elif snapper_binary_check.rc == 0 and (snapper_postgres_config.rc | default(1)) == 0 -%}snapper
-      {%- else -%}btrfs
-      {%- endif -%}
+    postgresql_snapshot_method: "{{ 'btrfs' if postgresql_filesystem_type.stdout == 'btrfs' else 'none' }}"
 
 - name: Display chosen snapshot method
   ansible.builtin.debug:
     msg: "Snapshot method for this upgrade: {{ postgresql_snapshot_method }}"
-
-- name: Create pre-upgrade snapshot with snapper
-  when: postgresql_snapshot_method == 'snapper'
-  become: true
-  ansible.builtin.command:
-    cmd: snapper -c postgres create --print-number --type pre --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
-  register: snapper_pre_snapshot
 
 - name: Create pre-upgrade snapshot with btrfs
   when: postgresql_snapshot_method == 'btrfs'
@@ -360,18 +331,6 @@
 - name: Display upgrade results
   ansible.builtin.debug:
     var: pg_upgrade_result.stdout_lines
-
-- name: Create post-upgrade snapshot with snapper
-  when: postgresql_snapshot_method == 'snapper'
-  become: true
-  ansible.builtin.command:
-    cmd: snapper -c postgres create --type post --pre-number "{{ snapper_pre_snapshot.stdout }}" --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
-  register: snapper_post_snapshot
-
-- name: Display post-upgrade snapshot information
-  when: postgresql_snapshot_method == 'snapper'
-  ansible.builtin.debug:
-    msg: "Created post-upgrade snapshot with snapper for postgres configuration"
 
 - name: Start new PostgreSQL service
   become: true
