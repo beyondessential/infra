@@ -89,6 +89,62 @@
           bestool >= 1.15.0 is required for `bestool tamanu stop`
           (found {{ bestool_installed_version | default('none') }}).
 
+    - name: List kopia snapshots to look up the target's size
+      become: true
+      become_user: kopia
+      ansible.builtin.command: kopia snapshot list --json --all
+      register: kopia_snapshot_list
+      changed_when: false
+
+    - name: Locate the target snapshot in the listing
+      ansible.builtin.set_fact:
+        target_snapshot: >-
+          {{ (kopia_snapshot_list.stdout | from_json
+              | selectattr('id', 'equalto', target_snapshot_id)
+              | list | first) | default(none) }}
+
+    - name: Require target snapshot to exist with a known size
+      ansible.builtin.assert:
+        that:
+          - target_snapshot is mapping
+          - target_snapshot.stats is defined
+          - (target_snapshot.stats.totalSize | default(0) | int) > 0
+        fail_msg: >-
+          Snapshot {{ target_snapshot_id }} not found in the kopia repo,
+          or has no recorded size.
+
+    - name: Capture snapshot size + required headroom
+      ansible.builtin.set_fact:
+        target_snapshot_size_bytes: "{{ target_snapshot.stats.totalSize | int }}"
+        target_snapshot_required_bytes: "{{ ((target_snapshot.stats.totalSize | int) * 1.2) | round(0, 'ceil') | int }}"
+
+    - name: Read available bytes on the postgres data filesystem
+      ansible.builtin.command: findmnt -n -o AVAIL --bytes -T /var/lib/postgresql
+      register: pg_avail_raw
+      changed_when: false
+
+    - name: Capture available bytes
+      ansible.builtin.set_fact:
+        pg_avail_bytes: "{{ pg_avail_raw.stdout | trim | int }}"
+
+    - name: Refuse to restore when disk space is short
+      when: (pg_avail_bytes | int) < (target_snapshot_required_bytes | int)
+      vars:
+        gib: "{{ 1024 ** 3 }}"
+        suggest_add_gib: "{{ (((target_snapshot_size_bytes | int) * 1.2) / (gib | int)) | round(0, 'ceil') | int }}"
+        size_gib: "{{ ((target_snapshot_size_bytes | int) / (gib | int)) | round(2) }}"
+        avail_gib: "{{ ((pg_avail_bytes | int) / (gib | int)) | round(2) }}"
+        required_gib: "{{ ((target_snapshot_required_bytes | int) / (gib | int)) | round(2) }}"
+      ansible.builtin.fail:
+        msg: |
+          Not enough disk space to restore snapshot {{ target_snapshot_id }}.
+            Snapshot size: {{ size_gib }} GB
+            Available:     {{ avail_gib }} GB (/var/lib/postgresql)
+            Required:      {{ required_gib }} GB (snapshot size + 20%)
+          Add at least {{ suggest_add_gib }} GB to the disk and reboot, then re-run.
+          Compression on btrfs may shrink the on-disk footprint, but we can't
+          rely on it leaving enough headroom.
+
 - name: Restore tamanu data from kopia snapshot
   hosts: central:facility
   gather_facts: false
