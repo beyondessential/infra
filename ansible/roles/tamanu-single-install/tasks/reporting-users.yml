@@ -1,0 +1,24 @@
+---
+- name: Add reporting database users
+  loop:
+    - reporting
+    - raw
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ item }}"
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + item, chars=['ascii_letters', 'digits']) }}"
+
+- name: Allow reporting users access to postgres
+  loop:
+    - reporting
+    - raw
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ item }}"
+    databases: tamanu
+    method: scram-sha-256
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
+  notify: Reload postgres
