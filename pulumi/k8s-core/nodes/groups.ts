@@ -150,11 +150,18 @@ function makeBootstrapNodegroups(
         scalingConfig: { minSize: 0, desiredSize: bootstrap ? 1 : 0, maxSize: 1 },
         updateConfig: { maxUnavailable: 1 },
         // k[node.label.purpose] k[node.label.schedule] k[node.label.arch] k[node.label.group]
+        // Karpenter's controller has a DoNotSchedule topology spread on
+        // `karpenter.sh/capacity-type` — without the label here, the
+        // controller pods can't schedule on bootstrap nodes and the whole
+        // cluster wedges before Karpenter ever starts. Karpenter writes this
+        // label itself on the nodes it provisions; we have to set it
+        // explicitly on managed nodegroup nodes.
         labels: {
           'bes.node.group': groupName,
           'bes.node.purpose': purpose,
           'bes.node.schedule': 'ondemand',
           'bes.node.arch': 'arm64',
+          'karpenter.sh/capacity-type': 'on-demand',
         },
         tags: { ...tags, Purpose: `k8s-${purpose}` },
       },
