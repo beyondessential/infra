@@ -196,18 +196,55 @@
         path: /var/lib/kopia/restore
       register: existing_restore_dir
 
-    - name: Refuse to overwrite an existing restore dir
+    - name: Check for a previous restore marker
       when: existing_restore_dir.stat.exists
+      become: true
+      ansible.builtin.stat:
+        path: /var/lib/kopia/restore.snapshot-id
+      register: existing_restore_marker
+
+    - name: Read the previous restore marker
+      when: existing_restore_marker.stat.exists | default(false)
+      become: true
+      ansible.builtin.slurp:
+        src: /var/lib/kopia/restore.snapshot-id
+      register: existing_restore_marker_content
+
+    - name: Decide whether to reuse the existing restore dir
+      ansible.builtin.set_fact:
+        reuse_existing_restore: >-
+          {{ (existing_restore_dir.stat.exists | bool) and (
+               (resume_existing_restore | default(false) | bool)
+               or (
+                 (existing_restore_marker.stat.exists | default(false) | bool)
+                 and ((existing_restore_marker_content.content | default('') | b64decode | trim) == (target_snapshot_id | string))
+               )
+             ) }}
+
+    - name: Refuse to overwrite an existing restore dir
+      when:
+        - existing_restore_dir.stat.exists
+        - not reuse_existing_restore
       ansible.builtin.fail:
         msg: >-
-          /var/lib/kopia/restore already exists. Remove it manually before
-          re-running (it indicates a previous in-flight restore).
+          /var/lib/kopia/restore already exists but no marker confirms it
+          matches snapshot {{ target_snapshot_id }}. To re-use the existing
+          restore (e.g. resuming after a failure further down the playbook)
+          re-run with `-e resume_existing_restore=true`. Otherwise remove
+          the directory manually.
+
+    - name: Note that the existing restore dir is being reused
+      when: reuse_existing_restore
+      ansible.builtin.debug:
+        msg: "Reusing existing /var/lib/kopia/restore for snapshot {{ target_snapshot_id }}; skipping kopia restore."
 
     - name: Announce kopia restore log path
+      when: not reuse_existing_restore
       ansible.builtin.debug:
         msg: "Restoring kopia snapshot. Monitor progress with: tail -f /var/lib/kopia/restore.log"
 
     - name: Restore the kopia snapshot
+      when: not reuse_existing_restore
       become: true
       become_user: kopia
       ansible.builtin.shell:
@@ -220,15 +257,28 @@
       failed_when: kopia_restore.rc != 0
 
     - name: Show kopia restore log tail on failure
-      when: kopia_restore.rc != 0
+      when:
+        - kopia_restore is defined
+        - kopia_restore is failed
       ansible.builtin.command: tail -n 200 /var/lib/kopia/restore.log
       register: kopia_restore_log
       changed_when: false
 
     - name: Display kopia restore log tail on failure
-      when: kopia_restore.rc != 0
+      when:
+        - kopia_restore is defined
+        - kopia_restore is failed
       ansible.builtin.debug:
         var: kopia_restore_log.stdout_lines
+
+    - name: Mark restore dir with snapshot id for future resumes
+      become: true
+      ansible.builtin.copy:
+        content: "{{ target_snapshot_id }}\n"
+        dest: /var/lib/kopia/restore.snapshot-id
+        owner: kopia
+        group: kopia
+        mode: "0644"
 
     - name: Check for PG_VERSION file (one-cluster layout)
       become: true
@@ -274,6 +324,21 @@
         state: present
         update_cache: true
 
+    # apt install auto-initdb's a fresh cluster at /var/lib/postgresql/{version}/main,
+    # which would block the cp below. Tear it down before restoring real data.
+    - name: Stop restore-version postgres cluster if running
+      become: true
+      ansible.builtin.systemd:
+        name: "postgresql@{{ restore_pg_version }}-main"
+        state: stopped
+      failed_when: false
+
+    - name: Remove any auto-initialized main dir for the restore version
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/postgresql/{{ restore_pg_version }}/main
+        state: absent
+
     - name: Reflink restored data into postgres data dir
       become: true
       ansible.builtin.command:
@@ -283,7 +348,6 @@
              if restore_layout == 'whole_install'
              else '/var/lib/kopia/restore' }}
           /var/lib/postgresql/{{ restore_pg_version }}/main
-        creates: /var/lib/postgresql/{{ restore_pg_version }}/main
 
     - name: Chown postgres data tree
       become: true
