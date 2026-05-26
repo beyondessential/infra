@@ -317,7 +317,7 @@
           - (clone_tamanu_version_cmd.stdout | trim) | length > 0
         fail_msg: >-
           /etc/tamanu/env has no TAMANU_VERSION; tamanu must already be
-          installed before running clone-post-restore.
+          installed before running clone-restore.
 
     - name: Set tamanu_version fact from env
       ansible.builtin.set_fact:
