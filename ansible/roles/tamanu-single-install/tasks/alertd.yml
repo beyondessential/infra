@@ -8,6 +8,18 @@
     group: tamanu
     mode: "0775"
 
+# Lets bestool-alertd (and the older bestool-doctor) run the kopia_backup
+# check, which invokes `sudo -u kopia -- /usr/bin/kopia snapshot list`.
+- name: Allow tamanu user to run kopia as the kopia user
+  become: true
+  community.general.sudoers:
+    name: tamanu-kopia
+    state: present
+    user: tamanu
+    runas: kopia
+    commands: /usr/bin/kopia
+    nopassword: true
+
 - name: Install bestool-alertd systemd unit
   become: true
   ansible.builtin.copy:
