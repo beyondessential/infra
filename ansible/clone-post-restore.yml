@@ -1,0 +1,111 @@
+---
+# Refresh postgres credentials + tamanu local.json5 after restoring a
+# database clone from backup. The deterministic password seed includes the
+# host's machine_id, so the restored postgres users hold passwords from the
+# source host; this playbook resets them to match the clone, regenerates the
+# matching local.json5, and applies the standard postgres setup/tuning so
+# CPU/RAM-dependent parameters fit the new instance.
+#
+# Out of scope: tamanu container images, quadlets, caddy, backup timers,
+# alertd, msupply, version files. The playbook never starts, stops, or
+# restarts tamanu services — the operator restarts tamanu manually once
+# this completes.
+
+- name: Postgres setup + tuning
+  hosts: all
+  gather_facts: true
+  pre_tasks:
+    - when: ansible_facts['system_vendor'] == 'Amazon EC2'
+      amazon.aws.ec2_metadata_facts:
+    - name: Gather PostgreSQL facts
+      ansible.builtin.include_tasks: tasks/gather-postgres-version.yml
+  tasks:
+    - name: Apply postgres access settings
+      ansible.builtin.include_role:
+        name: postgres
+        tasks_from: access.yml
+
+    - name: Apply postgres tuning
+      when: postgresql_tune_enabled | default(true) | bool
+      ansible.builtin.include_role:
+        name: postgres
+        tasks_from: tune.yml
+
+- name: Refresh tamanu DB credentials + local.json5
+  hosts: central:facility
+  gather_facts: false
+  tasks:
+    - name: Determine tamanu_server_type from inventory groups
+      ansible.builtin.set_fact:
+        tamanu_server_type: "{{ 'central' if (inventory_hostname in (groups['central'] | default([]))) else 'facility' }}"
+
+    - name: Read installed tamanu_version from /etc/tamanu/env
+      become: true
+      ansible.builtin.shell: sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
+      args:
+        executable: /bin/bash
+      register: clone_tamanu_version_cmd
+      changed_when: false
+      check_mode: false
+
+    - name: Require an installed tamanu version
+      ansible.builtin.assert:
+        that:
+          - (clone_tamanu_version_cmd.stdout | trim) | length > 0
+        fail_msg: >-
+          /etc/tamanu/env has no TAMANU_VERSION; tamanu must already be
+          installed before running clone-post-restore.
+
+    - name: Set tamanu_version fact from env
+      ansible.builtin.set_fact:
+        tamanu_version: "{{ clone_tamanu_version_cmd.stdout | trim }}"
+
+    # local.json5 references patient_portal_* and bestool_installed_version.
+    # Gather only those — the full facts.yml include would also run the
+    # tamanu_version downgrade assert against the role's default version.
+    - name: Fetch PatientPortalFQDN EC2 tag (central only)
+      when: tamanu_server_type == 'central'
+      ansible.builtin.include_tasks: tasks/fetch-ec2-tag.yml
+      vars:
+        ec2_tag_name: PatientPortalFQDN
+
+    - name: Set patient portal enabled fact
+      ansible.builtin.set_fact:
+        patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
+
+    - name: Set patient portal FQDN fact
+      when: patient_portal_enabled
+      ansible.builtin.set_fact:
+        patient_portal_fqdn: "{{ ansible_ec2_tag_PatientPortalFQDN | default(patient_portal_fqdn) }}"
+
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Set bestool installed version fact
+      when: "'bestool' in ansible_facts.packages"
+      ansible.builtin.set_fact:
+        bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
+
+    - name: Reset tamanu user password + ensure database
+      ansible.builtin.include_role:
+        name: postgres-database
+      vars:
+        dbname: tamanu
+
+    - name: Reset reporting/raw users + pg_hba grants
+      ansible.builtin.include_role:
+        name: tamanu-single-install
+        tasks_from: reporting-users.yml
+      vars:
+        db_name: tamanu
+        type: "{{ tamanu_server_type }}"
+
+    - name: Rewrite tamanu local.json5 with refreshed credentials
+      ansible.builtin.include_role:
+        name: tamanu-single-install
+        tasks_from: local-config.yml
+      vars:
+        db_name: tamanu
+        type: "{{ tamanu_server_type }}"
+        version: "{{ tamanu_version }}"
