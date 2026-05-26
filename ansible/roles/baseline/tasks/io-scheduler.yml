@@ -19,6 +19,7 @@
     name: bfq
     state: present
     persistent: present
+  failed_when: false
 
 - name: Set bfq as I/O scheduler via udev
   become: true
