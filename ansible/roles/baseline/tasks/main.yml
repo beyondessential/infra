@@ -15,6 +15,8 @@
   tags: accounting
 - ansible.builtin.import_tasks: qos.yml
   tags: qos
+- ansible.builtin.import_tasks: io-scheduler.yml
+  tags: io-scheduler
 - ansible.builtin.import_tasks: bash-history.yml
   tags: bash-history
 - ansible.builtin.import_tasks: journald.yml
