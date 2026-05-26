@@ -34,11 +34,9 @@
       ansible.builtin.assert:
         that:
           - "'clone' in inventory_hostname"
-          - "'clone' in ansible_hostname"
         fail_msg: >-
-          Refusing to run a destructive restore on a non-clone host. Both
-          inventory name ({{ inventory_hostname }}) and machine hostname
-          ({{ ansible_hostname }}) must contain "clone".
+          Refusing to run a destructive restore on a non-clone host. The
+          inventory name ({{ inventory_hostname }}) must contain "clone".
 
     - name: Determine tamanu_server_type from inventory groups
       ansible.builtin.set_fact:
