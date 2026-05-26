@@ -1,36 +1,14 @@
 ---
-- name: Check if root filesystem is btrfs
-  ansible.builtin.shell: |
-    findmnt -n -o FSTYPE /
-  register: root_fstype
-  changed_when: false
-
-- name: Check root mount options
-  ansible.builtin.shell: |
-    findmnt -n -o OPTIONS / | grep -E 'subvol=/?(/@|@)($|,)'
-  register: root_subvol
+- name: Check if snapper is installed
+  ansible.builtin.command:
+    cmd: command -v snapper
+  register: snapper_binary_check
   changed_when: false
   failed_when: false
 
-- name: Set btrfs eligibility fact
-  ansible.builtin.set_fact:
-    btrfs_snapshots_eligible: "{{ root_fstype.stdout == 'btrfs' and root_subvol.rc == 0 }}"
-
-- name: Skip snapper management if not eligible
-  ansible.builtin.debug:
-    msg: "Skipping snapper management: root is not btrfs with subvol=@ (fstype={{ root_fstype.stdout }}, subvol check={{ root_subvol.rc }})"
-  when: not btrfs_snapshots_eligible
-
-- name: Manage snapper
-  when: btrfs_snapshots_eligible
+- name: Remove snapper
+  when: snapper_binary_check.rc == 0
   block:
-    - name: Install snapper
-      become: true
-      ansible.builtin.apt:
-        name:
-          - snapper
-        state: present
-
     - name: List existing snapper configs
       become: true
       ansible.builtin.shell: |
@@ -39,7 +17,7 @@
       changed_when: false
       failed_when: false
 
-    - name: Delete non-postgres snapper configs and their snapshots
+    - name: Delete all snapper configs and their snapshots
       become: true
       ansible.builtin.shell:
         cmd: |
@@ -75,43 +53,22 @@
             new=$(echo "$current" | tr ' ' '\n' | grep -vx "$config" | tr '\n' ' ' | sed 's/ *$//')
             sed -i -E "s|^SNAPPER_CONFIGS=.*|SNAPPER_CONFIGS=\"$new\"|" /etc/default/snapper
           fi
-      loop: "{{ existing_snapper_configs.stdout_lines | reject('match', '^postgres$') | list }}"
+      loop: "{{ existing_snapper_configs.stdout_lines }}"
 
-    - name: Apply retention settings to postgres snapper config
-      become: true
-      ansible.builtin.shell:
-        cmd: |
-          set -e
-          if [ ! -f "/etc/snapper/configs/postgres" ]; then
-            exit 0
-          fi
-          snapper -c postgres set-config \
-            TIMELINE_CREATE=no \
-            {{ snapper_timeline_settings | dict2items | map(attribute='key') | zip(snapper_timeline_settings | dict2items | map(attribute='value')) | map('join', '=') | join(' ') }}
-
-    - name: Run snapper cleanup for postgres config
-      become: true
-      ansible.builtin.shell:
-        cmd: |
-          set -e
-          if [ ! -f "/etc/snapper/configs/postgres" ]; then
-            exit 0
-          fi
-          snapper -c postgres cleanup timeline
-          snapper -c postgres cleanup number
-      changed_when: false
-
-    - name: Disable snapper timeline timer
+    - name: Disable snapper timers
       become: true
       ansible.builtin.systemd:
-        name: snapper-timeline.timer
+        name: "{{ item }}"
         enabled: false
         state: stopped
+      loop:
+        - snapper-timeline.timer
+        - snapper-cleanup.timer
       failed_when: false
 
-    - name: Enable snapper cleanup timer
+    - name: Uninstall snapper
       become: true
-      ansible.builtin.systemd:
-        name: snapper-cleanup.timer
-        enabled: true
-        state: started
+      ansible.builtin.apt:
+        name: snapper
+        state: absent
+        purge: true
