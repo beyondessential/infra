@@ -21,8 +21,10 @@ const clusterSgTerm = [{ id: cluster.clusterSecurityGroupId }];
 const nodeRoleName = nodeRole.name;
 
 // Prefix for EC2 instance Name tags. Distinguishes Karpenter-provisioned
-// nodes from other EC2 instances in the AWS console.
-const namePrefix = `[Kubernetes ${stackName}]`;
+// nodes from other EC2 instances in the AWS console. No brackets/parens/etc:
+// these tags get propagated to the InstanceProfile Karpenter creates, and
+// IAM tag values only accept [\p{L}\p{Z}\p{N}_.:/=+\-@].
+const namePrefix = `Kubernetes ${stackName}`;
 
 // Karpenter rejects EC2NodeClass.spec.tags entries with restricted keys
 // (kubernetes.io/cluster/*, karpenter.sh/*, karpenter.k8s.aws/ec2nodeclass).
