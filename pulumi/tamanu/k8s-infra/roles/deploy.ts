@@ -79,7 +79,12 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
     },
     {
       apiGroups: ['postgresql.cnpg.io'],
-      resources: ['clusters', 'scheduledbackups'],
+      resources: ['clusters', 'scheduledbackups', 'backups'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    {
+      apiGroups: ['barmancloud.cnpg.io'],
+      resources: ['objectstores'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
     // SubnamespaceAnchors for namespace lifecycle management.

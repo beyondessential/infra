@@ -8,6 +8,12 @@ import { postgresUrlSecret } from './postgresUrl.ts';
 import { backups } from './coreRef.ts';
 import { DEFAULT_POSTGRES_VERSION } from '../../constants/internal.ts';
 
+export interface BarmanBackupArgs {
+  bucket: string;
+  deployName: string;
+  retentionDays: number;
+}
+
 export interface PostgresArgs {
   parent?: ComponentResource;
   namespace: Input<string>;
@@ -21,6 +27,12 @@ export interface PostgresArgs {
   roles?: Input<Input<ManagedRole>[]>;
   initSql?: Input<string>;
   seedSnapshotName?: Input<string>;
+  // When provided, overrides the default IRSA annotation in serviceAccountTemplate.
+  // Pass this for every cluster (even when barmanBackup is absent) so the annotation
+  // is pre-populated and ready when barmanBackup is later enabled.
+  barmanRoleArn?: string;
+  // When provided, enables Barman Cloud WAL archiving + scheduled base backups.
+  barmanBackup?: BarmanBackupArgs;
 }
 
 // https://cloudnative-pg.io/documentation/1.26/cloudnative-pg.v1/#postgresql-cnpg-io-v1-RoleConfiguration
@@ -53,6 +65,8 @@ export function runPostgres({
   roles = [],
   initSql,
   seedSnapshotName,
+  barmanRoleArn,
+  barmanBackup,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -146,17 +160,27 @@ export function runPostgres({
         serviceAccountTemplate: {
           metadata: {
             annotations: {
-              'eks.amazonaws.com/role-arn': backups.sa,
+              'eks.amazonaws.com/role-arn': barmanRoleArn ?? backups.sa,
             },
           },
         },
-        backup: backupSchedule
+        ...(barmanBackup
           ? {
-              volumeSnapshot: {
-                className: 'ebs',
-              },
+              plugins: [
+                {
+                  name: 'barman-cloud.cloudnative-pg.io',
+                  isWALArchiver: true,
+                  parameters: {
+                    barmanObjectName: `${name}-db-object-store`,
+                    serverName: `${name}-db`,
+                  },
+                },
+              ],
             }
-          : {},
+          : {}),
+        backup: {
+          ...(backupSchedule ? { volumeSnapshot: { className: 'ebs' } } : {}),
+        },
         // logLevel: 'trace',
       },
     },
@@ -188,6 +212,61 @@ export function runPostgres({
         },
       },
       { parent, ignoreChanges: ['spec.schedule'] },
+    );
+  }
+
+  if (barmanBackup) {
+    const objectStore = new k8s.apiextensions.CustomResource(
+      `${name}-db-object-store`,
+      {
+        apiVersion: 'barmancloud.cnpg.io/v1',
+        kind: 'ObjectStore',
+        metadata: {
+          name: `${name}-db-object-store`,
+          namespace,
+        },
+        spec: {
+          retentionPolicy: `${barmanBackup.retentionDays}d`,
+          configuration: {
+            destinationPath: `s3://${barmanBackup.bucket}/${barmanBackup.deployName}/${name}-db/`,
+            s3Credentials: {
+              inheritFromIAMRole: true,
+            },
+            wal: {
+              compression: 'gzip',
+            },
+            data: {
+              compression: 'gzip',
+            },
+          },
+        },
+      },
+      { parent },
+    );
+
+    new k8s.apiextensions.CustomResource(
+      `${name}-db-scheduled-backup`,
+      {
+        apiVersion: 'postgresql.cnpg.io/v1',
+        kind: 'ScheduledBackup',
+        metadata: {
+          name: `${name}-db-scheduled`,
+          namespace,
+        },
+        spec: {
+          schedule: '0 0 2 * * *',
+          immediate: true,
+          backupOwnerReference: 'self',
+          cluster: {
+            name: `${name}-db`,
+          },
+          method: 'plugin',
+          pluginConfiguration: {
+            name: 'barman-cloud.cloudnative-pg.io',
+          },
+        },
+      },
+      { dependsOn: [objectStore], parent },
     );
   }
 
