@@ -203,12 +203,32 @@
           /var/lib/kopia/restore already exists. Remove it manually before
           re-running (it indicates a previous in-flight restore).
 
+    - name: Announce kopia restore log path
+      ansible.builtin.debug:
+        msg: "Restoring kopia snapshot. Monitor progress with: tail -f /var/lib/kopia/restore.log"
+
     - name: Restore the kopia snapshot
       become: true
       become_user: kopia
-      ansible.builtin.command:
-        cmd: kopia snapshot restore {{ target_snapshot_id }} restore
+      ansible.builtin.shell:
+        cmd: kopia snapshot restore {{ target_snapshot_id }} restore > /var/lib/kopia/restore.log 2>&1
         chdir: /var/lib/kopia
+      async: 14400
+      poll: 10
+      register: kopia_restore
+      changed_when: true
+      failed_when: kopia_restore.rc != 0
+
+    - name: Show kopia restore log tail on failure
+      when: kopia_restore.rc != 0
+      ansible.builtin.command: tail -n 200 /var/lib/kopia/restore.log
+      register: kopia_restore_log
+      changed_when: false
+
+    - name: Display kopia restore log tail on failure
+      when: kopia_restore.rc != 0
+      ansible.builtin.debug:
+        var: kopia_restore_log.stdout_lines
 
     - name: Check for PG_VERSION file (one-cluster layout)
       become: true
