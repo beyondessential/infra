@@ -1,5 +1,5 @@
 [Unit]
-Description=Take a snapshot of postgres using snapper
+Description=Back up postgres via an ephemeral btrfs snapshot
 ConditionPathExists=/var/lib/kopia/.config/kopia/repository.config
 
 [Service]
