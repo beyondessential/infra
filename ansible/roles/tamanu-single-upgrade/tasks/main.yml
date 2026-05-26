@@ -1,8 +1,4 @@
 ---
-- name: Set patient portal enabled fact
-  ansible.builtin.set_fact:
-    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
-
 # tamanu_version_changed / tamanu_frontend_version_changed are set in
 # tamanu-single-install/tasks/facts.yml during the pre-upgrade play.
 # A frontend-only bump (tamanu_version unchanged) skips API service churn
@@ -22,14 +18,15 @@
   ansible.builtin.debug:
     msg: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
 
-- name: Stop the application services
+# Stops only the kind-scoped API/tasks/sync/fhir services. The trailing
+# dash filters out the legacy `tamanu-facility` singleton (no dash after
+# `facility`) and tamanu-frontend (no kind segment), so the frontend keeps
+# serving traffic while we migrate. Patient portal is handled separately
+# below because it's pinned to tamanu_version, not tamanu_frontend_version.
+- name: Stop the API/tasks/sync/fhir services
   when: tamanu_version_changed
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
   become: true
-  ansible.builtin.systemd:
-    name: "{{ item }}"
-    state: stopped
-  notify: Reload caddy
+  ansible.builtin.command: /usr/bin/bestool tamanu stop tamanu-{{ tamanu_server_type }}-
 
 - name: Stop old single facility service
   when: tamanu_server_type == 'facility'
@@ -64,60 +61,27 @@
 
 # Frontend pods mount /etc/tamanu/${TAMANU_VERSION}:/config, so a tamanu_version
 # bump also forces a frontend restart even when the frontend image tag itself
-# is unchanged.
-- name: Upgrade the frontend service A
+# is unchanged. `bestool tamanu restart` does the rolling A->B dance with a
+# readiness probe and caddy reload between instances.
+- name: Roll the frontend services
   when: tamanu_version_changed or tamanu_frontend_version_changed
   become: true
-  ansible.builtin.systemd:
-    name: tamanu-frontend@a
-    state: restarted
-    enabled: true
-  notify: Reload caddy
-
-- name: Reload caddy
-  meta: flush_handlers
-
-- name: Wait for new frontend to start
-  when: tamanu_version_changed or tamanu_frontend_version_changed
-  ansible.builtin.wait_for:
-    timeout: 10
-    # This used to be a check for the frontend to exist in DNS, but that was
-    # unreliable as it depended on the system DNS connecting to the netavark
-    # DNS, which was not always the case. Waiting for 10 seconds is suboptimal,
-    # but it's better than nothing.
-
-- name: Upgrade the frontend service B
-  when: tamanu_version_changed or tamanu_frontend_version_changed
-  become: true
-  ansible.builtin.systemd:
-    name: tamanu-frontend@b
-    state: restarted
-    enabled: true
-  notify: Reload caddy
-
-- name: Reload caddy
-  meta: flush_handlers
+  ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend
 
 # Patient portal is pinned to tamanu_version (not tamanu_frontend_version),
-# so a frontend-only bump doesn't touch it.
-- name: Upgrade the patient portal service
+# so a frontend-only bump doesn't touch it. The actual on/off decision is
+# the `features.patientPortal` setting in the Tamanu DB, which bestool
+# reads — if the portal is disabled there, the expectation is Down and
+# this restart is a silent no-op, no need to mirror the flag in ansible.
+- name: Restart the patient portal
   when:
-    - patient_portal_enabled
+    - tamanu_server_type == 'central'
     - tamanu_version_changed
   become: true
-  ansible.builtin.systemd:
-    name: tamanu-patientportal
-    state: restarted
-    enabled: true
-  notify: Reload caddy
+  ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-patientportal
 
-- name: Reload caddy
-  when: patient_portal_enabled
-  meta: flush_handlers
-
-# cleanup any legacy or experiments;
-# two frontend services is way more than enough and only really serves
-# to provide a way to do a rolling upgrade
+# cleanup any legacy or experiments; bestool's frontend expectation only
+# admits @a/@b, so any other instance has to be cleaned up by hand.
 - name: Stop frontend services that don't need to be running
   loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$') }}"
   become: true
@@ -133,41 +97,12 @@
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
 
-# we ensure that the standard loadout is up
-# we used to restore all services as they
-# existed on the machine, but that led to drift
-
-- name: Start the standard facility services
-  when:
-    - tamanu_server_type == 'facility'
-    - tamanu_version_changed
-  loop:
-    - "api@1"
-    - "api@2"
-    - tasks
-    - sync
+# Bring everything that should be Up back up. Idempotent: services already
+# running (frontend, patient portal) are left alone.
+- name: Start the standard services
+  when: tamanu_version_changed
   become: true
-  ansible.builtin.systemd:
-    name: "tamanu-facility-{{ item }}.service"
-    state: started
-    enabled: true
-  notify: Reload caddy
-
-- name: Start the standard central services
-  when:
-    - tamanu_server_type == 'central'
-    - tamanu_version_changed
-  loop:
-    - "api@1"
-    - "api@2"
-    - tasks
-    - fhir-refresh
-    - fhir-resolve
-  become: true
-  ansible.builtin.systemd:
-    name: "tamanu-central-{{ item }}.service"
-    state: started
-    enabled: true
+  ansible.builtin.command: /usr/bin/bestool tamanu start
   notify: Reload caddy
 
 - name: Reload caddy
