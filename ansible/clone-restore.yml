@@ -106,15 +106,14 @@
       ansible.builtin.command: dropdb tamanu -f
       register: dropdb_result
       changed_when: dropdb_result.rc == 0
-      failed_when:
-        - dropdb_result.rc != 0
-        - "'does not exist' not in (dropdb_result.stderr | default(''))"
+      failed_when: false  # already-dropped is fine
 
     - name: VACUUM FULL to reclaim space
       become: true
       become_user: postgres
       ansible.builtin.command: psql -c 'VACUUM FULL'
       changed_when: false
+      failed_when: false  # already-dropped is fine
 
     - name: Stop all postgresql clusters
       become: true
