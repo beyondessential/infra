@@ -1,47 +1,23 @@
 ---
-- name: Disable snapper timeline creation for postgres config
-  become: true
-  ansible.builtin.shell: |
-    if [ ! -f "/etc/snapper/configs/postgres" ]; then
-      echo "no config"
-      exit 0
-    fi
-    snapper -c postgres set-config TIMELINE_CREATE=no
-  register: snapper_timeline_disable
-  changed_when: snapper_timeline_disable.stdout != "no config"
-
-- name: Install postgres-consistent snapshot script
-  become: true
-  ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'postgres-snapshot-btrfs.sh') }}"
-    dest: /usr/local/bin/postgres-snapshot-btrfs.sh
-    mode: "0755"
-    owner: root
-    group: root
-
-- name: Add postgres snapshot service
-  become: true
-  ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'postgres-snapshot-btrfs.service') }}"
-    dest: /etc/systemd/system/postgres-snapshot-btrfs.service
-  notify:
-    - Reload systemd
-
-- name: Add postgres snapshot timer
-  become: true
-  ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'postgres-snapshot-btrfs.timer') }}"
-    dest: /etc/systemd/system/postgres-snapshot-btrfs.timer
-  notify:
-    - Reload systemd
-
-- name: Enable postgres snapshot timer
+- name: Stop and disable obsolete postgres snapshot timer
   become: true
   ansible.builtin.systemd:
     name: postgres-snapshot-btrfs.timer
-    daemon_reload: true
-    state: started
-    enabled: true
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Remove obsolete postgres snapshot units and script
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/postgres-snapshot-btrfs.timer
+    - /etc/systemd/system/postgres-snapshot-btrfs.service
+    - /usr/local/bin/postgres-snapshot-btrfs.sh
+  notify:
+    - Reload systemd
 
 - name: Add kopia backup for postgres (btrfs script)
   become: true
