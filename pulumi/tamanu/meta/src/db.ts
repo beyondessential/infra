@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { dbExpose, dbStorage, normalizedStack } from './config.ts';
+import { costLabels, dbExpose, dbStorage, normalizedStack } from './config.ts';
 import { runPostgres } from '../../../common/k8s/postgres.ts';
 
 import { namespace } from './namespace.ts';
@@ -12,6 +12,7 @@ export const dbReady = runPostgres({
   storage: dbStorage,
   timezone: 'Etc/UTC',
   backupSchedule: true,
+  inheritedMetadataLabels: costLabels,
 });
 
 if (dbExpose) {

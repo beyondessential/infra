@@ -1,6 +1,6 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { domains, normalizedStack, publicServerVersionsSecret, replicas, tailscaleClientId, tailscaleClientSecret, tailscaleHostname } from './config.ts';
+import { costLabels, domains, normalizedStack, publicServerVersionsSecret, replicas, tailscaleClientId, tailscaleClientSecret, tailscaleHostname } from './config.ts';
 
 import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN, TAILNET_ID } from '../../../constants/internal.ts';
 import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
@@ -159,7 +159,7 @@ new k8s.apps.v1.Deployment(
       },
       template: {
         metadata: {
-          labels: labels('public'),
+          labels: { ...labels('public'), ...costLabels },
         },
         spec: spec('server', ['public-server'], {
           env: [
@@ -304,7 +304,7 @@ new k8s.apps.v1.Deployment(
       },
       template: {
         metadata: {
-          labels: labels('private'),
+          labels: { ...labels('private'), ...costLabels },
         },
         spec: spec('server', ['private-server'], {
           env: [

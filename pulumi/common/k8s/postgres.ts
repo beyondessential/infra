@@ -27,6 +27,9 @@ export interface PostgresArgs {
   roles?: Input<Input<ManagedRole>[]>;
   initSql?: Input<string>;
   seedSnapshotName?: Input<string>;
+  // Labels propagated via inheritedMetadata to all pods in the cluster.
+  // Used for AWS split cost allocation (CUR pod label attribution).
+  inheritedMetadataLabels?: Record<string, string>;
   // When provided, overrides the default IRSA annotation in serviceAccountTemplate.
   // Pass this for every cluster (even when barmanBackup is absent) so the annotation
   // is pre-populated and ready when barmanBackup is later enabled.
@@ -67,6 +70,7 @@ export function runPostgres({
   seedSnapshotName,
   barmanRoleArn,
   barmanBackup,
+  inheritedMetadataLabels,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -85,6 +89,9 @@ export function runPostgres({
         },
       },
       spec: {
+        ...(inheritedMetadataLabels
+          ? { inheritedMetadata: { labels: inheritedMetadataLabels } }
+          : {}),
         imageCatalogRef: {
           apiGroup: 'postgresql.cnpg.io',
           kind: 'ClusterImageCatalog',

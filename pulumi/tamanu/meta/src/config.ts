@@ -31,3 +31,7 @@ export const slackerCloseUrl = cfg.require('slackerCloseUrl');
 export const tailscaleClientId = cfg.require('tailscaleClientId');
 export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
 export const tailscaleHostname = cfg.require('tailscaleHostname');
+
+export const deployment = cfg.get('deployment') ?? 'canopy';
+export const stage = cfg.get('stage') ?? 'prod';
+export const costLabels = { product: 'tamanu', stage, deployment } as const;
