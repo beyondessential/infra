@@ -103,6 +103,18 @@
 - name: Reload caddy
   meta: flush_handlers
 
+# The reporting schema is rebuilt from definitions on each migrate, but its
+# objects can reference columns that the upcoming migration drops or renames.
+# Drop it cascade beforehand so the migration is unblocked; migrate recreates it.
+- name: Drop reporting schema if present
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    login_db: "{{ db_name }}"
+    name: reporting
+    state: absent
+    cascade_drop: true
+
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
 

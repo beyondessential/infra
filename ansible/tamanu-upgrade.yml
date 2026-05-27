@@ -44,6 +44,7 @@
   roles:
     - role: tamanu-single-upgrade
       type: central
+      db_name: tamanu
       tags: [go, tamanu]
 
 - name: Facility upgrade
@@ -51,6 +52,7 @@
   roles:
     - role: tamanu-single-upgrade
       type: facility
+      db_name: tamanu
       tags: [go, tamanu]
 
     - role: msupply-upgrade
