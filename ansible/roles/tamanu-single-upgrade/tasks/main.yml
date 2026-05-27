@@ -103,9 +103,10 @@
 - name: Reload caddy
   meta: flush_handlers
 
-# The reporting schema is rebuilt from definitions on each migrate, but its
-# objects can reference columns that the upcoming migration drops or renames.
-# Drop it cascade beforehand so the migration is unblocked; migrate recreates it.
+# The reporting schema's views and functions can reference columns that
+# the upcoming migration drops or renames. Drop cascade beforehand so the
+# migration isn't blocked, then recreate it empty afterwards so reporting
+# definitions can be repopulated into it.
 - name: Drop reporting schema if present
   become: true
   become_user: postgres
@@ -117,6 +118,15 @@
 
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
+
+- name: Create reporting schema owned by tamanu
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    login_db: "{{ db_name }}"
+    name: reporting
+    owner: tamanu
+    state: present
 
 # Bring everything that should be Up back up. Idempotent: services already
 # running are left alone, so this also doubles as recovery for a partial
