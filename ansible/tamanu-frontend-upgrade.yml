@@ -1,0 +1,23 @@
+- name: Sanity check
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check that tamanu_frontend_version is set
+      assert:
+        that: tamanu_frontend_version is defined
+        msg: >-
+          tamanu_frontend_version is not defined. Set it in the inventory
+          or pass it with -e. TAMANU_VERSION is read from the server's
+          /etc/tamanu/env and is not changed by this playbook.
+
+- name: Central frontend upgrade
+  hosts: central
+  roles:
+    - role: tamanu-single-frontend-upgrade
+      type: central
+
+- name: Facility frontend upgrade
+  hosts: facility
+  roles:
+    - role: tamanu-single-frontend-upgrade
+      type: facility

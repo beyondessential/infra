@@ -1,0 +1,17 @@
+---
+argument_specs:
+  main:
+    description: |
+      Upgrade only the frontend on a single Tamanu server. Preserves the
+      currently deployed TAMANU_VERSION and rolls the frontend services
+      onto the new TAMANU_FRONTEND_VERSION.
+    options:
+      type:
+        type: str
+        required: true
+        choices:
+          - central
+          - facility
+        description: |
+          Type of server to configure.
+          Must be one of 'central' or 'facility'.
