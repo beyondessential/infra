@@ -12,6 +12,7 @@ export const dbReady = runPostgres({
   storage: dbStorage,
   timezone: 'Etc/UTC',
   backupSchedule: true,
+  inheritedMetadataLabels: { product: 'tamanu', stage: 'prod' },
 });
 
 if (dbExpose) {

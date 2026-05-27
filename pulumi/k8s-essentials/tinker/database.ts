@@ -7,4 +7,5 @@ export const dbReady = runPostgres({
   replicas: 1,
   storage: '5Gi',
   timezone: 'Etc/UTC',
+  inheritedMetadataLabels: { product: 'tamanu', stage: 'test' },
 });

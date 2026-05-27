@@ -12,6 +12,7 @@ export const dbReady = runPostgres({
   timezone: 'Etc/UTC',
   backupSchedule: false,
   postgis: true,
+  inheritedMetadataLabels: { product: 'senaite', stage: 'prod' },
   initSql: `
       CREATE EXTENSION IF NOT EXISTS postgis;
     `
