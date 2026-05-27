@@ -18,6 +18,8 @@ import {
   domainBase,
   namePrefix,
   hardDelete,
+  product,
+  stage,
   tailscaleTags,
   msupplyTailscaleTags,
   normalizedStack,
@@ -67,6 +69,8 @@ for (const [i, inst] of instances.entries()) {
     TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
     Purpose: 'tamanu-server',
     ManagedBy: 'pulumi',
+    Product: product,
+    Stage: stage,
   };
 
   if (cloneOf) {
@@ -149,6 +153,8 @@ for (const [i, inst] of instances.entries()) {
             Name: `${namePrefix}${inst.name} ${name}`,
             Purpose: 'tamanu-server',
             ManagedBy: 'pulumi',
+            Product: product,
+            Stage: stage,
           },
         },
         { deleteBeforeReplace: true, ignoreChanges: ['size'] },
@@ -176,6 +182,8 @@ for (const [i, inst] of instances.entries()) {
       ManagedBy: 'pulumi',
       Purpose: 'tamanu-server',
       FQDN: inst.fqdn,
+      Product: product,
+      Stage: stage,
     },
   });
 

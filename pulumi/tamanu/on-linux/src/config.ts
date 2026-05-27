@@ -76,6 +76,9 @@ const typeGuess = (() => {
   }
 })();
 
+export const product = cfg.get('product') ?? 'tamanu';
+export const stage = cfg.get('stage') ?? typeGuess ?? 'prod';
+
 export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   const tags = cfg.get('tailscaleTags')?.split(/,\s*/);
   if (tags) {
