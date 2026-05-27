@@ -4,6 +4,15 @@
 # A frontend-only bump (tamanu_version unchanged) skips API service churn
 # and patient portal restart — only the frontend reloads. DB migration
 # always runs (idempotent) so a partial-failure rerun still applies it.
+#
+# When the pre play is skipped (--skip-tags pre), those facts aren't set,
+# and the env file already has the new version so re-reading it would
+# falsely report "unchanged". Default to true to do all the work.
+- name: Default version-changed facts when pre play was skipped
+  ansible.builtin.set_fact:
+    tamanu_version_changed: "{{ tamanu_version_changed | default(true) }}"
+    tamanu_frontend_version_changed: "{{ tamanu_frontend_version_changed | default(true) }}"
+
 - name: Report what this upgrade will do
   ansible.builtin.debug:
     msg: >-
