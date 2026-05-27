@@ -147,3 +147,6 @@ export const ttlHours = cfg.getNumber('ttlHours') ?? 0;
 if (!Number.isInteger(ttlHours) || ttlHours < 0) {
   throw new Error(`ttlHours must be a non-negative integer, got: ${ttlHours}`);
 }
+
+export const deployment = cfg.get('deployment') ?? 'engineering';
+export const costLabels = { product: 'tamanu', stage: 'test', deployment } as const;

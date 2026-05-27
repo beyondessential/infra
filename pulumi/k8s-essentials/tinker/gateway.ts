@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { image, gatewayReplicas, gatewayTailscaleName } from './config.ts';
+import { costLabels, image, gatewayReplicas, gatewayTailscaleName } from './config.ts';
 import { gatewayLabels } from './labels.ts';
 import { dbReady } from './database.ts';
 import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.ts';
@@ -19,10 +19,10 @@ export const gateway = new k8s.apps.v1.Deployment('tinker-gateway', {
     selector: {
       matchLabels: gatewayLabels,
     },
-    template: {
-      metadata: {
-        labels: gatewayLabels,
-      },
+      template: {
+        metadata: {
+          labels: { ...gatewayLabels, ...costLabels },
+        },
       spec: {
         tolerations: [CAN_RUN_ON_SPOT],
         affinity: {

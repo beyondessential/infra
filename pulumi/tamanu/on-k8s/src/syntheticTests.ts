@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
 import { imageTag } from './image.ts';
-import { architecture, domains, facilityNames } from './config.ts';
+import { architecture, costLabels, domains, facilityNames } from './config.ts';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.ts';
 
@@ -31,6 +31,7 @@ new k8s.apps.v1.Deployment('synthetic-tests', {
           'app.kubernetes.io/name': 'synthetic-tests',
           'app.kubernetes.io/component': 'artillery',
           'app.kubernetes.io/version': imageTag,
+          ...costLabels,
         },
       },
       spec: {

@@ -1,6 +1,7 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
+import { costLabels } from '../config.ts';
 import { appLabels, appSelector } from './specs.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
 
@@ -35,7 +36,7 @@ export function runTasks(
         },
         template: {
           metadata: {
-            labels: appLabels('task-runner', deviceId),
+            labels: { ...appLabels('task-runner', deviceId), ...costLabels },
           },
           spec: podSpec({ podType: 'task-runner', command: ['startTasks'] }),
         },

@@ -23,3 +23,6 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 }
 
 export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
+
+export const deployment = cfg.get('deployment') ?? 'dhis2';
+export const costLabels = { product: 'senaite', stage: 'prod', deployment } as const;

@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { dbExpose, dbStorage, normalizedStack } from './config.ts';
+import { costLabels, dbExpose, dbStorage, normalizedStack } from './config.ts';
 import { runPostgres } from '../../../common/k8s/postgres.ts';
 
 import { namespace } from './namespace.ts';
@@ -12,7 +12,7 @@ export const dbReady = runPostgres({
   timezone: 'Etc/UTC',
   backupSchedule: false,
   postgis: true,
-  inheritedMetadataLabels: { product: 'senaite', stage: 'prod' },
+  inheritedMetadataLabels: costLabels,
   initSql: `
       CREATE EXTENSION IF NOT EXISTS postgis;
     `

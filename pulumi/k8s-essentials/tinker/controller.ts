@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { image } from './config.ts';
+import { costLabels, image } from './config.ts';
 import { controllerLabels } from './labels.ts';
 import { serviceAccount } from './rbac.ts';
 import { purposeAffinity } from '../../common/k8s/affinities.ts';
@@ -19,10 +19,10 @@ export const controller = new k8s.apps.v1.Deployment('tinker-controller', {
     selector: {
       matchLabels: controllerLabels,
     },
-    template: {
-      metadata: {
-        labels: controllerLabels,
-      },
+      template: {
+        metadata: {
+          labels: { ...controllerLabels, ...costLabels },
+        },
       spec: {
         serviceAccountName: serviceAccount.metadata.name,
         tolerations: [CAN_RUN_ON_SPOT],

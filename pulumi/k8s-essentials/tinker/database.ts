@@ -1,4 +1,5 @@
 import { runPostgres } from '../../common/k8s/postgres.ts';
+import { costLabels } from './config.ts';
 import { namespace } from './namespace.ts';
 
 export const dbReady = runPostgres({
@@ -7,5 +8,5 @@ export const dbReady = runPostgres({
   replicas: 1,
   storage: '5Gi',
   timezone: 'Etc/UTC',
-  inheritedMetadataLabels: { product: 'tamanu', stage: 'test' },
+  inheritedMetadataLabels: costLabels,
 });

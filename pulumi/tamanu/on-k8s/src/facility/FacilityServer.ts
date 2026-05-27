@@ -13,6 +13,7 @@ import {
   BARMAN_BACKUP_ROLE_ARN,
   backupRetentionDays,
   backupsEnabled,
+  costLabels,
   dbBackups,
   dbStorage,
   normalizedStack,
@@ -61,7 +62,7 @@ export class FacilityServer extends ComponentResource {
       barmanBackup: backupsEnabled
         ? { bucket: BARMAN_BACKUP_BUCKET, deployName: normalizedStack, retentionDays: backupRetentionDays }
         : undefined,
-      inheritedMetadataLabels: { product: 'tamanu', stage: 'test' },
+      inheritedMetadataLabels: costLabels,
     });
 
     const appConfig = provisioning.apply((provisioning) =>
