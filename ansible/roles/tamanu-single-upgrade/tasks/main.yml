@@ -119,9 +119,9 @@
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
 
 # Bring everything that should be Up back up. Idempotent: services already
-# running (frontend, patient portal) are left alone.
+# running are left alone, so this also doubles as recovery for a partial
+# previous run that left things stopped.
 - name: Start the standard services
-  when: tamanu_version_changed
   become: true
   ansible.builtin.command: /usr/bin/bestool tamanu start
   notify: Reload caddy
