@@ -69,8 +69,8 @@ for (const [i, inst] of instances.entries()) {
     TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
     Purpose: 'tamanu-server',
     ManagedBy: 'pulumi',
-    product,
-    stage,
+    'billing.bes.au/product': product,
+    'billing.bes.au/stage': stage,
   };
 
   if (cloneOf) {
@@ -153,8 +153,8 @@ for (const [i, inst] of instances.entries()) {
             Name: `${namePrefix}${inst.name} ${name}`,
             Purpose: 'tamanu-server',
             ManagedBy: 'pulumi',
-            product,
-            stage,
+            'billing.bes.au/product': product,
+            'billing.bes.au/stage': stage,
           },
         },
         { deleteBeforeReplace: true, ignoreChanges: ['size'] },
@@ -182,8 +182,8 @@ for (const [i, inst] of instances.entries()) {
       ManagedBy: 'pulumi',
       Purpose: 'tamanu-server',
       FQDN: inst.fqdn,
-      product,
-      stage,
+      'billing.bes.au/product': product,
+      'billing.bes.au/stage': stage,
     },
   });
 

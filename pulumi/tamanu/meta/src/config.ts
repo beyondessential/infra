@@ -34,4 +34,8 @@ export const tailscaleHostname = cfg.require('tailscaleHostname');
 
 export const deployment = cfg.get('deployment') ?? 'canopy';
 export const stage = cfg.get('stage') ?? 'prod';
-export const costLabels = { product: 'tamanu', stage, deployment } as const;
+export const costLabels = {
+  'billing.bes.au/product': 'tamanu',
+  'billing.bes.au/stage': stage,
+  'billing.bes.au/deployment': deployment,
+} as const;
