@@ -1,19 +1,28 @@
 ---
 - name: Install common container quadlets
   become: true
-  with_fileglob: tamanu-frontend@.container
+  loop:
+    - tamanu-frontend@.container
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: /etc/containers/systemd/{{ item | basename }}
+    dest: /etc/containers/systemd/{{ item }}
   notify: Reload systemd
 
 - name: Install patient portal container quadlet
   when: patient_portal_enabled
   become: true
-  with_fileglob: tamanu-patientportal.container
   ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: /etc/containers/systemd/{{ item | basename }}
+    src: tamanu-patientportal@.container
+    dest: /etc/containers/systemd/tamanu-patientportal@.container
+  notify: Reload systemd
+
+# Legacy singleton patient portal quadlet — pre-instanced layout. Remove
+# so it can't coexist with tamanu-patientportal@.container.
+- name: Remove old singleton patient portal quadlet
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-patientportal.container
+    state: absent
   notify: Reload systemd
 
 - name: Install specific container quadlets

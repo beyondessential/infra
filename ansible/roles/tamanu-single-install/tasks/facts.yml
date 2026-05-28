@@ -25,23 +25,22 @@
     # against pure upstream semver.
     bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
 
-# 1.15.0 is the first release where `bestool tamanu start|stop|restart`
-# is functional end-to-end — the boot oneshot and the upgrade role both
-# rely on it.
-- name: Require bestool >= 1.15.0
+# 1.17.0 is the first release where bestool models the patient portal
+# as an instanced @a/@b service, matching the templated quadlet this
+# role deploys.
+- name: Require bestool >= 1.17.0
   ansible.builtin.assert:
     that:
       - bestool_installed_version is defined
-      - bestool_installed_version is version('1.15.0', '>=')
+      - bestool_installed_version is version('1.17.0', '>=')
     fail_msg: >-
-      Tamanu install/upgrade requires bestool >= 1.15.0
+      Tamanu install/upgrade requires bestool >= 1.17.0
       (found {{ bestool_installed_version | default('none') }}).
 
 # Capture the versions currently in /etc/tamanu/env *before* version.yml
-# overwrites the file. Consumed by the upgrade role to decide whether a
-# frontend-only bump can skip API service churn and DB migration. Empty
-# string when the env file is missing (fresh install) or the matching line
-# is absent.
+# overwrites the file. Used by the downgrade checks below. Empty string
+# when the env file is missing (fresh install) or the matching line is
+# absent.
 - name: Read previous tamanu version from env
   become: true
   ansible.builtin.shell: >-
@@ -64,21 +63,15 @@
   changed_when: false
   check_mode: false
 
-# If the env file has no TAMANU_FRONTEND_VERSION line — either a first run
-# after this change rolls out, or any time it was hand-removed — assume the
-# previous frontend version matched TAMANU_VERSION. Otherwise a same-version
-# rerun would be misread as a frontend bump.
-- name: Set previous-version and version-changed facts
+# When the env file has no TAMANU_FRONTEND_VERSION line — pre-split env or
+# hand-removed — fall back to TAMANU_VERSION so the downgrade check has a
+# sensible baseline.
+- name: Set previous-version facts
   ansible.builtin.set_fact:
     previous_tamanu_version: "{{ previous_tamanu_version_cmd.stdout | trim }}"
     previous_tamanu_frontend_version: >-
       {{ previous_tamanu_frontend_version_cmd.stdout | trim
          or previous_tamanu_version_cmd.stdout | trim }}
-    tamanu_version_changed: "{{ (previous_tamanu_version_cmd.stdout | trim) != tamanu_version }}"
-    tamanu_frontend_version_changed: >-
-      {{ (previous_tamanu_frontend_version_cmd.stdout | trim
-          or previous_tamanu_version_cmd.stdout | trim)
-         != tamanu_frontend_version }}
 
 # Only compare when both sides are v-prefixed semver. SHA-pinned versions and
 # fresh installs (empty previous) are skipped.

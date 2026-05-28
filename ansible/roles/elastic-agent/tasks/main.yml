@@ -64,10 +64,11 @@
 
     - name: Add Elastic repo
       become: true
-      ansible.builtin.apt_repository:
-        repo: deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
-        state: present
-        filename: elastic
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/elastic.list
+        mode: "0644"
+        content: |
+          deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
 
     - name: Remove duplicate Elastic apt source
       become: true

@@ -7,17 +7,18 @@
 
 - name: Add pgdg repo
   become: true
-  ansible.builtin.apt_repository:
-    repo: deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt {{ ansible_facts['distribution_release'] }}-pgdg main
-    filename: apt_postgresql_org_pub_repos_apt
-    state: present
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/apt_postgresql_org_pub_repos_apt.list
+    mode: "0644"
+    content: |
+      deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt {{ ansible_facts['distribution_release'] }}-pgdg main
+  register: pgdg_repo
 
-- name: Remove duplicate postgres apt source line
+- name: Refresh apt cache after pgdg repo change
   become: true
-  ansible.builtin.lineinfile:
-    path: /etc/apt/sources.list.d/apt_postgresql_org_pub_repos_apt.list
-    line: "deb https://apt.postgresql.org/pub/repos/apt {{ ansible_facts['distribution_release'] }}-pgdg main"
-    state: absent
+  when: pgdg_repo.changed
+  ansible.builtin.apt:
+    update_cache: true
 
 - name: Prioritise pgdg repo
   become: true

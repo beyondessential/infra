@@ -7,10 +7,18 @@
 
 - name: Add bes-tools apt repo
   become: true
-  ansible.builtin.apt_repository:
-    repo: deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/bes-tools.gpg] https://tools.ops.tamanu.io/apt stable main
-    state: present
-    filename: bes-tools
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/bes-tools.list
+    mode: "0644"
+    content: |
+      deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/bes-tools.gpg] https://tools.ops.tamanu.io/apt stable main
+  register: bes_tools_repo
+
+- name: Refresh apt cache after bes-tools repo change
+  become: true
+  when: bes_tools_repo.changed
+  ansible.builtin.apt:
+    update_cache: true
 
 - name: Remove duplicate bes-tools apt source
   become: true
