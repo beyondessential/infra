@@ -1,4 +1,5 @@
-import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
+import { all, getStack, Config, type Input, interpolate, type Output } from '@pulumi/pulumi';
+import { billingTags as makeBillingTags } from '../../../common/billing.ts';
 import { cfg, zone } from '../../../common/coreRef.ts';
 import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
 
@@ -76,8 +77,12 @@ const typeGuess = (() => {
   }
 })();
 
-export const product = cfg.get('product') ?? 'tamanu';
-export const stage = cfg.get('stage') ?? typeGuess ?? 'prod';
+const billingCfg = new Config('billing');
+export const billingTags = makeBillingTags({
+  product: billingCfg.get('product') ?? 'tamanu',
+  stage: billingCfg.get('stage') ?? typeGuess ?? 'prod',
+  deployment: billingCfg.get('deployment'),
+});
 
 export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   const tags = cfg.get('tailscaleTags')?.split(/,\s*/);

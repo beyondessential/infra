@@ -7,7 +7,8 @@ import {
   AWS_EC2,
 } from '../../../../constants/external.ts';
 import { CrossStack } from '../../../../common/CrossStack.ts';
-import { cloneOf, instances, normalizedStack } from '../config.ts';
+import { nativeTags } from '../../../../common/tags.ts';
+import { billingTags, cloneOf, instances, normalizedStack } from '../config.ts';
 
 interface KopiaOutputs {
   backupBucket: Output<string>;
@@ -25,20 +26,14 @@ function cloneFromStack(ref: string): KopiaOutputs {
 }
 
 function createOwnBucket(): KopiaOutputs {
-  const tags = [
+  const tags = nativeTags(
     {
-      key: 'Purpose',
-      value: 'tamanu-backups',
+      Purpose: 'tamanu-backups',
+      Stack: normalizedStack,
+      ManagedBy: 'pulumi',
     },
-    {
-      key: 'Stack',
-      value: normalizedStack,
-    },
-    {
-      key: 'ManagedBy',
-      value: 'pulumi',
-    },
-  ];
+    billingTags,
+  );
 
   const bucket = new awsNative.s3.Bucket(
     `bes-tamanu-kopia-backups-${normalizedStack}`,
@@ -125,6 +120,7 @@ function createOwnBucket(): KopiaOutputs {
           },
         ],
       }),
+      tags,
     },
     { parent: bucket, protect: false },
   );

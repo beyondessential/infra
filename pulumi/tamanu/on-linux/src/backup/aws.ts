@@ -1,6 +1,7 @@
 import * as aws from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
+import { billingTags } from '../config.ts';
 
 export function applyBackup(resources: Input<string>[]) {
   all(resources).apply((resolvedResources) => {
@@ -30,6 +31,7 @@ export function applyBackup(resources: Input<string>[]) {
       tags: {
         Purpose: 'tamanu-backups',
         ManagedBy: 'pulumi',
+        ...billingTags,
       },
     });
 
@@ -39,6 +41,7 @@ export function applyBackup(resources: Input<string>[]) {
         Purpose: 'tamanu-backups',
         ManagedBy: 'pulumi',
         Name: getStack(),
+        ...billingTags,
       },
     }, { ignoreChanges: ['backupVaultName'] });
 
@@ -78,6 +81,7 @@ export function applyBackup(resources: Input<string>[]) {
         Purpose: 'tamanu-backups',
         ManagedBy: 'pulumi',
         Name: getStack(),
+        ...billingTags,
       },
     });
 

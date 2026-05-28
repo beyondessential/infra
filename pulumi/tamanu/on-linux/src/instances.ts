@@ -18,8 +18,7 @@ import {
   domainBase,
   namePrefix,
   hardDelete,
-  product,
-  stage,
+  billingTags,
   tailscaleTags,
   msupplyTailscaleTags,
   normalizedStack,
@@ -69,8 +68,7 @@ for (const [i, inst] of instances.entries()) {
     TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
     Purpose: 'tamanu-server',
     ManagedBy: 'pulumi',
-    'billing.bes.au/product': product,
-    'billing.bes.au/stage': stage,
+    ...billingTags,
   };
 
   if (cloneOf) {
@@ -153,8 +151,7 @@ for (const [i, inst] of instances.entries()) {
             Name: `${namePrefix}${inst.name} ${name}`,
             Purpose: 'tamanu-server',
             ManagedBy: 'pulumi',
-            'billing.bes.au/product': product,
-            'billing.bes.au/stage': stage,
+            ...billingTags,
           },
         },
         { deleteBeforeReplace: true, ignoreChanges: ['size'] },
@@ -182,8 +179,7 @@ for (const [i, inst] of instances.entries()) {
       ManagedBy: 'pulumi',
       Purpose: 'tamanu-server',
       FQDN: inst.fqdn,
-      'billing.bes.au/product': product,
-      'billing.bes.au/stage': stage,
+      ...billingTags,
     },
   });
 

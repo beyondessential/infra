@@ -1,17 +1,15 @@
 import * as awsNative from '@pulumi/aws-native';
 import { all, jsonStringify, type Output } from '@pulumi/pulumi';
-import { instances, patientPortalDomain, zoneId } from './config.ts';
+import { billingTags, instances, patientPortalDomain, zoneId } from './config.ts';
+import { nativeTags } from '../../../common/tags.ts';
 
-const tags = [
+const tags = nativeTags(
   {
-    key: 'Purpose',
-    value: 'tamanu-acme-dns',
+    Purpose: 'tamanu-acme-dns',
+    ManagedBy: 'pulumi',
   },
-  {
-    key: 'ManagedBy',
-    value: 'pulumi',
-  },
-];
+  billingTags,
+);
 
 const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy(
   'acme-dns-route53-policy',

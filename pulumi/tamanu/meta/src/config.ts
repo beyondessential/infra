@@ -1,4 +1,5 @@
 import { getStack } from '@pulumi/pulumi';
+import { billingTags } from '../../../common/billing.ts';
 import { cfg } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
@@ -34,8 +35,8 @@ export const tailscaleHostname = cfg.require('tailscaleHostname');
 
 export const deployment = cfg.get('deployment') ?? 'canopy';
 export const stage = cfg.get('stage') ?? 'prod';
-export const costLabels = {
-  'billing.bes.au/product': 'tamanu',
-  'billing.bes.au/stage': stage,
-  'billing.bes.au/deployment': deployment,
-} as const;
+export const costLabels = billingTags({
+  product: 'tamanu',
+  stage,
+  deployment,
+});
