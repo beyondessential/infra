@@ -10,4 +10,8 @@ export const gatewayTailscaleName = cfg.get('tailscaleName') ?? 'tinker-gateway'
 
 export const deployment = cfg.get('deployment') ?? 'tinker';
 export const stage = cfg.get('stage') ?? 'test';
-export const costLabels = { product: 'tamanu', stage, deployment } as const;
+export const costLabels = {
+  'billing.bes.au/product': 'tamanu',
+  'billing.bes.au/stage': stage,
+  'billing.bes.au/deployment': deployment,
+} as const;
