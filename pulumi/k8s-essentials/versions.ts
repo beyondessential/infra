@@ -27,8 +27,6 @@ export const PROMETHEUS_VERSION = '28.13.0';
 // helm chart version
 export const CNPG_VERSION = '0.27.1';
 
-// PGRO version is in the pulumi config
-
 // https://tailscale.com/docs/features/kubernetes-operator
 // tailscale version
 export const TAILSCALE_VERSION = '1.94.2';
