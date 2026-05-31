@@ -12,8 +12,13 @@ export const normalizedStack = getStack()
   .replace(/^-+|-+$/g, '');
 
 // TODO: use k8score's/k8s-infra's base?
+const _configTemplateRaw = cfg.get('configTemplate');
 export const domainBase =
-  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'cd.tamanu.app');
+  cfg.get('domainBase') ??
+  truncateDomainIfNeeded(
+    normalizedStack,
+    _configTemplateRaw === 'demo' ? 'demos.tamanu.app' : 'cd.tamanu.app',
+  );
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const dbExpose = cfg.getBoolean('dbExpose') ?? true;
@@ -128,8 +133,11 @@ export const backupRetentionDays =
 // IAM role that CNPG pods assume (via IRSA) to write Barman backups to S3.
 // Always set on the serviceAccountTemplate so the annotation is ready before
 // backupsEnabled is flipped on.
-export const BARMAN_BACKUP_ROLE_ARN = 'arn:aws:iam::143295493206:role/tamanu-db-backups-staging';
-export const BARMAN_BACKUP_BUCKET = 'tamanu-db-backups-staging';
+// Override per-stack with tamanu-on-k8s:barmanRoleArn / tamanu-on-k8s:barmanBucket
+// when deploying to a cluster in a different AWS account (e.g. shared-demos).
+export const BARMAN_BACKUP_ROLE_ARN =
+  cfg.get('barmanRoleArn') ?? 'arn:aws:iam::143295493206:role/tamanu-db-backups-staging';
+export const BARMAN_BACKUP_BUCKET = cfg.get('barmanBucket') ?? 'tamanu-db-backups-staging';
 
 const _seedSnapshotRaw = cfg.get('seedSnapshot');
 export const seedSnapshot: boolean =

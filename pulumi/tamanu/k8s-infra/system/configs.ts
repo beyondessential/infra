@@ -23,7 +23,7 @@ function readConfig(
   };
 }
 
-for (const template of ['basic', 'pr', 'rc']) {
+for (const template of ['basic', 'pr', 'rc', 'demo']) {
   new k8s.core.v1.ConfigMap(
     `provisioning-${template}`,
     {

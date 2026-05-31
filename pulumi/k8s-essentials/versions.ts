@@ -36,3 +36,7 @@ export const TAILSCALE_VERSION = '1.94.2';
 // https://caas-team.github.io/helm-charts/index.yaml (chart: py-kube-downscaler)
 // helm chart version
 export const KUBE_DOWNSCALER_VERSION = '0.3.12';
+
+// https://artifacthub.io/packages/helm/cloudnative-pg/barman-cloud-plugin
+// helm chart version
+export const BARMAN_CLOUD_PLUGIN_VERSION = '0.12.0';
