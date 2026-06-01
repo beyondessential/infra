@@ -37,6 +37,6 @@ export const TAILSCALE_VERSION = '1.94.2';
 // helm chart version
 export const KUBE_DOWNSCALER_VERSION = '0.3.12';
 
-// https://artifacthub.io/packages/helm/cloudnative-pg/barman-cloud-plugin
-// helm chart version
-export const BARMAN_CLOUD_PLUGIN_VERSION = '0.12.0';
+// https://artifacthub.io/packages/helm/cloudnative-pg/plugin-barman-cloud
+// helm chart version (plugin image version is v0.12.0)
+export const BARMAN_CLOUD_PLUGIN_VERSION = '0.6.0';

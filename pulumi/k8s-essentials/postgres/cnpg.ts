@@ -53,7 +53,7 @@ new k8s.yaml.v2.ConfigFile('catalog-postgis', {
 
 new k8s.helm.v3.Chart('barman-cloud-plugin', {
   repo: 'cnpg',
-  chart: 'barman-cloud-plugin',
+  chart: 'plugin-barman-cloud',
   version: BARMAN_CLOUD_PLUGIN_VERSION,
   fetchOpts: {
     repo: 'https://cloudnative-pg.github.io/charts',
