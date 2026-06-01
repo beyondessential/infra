@@ -10,16 +10,17 @@ function readConfig(
   { outname, encoding = 'utf-8' }: { outname?: string; encoding?: BufferEncoding } = {},
 ) {
   const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'templates', template);
-  const filename = join(dir, existsSync(join(dir, file)) ? file : `${file}.njk`);
+  const isTemplate = !existsSync(join(dir, file));
+  const filename = join(dir, isTemplate ? `${file}.njk` : file);
   if (!existsSync(filename)) {
     throw new Error(`Template ${template}/${file} not found`);
   }
 
+  // extname() only returns the last extension (e.g. '.njk' from 'local.json5.njk').
+  // Preserve the full extension so the rendered key is 'local.json5.njk', not 'local..njk'.
+  const fullExt = isTemplate ? `${extname(file)}.njk` : extname(file);
   return {
-    [outname ? `${outname}.${extname(filename)}` : basename(filename)]: readFileSync(
-      filename,
-      encoding,
-    ),
+    [outname ? `${outname}${fullExt}` : basename(filename)]: readFileSync(filename, encoding),
   };
 }
 
