@@ -13,10 +13,16 @@ export const normalizedStack = getStack()
 
 // TODO: use k8score's/k8s-infra's base?
 const _configTemplateRaw = cfg.get('configTemplate');
+// For demo stacks, strip the trailing "-demo" suffix from the domain segment so
+// URLs read "central.fsm.demos.tamanu.app" rather than the redundant
+// "central.fsm-demo.demos.tamanu.app". Tailscale and k8s resource names still
+// use normalizedStack (with the suffix) so demos remain identifiable on the mesh.
+const _domainStack =
+  _configTemplateRaw === 'demo' ? normalizedStack.replace(/-demo$/, '') : normalizedStack;
 export const domainBase =
   cfg.get('domainBase') ??
   truncateDomainIfNeeded(
-    normalizedStack,
+    _domainStack,
     _configTemplateRaw === 'demo' ? 'demos.tamanu.app' : 'cd.tamanu.app',
   );
 
