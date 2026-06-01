@@ -1,4 +1,4 @@
-import { ComponentResource, type Input, type Output } from '@pulumi/pulumi';
+import { ComponentResource, interpolate, type Input, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from './waitFor.ts';
@@ -9,7 +9,7 @@ import { backups } from './coreRef.ts';
 import { DEFAULT_POSTGRES_VERSION } from '../../constants/internal.ts';
 
 export interface BarmanBackupArgs {
-  bucket: string;
+  bucket: Input<string>;
   deployName: string;
   retentionDays: number;
 }
@@ -235,7 +235,7 @@ export function runPostgres({
         spec: {
           retentionPolicy: `${barmanBackup.retentionDays}d`,
           configuration: {
-            destinationPath: `s3://${barmanBackup.bucket}/${barmanBackup.deployName}/${name}-db/`,
+            destinationPath: interpolate`s3://${barmanBackup.bucket}/${barmanBackup.deployName}/${name}-db/`,
             s3Credentials: {
               inheritFromIAMRole: true,
             },

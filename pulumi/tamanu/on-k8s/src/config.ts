@@ -1,6 +1,6 @@
-import { getStack } from '@pulumi/pulumi';
+import { getStack, output, type Output } from '@pulumi/pulumi';
 import { billingTags } from '../../../common/billing.ts';
-import { cfg } from '../../../common/k8s/coreRef.ts';
+import { backups, cfg } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
 
@@ -133,11 +133,19 @@ export const backupRetentionDays =
 // IAM role that CNPG pods assume (via IRSA) to write Barman backups to S3.
 // Always set on the serviceAccountTemplate so the annotation is ready before
 // backupsEnabled is flipped on.
-// Override per-stack with tamanu-on-k8s:barmanRoleArn / tamanu-on-k8s:barmanBucket
-// when deploying to a cluster in a different AWS account (e.g. shared-demos).
-export const BARMAN_BACKUP_ROLE_ARN =
-  cfg.get('barmanRoleArn') ?? 'arn:aws:iam::143295493206:role/tamanu-db-backups-staging';
-export const BARMAN_BACKUP_BUCKET = cfg.get('barmanBucket') ?? 'tamanu-db-backups-staging';
+// Defaults to undefined so postgres.ts falls back to backups.sa (the cluster's own
+// IRSA role created by k8s-core/backups.ts). Override per-stack with
+// tamanu-on-k8s:barmanRoleArn to point at a dedicated role in another account.
+export const BARMAN_BACKUP_ROLE_ARN: string | undefined = cfg.get('barmanRoleArn') ?? undefined;
+
+// S3 bucket for Barman WAL archiving and base backups.
+// Defaults to the cluster's own bucket created by k8s-core/backups.ts.
+// Override per-stack with tamanu-on-k8s:barmanBucket (e.g. to preserve an
+// existing bucket when migrating an established deployment).
+const _barmanBucketOverride = cfg.get('barmanBucket');
+export const BARMAN_BACKUP_BUCKET: Output<string> = _barmanBucketOverride
+  ? output(_barmanBucketOverride)
+  : (backups.bucket as Output<string>);
 
 const _seedSnapshotRaw = cfg.get('seedSnapshot');
 export const seedSnapshot: boolean =
