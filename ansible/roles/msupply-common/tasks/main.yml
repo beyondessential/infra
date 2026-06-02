@@ -1,0 +1,14 @@
+---
+# Determine whether mSupply is enabled on this host. This lives in
+# msupply-common — a dependency of both msupply-install and msupply-upgrade —
+# so the fact is set whether a run goes through the `pre` install play or
+# jumps straight to the `go` upgrade play (e.g. `--tags go`), where the
+# install role that would otherwise set it is skipped.
+- name: Fetch MsupplyFQDN EC2 tag
+  ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
+  vars:
+    ec2_tag_name: MsupplyFQDN
+
+- name: Set msupply enabled fact
+  ansible.builtin.set_fact:
+    msupply_enabled: "{{ msupply_enabled if msupply_enabled is defined else (ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined) }}"
