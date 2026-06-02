@@ -1,4 +1,4 @@
-import { getStack, output, type Output } from '@pulumi/pulumi';
+import { Config, getStack, output, type Output } from '@pulumi/pulumi';
 import { billingTags } from '../../../common/billing.ts';
 import { backups, cfg, externalDnsZoneDomains } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
@@ -175,7 +175,7 @@ if (!Number.isInteger(ttlHours) || ttlHours < 0) {
 }
 
 export const deployment = cfg.get('deployment') ?? 'engineering';
-export const stage = cfg.get('stage') ?? 'test';
+export const stage = new Config('billing').get('stage') ?? 'test';
 export const costLabels = billingTags({
   product: 'tamanu',
   stage,
