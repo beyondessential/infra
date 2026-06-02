@@ -27,7 +27,7 @@ export const domainBase =
   );
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const dbExpose = cfg.getBoolean('dbExpose') ?? true;
+export const dbExpose = cfg.getBoolean('dbExpose') ?? (_configTemplateRaw !== 'demo');
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
