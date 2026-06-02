@@ -1,6 +1,6 @@
 import { Config, getStack, output, type Output } from '@pulumi/pulumi';
 import { billingTags } from '../../../common/billing.ts';
-import { backups, cfg, externalDnsZoneDomains } from '../../../common/k8s/coreRef.ts';
+import { backups, cfg, clusterFullName, externalDnsZoneDomains } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
 
@@ -16,7 +16,9 @@ const _configTemplateRaw = cfg.get('configTemplate');
 // Use the cluster's own DNS zones to pick the ingress base domain rather than
 // relying on configTemplate. The demo cluster owns 'demos.tamanu.app'; the main
 // cluster uses 'cd.tamanu.app' (a sub-zone of 'tamanu.app' it manages).
-const _isDemoCluster = externalDnsZoneDomains.includes('demos.tamanu.app');
+// Fall back to clusterFullName until k8s-core publishes externalDnsZoneDomains.
+const _isDemoCluster =
+  externalDnsZoneDomains.includes('demos.tamanu.app') || clusterFullName.includes('demo');
 const _clusterBaseDomain = _isDemoCluster ? 'demos.tamanu.app' : 'cd.tamanu.app';
 
 // For demo stacks, strip the trailing "-demo" suffix from the domain segment so
