@@ -1,6 +1,6 @@
 import { getStack, output, type Output } from '@pulumi/pulumi';
 import { billingTags } from '../../../common/billing.ts';
-import { backups, cfg } from '../../../common/k8s/coreRef.ts';
+import { backups, cfg, externalDnsZoneDomains } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
 
@@ -11,23 +11,26 @@ export const normalizedStack = getStack()
   .slice(0, 63 - 'tamanu-'.length) // 63 is the max length of a k8s namespace, minus the prefix tamanu-
   .replace(/^-+|-+$/g, '');
 
-// TODO: use k8score's/k8s-infra's base?
 const _configTemplateRaw = cfg.get('configTemplate');
+
+// Use the cluster's own DNS zones to pick the ingress base domain rather than
+// relying on configTemplate. The demo cluster owns 'demos.tamanu.app'; the main
+// cluster uses 'cd.tamanu.app' (a sub-zone of 'tamanu.app' it manages).
+const _isDemoCluster = externalDnsZoneDomains.includes('demos.tamanu.app');
+const _clusterBaseDomain = _isDemoCluster ? 'demos.tamanu.app' : 'cd.tamanu.app';
+
 // For demo stacks, strip the trailing "-demo" suffix from the domain segment so
 // URLs read "central.fsm.demos.tamanu.app" rather than the redundant
 // "central.fsm-demo.demos.tamanu.app". Tailscale and k8s resource names still
 // use normalizedStack (with the suffix) so demos remain identifiable on the mesh.
 const _domainStack =
-  _configTemplateRaw === 'demo' ? normalizedStack.replace(/-demo$/, '') : normalizedStack;
+  _isDemoCluster ? normalizedStack.replace(/-demo$/, '') : normalizedStack;
 export const domainBase =
   cfg.get('domainBase') ??
-  truncateDomainIfNeeded(
-    _domainStack,
-    _configTemplateRaw === 'demo' ? 'demos.tamanu.app' : 'cd.tamanu.app',
-  );
+  truncateDomainIfNeeded(_domainStack, _clusterBaseDomain);
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const dbExpose = cfg.getBoolean('dbExpose') ?? (_configTemplateRaw !== 'demo');
+export const dbExpose = cfg.getBoolean('dbExpose') ?? !_isDemoCluster;
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
