@@ -10,4 +10,4 @@
     - ansible.builtin.include_tasks: tailscale.yml
     - ansible.builtin.include_tasks: version.yml
     - ansible.builtin.include_tasks: ufw.yml
-      when: ufw_managed and not (dangerously_leave_ufw_alone | default(false))
+      when: ufw_managed | bool and not (dangerously_leave_ufw_alone | default(false))

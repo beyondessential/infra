@@ -2,7 +2,7 @@
 - ansible.builtin.include_tasks: detect-version.yml
 - ansible.builtin.include_tasks: repo.yml
 - ansible.builtin.include_tasks: upgrade.yml
-  when: postgresql_upgrade_enabled
+  when: postgresql_upgrade_enabled | bool
 - ansible.builtin.include_tasks: btrfs-subvolume.yml
 - ansible.builtin.include_tasks: packages.yml
 - ansible.builtin.include_tasks: psql.yml
@@ -18,7 +18,7 @@
   when: pg_data_fstype.stdout | trim == 'btrfs'
 - ansible.builtin.include_tasks: wal.yml
 - ansible.builtin.include_tasks: tune.yml
-  when: postgresql_tune_enabled
+  when: postgresql_tune_enabled | bool
 - ansible.builtin.include_tasks: backup.yml
 - ansible.builtin.set_fact:
     postgresql_configured: true

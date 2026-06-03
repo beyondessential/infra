@@ -40,7 +40,7 @@
     state: directory
 
 - name: Enable IPv6 for quadlets
-  when: tamanu_ipv6
+  when: tamanu_ipv6 | bool
   become: true
   ansible.builtin.file:
     path: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
@@ -48,7 +48,7 @@
   notify: Reload systemd
 
 - name: Disable IPv6 for quadlets
-  when: not tamanu_ipv6
+  when: not (tamanu_ipv6 | bool)
   become: true
   ansible.builtin.copy:
     dest: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
@@ -66,7 +66,7 @@
   notify: Reload systemd
 
 - name: Install quadlet override for extra_certs
-  when: tamanu_extra_certs
+  when: tamanu_extra_certs | bool
   become: true
   ansible.builtin.copy:
     dest: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf
@@ -77,7 +77,7 @@
   notify: Reload systemd
 
 - name: Uninstall quadlet override for extra_certs
-  when: not tamanu_extra_certs
+  when: not (tamanu_extra_certs | bool)
   become: true
   ansible.builtin.file:
     path: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf

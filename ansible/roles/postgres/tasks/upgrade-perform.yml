@@ -365,7 +365,7 @@
   register: vacuumdb_job
 
 - name: Delete old PostgreSQL cluster
-  when: postgresql_cleanup_old_cluster is defined and postgresql_cleanup_old_cluster
+  when: postgresql_cleanup_old_cluster is defined and postgresql_cleanup_old_cluster | bool
   become: true
   become_user: postgres
   ansible.builtin.command:

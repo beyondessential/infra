@@ -2,7 +2,7 @@
 - name: Create postgres user '{{ postgres_username }}'
   become: true
   become_user: postgres
-  when: postgres_create_user
+  when: postgres_create_user | bool
   community.postgresql.postgresql_user:
     name: "{{ postgres_username }}"
     password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + postgres_username, chars=['ascii_letters', 'digits']) }}"
@@ -15,7 +15,7 @@
     owner: "{{ postgres_username }}"
 
 - name: Allow local access to postgres
-  when: postgres_unix_socket
+  when: postgres_unix_socket | bool
   become: true
   community.postgresql.postgresql_pg_hba:
     dest: /etc/postgresql/current/main/pg_hba.conf
