@@ -49,7 +49,8 @@
     - name: Set btrfs snapshot facts
       ansible.builtin.set_fact:
         pg_btrfs_subvol_name: "{{ pg_mount_fsroot.stdout | trim | regex_replace('^/', '') }}"
-        pg_btrfs_snapshot_name: "{{ pg_mount_fsroot.stdout | trim | regex_replace('^/', '') }}-pre-pgupgrade-{{ installed_postgresql_version }}-to-{{ postgresql_desired_version }}-{{ ansible_date_time.iso8601_basic_short }}"
+        pg_btrfs_snapshot_name: "{{ pg_mount_fsroot.stdout | trim | regex_replace('^/', '') }}-pre-pgupgrade-{{ installed_postgresql_version }}-to-{{ postgresql_desired_version
+          }}-{{ ansible_date_time.iso8601_basic_short }}"
 
     - name: Mount btrfs top-level for snapshot
       ansible.builtin.shell:
@@ -293,7 +294,8 @@
   when: pg_upgrade_check.rc != 0
   become: true
   ansible.builtin.shell:
-    cmd: find /var/lib/postgresql/{{ postgresql_desired_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null || echo "No log file found"
+    cmd: find /var/lib/postgresql/{{ postgresql_desired_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null ||
+      echo "No log file found"
   register: pg_upgrade_log_content
   changed_when: false
 

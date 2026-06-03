@@ -81,8 +81,7 @@
         cmd: apt-get install --reinstall -y podman
 
 - name: Make sure podman runs
-  ansible.builtin.shell: podman --version
-
+  ansible.builtin.command: podman --version
 - name: Stat /usr/local/bin/podman
   ansible.builtin.stat:
     path: /usr/local/bin/podman
@@ -119,15 +118,15 @@
   ansible.builtin.lineinfile:
     path: /etc/containers/containers.conf
     line: network_backend = "netavark"
-    regexp: '^#?network_backend\s*='
+    regexp: "^#?network_backend\\s*="
 
 - name: Use nftables for container networking
   become: true
   ansible.builtin.lineinfile:
     path: /etc/containers/containers.conf
-    insertafter: '^\[network\]'
+    insertafter: "^\\[network\\]"
     line: firewall_driver = "nftables"
-    regexp: '^#?firewall_driver\s*='
+    regexp: "^#?firewall_driver\\s*="
 
 # Aardvark's own default port is 5533. netavark is meant to pass -p 53 so
 # aardvark binds to the conventional DNS port and containers can query it
@@ -138,16 +137,16 @@
   become: true
   ansible.builtin.lineinfile:
     path: /etc/containers/containers.conf
-    insertafter: '^\[network\]'
+    insertafter: "^\\[network\\]"
     line: dns_bind_port = 53
-    regexp: '^#?dns_bind_port\s*='
+    regexp: "^#?dns_bind_port\\s*="
 
 - name: Use host timezone by default for containers
   become: true
   ansible.builtin.lineinfile:
     path: /etc/containers/containers.conf
     line: tz = "local"
-    regexp: '^#?tz\s*='
+    regexp: "^#?tz\\s*="
 
 - name: Set podman image auto-cleanup
   become: true

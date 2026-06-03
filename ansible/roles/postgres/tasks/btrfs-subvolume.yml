@@ -102,7 +102,7 @@
       become: true
       ansible.builtin.lineinfile:
         path: /etc/fstab
-        regexp: '^\S+\s+/var/lib/postgresql\s+'
+        regexp: "^\\S+\\s+/var/lib/postgresql\\s+"
         line: "UUID={{ pg_root_uuid.stdout }} /var/lib/postgresql btrfs compress=zstd:6,subvol=@postgres 0 2"
         state: present
 

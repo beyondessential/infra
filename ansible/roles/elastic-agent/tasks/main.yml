@@ -46,7 +46,7 @@
   when: (elastic_agent_enabled) and (elastic_agent_enrollment_token is defined)
   block:
     - name: Set elastic_architecture
-      set_fact:
+      ansible.builtin.set_fact:
         elastic_architecture: |-
           {{
             "amd64" if ansible_facts['architecture'] == "x86_64"

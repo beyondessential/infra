@@ -11,7 +11,7 @@
 
 - name: Check if postgres user exists
   when: installed_postgresql_version is not defined
-  ansible.builtin.shell: id postgres
+  ansible.builtin.command: id postgres
   register: postgres_user_check
   changed_when: false
   failed_when: false

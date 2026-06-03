@@ -1,10 +1,11 @@
+---
 - name: Sanity check
   hosts: all
   gather_facts: false
   tasks:
     - name: Check if the tamanu_version is set
       tags: [pre, go]
-      assert:
+      ansible.builtin.assert:
         that: tamanu_version is defined
         msg: "tamanu_version is not defined. Please set it in the inventory file."
 

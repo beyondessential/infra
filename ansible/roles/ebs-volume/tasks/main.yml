@@ -18,7 +18,7 @@
 - name: Detect existing filesystem type on {{ volume }}
   when: volume_device.stdout != ''
   become: true
-  ansible.builtin.shell: blkid -s TYPE -o value {{ volume_device.stdout }}
+  ansible.builtin.command: blkid -s TYPE -o value {{ volume_device.stdout }}
   register: detected_fs_type
   changed_when: false
 
@@ -74,7 +74,7 @@
 - name: Get volume UUID
   when: volume_device.stdout != ''
   become: true
-  ansible.builtin.shell: blkid -s UUID -o value {{ volume_device.stdout }}
+  ansible.builtin.command: blkid -s UUID -o value {{ volume_device.stdout }}
   register: volume_uuid
   changed_when: false
 

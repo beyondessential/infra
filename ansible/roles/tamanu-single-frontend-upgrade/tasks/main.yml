@@ -70,7 +70,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/tamanu/env
-    mode: '0664'
+    mode: "0664"
     owner: tamanu
     group: tamanu
     content: |
@@ -93,7 +93,8 @@
 # cleanup any legacy or experiments; bestool's frontend expectation only
 # admits @a/@b, so any other instance has to be cleaned up by hand.
 - name: Stop frontend services that don't need to be running
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$') }}"
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$')
+    }}"
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -102,4 +103,4 @@
   notify: Reload caddy
 
 - name: Reload caddy
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers

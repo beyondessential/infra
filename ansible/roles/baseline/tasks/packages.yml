@@ -18,7 +18,7 @@
 
 - name: Wait until apt update is finished
   become: true
-  async_status:
+  ansible.builtin.async_status:
     jid: "{{ apt_update.ansible_job_id }}"
   register: job_result
   until: job_result.finished

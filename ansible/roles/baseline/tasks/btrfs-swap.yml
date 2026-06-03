@@ -73,7 +73,7 @@
       become: true
       ansible.builtin.lineinfile:
         path: /etc/fstab
-        regexp: '^/swap\.img'
+        regexp: "^/swap\\.img"
         line: "/.swap/swap.img none swap sw 0 0"
         state: present
 

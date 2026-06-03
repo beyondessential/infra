@@ -9,7 +9,7 @@
     - Update package facts
 
 - name: Set mergerfs_architecture
-  set_fact:
+  ansible.builtin.set_fact:
     mergerfs_architecture: |-
       {{
         "amd64" if ansible_facts['architecture'] == "x86_64"
@@ -22,7 +22,8 @@
 - name: Install mergerfs {{ mergerfs_version }}
   become: true
   ansible.builtin.apt:
-    deb: https://github.com/trapexit/mergerfs/releases/download/{{ mergerfs_version }}/mergerfs_{{ mergerfs_version }}.{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['lsb']['codename'] }}_{{ mergerfs_architecture }}.deb
+    deb: https://github.com/trapexit/mergerfs/releases/download/{{ mergerfs_version }}/mergerfs_{{ mergerfs_version }}.{{ ansible_facts['distribution'] | lower
+      }}-{{ ansible_facts['lsb']['codename'] }}_{{ mergerfs_architecture }}.deb
 
 - name: Allow FUSE allow_other to be used by users
   become: true

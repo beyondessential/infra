@@ -127,7 +127,7 @@
       ansible.builtin.command: bestool tamanu stop
       register: bestool_stop
       changed_when: bestool_stop.rc == 0
-      failed_when: false  # already-stopped is fine
+      failed_when: false # already-stopped is fine
 
     # Decide reuse before any destructive op so refusing-to-overwrite
     # doesn't leave the host with a dropped DB and no path forward.
@@ -185,14 +185,14 @@
       ansible.builtin.command: dropdb tamanu -f
       register: dropdb_result
       changed_when: dropdb_result.rc == 0
-      failed_when: false  # already-dropped is fine
+      failed_when: false # already-dropped is fine
 
     - name: VACUUM FULL to reclaim space
       become: true
       become_user: postgres
       ansible.builtin.command: psql -c 'VACUUM FULL'
       changed_when: false
-      failed_when: false  # already-dropped is fine
+      failed_when: false # already-dropped is fine
 
     - name: Stop all postgresql clusters
       become: true
@@ -210,7 +210,7 @@
         - not reuse_existing_restore
         - (pg_avail_raw.stdout | trim | int) < (target_snapshot_required_bytes | int)
       vars:
-        gib: "{{ 1024 ** 3 }}"
+        gib: "{{ 1024**3 }}"
         pg_avail_bytes: "{{ pg_avail_raw.stdout | trim | int }}"
         suggest_add_gib: "{{ (((target_snapshot_size_bytes | int) * 1.2) / (gib | int)) | round(0, 'ceil') | int }}"
         size_gib: "{{ ((target_snapshot_size_bytes | int) / (gib | int)) | round(2) }}"
@@ -302,7 +302,7 @@
         paths: /var/lib/kopia/restore
         file_type: directory
         depth: 1
-        patterns: '^[0-9]+$'
+        patterns: "^[0-9]+$"
         use_regex: true
       register: restore_version_dirs
 
@@ -473,7 +473,8 @@
 
     - name: Set patient portal enabled fact
       ansible.builtin.set_fact:
-        patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
+        patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is
+          defined) or (patient_portal_fqdn is defined)) }}"
 
     - name: Set patient portal FQDN fact
       when: patient_portal_enabled

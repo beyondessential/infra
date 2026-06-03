@@ -32,7 +32,7 @@
     - iti-localtime
   ansible.builtin.replace:
     path: /usr/local/bin/{{ item }}
-    regexp: '(?<![\w/-])bestool\b'
+    regexp: "(?<![\\w/-])bestool\\b"
     replace: iti-bestool
   notify: Restart iti services
 
@@ -82,7 +82,7 @@
     - iti-temperature
   ansible.builtin.replace:
     path: /etc/systemd/system/{{ item }}.service
-    regexp: '/usr/local/bin/bestool\b'
+    regexp: "/usr/local/bin/bestool\\b"
     replace: /usr/bin/iti-bestool
   notify:
     - Reload systemd

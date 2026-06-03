@@ -11,4 +11,5 @@
 
 - name: Set msupply enabled fact
   ansible.builtin.set_fact:
-    msupply_enabled: "{{ msupply_enabled if msupply_enabled is defined else (ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined) }}"
+    msupply_enabled: "{{ msupply_enabled if msupply_enabled is defined else (ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined)
+      }}"

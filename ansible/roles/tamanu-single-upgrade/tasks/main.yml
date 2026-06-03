@@ -68,12 +68,7 @@
   notify: Reload systemd
 
 - name: Reload caddy
-  meta: flush_handlers
-
-# Frontend and patient portal both mount /etc/tamanu/${TAMANU_VERSION}:/config
-# and are templated A/B, so they get a rolling restart: bestool swaps one
-# instance at a time with a readiness probe and caddy reload between each,
-# keeping at least one of each up to serve traffic.
+  ansible.builtin.meta: flush_handlers
 - name: Roll the frontend and patient portal services
   become: true
   ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend tamanu-patientportal
@@ -82,7 +77,8 @@
 # expectations only admit @a/@b, so any other instance has to be cleaned
 # up by hand.
 - name: Stop frontend services that don't need to be running
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$') }}"
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$')
+    }}"
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -92,7 +88,8 @@
 
 - name: Stop patient portal services that don't need to be running
   when: tamanu_server_type == 'central'
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-patientportal@.*') | reject('match', '^tamanu-patientportal@(a|b)[.]service$') | reject('match', '.+@[.]service$') }}"
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-patientportal@.*') | reject('match', '^tamanu-patientportal@(a|b)[.]service$') | reject('match',
+    '.+@[.]service$') }}"
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -101,12 +98,7 @@
   notify: Reload caddy
 
 - name: Reload caddy
-  meta: flush_handlers
-
-# The reporting schema's views and functions can reference columns that
-# the upcoming migration drops or renames. Drop cascade beforehand so the
-# migration isn't blocked, then recreate it empty afterwards so reporting
-# definitions can be repopulated into it.
+  ansible.builtin.meta: flush_handlers
 - name: Drop reporting schema if present
   become: true
   become_user: postgres
@@ -137,4 +129,4 @@
   notify: Reload caddy
 
 - name: Reload caddy
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers

@@ -11,15 +11,18 @@
 - name: Compute raw host resources
   ansible.builtin.set_fact:
     pg_tune_ram_raw_kb: "{{ (ansible_facts['memtotal_mb'] | int) * 1024 }}"
-    pg_tune_cpus_raw: "{{ (ansible_facts['processor_vcpus'] | default(ansible_facts['processor_nproc'], true) | default(ansible_facts['processor_count'], true) | default(1, true)) | int }}"
+    pg_tune_cpus_raw: "{{ (ansible_facts['processor_vcpus'] | default(ansible_facts['processor_nproc'], true) | default(ansible_facts['processor_count'], true) |
+      default(1, true)) | int }}"
     pg_tune_pg_version: "{{ postgresql_version | int }}"
 
 - name: Compute postgres tuning base values (effective resources)
   ansible.builtin.set_fact:
     # RAM: >=8GB → host_ram - 4GB; otherwise host_ram/2
-    pg_tune_ram_kb: "{{ ((pg_tune_ram_raw_kb | int) - (4 * 1024 * 1024)) if (pg_tune_ram_raw_kb | int) >= (8 * 1024 * 1024) else ((pg_tune_ram_raw_kb | int) // 2) }}"
+    pg_tune_ram_kb: "{{ ((pg_tune_ram_raw_kb | int) - (4 * 1024 * 1024)) if (pg_tune_ram_raw_kb | int) >= (8 * 1024 * 1024) else ((pg_tune_ram_raw_kb | int) // 2)
+      }}"
     # CPU: 1→1, 2-4→2, 5-7→4, >=8→n-4
-    pg_tune_cpus: "{{ ((pg_tune_cpus_raw | int) - 4) if (pg_tune_cpus_raw | int) >= 8 else (4 if (pg_tune_cpus_raw | int) >= 5 else (2 if (pg_tune_cpus_raw | int) >= 2 else 1)) }}"
+    pg_tune_cpus: "{{ ((pg_tune_cpus_raw | int) - 4) if (pg_tune_cpus_raw | int) >= 8 else (4 if (pg_tune_cpus_raw | int) >= 5 else (2 if (pg_tune_cpus_raw | int)
+      >= 2 else 1)) }}"
 
 - name: Derive postgres memory tuning values
   ansible.builtin.set_fact:
@@ -41,7 +44,8 @@
 - name: Derive postgres wal_buffers
   ansible.builtin.set_fact:
     # 3% of shared_buffers, capped at 16MB, min 32kB; round up to 16MB if close
-    pg_tune_wal_buffers_kb: "{{ [32, ([16384, ((pg_tune_shared_buffers_kb | int) * 3) // 100] | min)] | max if (((pg_tune_shared_buffers_kb | int) * 3) // 100) <= 14336 or (((pg_tune_shared_buffers_kb | int) * 3) // 100) >= 16384 else 16384 }}"
+    pg_tune_wal_buffers_kb: "{{ [32, ([16384, ((pg_tune_shared_buffers_kb | int) * 3) // 100] | min)] | max if (((pg_tune_shared_buffers_kb | int) * 3) // 100) <=
+      14336 or (((pg_tune_shared_buffers_kb | int) * 3) // 100) >= 16384 else 16384 }}"
 
 - name: Derive postgres work_mem
   ansible.builtin.set_fact:
@@ -52,7 +56,8 @@
 - name: Derive postgres work_mem final
   ansible.builtin.set_fact:
     # OLTP keeps the raw value; floor at 4MB.
-    pg_tune_work_mem_kb: "{{ [4096, ((pg_tune_ram_kb | int) - (pg_tune_shared_buffers_kb | int)) // (((postgresql_tune_max_connections | int) + (pg_tune_parallel_for_work_mem | int)) * 3)] | max }}"
+    pg_tune_work_mem_kb: "{{ [4096, ((pg_tune_ram_kb | int) - (pg_tune_shared_buffers_kb | int)) // (((postgresql_tune_max_connections | int) + (pg_tune_parallel_for_work_mem
+      | int)) * 3)] | max }}"
 
 - name: Derive postgres autovacuum tuning
   ansible.builtin.set_fact:

@@ -18,7 +18,8 @@
     - name: Download msedit archive
       become: true
       ansible.builtin.get_url:
-        url: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture'] }}-linux-gnu.tar.zst
+        url: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture']
+          }}-linux-gnu.tar.zst
         dest: /tmp/msedit-{{ edit_version }}.tar.zst
         mode: "0644"
 

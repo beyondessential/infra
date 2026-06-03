@@ -1,9 +1,10 @@
+---
 - name: Sanity check
   hosts: all
   gather_facts: false
   tasks:
     - name: Check that tamanu_frontend_version is set
-      assert:
+      ansible.builtin.assert:
         that: tamanu_frontend_version is defined
         msg: >-
           tamanu_frontend_version is not defined. Set it in the inventory

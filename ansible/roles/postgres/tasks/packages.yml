@@ -51,8 +51,7 @@
     mode: "2775"
 
 - name: Make sure postgresql is running now
-  meta: flush_handlers
-
+  ansible.builtin.meta: flush_handlers
 - name: Symlink current postgresql version configuration
   become: true
   ansible.builtin.file:

@@ -96,7 +96,8 @@
           ansible.builtin.set_fact:
             root_partition: "{{ current_root_partition.stdout if current_root_partition.rc == 0 else '' }}"
             root_device: "{{ current_root_device.stdout if current_root_partition.rc == 0 else current_root_device_fallback.stdout }}"
-            intermediate_btrfs_partition: "{{ intermediate_partition_lookup.stdout if (intermediate_partuuid != '' and intermediate_partition_lookup.rc == 0) else '' }}"
+            intermediate_btrfs_partition: "{{ intermediate_partition_lookup.stdout if (intermediate_partuuid != '' and intermediate_partition_lookup.rc == 0) else
+              '' }}"
 
         - name: Find var/log partition by UUID if it exists
           ansible.builtin.shell: |
@@ -441,8 +442,10 @@
 
         - name: Calculate total disk space needed (max of minimum_final_size_gb, desired_size_with_free_gb, minimum_with_current_root_gb, or current disk size)
           ansible.builtin.set_fact:
-            total_disk_space_needed_gb: "{{ [minimum_final_size_gb | int, desired_size_with_free_gb | int, minimum_with_current_root_gb | int, current_disk_size_gb | int] | max }}"
-            total_disk_space_needed_bytes: "{{ ([minimum_final_size_gb | int, desired_size_with_free_gb | int, minimum_with_current_root_gb | int, current_disk_size_gb | int] | max) * 1024 * 1024 * 1024 }}"
+            total_disk_space_needed_gb: "{{ [minimum_final_size_gb | int, desired_size_with_free_gb | int, minimum_with_current_root_gb | int, current_disk_size_gb
+              | int] | max }}"
+            total_disk_space_needed_bytes: "{{ ([minimum_final_size_gb | int, desired_size_with_free_gb | int, minimum_with_current_root_gb | int, current_disk_size_gb
+              | int] | max) * 1024 * 1024 * 1024 }}"
 
         - name: Calculate theoretical total sectors after disk extension
           ansible.builtin.set_fact:
@@ -509,7 +512,8 @@
               - "Final partition size: {{ final_partition_size_gb }}GB"
               - "Intermediate partition size: {{ intermediate_size_gb }}GB"
               - "Total disk space needed: {{ total_disk_space_needed_gb }}GB (boot + final + intermediate)"
-              - "{% if current_disk_size_gb | int < total_disk_space_needed_gb | int %}WARNING: Root disk is too small! Need {{ total_disk_space_needed_gb }}GB but have {{ current_disk_size_gb }}GB{% else %}Root disk size is sufficient{% endif %}"
+              - "{% if current_disk_size_gb | int < total_disk_space_needed_gb | int %}WARNING: Root disk is too small! Need {{ total_disk_space_needed_gb }}GB but
+                have {{ current_disk_size_gb }}GB{% else %}Root disk size is sufficient{% endif %}"
 
         - name: Get all partitions for display
           ansible.builtin.shell: |
@@ -927,7 +931,7 @@
           changed_when: true
 
         - name: Display new fstab
-          ansible.builtin.shell: cat /mnt/btrfsroot/etc/fstab
+          ansible.builtin.command: cat /mnt/btrfsroot/etc/fstab
           register: new_fstab
           changed_when: false
 
@@ -1325,7 +1329,7 @@
           changed_when: true
 
         - name: Unmount final btrfs top level
-          ansible.builtin.shell: umount /mnt/finalroot
+          ansible.builtin.command: umount /mnt/finalroot
           changed_when: true
 
         - name: Mount final root subvolume
@@ -1474,7 +1478,7 @@
           changed_when: true
 
         - name: Display final fstab
-          ansible.builtin.shell: cat /mnt/finalroot/etc/fstab
+          ansible.builtin.command: cat /mnt/finalroot/etc/fstab
           register: final_fstab
           changed_when: false
 

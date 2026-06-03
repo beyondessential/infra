@@ -11,7 +11,8 @@
 - name: Add tailscale repo
   become: true
   ansible.builtin.apt_repository:
-    repo: deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} main
+    repo: deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{
+      ansible_facts['distribution_release'] }} main
     filename: tailscale
     state: present
 
@@ -25,7 +26,8 @@
   become: true
   ansible.builtin.lineinfile:
     path: /etc/apt/sources.list.d/tailscale.list
-    line: "deb [signed-by=/etc/apt/keyrings/tailscale.asc] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} main"
+    line: "deb [signed-by=/etc/apt/keyrings/tailscale.asc] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release']
+      }} main"
     state: absent
 
 - name: Prioritise tailscale repo

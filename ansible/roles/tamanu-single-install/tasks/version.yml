@@ -3,7 +3,7 @@
   become: true
   ansible.builtin.file:
     path: /etc/tamanu/{{ tamanu_version }}
-    mode: '0770'
+    mode: "0770"
     owner: tamanu
     group: tamanu
     state: directory
@@ -14,7 +14,7 @@
     remote_src: true
     src: /etc/tamanu/current/production.json5
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
-    mode: '0660'
+    mode: "0660"
     owner: tamanu
     group: tamanu
     force: false # preserve modifications
@@ -27,7 +27,7 @@
   ansible.builtin.template:
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
     src: "{{ lookup('ansible.builtin.fileglob', tamanu_server_type + '.json5.j2') }}"
-    mode: '0660'
+    mode: "0660"
     owner: tamanu
     group: tamanu
     force: false # preserve modifications
@@ -38,7 +38,7 @@
   become: true
   ansible.builtin.file:
     path: /etc/tamanu/{{ tamanu_version }}/production.json5
-    mode: '0660'
+    mode: "0660"
     owner: tamanu
     group: tamanu
     state: file
@@ -58,7 +58,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/tamanu/env
-    mode: '0664'
+    mode: "0664"
     owner: tamanu
     group: tamanu
     content: |
