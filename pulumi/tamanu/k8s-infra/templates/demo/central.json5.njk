@@ -1,9 +1,12 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
+  countryTimeZone: '{{ timezone }}',
+  primaryTimeZone: '{{ timezone }}',
   auth: {
     secret: '{{ 40 | randomstring }}',
-    refreshSecret: '{{ 40 | randomstring }}',
-    reportNoUserError: true,
+    refreshToken: {
+      secret: '{{ 40 | randomstring }}',
+    },
     useHardcodedPermissions: false,
   },
   errors: {
@@ -27,18 +30,15 @@
     syncLookupRefresher: {
       enabled: true,
     },
-    fhirMaterialiser: {
-      limit: 1000,
-    },
   },
   localisation: {
     data: {
+      supportDeskUrl: '',
       country: {
         'alpha-2': 'UT',
         'alpha-3': 'UTO',
         name: 'Utopia',
       },
-      timeZone: '{{ timezone }}',
       disabledReports: [
         'aefi',
         'india-assistive-technology-device-line-list',
@@ -84,9 +84,6 @@
       },
     },
   },
-  tupaiaApiClient: {
-    environment: 'dev',
-  },
   updateUrls: {
     mobile: 'https://install.appcenter.ms/orgs/beyond-essential/apps/tamanu-mobile-only/distribution_groups/staging',
   },
@@ -94,12 +91,6 @@
     diskPath: '/',
   },
   integrations: {
-    vdsNc: {
-      enabled: false,
-    },
-    signer: {
-      enabled: false,
-    },
     fhir: {
       enabled: true,
       worker: {

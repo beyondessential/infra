@@ -21,9 +21,13 @@
       features: {
         patientPlannedMove: true,
         enablePatientDeaths: true,
-        enableInvoicing: true,
+        invoicing: {
+          enabled: true,
+        },
         editPatientDisplayId: true,
-        enableCovidClearanceCertificate: true,
+        covidCertificates: {
+          enableCovidClearanceCertificate: true,
+        },
         quickPatientGenerator: true,
         reminderContactModule: {
           enabled: false,
@@ -37,15 +41,15 @@
         enableVitalEdit: true,
       },
       audit: {
-        changes: {
-          enabled: true,
-        },
         accesses: {
           enabled: true,
         },
       },
-      insurer: {
-        defaultContribution: 0.8,
+      fhir: {
+        worker: {
+          assumeDroppedAfter: '10 minutes',
+          heartbeat: '1 minute',
+        },
       },
       vaccinationReminder: {
         due: [7, 1, -7],
@@ -55,12 +59,6 @@
       disk: {
         freeSpaceRequired: {
           gigabytesForUploadingDocuments: 0.1,
-        },
-      },
-      fhir: {
-        worker: {
-          assumeDroppedAfter: '10 minutes',
-          heartbeat: '1 minute',
         },
       },
     },
