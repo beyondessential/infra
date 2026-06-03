@@ -1,0 +1,22 @@
+---
+# Rationale for the skipped rules below is documented in
+# docs/plans/ansible-ci-and-lint.md.
+exclude_paths:
+  - .venv/
+
+skip_list:
+  # Roles here deliberately share variables with each other and with
+  # inventories (e.g. postgresql_configured is set in `postgres` and read in
+  # `tailscale`; tamanu_central_ip, is_btrfs, bestool_installed_version cross
+  # roles and are set in inventories). Prefixing every register/set_fact with
+  # its role name would break that cross-role contract and force edits to every
+  # inventory.
+  - var-naming[no-role-prefix]
+  # Role directories use an established hyphenated naming convention
+  # (tamanu-single-install, ebs-volume, msupply-install, ...) referenced
+  # throughout the playbooks. Renaming the directories would break every
+  # reference for no functional gain.
+  - role-name
+  # Ops playbooks legitimately carry long shell snippets and complex
+  # conditionals; wrapping them hurts readability more than it helps.
+  - yaml[line-length]
