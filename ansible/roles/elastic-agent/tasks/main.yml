@@ -8,7 +8,7 @@
         name: elastic-agent
         state: stopped
         enabled: false
-      ignore_errors: true
+      failed_when: false
 
     - name: Stop ElasticEndpoint service
       become: true
@@ -16,7 +16,7 @@
         name: ElasticEndpoint
         state: stopped
         enabled: false
-      ignore_errors: true
+      failed_when: false
 
 - name: Uninstall Elastic security agent
   when: (not elastic_agent_enabled) or (elastic_agent_enrollment_token is not defined)
@@ -27,7 +27,7 @@
         name: elastic-agent
         state: stopped
         enabled: false
-      ignore_errors: true
+      failed_when: false
 
     - name: Uninstall Elastic agent
       become: true
@@ -61,6 +61,7 @@
       ansible.builtin.copy:
         src: "{{ lookup('ansible.builtin.fileglob', 'elasticsearch.asc') }}"
         dest: /etc/apt/keyrings/elasticsearch.asc
+        mode: "0644"
 
     - name: Add Elastic repo
       become: true
@@ -80,6 +81,7 @@
       become: true
       ansible.builtin.copy:
         dest: /etc/apt/preferences.d/99-elastic
+        mode: "0644"
         content: |
           Package: *
           Pin: release o=artifacts.elastic.co
@@ -114,6 +116,7 @@
           elastic-agent enroll
           --url={{ elastic_agent_fleet_url }}
           --enrollment-token={{ elastic_agent_enrollment_token }}
+      changed_when: true
       when: >
         elastic_agent_fleet_url and
         (elastic_agent_status.stdout | from_json).FleetMessage == "Not enrolled into Fleet"

@@ -1,8 +1,11 @@
 ---
-- ansible.builtin.include_tasks: packages.yml
-- ansible.builtin.include_tasks: postgres.yml
+- name: Install tailscale packages
+  ansible.builtin.include_tasks: packages.yml
+- name: Configure tailscale postgres
+  ansible.builtin.include_tasks: postgres.yml
   when: postgresql_configured is defined and postgresql_configured
-- ansible.builtin.set_fact:
+- name: Mark tailscale as configured
+  ansible.builtin.set_fact:
     tailscale_configured: true
 
 - name: Add ts-up script

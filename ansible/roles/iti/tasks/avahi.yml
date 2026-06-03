@@ -8,11 +8,13 @@
   ansible.builtin.file:
     path: /etc/systemd/resolved.conf.d
     state: directory
+    mode: "0755"
 
 - name: Disable resolved mDNS to leave port 5353 for avahi
   become: true
   ansible.builtin.copy:
     dest: /etc/systemd/resolved.conf.d/90-no-mdns.conf
+    mode: "0644"
     content: |
       [Resolve]
       MulticastDNS=no

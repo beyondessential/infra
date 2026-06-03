@@ -1,6 +1,10 @@
 ---
 - name: Detect filesystem type for PostgreSQL data directory
-  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  ansible.builtin.shell: |
+    set -o pipefail
+    df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  args:
+    executable: /bin/bash
   register: postgresql_filesystem_type
   changed_when: false
 
@@ -40,6 +44,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.timer') }}"
     dest: /etc/systemd/system/kopia-backup-postgres.timer
+    mode: "0644"
   notify:
     - Reload systemd
 
@@ -56,6 +61,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-config.service') }}"
     dest: /etc/systemd/system/kopia-backup-postgres-config.service
+    mode: "0644"
   notify:
     - Reload systemd
 
@@ -64,6 +70,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-config.timer') }}"
     dest: /etc/systemd/system/kopia-backup-postgres-config.timer
+    mode: "0644"
   notify:
     - Reload systemd
 

@@ -30,14 +30,18 @@
       ACTION=="add|change", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ATTR{queue/scheduler}="bfq"
   register: io_scheduler_rule
 
-- name: Reload udev rules
+- name: Reload udev rules  # noqa: no-handler
+  # Must reload and apply immediately after writing the rule, in order; deferred handlers would run too late.
   become: true
   when: io_scheduler_rule.changed
   ansible.builtin.command:
     cmd: udevadm control --reload-rules
+  changed_when: true
 
-- name: Apply scheduler change to existing block devices
+- name: Apply scheduler change to existing block devices  # noqa: no-handler
+  # Paired with the reload above; must run in order immediately after the rule changes.
   become: true
   when: io_scheduler_rule.changed
   ansible.builtin.command:
     cmd: udevadm trigger --type=devices --subsystem-match=block --action=change
+  changed_when: true

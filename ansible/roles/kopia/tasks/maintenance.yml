@@ -4,6 +4,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-maintenance.service') }}"
     dest: /etc/systemd/system/kopia-maintenance.service
+    mode: "0644"
   notify:
     - Reload systemd
 
@@ -12,6 +13,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-maintenance.timer') }}"
     dest: /etc/systemd/system/kopia-maintenance.timer
+    mode: "0644"
   notify:
     - Reload systemd
 

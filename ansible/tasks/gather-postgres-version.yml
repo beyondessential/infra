@@ -24,7 +24,10 @@
   become: true
   become_user: postgres
   ansible.builtin.shell: |
+    set -o pipefail
     psql -c "select version()" 2>/dev/null | grep PostgreSQL | sed 's/.*PostgreSQL \([0-9]*\).*/\1/' | head -1
+  args:
+    executable: /bin/bash
   register: postgresql_running_query
   changed_when: false
   failed_when: false
@@ -40,8 +43,11 @@
 
 - name: Query PostgreSQL version from systemctl status
   when: installed_postgresql_version is not defined
-  ansible.builtin.shell: |
+  ansible.builtin.shell: |  # noqa: command-instead-of-module
+    set -o pipefail
     systemctl list-units --type=service --all | grep '^.*postgresql@' | sed 's/.*postgresql@\([0-9]*\)-main.*/\1/' | head -1
+  args:
+    executable: /bin/bash
   register: postgresql_systemctl_query
   changed_when: false
   failed_when: false
@@ -57,7 +63,10 @@
 - name: Query installed PostgreSQL packages to detect version
   when: installed_postgresql_version is not defined
   ansible.builtin.shell: |
+    set -o pipefail
     dpkg -l | grep '^ii' | grep 'postgresql-[0-9]' | sed 's/.*postgresql-//' | cut -d' ' -f1 | head -1
+  args:
+    executable: /bin/bash
   register: postgresql_package_query
   changed_when: false
   failed_when: false

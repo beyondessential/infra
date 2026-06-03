@@ -72,14 +72,20 @@
 
         - name: Derive root device from current root if PARTUUID not found
           ansible.builtin.shell: |
+            set -o pipefail
             findmnt -n -o SOURCE / | sed 's/\[.*\]$//' | sed 's/p\?[0-9]*$//'
+          args:
+            executable: /bin/bash
           register: current_root_device_fallback
           changed_when: false
           when: current_root_partition.rc != 0
 
         - name: Derive root device from old partition if PARTUUID found
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ current_root_partition.stdout }}" | sed 's/p\?[0-9]*$//'
+          args:
+            executable: /bin/bash
           register: current_root_device
           changed_when: false
           when: current_root_partition.rc == 0
@@ -152,7 +158,10 @@
 
         - name: Derive root device from partition
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ root_partition }}" | sed 's/p\?[0-9]*$//'
+          args:
+            executable: /bin/bash
           register: root_device_raw
           changed_when: false
 
@@ -194,7 +203,10 @@
 
         - name: Derive device names from partitions
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ var_log_partition }}" | sed 's/[0-9]*$//'
+          args:
+            executable: /bin/bash
           register: var_log_device_raw
           changed_when: false
           when: var_log_partition is defined and var_log_partition != ''
@@ -206,7 +218,10 @@
 
         - name: Derive postgresql device from partition
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ postgresql_partition }}" | sed 's/[0-9]*$//'
+          args:
+            executable: /bin/bash
           register: postgresql_device_raw
           changed_when: false
           when: postgresql_partition is defined and postgresql_partition != ''
@@ -222,7 +237,10 @@
 
         - name: Get existing partition numbers
           ansible.builtin.shell: |
+            set -o pipefail
             parted {{ root_device }} print | grep '^\s*[0-9]' | awk '{print $1}' | sort -n
+          args:
+            executable: /bin/bash
           register: existing_partitions
           changed_when: false
 
@@ -273,6 +291,7 @@
 
         - name: Check if /var/log btrfs spans multiple devices
           ansible.builtin.shell: |
+            set -o pipefail
             if mountpoint -q /var/log; then
               log_fstype=$(findmnt -n -o FSTYPE /var/log)
               if [ "$log_fstype" = "btrfs" ]; then
@@ -284,6 +303,8 @@
             else
               echo "1"
             fi
+          args:
+            executable: /bin/bash
           register: log_device_count
           changed_when: false
 
@@ -313,6 +334,7 @@
 
         - name: Verify three-disk setup
           ansible.builtin.shell: |
+            set -o pipefail
             set -e
             root_mount=$(findmnt -n -o SOURCE,TARGET,FSTYPE / | awk '{print $1 "," $3}')
             log_mount=$(findmnt -n -o SOURCE,TARGET,FSTYPE /var/log | awk '{print $1 "," $3}')
@@ -321,6 +343,8 @@
             echo "root=$root_mount"
             echo "log=$log_mount"
             echo "pg=$pg_mount"
+          args:
+            executable: /bin/bash
           register: mount_verification
           changed_when: false
 
@@ -330,6 +354,7 @@
 
         - name: Gather actual disk usage in bytes using sector sizes and compsize
           ansible.builtin.shell: |
+            set -o pipefail
             set -e
 
             # Get root partition actual usage in bytes (df shows 1K blocks by default)
@@ -352,6 +377,8 @@
             echo "log_used_bytes=${log_used_bytes}"
             echo "pg_used_bytes=${pg_used_bytes}"
             echo "total_used_bytes=${total_used_bytes}"
+          args:
+            executable: /bin/bash
           register: disk_usage_raw
           changed_when: false
 
@@ -364,19 +391,28 @@
 
         - name: Get disk geometry and partition info in sectors
           ansible.builtin.shell: |
+            set -o pipefail
             fdisk -l {{ root_device }} | grep '^Sector size' | awk '{print $4}'
+          args:
+            executable: /bin/bash
           register: sector_size_bytes
           changed_when: false
 
         - name: Get root partition start and end sectors
           ansible.builtin.shell: |
+            set -o pipefail
             fdisk -l {{ root_device }} | grep '^{{ root_partition }}' | awk '{print $2,$3}'
+          args:
+            executable: /bin/bash
           register: root_partition_sectors
           changed_when: false
 
         - name: Get disk total sectors
           ansible.builtin.shell: |
+            set -o pipefail
             fdisk -l {{ root_device }} | grep '^Disk {{ root_device }}:' | awk '{print $(NF-1)}'
+          args:
+            executable: /bin/bash
           register: disk_total_sectors
           changed_when: false
 
@@ -412,7 +448,10 @@
 
         - name: Get current root disk size
           ansible.builtin.shell: |
+            set -o pipefail
             lsblk -b -n -o SIZE {{ root_device }} | head -1
+          args:
+            executable: /bin/bash
           register: current_disk_size_bytes
           changed_when: false
 
@@ -517,7 +556,10 @@
 
         - name: Get all partitions for display
           ansible.builtin.shell: |
+            set -o pipefail
             fdisk -l {{ root_device }} | grep '^{{ root_device }}' | awk '{print $1 " " $2 " " $3 " " $4 " " $5}'
+          args:
+            executable: /bin/bash
           register: all_partitions_raw
           changed_when: false
 
@@ -542,12 +584,15 @@
 
         - name: Build expected intermediate partition table
           ansible.builtin.shell: |
+            set -o pipefail
             echo "=== EXPECTED INTERMEDIATE STATE (after phase 2-5, before reboot1) ==="
             echo "Device                Start        End    Sectors   Size Type"
             fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_device }}p1\s'
             echo "{{ root_partition }}     {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(root_end_sector | int) }} {{ '%10d' | format(root_end_sector | int - root_start_sector | int + 1) }} {{ ((root_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem"
             echo "(free space)          {{ '%10d' | format(root_end_sector | int + 1) }} {{ '%10d' | format(intermediate_start_sector | int - 1) }} {{ '%10d' | format(intermediate_start_sector | int - root_end_sector | int - 1) }} {{ ((intermediate_start_sector | int - root_end_sector | int - 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G"
             echo "{{ intermediate_btrfs_partition }} {{ '%10d' | format(intermediate_start_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int) }} {{ '%10d' | format(intermediate_end_sector | int - intermediate_start_sector | int + 1) }} {{ ((intermediate_end_sector | int - intermediate_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem"
+          args:
+            executable: /bin/bash
           register: intermediate_table
           changed_when: false
 
@@ -557,11 +602,14 @@
 
         - name: Build expected final partition table
           ansible.builtin.shell: |
+            set -o pipefail
             echo "=== EXPECTED FINAL STATE (after phase 7-11) ==="
             echo "Device                Start        End    Sectors   Size Type"
             fdisk -l {{ root_device }} | grep '^{{ root_device }}' | grep -v '^{{ root_partition }}\s'
             echo "{{ root_partition }}  {{ '%10d' | format(root_start_sector | int) }} {{ '%10d' | format(final_end_sector | int) }} {{ '%10d' | format(final_end_sector | int - root_start_sector | int + 1) }} {{ ((final_end_sector | int - root_start_sector | int + 1) * sector_size | int / 1024 / 1024 / 1024) | round(1) }}G Linux filesystem"
             echo "  Subvolumes: @, @log, @containers, @postgres"
+          args:
+            executable: /bin/bash
           register: final_table
           changed_when: false
 
@@ -609,7 +657,10 @@
 
         - name: Check for EFI partition
           ansible.builtin.shell: |
+            set -o pipefail
             fdisk -l {{ root_device }} | grep -i 'EFI' | head -1 | awk '{print $1}'
+          args:
+            executable: /bin/bash
           register: efi_check
           changed_when: false
           failed_when: false
@@ -629,7 +680,10 @@
 
         - name: Check current disk size before extension
           ansible.builtin.shell: |
+            set -o pipefail
             lsblk -b -n -o SIZE {{ root_device }} | head -1
+          args:
+            executable: /bin/bash
           register: current_disk_size_bytes_check
           changed_when: false
 
@@ -663,7 +717,10 @@
 
         - name: Get root partition number
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ root_partition }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          args:
+            executable: /bin/bash
           register: root_partition_number
           changed_when: false
 
@@ -695,10 +752,13 @@
           changed_when: false
 
         - name: Stop tamanu services
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module dynamic unit list piped into a stop loop; systemd module can't enumerate
+            set -o pipefail
             systemctl list-units --type=service --all 'tamanu*' --no-legend | awk '{print $1}' | while read service; do
               systemctl stop "$service" || true
             done
+          args:
+            executable: /bin/bash
           changed_when: false
 
         - name: Stop and disable postgresql to reduce disk activity
@@ -755,7 +815,10 @@
 
         - name: Find newly created intermediate partition by start sector
           ansible.builtin.shell: |
+            set -o pipefail
             lsblk -p -l -n -o NAME,START {{ root_device }} | awk -v start="{{ intermediate_start_sector }}" '$2 == start {print $1}'
+          args:
+            executable: /bin/bash
           register: intermediate_partition_device
           changed_when: false
           retries: 5
@@ -819,13 +882,16 @@
             mode: "0755"
 
         - name: Mount intermediate btrfs
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient mount; must not persist to fstab as the mount module would
             mount -o compress=zstd:6 {{ intermediate_partition_lookup.stdout }} /mnt/btrfsroot
           changed_when: true
 
         - name: Verify mount
           ansible.builtin.shell: |
+            set -o pipefail
             findmnt | grep /mnt/btrfsroot
+          args:
+            executable: /bin/bash
           register: intermediate_mount
           changed_when: false
 
@@ -846,7 +912,7 @@
             msg: "Starting rsync of root filesystem. Monitor progress with: tail -f /tmp/rsync-phase4-root.log"
 
         - name: Rsync root filesystem excluding mounted filesystems
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with brace-expanded excludes and log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/postgresql/*"} \
               / /mnt/btrfsroot/ > /tmp/rsync-phase4-root.log 2>&1
@@ -859,6 +925,7 @@
         - name: Display rsync root errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-root.log || cat /tmp/rsync-phase4-root.log
+          changed_when: false
           when: rsync_root.rc != 0
 
         - name: Display rsync monitoring command for var/log
@@ -866,7 +933,7 @@
             msg: "Starting rsync of /var/log. Monitor progress with: tail -f /tmp/rsync-phase4-log.log"
 
         - name: Rsync var/log
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 /var/log/ /mnt/btrfsroot/var/log/ > /tmp/rsync-phase4-log.log 2>&1
           async: 1800
           poll: 5
@@ -877,6 +944,7 @@
         - name: Display rsync log errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-log.log || cat /tmp/rsync-phase4-log.log
+          changed_when: false
           when: rsync_log.rc != 0
 
         - name: Stop postgresql before final copy
@@ -890,7 +958,7 @@
             msg: "Starting rsync of /var/lib/postgresql. Monitor progress with: tail -f /tmp/rsync-phase4-postgresql.log"
 
         - name: Rsync postgresql data
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 /var/lib/postgresql/ /mnt/btrfsroot/var/lib/postgresql/ > /tmp/rsync-phase4-postgresql.log 2>&1
           async: 3600
           poll: 5
@@ -901,6 +969,7 @@
         - name: Display rsync postgresql errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase4-postgresql.log || cat /tmp/rsync-phase4-postgresql.log
+          changed_when: false
           when: rsync_pg.rc != 0
 
         - name: Display UUID
@@ -961,7 +1030,7 @@
           when: intermediate_mount_check.stdout == "not_mounted"
 
         - name: Mount required filesystems for chroot
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient bind mounts for chroot; must not persist to fstab as the mount module would
             mount --bind /dev /mnt/btrfsroot/dev
             mount --bind /proc /mnt/btrfsroot/proc
             mount --bind /sys /mnt/btrfsroot/sys
@@ -975,7 +1044,7 @@
           changed_when: false
 
         - name: Mount boot if it exists as separate partition
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient bind mount for chroot; must not persist to fstab as the mount module would
             mount --bind /boot /mnt/btrfsroot/boot
           changed_when: true
           when: boot_check.stdout != "no_separate_boot"
@@ -986,7 +1055,7 @@
           register: boot_efi_stat
 
         - name: Mount boot/efi if it exists
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient bind mount for chroot; must not persist to fstab as the mount module would
             mount --bind /boot/efi /mnt/btrfsroot/boot/efi
           changed_when: true
           when: boot_efi_stat.stat.exists
@@ -1046,6 +1115,7 @@
 
         - name: Verify boot from intermediate btrfs
           ansible.builtin.shell: |
+            set -o pipefail
             root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
             root_fstype=$(findmnt -n -o FSTYPE /)
             root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
@@ -1065,6 +1135,8 @@
               echo "Current PARTUUID: $root_partuuid"
               exit 1
             fi
+          args:
+            executable: /bin/bash
           register: boot_verify
           changed_when: false
 
@@ -1084,10 +1156,13 @@
             var: btrfs_check.stdout_lines
 
         - name: Stop tamanu services after first reboot
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module dynamic unit list piped into a stop loop; systemd module can't enumerate
+            set -o pipefail
             systemctl list-units --type=service --all 'tamanu*' --no-legend | awk '{print $1}' | while read service; do
               systemctl stop "$service" || true
             done
+          args:
+            executable: /bin/bash
           changed_when: false
 
     - name: Phase 7 - Delete old ext4 partition
@@ -1100,6 +1175,7 @@
 
         - name: Verify we're on intermediate btrfs
           ansible.builtin.shell: |
+            set -o pipefail
             root_fstype=$(findmnt -n -o FSTYPE /)
             root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
             root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
@@ -1113,6 +1189,8 @@
               echo "Current PARTUUID: $root_partuuid"
               exit 1
             fi
+          args:
+            executable: /bin/bash
           changed_when: false
 
         - name: Stop services before finalizing
@@ -1143,7 +1221,10 @@
 
         - name: Extract old root partition number
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ old_root_partition_device.stdout }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          args:
+            executable: /bin/bash
           register: old_root_partition_number
           changed_when: false
 
@@ -1189,6 +1270,7 @@
 
         - name: Verify we're on intermediate btrfs
           ansible.builtin.shell: |
+            set -o pipefail
             root_fstype=$(findmnt -n -o FSTYPE /)
             root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
             root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
@@ -1202,16 +1284,22 @@
               echo "Current PARTUUID: $root_partuuid"
               exit 1
             fi
+          args:
+            executable: /bin/bash
           changed_when: false
 
         - name: Get current filesystem usage in bytes
           ansible.builtin.shell: |
+            set -o pipefail
             df -B1 / | tail -1 | awk '{print $3}'
+          args:
+            executable: /bin/bash
           register: actual_usage_bytes
           changed_when: false
 
         - name: Find largest free space for final partition
           ansible.builtin.shell: |
+            set -o pipefail
             parted {{ root_device }} unit s print free | awk '
               /Free Space/ {
                 start = $1; gsub(/s$/, "", start);
@@ -1225,6 +1313,8 @@
               }
               END { print max_start " " max_end }
             '
+          args:
+            executable: /bin/bash
           register: largest_free_block
           changed_when: false
 
@@ -1275,7 +1365,10 @@
 
         - name: Find newly created partition by start sector
           ansible.builtin.shell: |
+            set -o pipefail
             lsblk -p -l -n -o NAME,START {{ root_device }} | awk -v start="{{ largest_free_start }}" '$2 == start {print $1}'
+          args:
+            executable: /bin/bash
           register: final_partition_device
           changed_when: false
           retries: 5
@@ -1315,7 +1408,7 @@
             mode: "0755"
 
         - name: Mount final btrfs (top level)
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient staging mount; must not persist to fstab as the mount module would
             mount UUID={{ final_uuid }} /mnt/finalroot
           changed_when: true
 
@@ -1333,7 +1426,7 @@
           changed_when: true
 
         - name: Mount final root subvolume
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient staging mount; must not persist to fstab as the mount module would
             mount -o compress=zstd:6,subvol=@ UUID={{ final_uuid }} /mnt/finalroot
           changed_when: true
 
@@ -1348,7 +1441,7 @@
             - var/lib/postgresql
 
         - name: Mount final subvolumes
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient staging mounts; must not persist to fstab as the mount module would
             mount -o compress=zstd:6,subvol=@log UUID={{ final_uuid }} /mnt/finalroot/var/log
             mount -o compress=zstd:6,subvol=@containers UUID={{ final_uuid }} /mnt/finalroot/var/lib/containers
             mount -o compress=zstd:6,subvol=@postgres UUID={{ final_uuid }} /mnt/finalroot/var/lib/postgresql
@@ -1371,7 +1464,7 @@
             msg: "Starting rsync to final root. Monitor progress with: tail -f /tmp/rsync-phase8-root.log"
 
         - name: Rsync to final root
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with brace-expanded excludes and log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 \
               --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/swap.img","/var/log/*","/var/lib/containers/*","/var/lib/postgresql/*"} \
               / /mnt/finalroot/ > /tmp/rsync-phase8-root.log 2>&1
@@ -1384,6 +1477,7 @@
         - name: Display rsync final root errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-root.log || cat /tmp/rsync-phase8-root.log
+          changed_when: false
           when: rsync_final_root.rc != 0
 
         - name: Display rsync monitoring command for final logs
@@ -1391,7 +1485,7 @@
             msg: "Starting rsync of logs to final. Monitor progress with: tail -f /tmp/rsync-phase8-log.log"
 
         - name: Rsync logs to final
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 /var/log/ /mnt/finalroot/var/log/ > /tmp/rsync-phase8-log.log 2>&1
           async: 1800
           poll: 5
@@ -1402,6 +1496,7 @@
         - name: Display rsync final log errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-log.log || cat /tmp/rsync-phase8-log.log
+          changed_when: false
           when: rsync_final_log.rc != 0
 
         - name: Display rsync monitoring command for containers
@@ -1409,7 +1504,7 @@
             msg: "Starting rsync of containers to final. Monitor progress with: tail -f /tmp/rsync-phase8-containers.log"
 
         - name: Rsync containers to final btrfs
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 /var/lib/containers/ /mnt/finalroot/var/lib/containers/ > /tmp/rsync-phase8-containers.log 2>&1
           async: 1800
           poll: 5
@@ -1420,6 +1515,7 @@
         - name: Display rsync final containers errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-containers.log || cat /tmp/rsync-phase8-containers.log
+          changed_when: false
           when: rsync_final_containers.rc != 0
 
         - name: Stop postgresql for final copy
@@ -1433,7 +1529,7 @@
             msg: "Starting final rsync of postgresql. Monitor progress with: tail -f /tmp/rsync-phase8-postgresql.log"
 
         - name: Final rsync of postgresql data
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module local rsync with log redirection; synchronize module can't express this
             rsync -aAXHx --info=progress2 /var/lib/postgresql/ /mnt/finalroot/var/lib/postgresql/ > /tmp/rsync-phase8-postgresql.log 2>&1
           async: 3600
           poll: 5
@@ -1444,6 +1540,7 @@
         - name: Display rsync final postgresql errors if failed
           ansible.builtin.shell: |
             grep -v -E '^\s+[0-9,]+\s+[0-9]+%' /tmp/rsync-phase8-postgresql.log || cat /tmp/rsync-phase8-postgresql.log
+          changed_when: false
           when: rsync_final_pg.rc != 0
 
         - name: Display final UUID
@@ -1495,7 +1592,7 @@
           when: not metadata_file.stat.exists
 
         - name: Mount filesystems for final chroot
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient bind mounts for chroot; must not persist to fstab as the mount module would
             mount --bind /dev /mnt/finalroot/dev
             mount --bind /proc /mnt/finalroot/proc
             mount --bind /sys /mnt/finalroot/sys
@@ -1509,7 +1606,7 @@
           changed_when: false
 
         - name: Mount boot for final
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient bind mount for chroot; must not persist to fstab as the mount module would
             mount --bind /boot /mnt/finalroot/boot
           changed_when: true
           when: boot_check_final.stdout != "no_separate_boot"
@@ -1520,7 +1617,7 @@
           register: boot_efi_stat_final
 
         - name: Mount boot/efi for final
-          ansible.builtin.shell: |
+          ansible.builtin.shell: |  # noqa: command-instead-of-module transient bind mount for chroot; must not persist to fstab as the mount module would
             mount --bind /boot/efi /mnt/finalroot/boot/efi
           changed_when: true
           when: boot_efi_stat_final.stat.exists
@@ -1590,6 +1687,7 @@
 
         - name: Verify final boot
           ansible.builtin.shell: |
+            set -o pipefail
             root_source=$(findmnt -n -o SOURCE / | sed 's/\[.*\]$//')
             root_fstype=$(findmnt -n -o FSTYPE /)
             root_partuuid=$(blkid -s PARTUUID -o value "$root_source" 2>/dev/null || echo "")
@@ -1608,6 +1706,8 @@
               echo "SUCCESS: Booted from final partition (not intermediate)"
               exit 0
             fi
+          args:
+            executable: /bin/bash
           register: final_boot_verify
           changed_when: false
 
@@ -1649,7 +1749,10 @@
 
         - name: Extract intermediate partition number
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ intermediate_partition_device.stdout }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          args:
+            executable: /bin/bash
           register: intermediate_partition_number_current
           changed_when: false
           when: intermediate_partition_device.rc == 0
@@ -1686,7 +1789,10 @@
 
         - name: Get current partition end sector
           ansible.builtin.shell: |
+            set -o pipefail
             parted {{ root_device }} unit s print | grep '^\s*[0-9]' | awk -v start="{{ final_start_sector }}" '$2 == start"s" {gsub(/s$/, "", $3); print $3}'
+          args:
+            executable: /bin/bash
           register: current_partition_end_sector
           changed_when: false
 
@@ -1706,7 +1812,10 @@
 
         - name: Extract final partition number
           ansible.builtin.shell: |
+            set -o pipefail
             echo "{{ final_partition_device.stdout }}" | sed 's/.*[^0-9]\([0-9]*\)$/\1/'
+          args:
+            executable: /bin/bash
           register: final_partition_number_current
           changed_when: false
 
@@ -1725,7 +1834,10 @@
 
         - name: Get final partition size
           ansible.builtin.shell: |
+            set -o pipefail
             df -h / | tail -1 | awk '{print $2}'
+          args:
+            executable: /bin/bash
           register: final_partition_size_human
           changed_when: false
 

@@ -1,7 +1,12 @@
 ---
-- ansible.builtin.include_tasks: install.yml
-- ansible.builtin.include_tasks: policy.yml
-- ansible.builtin.include_tasks: cache.yml
-- ansible.builtin.include_tasks: expiry.yml
-- ansible.builtin.include_tasks: maintenance.yml
+- name: Install kopia
+  ansible.builtin.include_tasks: install.yml
+- name: Configure kopia policy
+  ansible.builtin.include_tasks: policy.yml
+- name: Configure kopia cache cleanup
+  ansible.builtin.include_tasks: cache.yml
+- name: Configure kopia expiry
+  ansible.builtin.include_tasks: expiry.yml
+- name: Configure kopia maintenance
+  ansible.builtin.include_tasks: maintenance.yml
   when: "'central' in group_names"

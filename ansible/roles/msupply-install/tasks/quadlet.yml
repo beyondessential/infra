@@ -4,4 +4,5 @@
   ansible.builtin.template:
     src: "{{ lookup('ansible.builtin.fileglob', 'msupply.container.j2') }}"
     dest: /etc/containers/systemd/msupply.container
+    mode: "0644"
   notify: Reload systemd

@@ -18,31 +18,37 @@
   ansible.builtin.file:
     path: .config
     state: directory
+    mode: "0755"
 
 - name: Install starship for fish
   become: true
   ansible.builtin.copy:
     dest: /etc/fish/conf.d/starship.fish
     content: "starship init fish | source"
+    mode: "0644"
 
 - name: Create .config for current user
   ansible.builtin.file:
     path: "{{ ansible_facts['env']['HOME'] }}/.config"
     state: directory
+    mode: "0755"
 
 - name: Configure starship for current user
   ansible.builtin.copy:
     dest: "{{ ansible_facts['env']['HOME'] }}/.config/starship.toml"
     src: "{{ lookup('ansible.builtin.fileglob', 'starship.toml') }}"
+    mode: "0644"
 
 - name: Create .config for root
   become: true
   ansible.builtin.file:
     path: /root/.config
     state: directory
+    mode: "0755"
 
 - name: Configure starship for root user
   become: true
   ansible.builtin.copy:
     dest: /root/.config/starship.toml
     src: "{{ lookup('ansible.builtin.fileglob', 'starship.toml') }}"
+    mode: "0644"

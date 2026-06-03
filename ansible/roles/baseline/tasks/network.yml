@@ -49,11 +49,13 @@
   ansible.builtin.file:
     path: /etc/systemd/system/systemd-resolved.service.d
     state: directory
+    mode: "0755"
 
 - name: Limit resolved CPU usage
   become: true
   ansible.builtin.copy:
     dest: /etc/systemd/system/systemd-resolved.service.d/90-cpu-limit.conf
+    mode: "0644"
     content: |
       [Service]
       CPUWeight=20

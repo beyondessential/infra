@@ -10,7 +10,11 @@
   failed_when: false
 
 - name: Detect filesystem type for PostgreSQL data directory
-  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  ansible.builtin.shell: |
+    set -o pipefail
+    df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  args:
+    executable: /bin/bash
   register: postgresql_filesystem_type
   changed_when: false
 
@@ -64,6 +68,7 @@
       ansible.builtin.command:
         cmd: btrfs subvolume snapshot -r /mnt/btrfs-toplevel/{{ pg_btrfs_subvol_name }} /mnt/btrfs-toplevel/{{ pg_btrfs_snapshot_name }}
       register: btrfs_pre_snapshot
+      changed_when: true
 
     - name: Unmount btrfs top-level
       ansible.builtin.command:
@@ -109,7 +114,7 @@
   ansible.builtin.systemd:
     name: "postgresql@{{ postgresql_desired_version }}-main"
     state: stopped
-  ignore_errors: true
+  failed_when: false
 
 - name: Check if new cluster was auto-initialized
   become: true
@@ -141,6 +146,7 @@
     dest: /etc/postgresql/{{ postgresql_desired_version }}/main/
     owner: postgres
     group: postgres
+    mode: preserve
 
 - name: Update data_directory in new PostgreSQL config
   become: true
@@ -181,6 +187,7 @@
   become: true
   ansible.builtin.shell:
     cmd: rm -rf /var/lib/postgresql/{{ postgresql_desired_version }}/main/* /var/lib/postgresql/{{ postgresql_desired_version }}/main/.[!.]* 2>/dev/null || true
+  changed_when: true
 
 - name: Initialize new PostgreSQL cluster
   become: true
@@ -188,6 +195,7 @@
   ansible.builtin.command:
     cmd: /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/initdb -D /var/lib/postgresql/{{ postgresql_desired_version }}/main
   register: initdb_result
+  changed_when: true
 
 - name: Stop all PostgreSQL services
   become: true
@@ -206,9 +214,11 @@
   become_user: postgres
   ansible.builtin.shell:
     cmd: >
+      set -o pipefail;
       /usr/lib/postgresql/{{ installed_postgresql_version }}/bin/pg_controldata
       /var/lib/postgresql/{{ installed_postgresql_version }}/main
       | awk -F': *' '/Data page checksum version/ {print $2}'
+    executable: /bin/bash
   register: old_cluster_checksum_version
   changed_when: false
 
@@ -230,6 +240,7 @@
       --enable
       --pgdata=/var/lib/postgresql/{{ installed_postgresql_version }}/main
   register: pg_checksums_result
+  changed_when: true
 
 - name: Check upgrade compatibility
   become: true
@@ -329,6 +340,7 @@
       {{ pg_upgrade_method }}
     chdir: /var/lib/postgresql
   register: pg_upgrade_result
+  changed_when: true
 
 - name: Display upgrade results
   ansible.builtin.debug:
@@ -374,6 +386,7 @@
     cmd: /var/lib/postgresql/delete_old_cluster.sh
     chdir: /var/lib/postgresql
   register: delete_old_cluster
+  changed_when: true
 
 - name: Delete upgrade scripts
   become: true

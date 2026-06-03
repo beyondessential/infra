@@ -44,7 +44,8 @@
 # absent.
 - name: Read previous tamanu version from env
   become: true
-  ansible.builtin.shell: >-
+  ansible.builtin.shell: |
+    set -o pipefail
     [ -f /etc/tamanu/env ] || exit 0;
     sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
   args:
@@ -55,7 +56,8 @@
 
 - name: Read previous tamanu frontend version from env
   become: true
-  ansible.builtin.shell: >-
+  ansible.builtin.shell: |
+    set -o pipefail
     [ -f /etc/tamanu/env ] || exit 0;
     sed -n 's/^TAMANU_FRONTEND_VERSION=//p' /etc/tamanu/env | head -n1
   args:

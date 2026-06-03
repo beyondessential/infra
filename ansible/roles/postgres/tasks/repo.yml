@@ -4,6 +4,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'apt.asc') }}"
     dest: /etc/apt/keyrings/pgdg.asc
+    mode: "0644"
 
 - name: Add pgdg repo
   become: true
@@ -14,7 +15,7 @@
       deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt {{ ansible_facts['distribution_release'] }}-pgdg main
   register: pgdg_repo
 
-- name: Refresh apt cache after pgdg repo change
+- name: Refresh apt cache after pgdg repo change  # noqa: no-handler
   become: true
   when: pgdg_repo.changed
   ansible.builtin.apt:
@@ -24,6 +25,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/apt/preferences.d/99-pgdg
+    mode: "0644"
     content: |
       Package: *
       Pin: release o=apt.postgresql.org

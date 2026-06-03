@@ -1,5 +1,6 @@
 ---
-- ansible.builtin.include_tasks: reporting-users.yml
+- name: Configure reporting users
+  ansible.builtin.include_tasks: reporting-users.yml
 
 - name: Create backup folders
   become: true

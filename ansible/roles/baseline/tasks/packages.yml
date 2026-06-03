@@ -27,7 +27,7 @@
 
 - name: Clean up async file
   become: true
-  ignore_errors: true
+  failed_when: false
   ansible.builtin.async_status:
     jid: "{{ apt_update.ansible_job_id }}"
     mode: cleanup

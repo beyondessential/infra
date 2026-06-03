@@ -4,6 +4,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'bes-tools.gpg') }}"
     dest: /etc/apt/keyrings/bes-tools.gpg
+    mode: "0644"
 
 - name: Add bes-tools apt repo
   become: true
@@ -14,7 +15,8 @@
       deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/bes-tools.gpg] https://tools.ops.tamanu.io/apt stable main
   register: bes_tools_repo
 
-- name: Refresh apt cache after bes-tools repo change
+- name: Refresh apt cache after bes-tools repo change  # noqa: no-handler
+  # Must refresh immediately so later tasks see the new repo; a deferred handler would run too late.
   become: true
   when: bes_tools_repo.changed
   ansible.builtin.apt:
@@ -30,6 +32,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/apt/preferences.d/99-bes-tools
+    mode: "0644"
     content: |
       Package: *
       Pin: origin tools.ops.tamanu.io

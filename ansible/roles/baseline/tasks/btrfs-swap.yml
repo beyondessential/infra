@@ -7,7 +7,10 @@
 
 - name: Check root mount options for subvol=@
   ansible.builtin.shell: |
+    set -o pipefail
     findmnt -n -o OPTIONS / | grep -E 'subvol=/?(/@|@)($|,)'
+  args:
+    executable: /bin/bash
   register: root_subvol
   changed_when: false
   failed_when: false
@@ -36,6 +39,7 @@
       become: true
       ansible.builtin.command:
         cmd: swapoff /swap.img
+      changed_when: true
       failed_when: false
 
     - name: Remove old swap.img
@@ -57,11 +61,13 @@
       ansible.builtin.command:
         cmd: btrfs subvolume create /.swap
       when: swap_subvol_check.rc != 0
+      changed_when: true
 
     - name: Set nocow attribute on /.swap
       become: true
       ansible.builtin.command:
         cmd: chattr +C /.swap
+      changed_when: true
 
     - name: Create swap file in /.swap subvolume using btrfs
       become: true
@@ -81,3 +87,4 @@
       become: true
       ansible.builtin.command:
         cmd: swapon /.swap/swap.img
+      changed_when: true

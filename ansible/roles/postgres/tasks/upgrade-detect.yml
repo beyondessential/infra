@@ -11,7 +11,11 @@
 
 - name: Detect filesystem type for PostgreSQL data directory
   when: postgresql_upgrade_enabled and postgresql_upgrade_needed
-  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  ansible.builtin.shell: |
+    set -o pipefail
+    df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  args:
+    executable: /bin/bash
   register: postgresql_filesystem_type
   changed_when: false
 

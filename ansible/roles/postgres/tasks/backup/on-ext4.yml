@@ -39,6 +39,7 @@
     state: directory
     owner: kopia
     group: kopia
+    mode: "0755"
 
 - name: Create postgres kopia user
   become: true
@@ -72,5 +73,6 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-ext4.service') }}"
     dest: /etc/systemd/system/kopia-backup-postgres.service
+    mode: "0644"
   notify:
     - Reload systemd

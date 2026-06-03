@@ -8,7 +8,7 @@
     password: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'postgres' + postgres_username, chars=['ascii_letters',
       'digits']) }}"
 
-- name: Create postgres database '{{ postgres_database }}' with owner '{{ postgres_username }}'
+- name: Create postgres database owned by configured user - {{ postgres_database }}
   become: true
   become_user: postgres
   community.postgresql.postgresql_db:

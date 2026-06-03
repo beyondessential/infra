@@ -4,14 +4,17 @@
   ansible.builtin.apt:
     name: nvme-cli
 
-- name: Figure out if and where the EBS volume '{{ volume }}' is attached
+- name: Locate the attached EBS volume {{ volume }}
   become: true
   ansible.builtin.shell: |
+    set -o pipefail
     for f in /dev/nvme*n1
     do
       echo -n $f=
       nvme id-ctrl -V $f | grep ^0000: | grep -oP '(?<=")[^.]+'
     done | grep {{ volume }}$ | cut -d= -f1 || true
+  args:
+    executable: /bin/bash
   register: volume_device
   changed_when: false
 
@@ -35,12 +38,12 @@
     dev: "{{ volume_device.stdout }}"
     opts: "{{ fs_opts if fs_opts is defined else '' }}"
 
-- name: Figure out if {{ mount }} is already on a separate partition
+- name: Check whether a separate partition is already mounted at {{ mount }}
   ansible.builtin.shell: grep -qs ' {{ mount }} ' /proc/mounts && echo 'true' || true
   register: is_already_partition
   changed_when: false
 
-- name: Figure out if {{ mount }} exists
+- name: Check whether the mount directory exists at {{ mount }}
   ansible.builtin.shell: test -d {{ mount }} && echo 'true' || true
   register: mountpoint_exists
   changed_when: false
@@ -64,7 +67,8 @@
         state: ephemeral
     - name: Copy old files to new volume
       become: true
-      ansible.builtin.command: rsync -a {{ mount }}/ /mnt/
+      ansible.builtin.command: rsync -a {{ mount }}/ /mnt/  # noqa: command-instead-of-module
+      changed_when: true
     - name: Unmount /mnt
       become: true
       ansible.posix.mount:
@@ -78,7 +82,7 @@
   register: volume_uuid
   changed_when: false
 
-- name: Mount volume {{ volume }} permanently
+- name: Permanently mount EBS volume {{ volume }}
   when: volume_uuid.stdout != ''
   become: true
   ansible.posix.mount:
@@ -88,7 +92,7 @@
     opts: "{{ mount_opts if mount_opts is defined else '' }}"
     state: mounted
 
-- name: Grow {{ volume }} filesystem if needed
+- name: Grow filesystem if needed on volume {{ volume }}
   when: volume_device.stdout != ''
   become: true
   community.general.filesystem:

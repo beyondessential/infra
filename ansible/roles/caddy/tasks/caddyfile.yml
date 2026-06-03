@@ -4,12 +4,14 @@
   ansible.builtin.template:
     dest: /etc/caddy/config/issuer
     src: "{{ lookup('ansible.builtin.fileglob', 'issuer.j2') }}"
+    mode: "0644"
   notify: Restart caddy
 
 - name: Add metrics config
   become: true
   ansible.builtin.copy:
     dest: /etc/caddy/config/metrics
+    mode: "0644"
     content: |
       metrics {
           per_host

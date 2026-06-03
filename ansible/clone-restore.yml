@@ -25,7 +25,8 @@
   hosts: central:facility
   gather_facts: true
   pre_tasks:
-    - when: ansible_facts['system_vendor'] == 'Amazon EC2'
+    - name: Gather EC2 metadata facts
+      when: ansible_facts['system_vendor'] == 'Amazon EC2'
       amazon.aws.ec2_metadata_facts:
     - name: Gather PostgreSQL facts
       ansible.builtin.include_tasks: tasks/gather-postgres-version.yml
@@ -194,7 +195,8 @@
       changed_when: false
       failed_when: false # already-dropped is fine
 
-    - name: Stop all postgresql clusters
+    - name: Stop all postgresql clusters  # noqa: command-instead-of-module
+      # systemd module can't expand the postgresql@* instance glob.
       become: true
       ansible.builtin.shell: systemctl stop 'postgresql@*'
       changed_when: true
@@ -210,12 +212,11 @@
         - not reuse_existing_restore
         - (pg_avail_raw.stdout | trim | int) < (target_snapshot_required_bytes | int)
       vars:
-        gib: "{{ 1024**3 }}"
         pg_avail_bytes: "{{ pg_avail_raw.stdout | trim | int }}"
-        suggest_add_gib: "{{ (((target_snapshot_size_bytes | int) * 1.2) / (gib | int)) | round(0, 'ceil') | int }}"
-        size_gib: "{{ ((target_snapshot_size_bytes | int) / (gib | int)) | round(2) }}"
-        avail_gib: "{{ ((pg_avail_bytes | int) / (gib | int)) | round(2) }}"
-        required_gib: "{{ ((target_snapshot_required_bytes | int) / (gib | int)) | round(2) }}"
+        suggest_add_gib: "{{ (((target_snapshot_size_bytes | int) * 1.2) / (1024**3)) | round(0, 'ceil') | int }}"
+        size_gib: "{{ ((target_snapshot_size_bytes | int) / (1024**3)) | round(2) }}"
+        avail_gib: "{{ ((pg_avail_bytes | int) / (1024**3)) | round(2) }}"
+        required_gib: "{{ ((target_snapshot_required_bytes | int) / (1024**3)) | round(2) }}"
       ansible.builtin.fail:
         msg: |
           Not enough disk space to restore snapshot {{ target_snapshot_id }}.
@@ -239,6 +240,7 @@
         cmd: >-
           mv /var/lib/postgresql/{{ postgresql_installed_version }}/main
              /var/lib/postgresql/{{ postgresql_installed_version }}/main.replaced-{{ ansible_date_time.iso8601_basic_short }}
+      changed_when: true
 
     - name: Announce kopia restore log path
       when: not reuse_existing_restore
@@ -350,6 +352,7 @@
              if restore_layout == 'whole_install'
              else '/var/lib/kopia/restore' }}
           /var/lib/postgresql/{{ restore_pg_version }}/main
+      changed_when: true
 
     - name: Chown postgres data tree
       become: true
@@ -402,6 +405,7 @@
       become_user: postgres
       ansible.builtin.command:
         cmd: /usr/lib/postgresql/{{ postgresql_installed_version }}/bin/pg_resetwal /var/lib/postgresql/{{ postgresql_installed_version }}/main -f
+      changed_when: true
 
     - name: Retry starting postgres after WAL reset
       when: pg_start is failed
@@ -441,9 +445,11 @@
   hosts: central:facility
   gather_facts: false
   tasks:
-    - name: Read installed tamanu_version from /etc/tamanu/env
+    - name: Read installed tamanu_version from /etc/tamanu/env  # noqa: command-instead-of-module
       become: true
-      ansible.builtin.shell: sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
+      ansible.builtin.shell: |
+        set -o pipefail
+        sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
       args:
         executable: /bin/bash
       register: clone_tamanu_version_cmd

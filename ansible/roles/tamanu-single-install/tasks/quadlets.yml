@@ -6,6 +6,7 @@
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: /etc/containers/systemd/{{ item }}
+    mode: "0644"
   notify: Reload systemd
 
 - name: Install patient portal container quadlet
@@ -14,6 +15,7 @@
   ansible.builtin.copy:
     src: tamanu-patientportal@.container
     dest: /etc/containers/systemd/tamanu-patientportal@.container
+    mode: "0644"
   notify: Reload systemd
 
 # Legacy singleton patient portal quadlet — pre-instanced layout. Remove
@@ -31,6 +33,7 @@
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: /etc/containers/systemd/{{ item | basename }}
+    mode: "0644"
   notify: Reload systemd
 
 - name: Create drop-in directory for quadlets
@@ -38,6 +41,7 @@
   ansible.builtin.file:
     path: /etc/containers/systemd/tamanu-.container.d
     state: directory
+    mode: "0755"
 
 - name: Enable IPv6 for quadlets
   when: tamanu_ipv6 | bool
@@ -52,6 +56,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
+    mode: "0644"
     content: |
       [Container]
       Sysctl=net.ipv6.conf.all.disable_ipv6=1
@@ -70,6 +75,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf
+    mode: "0644"
     content: |
       [Container]
       Volume=/etc/ssl/certs:/host/etc/ssl/certs:ro

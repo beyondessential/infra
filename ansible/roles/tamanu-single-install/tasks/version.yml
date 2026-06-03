@@ -32,7 +32,8 @@
     group: tamanu
     force: false # preserve modifications
 
-- ansible.builtin.include_tasks: local-config.yml
+- name: Apply local tamanu config
+  ansible.builtin.include_tasks: local-config.yml
 
 - name: Set permissions of tamanu app config
   become: true

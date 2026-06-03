@@ -1,5 +1,7 @@
 ---
-- ansible.builtin.import_tasks: manage.yml
+- name: Manage ufw rules
+  ansible.builtin.import_tasks: manage.yml
   when: ufw_managed | bool
-- ansible.builtin.import_tasks: disable.yml
+- name: Disable ufw
+  ansible.builtin.import_tasks: disable.yml
   when: not (ufw_managed | bool)

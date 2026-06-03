@@ -12,7 +12,10 @@
     - name: List existing snapper configs
       become: true
       ansible.builtin.shell: |
+        set -o pipefail
         snapper list-configs | tail -n +3 | awk '{print $1}'
+      args:
+        executable: /bin/bash
       register: existing_snapper_configs
       changed_when: false
       failed_when: false
@@ -21,6 +24,7 @@
       become: true
       ansible.builtin.shell:
         cmd: |
+          set -o pipefail
           set -e
           config="{{ item }}"
           if [ ! -f "/etc/snapper/configs/$config" ]; then
@@ -53,6 +57,9 @@
             new=$(echo "$current" | tr ' ' '\n' | grep -vx "$config" | tr '\n' ' ' | sed 's/ *$//')
             sed -i -E "s|^SNAPPER_CONFIGS=.*|SNAPPER_CONFIGS=\"$new\"|" /etc/default/snapper
           fi
+      args:
+        executable: /bin/bash
+      changed_when: true
       loop: "{{ existing_snapper_configs.stdout_lines }}"
 
     - name: Disable snapper timers

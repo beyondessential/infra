@@ -22,7 +22,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
-  ignore_errors: true
+  failed_when: false
 
 - name: Install podman from bes-tools repo
   become: true
@@ -48,6 +48,7 @@
 # - "none"/"unknown": shouldn't happen after the apt install above.
 - name: Detect installed podman source
   ansible.builtin.shell: |
+    set -o pipefail
     if ! dpkg -s podman >/dev/null 2>&1; then
       echo "none"
     elif dpkg -L podman | grep -qx /usr/bin/podman; then
@@ -57,6 +58,8 @@
     else
       echo "unknown"
     fi
+  args:
+    executable: /bin/bash
   register: podman_source
   changed_when: false
 
@@ -76,12 +79,16 @@
       ansible.builtin.file:
         path: /usr/bin/podman
         state: absent
-    - name: Reinstall podman to restore /usr/bin/podman
+    - name: Reinstall podman to restore /usr/bin/podman  # noqa: command-instead-of-module
+      # The apt module has no reinstall option; only apt-get can force-reinstall
+      # a package whose files are already recorded as installed.
       ansible.builtin.command:
         cmd: apt-get install --reinstall -y podman
+      changed_when: true
 
 - name: Make sure podman runs
   ansible.builtin.command: podman --version
+  changed_when: false
 - name: Stat /usr/local/bin/podman
   ansible.builtin.stat:
     path: /usr/local/bin/podman
@@ -112,6 +119,7 @@
     src: /usr/share/containers/containers.conf
     dest: /etc/containers/containers.conf
     force: false
+    mode: "0644"
 
 - name: Use netavark for container networking
   become: true
@@ -162,12 +170,14 @@
   ansible.builtin.file:
     path: /etc/containers/systemd
     state: directory
+    mode: "0755"
 
 - name: Add podman images pruning service
   become: true
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'podman-images-clean.service') }}"
     dest: /etc/systemd/system/podman-images-clean.service
+    mode: "0644"
   notify:
     - Reload systemd
 
@@ -176,6 +186,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'podman-images-clean.timer') }}"
     dest: /etc/systemd/system/podman-images-clean.timer
+    mode: "0644"
   notify:
     - Reload systemd
 

@@ -1,11 +1,16 @@
 ---
-- ansible.builtin.import_tasks: pi-tools.yml
+- name: Install Pi tools
+  ansible.builtin.import_tasks: pi-tools.yml
   tags: pi-tools
-- ansible.builtin.import_tasks: rtc-battery.yml
+- name: Configure RTC battery
+  ansible.builtin.import_tasks: rtc-battery.yml
   tags: rtc-battery
-- ansible.builtin.import_tasks: avahi.yml
+- name: Configure avahi
+  ansible.builtin.import_tasks: avahi.yml
   tags: avahi
-- ansible.builtin.import_tasks: bestool.yml
+- name: Install bestool
+  ansible.builtin.import_tasks: bestool.yml
   tags: bestool
-- ansible.builtin.import_tasks: ufw.yml
+- name: Configure ufw
+  ansible.builtin.import_tasks: ufw.yml
   tags: ufw

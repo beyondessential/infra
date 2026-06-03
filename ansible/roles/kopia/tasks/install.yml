@@ -4,6 +4,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'apt.gpg') }}"
     dest: /etc/apt/keyrings/kopia-keyring.gpg
+    mode: "0644"
 
 - name: Add kopia apt repo
   become: true
@@ -22,6 +23,7 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/apt/preferences.d/99-kopia
+    mode: "0644"
     content: |
       Package: *
       Pin: release o=packages.kopia.io
