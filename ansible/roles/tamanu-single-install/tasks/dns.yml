@@ -7,7 +7,7 @@
 
 - name: Custom IP record for tamanu central in /etc/hosts
   become: true
-  when: tamanu_central_ip
+  when: tamanu_central_ip is truthy
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ tamanu_central_ip }}  {{ tamanu_central_hostname }}"
