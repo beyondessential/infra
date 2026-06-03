@@ -1,8 +1,5 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
-  db: {
-    migrateOnStartup: false,
-  },
   auth: {
     secret: '{{ 40 | randomstring }}',
     refreshSecret: '{{ 40 | randomstring }}',
@@ -15,6 +12,25 @@
   proxy: {
     trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
+  db: {
+    migrateOnStartup: false,
+    reportSchemas: {
+      enabled: true,
+    },
+  },
+  sync: {
+    lookupTable: {
+      enabled: true,
+    },
+  },
+  schedules: {
+    syncLookupRefresher: {
+      enabled: true,
+    },
+    fhirMaterialiser: {
+      limit: 1000,
+    },
+  },
   localisation: {
     data: {
       country: {
@@ -22,6 +38,7 @@
         'alpha-3': 'UTO',
         name: 'Utopia',
       },
+      timeZone: '{{ timezone }}',
       disabledReports: [
         'aefi',
         'india-assistive-technology-device-line-list',
@@ -76,11 +93,6 @@
   disk: {
     diskPath: '/',
   },
-  schedules: {
-    fhirMaterialiser: {
-      limit: 1000,
-    },
-  },
   integrations: {
     vdsNc: {
       enabled: false,
@@ -90,6 +102,9 @@
     },
     fhir: {
       enabled: true,
+      worker: {
+        enabled: true,
+      },
     },
     mSupply: {
       enabled: true,
