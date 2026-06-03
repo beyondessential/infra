@@ -13,7 +13,9 @@ dependencies = [
 ansible-setup = "ansible_setup:setup"
 
 [dependency-groups]
-dev = []
+dev = [
+    "ansible-lint>=26.4.0",
+]
 
 [build-system]
 requires = ["hatchling"]
