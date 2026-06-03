@@ -155,16 +155,6 @@ new k8s.batch.v1.CronJob('chrome-versions', {
   },
 });
 
-postgresCronJob('prune', {
-  namespace,
-  schedule: '@daily',
-  command: 'SELECT prune_untrusted_devices();',
-  dbReady,
-  dbService: 'meta-db-rw',
-  architecture,
-  labels: labels('prune'),
-});
-
 postgresCronJob('partition-statuses', {
   namespace,
   schedule: '@daily',
