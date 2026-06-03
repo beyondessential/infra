@@ -76,14 +76,18 @@
   containers.podman.podman_image:
     name: "{{ item }}"
 
-- name: Extract bundled alert definitions from tamanu image
+# The relative source path resolves against the image's working directory.
+# default.json5 holds the app's built-in defaults that production.json5
+# layers over; keep a read-only copy next to it for reference.
+- name: Extract default app config from tamanu image
   become: true
   ansible.builtin.shell:
     cmd: |
       set -euo pipefail
-      mkdir -p /etc/tamanu/{{ tamanu_version }}/alerts
       cid=$(podman create {{ tamanu_image_server }})
       trap 'podman rm "$cid" >/dev/null' EXIT
-      podman cp "$cid:/app/alerts/." /etc/tamanu/{{ tamanu_version }}/alerts/
-    creates: /etc/tamanu/{{ tamanu_version }}/alerts
+      podman cp "$cid:config/default.json5" /etc/tamanu/{{ tamanu_version }}/default.json5
+      chown tamanu:tamanu /etc/tamanu/{{ tamanu_version }}/default.json5
+      chmod 0440 /etc/tamanu/{{ tamanu_version }}/default.json5
+    creates: /etc/tamanu/{{ tamanu_version }}/default.json5
     executable: /bin/bash

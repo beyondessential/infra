@@ -26,16 +26,16 @@
     # against pure upstream semver.
     bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
 
-# 1.17.0 is the first release where bestool models the patient portal
-# as an instanced @a/@b service, matching the templated quadlet this
-# role deploys.
-- name: Require bestool >= 1.17.0
+# 1.21.0 is the first release where the tamanu alert checks are built
+# into bestool itself; alertd no longer loads YAML alert definitions,
+# so this role deploys it without any on-disk alert config.
+- name: Require bestool >= 1.21.0
   ansible.builtin.assert:
     that:
       - bestool_installed_version is defined
-      - bestool_installed_version is version('1.17.0', '>=')
+      - bestool_installed_version is version('1.21.0', '>=')
     fail_msg: >-
-      Tamanu install/upgrade requires bestool >= 1.17.0
+      Tamanu install/upgrade requires bestool >= 1.21.0
       (found {{ bestool_installed_version | default('none') }}).
 
 # Capture the versions currently in /etc/tamanu/env *before* version.yml
