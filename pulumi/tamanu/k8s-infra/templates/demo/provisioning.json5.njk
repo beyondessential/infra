@@ -25,17 +25,44 @@
         editPatientDisplayId: true,
         enableCovidClearanceCertificate: true,
         quickPatientGenerator: true,
+        reminderContactModule: {
+          enabled: false,
+        },
         deviceRegistrationQuota: {
           enabled: false,
         },
+        desktopCharting: {
+          enabled: true,
+        },
+        enableVitalEdit: true,
+      },
+      audit: {
+        changes: {
+          enabled: true,
+        },
+        accesses: {
+          enabled: true,
+        },
+      },
+      insurer: {
+        defaultContribution: 0.8,
+      },
+      vaccinationReminder: {
+        due: [7, 1, -7],
       },
     },
     central: {
       disk: {
         freeSpaceRequired: {
           gigabytesForUploadingDocuments: 0.1,
-        }
-      }
+        },
+      },
+      fhir: {
+        worker: {
+          assumeDroppedAfter: '10 minutes',
+          heartbeat: '1 minute',
+        },
+      },
     },
     facilities: {
       {% for n in range(1, 10) %}
