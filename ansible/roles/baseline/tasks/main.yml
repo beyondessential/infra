@@ -29,6 +29,9 @@
 - name: Configure bash history
   ansible.builtin.import_tasks: bash-history.yml
   tags: bash-history
+- name: Configure ubuntu user motd
+  ansible.builtin.import_tasks: ubuntu-motd.yml
+  tags: ubuntu-motd
 - name: Configure journald
   ansible.builtin.import_tasks: journald.yml
   tags: journald
