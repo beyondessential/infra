@@ -133,11 +133,11 @@ new k8s.apps.v1.Deployment(
               resources: {
                 requests: {
                   cpu: '50m',
-                  memory: '64Mi',
+                  memory: '128Mi',
                 },
                 limits: {
                   cpu: '500m',
-                  memory: '256Mi',
+                  memory: '1Gi',
                 },
               },
               securityContext: {
