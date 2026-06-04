@@ -48,7 +48,7 @@
       tags: [base, elastic]
 
     - role: ufw
-      when: not (dangerously_leave_ufw_alone | default(false))
+      when: not (dangerously_leave_ufw_alone | bool)
       tags: [base, ufw]
     - role: iti
       when: is_iti | default(false)
