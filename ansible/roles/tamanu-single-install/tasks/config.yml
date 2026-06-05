@@ -8,6 +8,15 @@
     group: tamanu
     state: directory
 
+- name: Create bestool config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool
+    mode: "0775"
+    owner: tamanu
+    group: tamanu
+    state: directory
+
 - name: Add tamanu-run script
   become: true
   ansible.builtin.template:
