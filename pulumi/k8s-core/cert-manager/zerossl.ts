@@ -28,8 +28,8 @@ if (kid) {
     {
       apiVersion: 'cert-manager.io/v1',
       kind: 'ClusterIssuer',
+      // no namespace: ClusterIssuer is cluster-scoped
       metadata: {
-        namespace,
         name: 'zerossl',
       },
       spec: {

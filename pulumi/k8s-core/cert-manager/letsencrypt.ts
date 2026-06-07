@@ -1,5 +1,4 @@
 import * as k8s from '@pulumi/kubernetes';
-import { namespace } from './namespace.ts';
 import { region } from '../../common/awsAccount.ts';
 import { provider } from '../kubeconfig.ts';
 import { certManager } from './controller.ts';
@@ -7,8 +6,8 @@ import { certManager } from './controller.ts';
 new k8s.apiextensions.CustomResource('letsencrypt', {
   apiVersion: 'cert-manager.io/v1',
   kind: 'ClusterIssuer',
+  // no namespace: ClusterIssuer is cluster-scoped
   metadata: {
-    namespace,
     name: 'letsencrypt',
   },
   spec: {
