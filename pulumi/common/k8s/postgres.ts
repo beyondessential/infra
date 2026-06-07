@@ -136,6 +136,10 @@ export function runPostgres({
             effective_io_concurrency: '200',
             // JIT causes CPU spikes and slow planning on simple OLTP queries
             jit: 'off',
+            // PG18 note: do NOT port io_method=io_uring from the ansible
+            // role — cnpg pods run seccompProfile RuntimeDefault, which
+            // blocks io_uring syscalls. The PG18 default (worker) is the
+            // right setting in pods.
           },
         },
         managed: {
