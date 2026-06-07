@@ -7,6 +7,7 @@ import {
   nonBurst,
   onlyBurst,
   instancesSizedAtLeast,
+  instancesSizedExactly,
 } from '../../common/k8s/instanceTypeGroups.ts';
 import { workloadNodeClass, ingressNodeClass, systemNodeClass } from './classes.ts';
 
@@ -14,7 +15,7 @@ import { workloadNodeClass, ingressNodeClass, systemNodeClass } from './classes.
 // managed nodegroups. The helpers price-cap spot against on-demand and exclude
 // burstable types from large workload pools.
 
-// k[capacity.spot-price-cap] k[capacity.no-burstable-large]
+// k[capacity.spot-price-cap] k[capacity.no-burstable-large] k[capacity.workload-node-floor]
 const workloadArmSpot = upToMonthly(
   spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 16)), 'linux'),
   'linux',
@@ -29,18 +30,21 @@ const workloadX86Spot = upToMonthly(
   75,
 ).map((i) => i.instance_type);
 
+// k[capacity.workload-node-floor]
+// On-demand fallback pools offer exactly one node shape, family-diverse: a
+// uniform shape can't fragment into many small nodes during spot droughts.
 const workloadArmOndemand = upToMonthly(
-  instancesSizedAtLeast(region, 'arm64', 2, 4),
+  nonBurst(instancesSizedExactly(region, 'arm64', 4, 16)),
   'linux',
   'ondemand',
-  75,
+  200,
 ).map((i) => i.instance_type);
 
 const workloadX86Ondemand = upToMonthly(
-  instancesSizedAtLeast(region, 'x86_64', 2, 4),
+  nonBurst(instancesSizedExactly(region, 'x86_64', 4, 16)),
   'linux',
   'ondemand',
-  75,
+  200,
 ).map((i) => i.instance_type);
 
 const ingressArm = upToMonthly(
