@@ -52,6 +52,24 @@ function createOwnBucket(): KopiaOutputs {
           },
         },
       },
+      // Reclaim space once maintenance deletes blobs: expire noncurrent
+      // versions just past the 30-day object-lock window, and drop abandoned
+      // multipart uploads. Without this, versioning retains deleted blobs
+      // forever even after kopia maintenance compacts the repo.
+      lifecycleConfiguration: {
+        rules: [
+          {
+            id: 'expire-noncurrent-and-incomplete',
+            status: 'Enabled',
+            noncurrentVersionExpiration: {
+              noncurrentDays: 35,
+            },
+            abortIncompleteMultipartUpload: {
+              daysAfterInitiation: 7,
+            },
+          },
+        ],
+      },
     },
     { protect: true },
   );
