@@ -125,6 +125,9 @@ export function runPostgres({
           parameters: {
             // should be about 25% of requested memory
             shared_buffers: '200MB',
+            // halves-ish WAL volume on full-page-write-heavy churn, which
+            // shrinks replication traffic, pg_wal I/O, and backup sizes
+            wal_compression: 'lz4',
           },
         },
         managed: {
