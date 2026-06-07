@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { $network, stackName } from '../../common/coreRef.ts';
+import { $network, cfg, stackName } from '../../common/coreRef.ts';
 import { provider } from '../kubeconfig.ts';
 import { cluster, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
@@ -56,6 +56,11 @@ function ebs(volumeSize: string) {
   ];
 }
 
+// k[storage.workload-disk-size]
+// Size against measured steady-state node fs usage with ~2x headroom; the
+// kubelet image GC high threshold (85%) is the ceiling to stay clear of.
+const workloadDiskGi = cfg.getNumber('workloadDiskGi') ?? 60;
+
 // k[placement.workload-subnets] k[storage.workload-disk-size]
 export const workloadNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-workload',
@@ -69,7 +74,7 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
       subnetSelectorTerms: workloadSubnetTerms,
       securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
-      blockDeviceMappings: ebs('60Gi'),
+      blockDeviceMappings: ebs(`${workloadDiskGi}Gi`),
       tags: {
         'bes.node.purpose': 'workload',
         Name: `${namePrefix} workload`,
