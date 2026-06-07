@@ -34,6 +34,10 @@ export const domainBase =
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
 export const dbExpose = cfg.getBoolean('dbExpose') ?? !_isDemoCluster;
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
+// Pin each db cluster's instances to one AZ (cross-AZ replication is billed).
+// This package currently deploys demo/branch environments, where losing an AZ
+// is acceptable; set to false for any production-grade stack.
+export const dbAzColocate = cfg.getBoolean('dbAzColocate') ?? true;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
 

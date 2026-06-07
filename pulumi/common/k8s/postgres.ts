@@ -36,6 +36,11 @@ export interface PostgresArgs {
   barmanRoleArn?: string;
   // When provided, enables Barman Cloud WAL archiving + scheduled base backups.
   barmanBackup?: BarmanBackupArgs;
+  // Require all instances of this cluster in the same AZ (still on different
+  // nodes via CNPG's default hostname anti-affinity). Keeps replication
+  // traffic off the cross-AZ meter at the cost of AZ-failure tolerance; for
+  // environments that don't need to survive an AZ loss.
+  colocateAz?: boolean;
 }
 
 // https://cloudnative-pg.io/documentation/1.26/cloudnative-pg.v1/#postgresql-cnpg-io-v1-RoleConfiguration
@@ -71,6 +76,7 @@ export function runPostgres({
   barmanRoleArn,
   barmanBackup,
   inheritedMetadataLabels,
+  colocateAz = false,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -163,6 +169,18 @@ export function runPostgres({
               },
             ],
           },
+          ...(colocateAz
+            ? {
+                additionalPodAffinity: {
+                  requiredDuringSchedulingIgnoredDuringExecution: [
+                    {
+                      labelSelector: { matchLabels: { 'cnpg.io/cluster': `${name}-db` } },
+                      topologyKey: 'topology.kubernetes.io/zone',
+                    },
+                  ],
+                },
+              }
+            : {}),
         },
         serviceAccountTemplate: {
           metadata: {
