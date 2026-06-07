@@ -125,9 +125,17 @@ export function runPostgres({
           parameters: {
             // should be about 25% of requested memory
             shared_buffers: '200MB',
+            // and this about 75%; it's a planner hint, not an allocation
+            effective_cache_size: '560MB',
             // halves-ish WAL volume on full-page-write-heavy churn, which
             // shrinks replication traffic, pg_wal I/O, and backup sizes
             wal_compression: 'lz4',
+            // gp3 is SSD-class: seeks are nearly as cheap as sequential reads,
+            // and it has queue depth to exploit
+            random_page_cost: '1.1',
+            effective_io_concurrency: '200',
+            // JIT causes CPU spikes and slow planning on simple OLTP queries
+            jit: 'off',
           },
         },
         managed: {
