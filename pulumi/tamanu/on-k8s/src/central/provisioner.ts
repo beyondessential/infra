@@ -4,7 +4,7 @@ import JSON5 from 'json5';
 import { templatedConfig } from '../common/templatedConfig.ts';
 import { namespace } from '../namespace.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
-import { timezone } from '../config.ts';
+import { facilityNames, timezone } from '../config.ts';
 
 export interface MigratorArgs {
   parent: ComponentResource;
@@ -40,6 +40,9 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
     name: 'provisioning',
     additionalData: {
       timezone,
+    },
+    templateData: {
+      facilityNames,
     },
   });
 
