@@ -33,6 +33,8 @@ export function runServer(
         name: `facility-${name}-${type}`,
       },
       spec: {
+        // prefer same-zone endpoints; cross-AZ traffic is billed
+        trafficDistribution: 'PreferClose',
         ports: [
           {
             protocol: 'TCP',

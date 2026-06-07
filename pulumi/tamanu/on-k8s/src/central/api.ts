@@ -33,6 +33,8 @@ export function runApi({
         name: 'central-api',
       },
       spec: {
+        // prefer same-zone endpoints; cross-AZ traffic is billed
+        trafficDistribution: 'PreferClose',
         ports: [
           {
             protocol: 'TCP',
