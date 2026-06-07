@@ -22,6 +22,16 @@ export const controlPlaneRole = new awsClassic.iam.Role('control-plane', {
   tags,
 });
 
+// k[capacity.spot-slr]
+// Account-level prerequisite for spot capacity: CreateFleet cannot launch spot
+// instances until this role exists, and the node role is not permitted to
+// create it implicitly. Pre-existing roles in older accounts must be imported
+// into the stack rather than recreated.
+export const spotServiceLinkedRole = new awsClassic.iam.ServiceLinkedRole('spot', {
+  awsServiceName: 'spot.amazonaws.com',
+  tags,
+});
+
 export const nodeRole = new awsClassic.iam.Role('node', {
   namePrefix: `EKS${pascalStackName}Node-`,
   description: `Role for EKS nodes (cluster: ${stackName})`,
