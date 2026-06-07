@@ -1,1 +1,2 @@
 Pulumi.*.yaml
+!Pulumi.*demo*.yaml

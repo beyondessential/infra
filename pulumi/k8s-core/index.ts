@@ -24,6 +24,11 @@ export { spotDataFeedBucketName, opencostExportBucketName };
 // to gate cert-manager's Gateway API integration.
 export const envoyGatewayEnabled = cfg.getBoolean('envoyGatewayEnabled') ?? false;
 
+// DNS zones managed by this cluster — consumed by on-k8s to derive the default ingress domain.
+export const externalDnsZoneDomains: string[] = Object.keys(
+  (cfg.getObject<Record<string, string>>('externalDnsZones')) ?? {},
+);
+
 import './awsBackup.ts';
 import './nodes/groups.ts';
 import './nodes/monitor.ts';

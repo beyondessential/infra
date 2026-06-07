@@ -1,0 +1,85 @@
+{
+  users: {
+    'admin@tamanu.io': {
+      role: 'admin',
+      password: 'admin',
+      displayName: 'Initial Admin',
+    },
+  },
+
+  facilities: {
+    {% for n in range(1, 10) %}
+    'facility-{{ n }}': {
+      name: 'Test Facility {{ n }}',
+      code: 'facility-{{ n }}',
+    },
+    {% endfor %}
+  },
+
+  settings: {
+    global: {
+      features: {
+        patientPlannedMove: true,
+        enablePatientDeaths: true,
+        invoicing: {
+          enabled: true,
+        },
+        covidCertificates: {
+          enableCovidClearanceCertificate: true,
+        },
+        quickPatientGenerator: true,
+        reminderContactModule: {
+          enabled: false,
+        },
+        deviceRegistrationQuota: {
+          enabled: false,
+        },
+        desktopCharting: {
+          enabled: true,
+        },
+        enableVitalEdit: true,
+      },
+      audit: {
+        accesses: {
+          enabled: true,
+        },
+      },
+      fhir: {
+        worker: {
+          assumeDroppedAfter: '10 minutes',
+          heartbeat: '1 minute',
+        },
+      },
+      vaccinationReminder: {
+        due: [7, 1, -7],
+      },
+    },
+    central: {
+      disk: {
+        freeSpaceRequired: {
+          gigabytesForUploadingDocuments: 0.1,
+        },
+      },
+    },
+    facilities: {
+      {% for n in range(1, 10) %}
+      'facility-{{ n }}': {
+        survey: {
+          defaultCodes: {
+            location: {% if n == 1 %}
+              'THWaitingArea'
+            {% elif n == 2 %}
+              'LHWaitingArea'
+            {% else %}
+              'WaitingArea'
+            {% endif %},
+            department: 'Emergency',
+          }
+        }
+      },
+      {% endfor %}
+    },
+  },
+
+  // No referenceData or programs — data is migrated separately per deployment.
+}

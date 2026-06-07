@@ -1,0 +1,105 @@
+{
+  canonicalHostName: 'https://{{ fqdn }}',
+  countryTimeZone: '{{ timezone }}',
+  primaryTimeZone: '{{ timezone }}',
+  auth: {
+    secret: '{{ 40 | randomstring }}',
+    refreshToken: {
+      secret: '{{ 40 | randomstring }}',
+    },
+    useHardcodedPermissions: false,
+  },
+  errors: {
+    enabled: true,
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  db: {
+    migrateOnStartup: false,
+  },
+  sync: {
+    lookupTable: {
+      enabled: true,
+    },
+  },
+  schedules: {
+    syncLookupRefresher: {
+      enabled: true,
+    },
+  },
+  localisation: {
+    data: {
+      country: {
+        'alpha-2': 'UT',
+        'alpha-3': 'UTO',
+        name: 'Utopia',
+      },
+      disabledReports: [
+        'aefi',
+        'india-assistive-technology-device-line-list',
+        'iraq-assistive-technology-device-line-list',
+      ],
+      imagingTypes: {
+        fluroscopy: {
+          label: 'Fluroscopy',
+        },
+        xRay: {
+          label: 'X-Ray',
+        },
+        mri: {
+          label: 'MRI',
+        },
+        echocardiogram: {
+          label: 'Echocardiogram',
+        },
+        ctScan: {
+          label: 'CT Scan',
+        },
+        ecg: {
+          label: 'Electrocardiogram (ECG)',
+        },
+        endoscopy: {
+          label: 'Endoscopy',
+        },
+        mammogram: {
+          label: 'Mammogram',
+        },
+        holterMonitor: {
+          label: 'Holter Monitor',
+        },
+        angiogram: {
+          label: 'Angiogram',
+        },
+        colonoscopy: {
+          label: 'Colonoscopy',
+        },
+        ultrasound: {
+          label: 'Ultrasound',
+        },
+      },
+    },
+  },
+  updateUrls: {
+    mobile: 'https://install.appcenter.ms/orgs/beyond-essential/apps/tamanu-mobile-only/distribution_groups/staging',
+  },
+  disk: {
+    diskPath: '/',
+  },
+  integrations: {
+    fhir: {
+      enabled: true,
+      worker: {
+        enabled: true,
+      },
+    },
+    mSupply: {
+      enabled: true,
+    },
+  },
+  notifications: {
+    certificates: {
+      labTestCategoryIds: ['labTestCategory-COVID', 'labTestCategory-COVIDRAT'],
+    },
+  },
+}
