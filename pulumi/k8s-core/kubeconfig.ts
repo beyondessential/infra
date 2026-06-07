@@ -1,11 +1,13 @@
 import { jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import { Provider } from '@pulumi/kubernetes';
-import { cluster, clusterName } from './cluster.ts';
+import { stackName } from '../common/coreRef.ts';
+import { cluster, liveCluster } from './cluster.ts';
 
-const auth = awsClassic.eks.getClusterAuthOutput({
-  name: clusterName,
-});
+// Endpoint, CA, and auth come from the live cluster lookup, not the Cluster
+// resource's outputs: pending Cluster updates would otherwise cascade into a
+// planned replacement of this provider and of every resource it manages.
+const auth = awsClassic.eks.getClusterAuthOutput({ name: stackName }, { dependsOn: [cluster] });
 
 // This is a kubeconfig specifically for Pulumi to use internally, it's not
 // suited to be used externally; use `aws eks update-kubeconfig --name ...`
@@ -17,8 +19,8 @@ export const kubeconfig = jsonStringify({
     {
       name: 'cluster',
       cluster: {
-        'certificate-authority-data': cluster.certificateAuthorityData,
-        server: cluster.endpoint,
+        'certificate-authority-data': liveCluster.certificateAuthorities.apply((cas) => cas[0].data),
+        server: liveCluster.endpoint,
       },
     },
   ],

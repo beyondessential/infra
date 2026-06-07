@@ -61,12 +61,22 @@ export const cluster = new aws.eks.Cluster(
 
 export const clusterName = cluster.name.apply((n) => n!);
 
+// Live lookup keyed by the static cluster name. The Cluster resource's
+// outputs all go unknown during preview whenever it has a pending update,
+// which poisons everything derived from them (kubeconfig provider, OIDC url)
+// into spurious planned replacements. The live lookup stays known. dependsOn
+// keeps initial cluster creation ordered before the lookup.
+export const liveCluster = awsClassic.eks.getClusterOutput(
+  { name: stackName },
+  { dependsOn: [cluster] },
+);
+
 // OIDC provider for the cluster
 export const oidcProvider = new aws.iam.OidcProvider(
   'eks-oidc',
   {
     clientIdList: [AWS_STS],
-    url: cluster.openIdConnectIssuerUrl,
+    url: liveCluster.identities.apply((ids) => ids[0].oidcs[0].issuer),
   },
   { ignoreChanges: ['thumbprintList'] },
 );
