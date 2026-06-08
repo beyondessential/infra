@@ -8,10 +8,10 @@
   },
 
   facilities: {
-    {% for n in range(1, 10) %}
-    'facility-{{ n }}': {
-      name: 'Test Facility {{ n }}',
-      code: 'facility-{{ n }}',
+    {% for name in facilityNames %}
+    '{{ name }}': {
+      name: 'Test Facility {{ loop.index }}',
+      code: '{{ name }}',
     },
     {% endfor %}
   },
@@ -62,17 +62,11 @@
       },
     },
     facilities: {
-      {% for n in range(1, 10) %}
-      'facility-{{ n }}': {
+      {% for name in facilityNames %}
+      '{{ name }}': {
         survey: {
           defaultCodes: {
-            location: {% if n == 1 %}
-              'THWaitingArea'
-            {% elif n == 2 %}
-              'LHWaitingArea'
-            {% else %}
-              'WaitingArea'
-            {% endif %},
+            location: 'WaitingArea',
             department: 'Emergency',
           }
         }
