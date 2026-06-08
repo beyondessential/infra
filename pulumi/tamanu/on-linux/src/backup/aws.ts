@@ -5,8 +5,10 @@ import { billingTags } from '../config.ts';
 
 // Tag that external (not-provisioned-here) in-account EC2 resources can carry
 // to opt into this stack's backup plan. Used by the tag-based selection below.
+// Named "External" to make clear it is NOT for stack-managed resources (those
+// are covered by the ARN selection; tagging one would double-back it up).
 // On-prem servers can't be reached by AWS Backup and are covered separately.
-export const BACKUP_OPT_IN_TAG = 'TamanuBackup';
+export const BACKUP_OPT_IN_TAG = 'TamanuExternalBackup';
 
 // `resources` are the ARNs of instances/volumes provisioned by this stack.
 // May be empty (e.g. an all-external stack): the plan is still created so that
@@ -110,9 +112,9 @@ export function applyBackup(resources: Output<string>[]) {
   }
 
   // Tag-based selection: any in-account EC2 instance/EBS volume tagged
-  // `TamanuBackup=<stack>` is included, even if provisioned outside this stack
-  // (e.g. Windows facility servers). On-prem hosts simply never carry the tag
-  // and remain on the separate backup strategy.
+  // `TamanuExternalBackup=<stack>` is included, even if provisioned outside
+  // this stack (e.g. Windows facility servers). On-prem hosts simply never
+  // carry the tag and remain on the separate backup strategy.
   new awsNative.backup.BackupSelection(
     'backup-tagged',
     {
