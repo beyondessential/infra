@@ -194,12 +194,11 @@ export const central: Server = {
     cfgCentral === false || centralHasExternalIps || (cfgCentral && cfgCentral.external) || false,
   name: 'Central',
   subdomain: 'central',
-  // Central runs the sync hub + postgres at sustained load, which exceeds a
-  // t4g.medium's 20% baseline continuously and racks up surplus CPU credits.
-  // t4g.large doubles RAM and lifts the baseline to 30%, absorbing it for
-  // less than medium-plus-surplus. Facilities are light and stay t4g.medium.
-  // Override per-stack for a known-light central.
-  instance: 't4g.large',
+  // Default kept at t4g.medium. Central servers under sustained load exceed
+  // its 20% baseline and accrue surplus CPU credits; size those up per-stack
+  // via the `central: { instance: t4g.large }` config (don't bump the default
+  // — most centrals run within baseline and would just cost more).
+  instance: 't4g.medium',
   tailscaleName: interpolate`${tailscaleBase}-central`,
   legacyDisk,
   disk: defaultDisk,
