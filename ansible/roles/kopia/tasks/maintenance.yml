@@ -25,13 +25,17 @@
     state: started
     enabled: true
 
-# Disable kopia's built-in automatic maintenance so it only runs via the timer
-# above, not opportunistically during other operations.
-- name: Disable automatic kopia maintenance
+# Claim maintenance ownership for this central host. Full maintenance only runs
+# for the repo's recorded owner; migrating central servers leaves ownership
+# stranded on the old host, so the timer's `kopia maintenance run --full`
+# silently no-ops until we take it over here. Also disable kopia's built-in
+# automatic maintenance so it only runs via the timer above, not
+# opportunistically during other operations.
+- name: Claim maintenance ownership and disable automatic kopia maintenance
   become: true
   become_user: kopia
   ansible.builtin.command:
-    cmd: kopia maintenance set --enable-full=false --enable-quick=false
+    cmd: kopia maintenance set --owner=me --enable-full=false --enable-quick=false
   environment:
     KOPIA_CHECK_FOR_UPDATES: "false"
   when: kopia_config.stat.exists
