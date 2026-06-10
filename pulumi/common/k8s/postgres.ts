@@ -1,4 +1,4 @@
-import { ComponentResource, type Input, type Output } from '@pulumi/pulumi';
+import { ComponentResource, output, type Input, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from './waitFor.ts';
@@ -98,6 +98,16 @@ export function runPostgres({
           parameters: {
             // should be about 25% of requested memory
             shared_buffers: '200MB',
+            // Cap the WAL a replication slot may retain so a stranded or
+            // long-lagging standby can't fill the primary's disk (slots have
+            // no bound by default). If a replica falls further behind than
+            // this, CNPG re-clones it. ~30% of the volume, floored at 1GB;
+            // assumes storage is expressed in Gi.
+            max_slot_wal_keep_size: output(storage).apply((s) => {
+              const gib = parseInt(s, 10);
+              const cap = Number.isFinite(gib) ? Math.max(1, Math.floor(gib * 0.3)) : 1;
+              return `${cap}GB`;
+            }),
           },
         },
         managed: {
