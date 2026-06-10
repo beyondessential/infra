@@ -18,7 +18,7 @@
 
 - name: Wait until apt update is finished
   become: true
-  async_status:
+  ansible.builtin.async_status:
     jid: "{{ apt_update.ansible_job_id }}"
   register: job_result
   until: job_result.finished
@@ -27,7 +27,7 @@
 
 - name: Clean up async file
   become: true
-  ignore_errors: true
+  failed_when: false
   ansible.builtin.async_status:
     jid: "{{ apt_update.ansible_job_id }}"
     mode: cleanup
@@ -55,7 +55,7 @@
     mode: "0755"
     content: |
       #!/bin/sh
-      apt update
+      exec systemd-run --slice=background.slice --scope --quiet apt update
 
 - name: Set ssh auto-upgrade
   become: true
@@ -64,4 +64,4 @@
     mode: "0755"
     content: |
       #!/bin/sh
-      apt install -y openssh-server
+      exec systemd-run --slice=background.slice --scope --quiet apt install -y openssh-server

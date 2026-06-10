@@ -1,4 +1,5 @@
 import { getStack } from '@pulumi/pulumi';
+import { billingTags } from '../../../common/billing.ts';
 import { cfg } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
@@ -30,3 +31,12 @@ export const slackerCloseUrl = cfg.require('slackerCloseUrl');
 
 export const tailscaleClientId = cfg.require('tailscaleClientId');
 export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
+export const tailscaleHostname = cfg.require('tailscaleHostname');
+
+export const deployment = cfg.get('deployment') ?? 'canopy';
+export const stage = cfg.get('stage') ?? 'prod';
+export const costLabels = billingTags({
+  product: 'tamanu',
+  stage,
+  deployment,
+});

@@ -4,18 +4,25 @@ set -euo pipefail
 
 export KOPIA_CHECK_FOR_UPDATES=false
 
-# Backs up postgres using a btrfs snapshot, either:
-# - the latest snapper snapshot (when snapper is configured for postgres), or
-# - a fresh snapshot taken by this script and removed after upload (otherwise).
+# Back up the active postgres cluster as a kopia snapshot.
+#
+# The @postgres btrfs subvolume is snapshotted (writable) between
+# pg_backup_start and pg_backup_stop. pg_backup_stop's backup_label and
+# tablespace_map are written into the snapshot's data dir before kopia
+# reads it, producing a complete, restorable base backup in a single
+# kopia snapshot rooted at the cluster's data dir (matching the ext4
+# script's "one cluster" layout).
 
-SNAPPER_CONFIG="postgres"
 POSTGRES_DIR="/var/lib/postgresql"
 HOSTNAME=$(hostname)
 
-USE_SNAPPER=false
-if snapper -c "$SNAPPER_CONFIG" list >/dev/null 2>&1; then
-  USE_SNAPPER=true
+PGDATA=$(readlink -f "$POSTGRES_DIR/current")
+if [ ! -f "$PGDATA/PG_VERSION" ]; then
+  echo "ERROR: $PGDATA is not a postgres data dir" >&2
+  exit 1
 fi
+PG_VERSION=$(basename "$(dirname "$PGDATA")")
+PG_CLUSTER=$(basename "$PGDATA")
 
 FSDEV="/dev/disk/by-uuid/$(findmnt "$POSTGRES_DIR" -o UUID -n)"
 
@@ -26,7 +33,7 @@ POSTGRES_GID=$(id -g postgres)
 MAPPING="u:$POSTGRES_UID:$KOPIA_UID:1 g:$POSTGRES_GID:$KOPIA_GID:1"
 
 TOPLEVEL_MOUNT=""
-MANUAL_SNAPSHOT_PATH=""
+SNAPSHOT_PATH=""
 KOPIA_MOUNT=""
 PSQL_DIR=""
 PSQL_PID=""
@@ -51,8 +58,8 @@ cleanup() {
   if [ -n "$PSQL_DIR" ] && [ -d "$PSQL_DIR" ]; then
     rm -rf "$PSQL_DIR" || true
   fi
-  if [ -n "$MANUAL_SNAPSHOT_PATH" ] && [ -d "$MANUAL_SNAPSHOT_PATH" ]; then
-    btrfs subvolume delete "$MANUAL_SNAPSHOT_PATH" || true
+  if [ -n "$SNAPSHOT_PATH" ] && [ -d "$SNAPSHOT_PATH" ]; then
+    btrfs subvolume delete "$SNAPSHOT_PATH" || true
   fi
   if [ -n "$TOPLEVEL_MOUNT" ] && mountpoint -q "$TOPLEVEL_MOUNT" 2>/dev/null; then
     umount "$TOPLEVEL_MOUNT" || true
@@ -63,15 +70,43 @@ cleanup() {
 }
 trap cleanup ERR EXIT
 
-# Drive a long-running psql session held open by fd 9 on a fifo so that the
-# pg_backup_start / pg_backup_stop pair runs in a single session (otherwise
-# pg_backup_stop sees no active backup and errors out). Markers are synced via
-# touch on a shared directory to avoid stdio buffering issues.
+if ! sudo -u postgres pg_isready -q; then
+  echo "ERROR: PostgreSQL is not running" >&2
+  exit 1
+fi
+
+TOPLEVEL_MOUNT="/mnt/btrfs-toplevel-kopia.$$"
+SNAPSHOT_NAME="@postgres-kopia-$$"
+SNAPSHOT_SUBVOL="$SNAPSHOT_NAME"
+
+mkdir -p "$TOPLEVEL_MOUNT"
+mount -o subvolid=5 "$FSDEV" "$TOPLEVEL_MOUNT"
+SNAPSHOT_PATH="$TOPLEVEL_MOUNT/$SNAPSHOT_NAME"
+SNAPSHOT_DATADIR="$SNAPSHOT_PATH/$PG_VERSION/$PG_CLUSTER"
+
+# Drive a long-running psql session held open by fd 9 on a fifo so the
+# pg_backup_start / pg_backup_stop pair runs in one session (otherwise
+# pg_backup_stop sees no active backup and errors out). Markers are synced
+# via touch on a shared directory to avoid stdio buffering issues.
+PSQL_DIR=$(mktemp -d --tmpdir kopia-psql.XXXXXX)
+chmod 0777 "$PSQL_DIR"
+PSQL_FIFO="$PSQL_DIR/in"
+mkfifo -m 0666 "$PSQL_FIFO"
+
+sudo -u postgres psql -X -v ON_ERROR_STOP=on < "$PSQL_FIFO" &
+PSQL_PID=$!
+exec 9> "$PSQL_FIFO"
+PSQL_FD_OPEN=true
+
+# Timeout is per psql block, in tenths of a second. pg_backup_start with
+# fast=false can take up to checkpoint_completion_target * checkpoint_timeout
+# (default ~4.5 min); wait_for_archive=true on pg_backup_stop can also be
+# slow if WAL archiving is backed up. 10 minutes gives generous headroom.
 psql_run() {
   local marker="$PSQL_DIR/m.$RANDOM.$RANDOM"
   printf '%s\n\\! touch %s\n' "$1" "$marker" >&9
   local i
-  for i in $(seq 1 600); do
+  for i in $(seq 1 6000); do
     if [ -e "$marker" ]; then
       rm -f "$marker"
       return 0
@@ -86,79 +121,64 @@ psql_run() {
   return 1
 }
 
-if $USE_SNAPPER; then
-  LATEST_SNAPSHOT=$(snapper -c "$SNAPPER_CONFIG" list --columns number | tail -n1 | xargs)
-  if [ -z "$LATEST_SNAPSHOT" ]; then
-    echo "ERROR: No snapshots found for configuration '$SNAPPER_CONFIG'"
-    exit 1
-  fi
-  echo "Using snapshot #$LATEST_SNAPSHOT from snapper config '$SNAPPER_CONFIG'"
-  SNAPSHOT_SUBVOL="@postgres/.snapshots/$LATEST_SNAPSHOT/snapshot"
-  SNAPSHOT_TAG="snapper:$LATEST_SNAPSHOT"
-else
-  echo "No snapper config for '$SNAPPER_CONFIG'; taking an ephemeral snapshot for this backup"
+echo "Starting PostgreSQL backup mode..."
+psql_run "SELECT pg_backup_start(label => 'kopia_backup', fast => false);"
 
-  if ! sudo -u postgres pg_isready -q; then
-    echo "ERROR: PostgreSQL is not running"
-    exit 1
-  fi
+echo "Creating btrfs snapshot at $SNAPSHOT_PATH"
+btrfs subvolume snapshot "$POSTGRES_DIR" "$SNAPSHOT_PATH"
 
-  TOPLEVEL_MOUNT="/mnt/btrfs-toplevel-kopia.$$"
-  SNAPSHOT_NAME="@postgres-kopia-$$"
-  SNAPSHOT_SUBVOL="$SNAPSHOT_NAME"
-  SNAPSHOT_TAG="snapper:none"
+# pg_backup_stop returns the lsn, the backup_label contents (labelfile), and
+# the tablespace_map contents (spcmapfile). Write the latter two straight
+# into the snapshot's data dir; psql does the file write itself via `\g`,
+# running as the postgres user, into a postgres-owned directory.
+echo "Stopping PostgreSQL backup mode (writing backup metadata into snapshot)..."
+psql_run "\\pset format unaligned
+\\pset tuples_only on
+\\pset recordsep ''
+SELECT lsn::text AS lsn, labelfile, spcmapfile FROM pg_backup_stop(wait_for_archive => true) \\gset
+SELECT :'labelfile' \\g $SNAPSHOT_DATADIR/backup_label
+SELECT :'spcmapfile' \\g $SNAPSHOT_DATADIR/tablespace_map"
 
-  mkdir -p "$TOPLEVEL_MOUNT"
-  mount -o subvolid=5 "$FSDEV" "$TOPLEVEL_MOUNT"
-  MANUAL_SNAPSHOT_PATH="$TOPLEVEL_MOUNT/$SNAPSHOT_NAME"
+printf '\\q\n' >&9
+exec 9>&-
+PSQL_FD_OPEN=false
+wait "$PSQL_PID" || true
+PSQL_PID=""
 
-  PSQL_DIR=$(mktemp -d --tmpdir kopia-psql.XXXXXX)
-  chmod 0777 "$PSQL_DIR"
-  PSQL_FIFO="$PSQL_DIR/in"
-  mkfifo -m 0666 "$PSQL_FIFO"
+# Postgres expects no tablespace_map file when the cluster has no extra
+# tablespaces (rather than an empty one).
+if [ ! -s "$SNAPSHOT_DATADIR/tablespace_map" ]; then
+  rm -f "$SNAPSHOT_DATADIR/tablespace_map"
+fi
 
-  sudo -u postgres psql -X -v ON_ERROR_STOP=on < "$PSQL_FIFO" &
-  PSQL_PID=$!
-  exec 9> "$PSQL_FIFO"
-  PSQL_FD_OPEN=true
-
-  echo "Starting PostgreSQL backup mode..."
-  psql_run "SELECT pg_backup_start(label => 'kopia_backup', fast => false);"
-
-  echo "Creating btrfs snapshot at $MANUAL_SNAPSHOT_PATH"
-  btrfs subvolume snapshot -r "$POSTGRES_DIR" "$MANUAL_SNAPSHOT_PATH"
-
-  echo "Stopping PostgreSQL backup mode..."
-  psql_run "SELECT pg_backup_stop(wait_for_archive => false);"
-
-  printf '\\q\n' >&9
-  exec 9>&-
-  PSQL_FD_OPEN=false
-  wait "$PSQL_PID" || true
-  PSQL_PID=""
+if [ ! -s "$SNAPSHOT_DATADIR/backup_label" ]; then
+  echo "ERROR: backup_label was not written into the snapshot" >&2
+  exit 1
 fi
 
 KOPIA_MOUNT="/var/lib/kopia/mnt-postgres-$$"
 mkdir -p "$KOPIA_MOUNT"
 
-echo "Mount snapshot as readable by kopia at $KOPIA_MOUNT"
+echo "Mount snapshot for kopia at $KOPIA_MOUNT"
 mount "$FSDEV" "$KOPIA_MOUNT" -o "subvol=$SNAPSHOT_SUBVOL,X-mount.idmap=$MAPPING"
 
-echo "Backing up snapshot at $KOPIA_MOUNT"
+KOPIA_SOURCE="$KOPIA_MOUNT/$PG_VERSION/$PG_CLUSTER"
+
+echo "Backing up $KOPIA_SOURCE"
 
 sudo -u kopia \
   kopia policy set \
   --add-ignore="postmaster.pid" \
   --add-ignore="*.log" \
   --add-ignore="pg_stat_tmp/*" \
-  "$KOPIA_MOUNT"
+  --add-ignore="lost+found" \
+  "$KOPIA_SOURCE"
 
 sudo -u kopia \
   kopia snapshot create \
   --tags area:postgres \
   --tags type:btrfs \
-  --tags "$SNAPSHOT_TAG" \
   --description="$HOSTNAME Postgres" \
-  "$KOPIA_MOUNT"
+  "$KOPIA_SOURCE"
 
 echo "Backup complete"

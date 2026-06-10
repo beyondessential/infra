@@ -1,5 +1,6 @@
-import { getStack } from '@pulumi/pulumi';
-import { cfg } from '../../../common/k8s/coreRef.ts';
+import { Config, getStack, output, type Output } from '@pulumi/pulumi';
+import { billingTags } from '../../../common/billing.ts';
+import { backups, cfg, clusterFullName, externalDnsZoneDomains } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
 
@@ -10,13 +11,33 @@ export const normalizedStack = getStack()
   .slice(0, 63 - 'tamanu-'.length) // 63 is the max length of a k8s namespace, minus the prefix tamanu-
   .replace(/^-+|-+$/g, '');
 
-// TODO: use k8score's/k8s-infra's base?
+const _configTemplateRaw = cfg.get('configTemplate');
+
+// Use the cluster's own DNS zones to pick the ingress base domain rather than
+// relying on configTemplate. The demo cluster owns 'demos.tamanu.app'; the main
+// cluster uses 'cd.tamanu.app' (a sub-zone of 'tamanu.app' it manages).
+// Fall back to clusterFullName until k8s-core publishes externalDnsZoneDomains.
+const _isDemoCluster =
+  externalDnsZoneDomains.includes('demos.tamanu.app') || clusterFullName.includes('demo');
+const _clusterBaseDomain = _isDemoCluster ? 'demos.tamanu.app' : 'cd.tamanu.app';
+
+// For demo stacks, strip the trailing "-demo" suffix from the domain segment so
+// URLs read "central.fsm.demos.tamanu.app" rather than the redundant
+// "central.fsm-demo.demos.tamanu.app". Tailscale and k8s resource names still
+// use normalizedStack (with the suffix) so demos remain identifiable on the mesh.
+const _domainStack =
+  _isDemoCluster ? normalizedStack.replace(/-demo$/, '') : normalizedStack;
 export const domainBase =
-  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'cd.tamanu.app');
+  cfg.get('domainBase') ??
+  truncateDomainIfNeeded(_domainStack, _clusterBaseDomain);
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const dbExpose = cfg.getBoolean('dbExpose') ?? true;
+export const dbExpose = cfg.getBoolean('dbExpose') ?? !_isDemoCluster;
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
+// Pin each db cluster's instances to one AZ (cross-AZ replication is billed).
+// This package currently deploys demo/branch environments, where losing an AZ
+// is acceptable; set to false for any production-grade stack.
+export const dbAzColocate = cfg.getBoolean('dbAzColocate') ?? true;
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
 
@@ -117,7 +138,35 @@ export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2
 
 export const syntheticTests = cfg.getBoolean('syntheticTests') ?? false;
 
-export const seedSnapshot: boolean = cfg.getBoolean('seedSnapshot') ?? false;
+const _backupsRaw = cfg.get('backupsEnabled');
+export const backupsEnabled =
+  _backupsRaw != null && _backupsRaw !== 'null' ? (cfg.getBoolean('backupsEnabled') ?? false) : false;
+const _retentionRaw = cfg.get('backupRetentionDays');
+export const backupRetentionDays =
+  _retentionRaw != null && _retentionRaw !== 'null' ? (cfg.getNumber('backupRetentionDays') ?? 3) : 3;
+
+// IAM role that CNPG pods assume (via IRSA) to write Barman backups to S3.
+// Always set on the serviceAccountTemplate so the annotation is ready before
+// backupsEnabled is flipped on.
+// Defaults to undefined so postgres.ts falls back to backups.sa (the cluster's own
+// IRSA role created by k8s-core/backups.ts). Override per-stack with
+// tamanu-on-k8s:barmanRoleArn to point at a dedicated role in another account.
+export const BARMAN_BACKUP_ROLE_ARN: string | undefined = cfg.get('barmanRoleArn') ?? undefined;
+
+// S3 bucket for Barman WAL archiving and base backups.
+// Defaults to the cluster's own bucket created by k8s-core/backups.ts.
+// Override per-stack with tamanu-on-k8s:barmanBucket (e.g. to preserve an
+// existing bucket when migrating an established deployment).
+const _barmanBucketOverride = cfg.get('barmanBucket');
+export const BARMAN_BACKUP_BUCKET: Output<string> = _barmanBucketOverride
+  ? output(_barmanBucketOverride)
+  : (backups.bucket as Output<string>);
+
+const _seedSnapshotRaw = cfg.get('seedSnapshot');
+export const seedSnapshot: boolean =
+  _seedSnapshotRaw != null && _seedSnapshotRaw !== 'null'
+    ? (cfg.getBoolean('seedSnapshot') ?? false)
+    : false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
 // 0 (default) means no TTL — deployment stays up forever. Any positive value
@@ -130,3 +179,11 @@ export const ttlHours = cfg.getNumber('ttlHours') ?? 0;
 if (!Number.isInteger(ttlHours) || ttlHours < 0) {
   throw new Error(`ttlHours must be a non-negative integer, got: ${ttlHours}`);
 }
+
+export const deployment = cfg.get('deployment') ?? 'engineering';
+export const stage = new Config('billing').get('stage') ?? 'test';
+export const costLabels = billingTags({
+  product: 'tamanu',
+  stage,
+  deployment,
+});

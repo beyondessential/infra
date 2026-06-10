@@ -105,7 +105,7 @@ new awsClassic.iam.Role('gha-tamanu-tools-upload', {
           },
           StringLike: {
             [`${url}:sub`]: [
-              'repo:beyondessential/bestool:ref:refs/tags/v*.*.*',
+              'repo:beyondessential/bestool:ref:refs/tags/*',
               'repo:beyondessential/linux-images:ref:refs/tags/v*.*.*',
               'repo:beyondessential/third-party-builds:ref:refs/heads/main',
             ],

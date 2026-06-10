@@ -1,3 +1,0 @@
----
-# TODO: flip default to true once we know this works fully
-ufw_managed: false

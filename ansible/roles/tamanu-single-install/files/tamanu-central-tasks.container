@@ -13,6 +13,3 @@ Sysctl=net.ipv4.tcp_slow_start_after_idle=0
 EnvironmentFile=/etc/tamanu/env
 Restart=always
 RestartSec=5
-
-[Install]
-WantedBy=multi-user.target

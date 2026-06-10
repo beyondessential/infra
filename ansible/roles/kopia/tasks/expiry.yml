@@ -1,19 +1,26 @@
 ---
+# Snapshot expiry operates on the shared repository, so it must run from a
+# single host. Like maintenance, that's the central; on facility servers the
+# timer is stopped, disabled, and removed in case it was previously enabled.
 - name: Add kopia expiry service
   become: true
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-expiry.service') }}"
     dest: /etc/systemd/system/kopia-expiry.service
+    mode: "0644"
   notify:
     - Reload systemd
+  when: "'central' in group_names"
 
 - name: Add kopia expiry timer
   become: true
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-expiry.timer') }}"
     dest: /etc/systemd/system/kopia-expiry.timer
+    mode: "0644"
   notify:
     - Reload systemd
+  when: "'central' in group_names"
 
 - name: Enable kopia expiry timer
   become: true
@@ -22,3 +29,25 @@
     daemon_reload: true
     state: started
     enabled: true
+  when: "'central' in group_names"
+
+- name: Disable kopia expiry timer on non-central hosts
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-expiry.timer
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: "'central' not in group_names"
+
+- name: Remove kopia expiry units on non-central hosts
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  loop:
+    - kopia-expiry.timer
+    - kopia-expiry.service
+  notify:
+    - Reload systemd
+  when: "'central' not in group_names"

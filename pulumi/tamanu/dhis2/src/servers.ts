@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { domains, replicas } from './config.ts';
+import { costLabels, domains, replicas } from './config.ts';
 
 import { GATEWAY_CLASS_ENVOY } from '../../../constants/internal.ts';
 import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
@@ -95,11 +95,11 @@ new k8s.apps.v1.Deployment('public-server', {
     selector: {
       matchLabels: labels('public'),
     },
-    template: {
-      metadata: {
-        labels: labels('public'),
-      },
-      spec: spec('server', ['bash', '/config/startup.sh'], {
+      template: {
+        metadata: {
+          labels: { ...labels('public'), ...costLabels },
+        },
+        spec: spec('server', ['bash', '/config/startup.sh'], {
         // Wait up to 60 seconds for the server to start...
         startupProbe: {
           periodSeconds: 1,

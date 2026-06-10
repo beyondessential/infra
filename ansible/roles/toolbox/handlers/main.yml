@@ -5,3 +5,4 @@
     starship completions bash > /usr/share/bash-completion/completions/starship
     starship completions zsh > /usr/share/zsh/site-functions/_starship
     starship completions fish > /usr/share/fish/vendor_completions.d/starship.fish
+  changed_when: true

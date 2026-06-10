@@ -1,5 +1,6 @@
 ---
-- when: msupply_enabled
+- name: Upgrade mSupply
+  when: msupply_enabled | bool
   block:
     - name: Restart mSupply service
       become: true

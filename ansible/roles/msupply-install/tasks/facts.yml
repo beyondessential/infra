@@ -4,19 +4,12 @@
     msupply_tag: "{{ msupply_version_arm64 if ansible_facts['architecture'] == 'aarch64' else msupply_version_amd64 }}"
     msupply_image: "docker.io/msupplyfoundation/omsupply:{{ msupply_version_arm64 if ansible_facts['architecture'] == 'aarch64' else msupply_version_amd64 }}"
 
-- name: Fetch MsupplyFQDN EC2 tag
-  ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
-  vars:
-    ec2_tag_name: MsupplyFQDN
-
+# MsupplyFQDN is fetched in msupply-common (a dependency of this role), which
+# also sets msupply_enabled from it.
 - name: Fetch MsupplyTailscaleService EC2 tag
   ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
   vars:
     ec2_tag_name: MsupplyTailscaleService
-
-- name: Set msupply enabled fact
-  ansible.builtin.set_fact:
-    msupply_enabled: "{{ msupply_enabled if msupply_enabled is defined else (ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined) }}"
 
 - name: Set msupply hostname from EC2 tag
   when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined

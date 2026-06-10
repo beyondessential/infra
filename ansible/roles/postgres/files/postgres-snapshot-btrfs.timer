@@ -1,9 +1,0 @@
-[Unit]
-Description=Regularly take postgres-consistent btrfs snapshots
-
-[Timer]
-OnCalendar=hourly
-Persistent=true
-
-[Install]
-WantedBy=timers.target

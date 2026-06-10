@@ -56,5 +56,6 @@
   become: true
   ansible.builtin.command:
     cmd: resolvectl flush-caches
+  changed_when: true
   failed_when: false
   listen: Reload caddy

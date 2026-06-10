@@ -1,8 +1,8 @@
 [Unit]
-Description=Run kopia maintenance weekly
+Description=Run kopia maintenance daily
 
 [Timer]
-OnCalendar=weekly
+OnCalendar=daily
 Persistent=true
 
 [Install]

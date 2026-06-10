@@ -10,6 +10,7 @@ export const $core = core.k8sCoreOutput();
 // directly. Source of truth lives in k8s-core's config; k8s-essentials
 // follows.
 export const envoyGatewayEnabled = ((await core.getValue<boolean>('envoyGatewayEnabled')) ?? false);
+export const externalDnsZoneDomains = ((await core.getValue<string[]>('externalDnsZoneDomains')) ?? []);
 
 export const clusterName = $core.name;
 export const clusterFullName = core.name.split('/')[2];

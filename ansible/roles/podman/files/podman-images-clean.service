@@ -4,3 +4,7 @@ Description=Podman images cleanup
 [Service]
 Type=oneshot
 ExecStart=podman image prune --all --force
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

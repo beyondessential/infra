@@ -1,16 +1,30 @@
 import * as k8s from '@pulumi/kubernetes';
-import { stackName } from '../../common/coreRef.ts';
+import { $network, cfg, stackName } from '../../common/coreRef.ts';
 import { provider } from '../kubeconfig.ts';
-import { clusterName, tags } from '../cluster.ts';
+import { cluster, tags } from '../cluster.ts';
 import { nodeRole } from '../roles.ts';
 import { karpenter } from './controller.ts';
+
+// Subnet and security group selection runs off resource IDs from the IaC
+// graph (network cross-stack, EKS cluster object). Tag-based discovery is
+// fragile — when a tag goes missing or drifts, every NodeClass flips
+// SubnetsNotFound and Karpenter stops provisioning. IDs can't drift.
+const workloadSubnetTerms = $network.workloadSubnetIds.apply((ids) =>
+  ids.map((id) => ({ id })),
+);
+const natSubnetTerms = $network.natSubnetIds.apply((ids) =>
+  ids.map((id) => ({ id })),
+);
+const clusterSgTerm = [{ id: cluster.clusterSecurityGroupId }];
 
 // EC2NodeClass `role` takes the role name, not ARN.
 const nodeRoleName = nodeRole.name;
 
 // Prefix for EC2 instance Name tags. Distinguishes Karpenter-provisioned
-// nodes from other EC2 instances in the AWS console.
-const namePrefix = `[Kubernetes ${stackName}]`;
+// nodes from other EC2 instances in the AWS console. No brackets/parens/etc:
+// these tags get propagated to the InstanceProfile Karpenter creates, and
+// IAM tag values only accept [\p{L}\p{Z}\p{N}_.:/=+\-@].
+const namePrefix = `Kubernetes ${stackName}`;
 
 // Karpenter rejects EC2NodeClass.spec.tags entries with restricted keys
 // (kubernetes.io/cluster/*, karpenter.sh/*, karpenter.k8s.aws/ec2nodeclass).
@@ -42,6 +56,11 @@ function ebs(volumeSize: string) {
   ];
 }
 
+// k[storage.workload-disk-size]
+// Size against measured steady-state node fs usage with ~2x headroom; the
+// kubelet image GC high threshold (85%) is the ceiling to stay clear of.
+const workloadDiskGi = cfg.getNumber('workloadDiskGi') ?? 60;
+
 // k[placement.workload-subnets] k[storage.workload-disk-size]
 export const workloadNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-workload',
@@ -52,17 +71,10 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
     spec: {
       role: nodeRoleName,
       amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
-      subnetSelectorTerms: [
-        {
-          tags: {
-            'karpenter.sh/discovery': clusterName,
-            Purpose: 'workload',
-          },
-        },
-      ],
-      securityGroupSelectorTerms: [{ tags: { 'karpenter.sh/discovery': clusterName } }],
+      subnetSelectorTerms: workloadSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
-      blockDeviceMappings: ebs('60Gi'),
+      blockDeviceMappings: ebs(`${workloadDiskGi}Gi`),
       tags: {
         'bes.node.purpose': 'workload',
         Name: `${namePrefix} workload`,
@@ -84,15 +96,8 @@ export const ingressNodeClass = new k8s.apiextensions.CustomResource(
     spec: {
       role: nodeRoleName,
       amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
-      subnetSelectorTerms: [
-        {
-          tags: {
-            'karpenter.sh/discovery': clusterName,
-            Purpose: 'nat',
-          },
-        },
-      ],
-      securityGroupSelectorTerms: [{ tags: { 'karpenter.sh/discovery': clusterName } }],
+      subnetSelectorTerms: natSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
       blockDeviceMappings: ebs('15Gi'),
       tags: {
@@ -116,15 +121,8 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
     spec: {
       role: nodeRoleName,
       amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
-      subnetSelectorTerms: [
-        {
-          tags: {
-            'karpenter.sh/discovery': clusterName,
-            Purpose: 'workload',
-          },
-        },
-      ],
-      securityGroupSelectorTerms: [{ tags: { 'karpenter.sh/discovery': clusterName } }],
+      subnetSelectorTerms: workloadSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
       blockDeviceMappings: ebs('15Gi'),
       tags: {

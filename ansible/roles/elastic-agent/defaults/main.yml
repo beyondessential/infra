@@ -1,5 +1,5 @@
 ---
 elastic_agent_enabled: false
-#elastic_agent_enrollment_token:
+# elastic_agent_enrollment_token:
 elastic_agent_fleet_url: https://cb02ab29209d4f93b18af3d4ff532604.fleet.australiaeast.azure.elastic.cloud:443 # Tamanu Prod
-#elastic_agent_fleet_url: https://bc2614ee64724a089b60b9480a03b88a.fleet.australiaeast.azure.elastic.cloud:443 # Dev
+# elastic_agent_fleet_url: https://bc2614ee64724a089b60b9480a03b88a.fleet.australiaeast.azure.elastic.cloud:443 # Dev

@@ -8,9 +8,9 @@ crun_version: "1.21"
 podman_ipv6_enabled: "{{ ansible_default_ipv6 is defined and ansible_default_ipv6.address is defined }}"
 
 podman_network_subnets_v4:
-  - { subnet: '10.100.0.1/16', gateway: '10.100.0.1' }
+  - { subnet: "10.100.0.1/16", gateway: "10.100.0.1" }
 podman_network_subnets_v6:
-  - { subnet: 'fd62:6573:b558:f686::1/64', gateway: 'fd62:6573:b558:f686::1' }
+  - { subnet: "fd62:6573:b558:f686::1/64", gateway: "fd62:6573:b558:f686::1" }
 # fd00::/8 is the private IPv6 address range
 # 626573 is "bes" in hex
 #

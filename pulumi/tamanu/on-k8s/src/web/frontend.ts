@@ -1,6 +1,7 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
+import { costLabels } from '../config.ts';
 import { type ServerType, appLabels, appSelector } from './specs.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
 
@@ -57,7 +58,7 @@ export function runWeb(
         },
         template: {
           metadata: {
-            labels: appLabels(serverType, instance),
+            labels: { ...appLabels(serverType, instance), ...costLabels },
           },
           spec: podSpec({
             podType: 'http',

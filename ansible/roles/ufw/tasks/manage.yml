@@ -36,7 +36,9 @@
   register: ufw_comment_scrub
   changed_when: "'CHANGED' in ufw_comment_scrub.stdout"
 
-- name: Reload ufw after stripping bad comments
+- name: Reload ufw after stripping bad comments  # noqa: no-handler
+  # Must reload inline before the rule-management tasks below run, not deferred
+  # to a handler at end of play, or those tasks operate on poisoned ufw state.
   when: ufw_comment_scrub is changed
   become: true
   ansible.builtin.command: ufw reload

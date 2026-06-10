@@ -1,0 +1,299 @@
+---
+# Performance tuning derived from the pgtune algorithm
+# (https://github.com/le0pard/pgtune/blob/master/src/features/configuration/configurationSlice.js).
+# Assumes Linux + OLTP workload + SSD storage, which matches our deploys.
+# Memory values are computed in kB to avoid unit conversion drift.
+#
+# These servers co-host other workloads (the app, caddy, kopia etc), so we
+# don't hand the entire box to postgres: reserve 4GB of RAM (or half on
+# smaller boxes), and reserve up to 4 cores from the parallel-worker budget.
+
+- name: Compute raw host resources
+  ansible.builtin.set_fact:
+    pg_tune_ram_raw_kb: "{{ (ansible_facts['memtotal_mb'] | int) * 1024 }}"
+    pg_tune_cpus_raw: "{{ (ansible_facts['processor_vcpus'] | default(ansible_facts['processor_nproc'], true) | default(ansible_facts['processor_count'], true) |
+      default(1, true)) | int }}"
+    pg_tune_pg_version: "{{ postgresql_version | int }}"
+
+- name: Compute postgres tuning base values (effective resources)
+  ansible.builtin.set_fact:
+    # RAM: >=8GB → host_ram - 4GB; otherwise host_ram/2
+    pg_tune_ram_kb: "{{ ((pg_tune_ram_raw_kb | int) - (4 * 1024 * 1024)) if (pg_tune_ram_raw_kb | int) >= (8 * 1024 * 1024) else ((pg_tune_ram_raw_kb | int) // 2)
+      }}"
+    # CPU: 1→1, 2-4→2, 5-7→4, >=8→n-4
+    pg_tune_cpus: "{{ ((pg_tune_cpus_raw | int) - 4) if (pg_tune_cpus_raw | int) >= 8 else (4 if (pg_tune_cpus_raw | int) >= 5 else (2 if (pg_tune_cpus_raw | int)
+      >= 2 else 1)) }}"
+
+- name: Derive postgres memory tuning values
+  ansible.builtin.set_fact:
+    # shared_buffers = RAM / 4
+    pg_tune_shared_buffers_kb: "{{ (pg_tune_ram_kb | int) // 4 }}"
+    # effective_cache_size = RAM * 3/4
+    pg_tune_effective_cache_size_kb: "{{ ((pg_tune_ram_kb | int) * 3) // 4 }}"
+    # maintenance_work_mem = min(RAM/16, 8GB)
+    pg_tune_maintenance_work_mem_kb: "{{ [((pg_tune_ram_kb | int) // 16), (8 * 1024 * 1024)] | min }}"
+
+- name: Derive postgres parallel tuning values
+  ansible.builtin.set_fact:
+    # Parallel settings only emitted when CPUs >= 4 in pgtune
+    pg_tune_parallel_enabled: "{{ (pg_tune_cpus | int) >= 4 }}"
+    # workers_per_gather = ceil(cpus/2), capped at 4 (OLTP)
+    pg_tune_workers_per_gather: "{{ [(((pg_tune_cpus | int) + 1) // 2), 4] | min }}"
+    pg_tune_parallel_maintenance: "{{ [(((pg_tune_cpus | int) + 1) // 2), 4] | min }}"
+
+- name: Derive postgres wal_buffers
+  ansible.builtin.set_fact:
+    # 3% of shared_buffers, capped at 16MB, min 32kB; round up to 16MB if close
+    pg_tune_wal_buffers_kb: "{{ [32, ([16384, ((pg_tune_shared_buffers_kb | int) * 3) // 100] | min)] | max if (((pg_tune_shared_buffers_kb | int) * 3) // 100) <=
+      14336 or (((pg_tune_shared_buffers_kb | int) * 3) // 100) >= 16384 else 16384 }}"
+
+- name: Derive postgres work_mem
+  ansible.builtin.set_fact:
+    # parallelForWorkMem is max_worker_processes (=cpus) when parallel settings
+    # are emitted, else dbDefaultValues default (8).
+    pg_tune_parallel_for_work_mem: "{{ (pg_tune_cpus | int) if (pg_tune_parallel_enabled | bool) else 8 }}"
+
+- name: Derive postgres work_mem final
+  ansible.builtin.set_fact:
+    # OLTP keeps the raw value; floor at 4MB.
+    pg_tune_work_mem_kb: "{{ [4096, ((pg_tune_ram_kb | int) - (pg_tune_shared_buffers_kb | int)) // (((postgresql_tune_max_connections | int) + (pg_tune_parallel_for_work_mem
+      | int)) * 3)] | max }}"
+
+- name: Derive postgres autovacuum tuning
+  ansible.builtin.set_fact:
+    # autovacuum_work_mem capped at 2GB when maintenance_work_mem >= 2GB
+    pg_tune_autovacuum_work_mem_kb: "{{ (2 * 1024 * 1024) if (pg_tune_maintenance_work_mem_kb | int) >= (2 * 1024 * 1024) else 0 }}"
+    # autovacuum_max_workers bump on bigger boxes
+    pg_tune_autovacuum_max_workers: "{{ 5 if (pg_tune_cpus | int) >= 32 else (4 if (pg_tune_cpus | int) >= 16 else 0) }}"
+    # io_workers (PG18+): min(32, max(3, cpus/4)), only emit if > 3
+    pg_tune_io_workers: "{{ [32, [3, (pg_tune_cpus | int) // 4] | max] | min }}"
+
+- name: Tune max_connections
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: max_connections
+    value: "{{ postgresql_tune_max_connections }}"
+  register: pg_tune_max_connections_result
+
+- name: Tune shared_buffers
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: shared_buffers
+    value: "{{ pg_tune_shared_buffers_kb }}kB"
+  register: pg_tune_shared_buffers_result
+
+- name: Tune effective_cache_size
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: effective_cache_size
+    value: "{{ pg_tune_effective_cache_size_kb }}kB"
+
+- name: Tune maintenance_work_mem
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: maintenance_work_mem
+    value: "{{ pg_tune_maintenance_work_mem_kb }}kB"
+
+- name: Tune checkpoint_completion_target
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: checkpoint_completion_target
+    value: "0.9"
+
+- name: Tune wal_buffers
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: wal_buffers
+    value: "{{ pg_tune_wal_buffers_kb }}kB"
+  register: pg_tune_wal_buffers_result
+
+- name: Tune default_statistics_target
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: default_statistics_target
+    value: "100"
+
+- name: Tune random_page_cost
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: random_page_cost
+    value: "1.1"
+
+- name: Tune effective_io_concurrency
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: effective_io_concurrency
+    value: "200"
+
+- name: Tune work_mem
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: work_mem
+    value: "{{ pg_tune_work_mem_kb }}kB"
+
+- name: Tune huge_pages
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: huge_pages
+    value: "{{ 'try' if (pg_tune_shared_buffers_kb | int) >= (2 * 1024 * 1024) else 'off' }}"
+  register: pg_tune_huge_pages_result
+
+- name: Tune min_wal_size
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: min_wal_size
+    value: 2GB
+
+- name: Tune max_wal_size
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: max_wal_size
+    value: 8GB
+
+- name: Tune max_worker_processes
+  when: pg_tune_parallel_enabled | bool
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: max_worker_processes
+    value: "{{ pg_tune_cpus }}"
+  register: pg_tune_max_worker_processes_result
+
+- name: Tune max_parallel_workers_per_gather
+  when: pg_tune_parallel_enabled | bool
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: max_parallel_workers_per_gather
+    value: "{{ pg_tune_workers_per_gather }}"
+
+- name: Tune max_parallel_workers
+  when: pg_tune_parallel_enabled | bool
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: max_parallel_workers
+    value: "{{ pg_tune_cpus }}"
+
+- name: Tune max_parallel_maintenance_workers
+  when: pg_tune_parallel_enabled | bool
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: max_parallel_maintenance_workers
+    value: "{{ pg_tune_parallel_maintenance }}"
+
+# JIT routinely causes CPU spikes and slow planning for simple OLTP queries.
+- name: Tune jit (OLTP, PG12+)
+  when: (pg_tune_pg_version | int) >= 12
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: jit
+    value: "off"
+
+# lz4 is significantly faster and lighter on CPU than pglz.
+- name: Tune wal_compression (PG15+)
+  when: (pg_tune_pg_version | int) >= 15
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: wal_compression
+    value: lz4
+
+- name: Tune wal_compression (PG10-14)
+  when:
+    - (pg_tune_pg_version | int) >= 10
+    - (pg_tune_pg_version | int) < 15
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: wal_compression
+    value: "on"
+
+# io_uring is the best-performing AIO method on Linux.
+# Requires postgres compiled with --with-liburing (PGDG packages have this).
+- name: Tune io_method (PG18+, Linux)
+  when: (pg_tune_pg_version | int) >= 18
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: io_method
+    value: io_uring
+  register: pg_tune_io_method_result
+
+- name: Tune io_workers (PG18+, large boxes)
+  when:
+    - (pg_tune_pg_version | int) >= 18
+    - (pg_tune_io_workers | int) > 3
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: io_workers
+    value: "{{ pg_tune_io_workers }}"
+
+- name: Tune autovacuum_work_mem
+  when: (pg_tune_autovacuum_work_mem_kb | int) > 0
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: autovacuum_work_mem
+    value: "{{ pg_tune_autovacuum_work_mem_kb }}kB"
+
+- name: Tune autovacuum_max_workers
+  when: (pg_tune_autovacuum_max_workers | int) > 0
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: autovacuum_max_workers
+    value: "{{ pg_tune_autovacuum_max_workers }}"
+  register: pg_tune_autovacuum_max_workers_result
+
+# shared_buffers, max_connections, wal_buffers, huge_pages,
+# max_worker_processes, io_method, and autovacuum_max_workers require a
+# postgres restart to apply.
+- name: Determine if tuning requires a postgres restart
+  ansible.builtin.set_fact:
+    pg_tune_restart_required: >-
+      {{
+        (pg_tune_max_connections_result is changed) or
+        (pg_tune_shared_buffers_result is changed) or
+        (pg_tune_wal_buffers_result is changed) or
+        (pg_tune_huge_pages_result is changed) or
+        ((pg_tune_max_worker_processes_result | default({})) is changed) or
+        ((pg_tune_io_method_result | default({})) is changed) or
+        ((pg_tune_autovacuum_max_workers_result | default({})) is changed)
+      }}
+
+- name: Restart postgres for tuning changes
+  ansible.builtin.debug:
+    msg: tuning changed parameters that require a restart, restarting postgres
+  changed_when: true
+  notify: Restart postgres
+  when:
+    - pg_tune_restart_required | bool
+    - (tailscale_name is not defined) or ('prod' not in tailscale_name)
+
+- name: Warn about pending postgres restart on prod
+  ansible.builtin.debug:
+    msg: >-
+      postgres tuning changed parameters that require a restart, but this is a
+      prod server ({{ tailscale_name | default('unknown') }}) so postgres was
+      NOT restarted automatically. Schedule a manual restart to apply.
+  when:
+    - pg_tune_restart_required | bool
+    - tailscale_name is defined
+    - "'prod' in tailscale_name"

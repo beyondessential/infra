@@ -1,11 +1,18 @@
 ---
-- ansible.builtin.include_tasks: install.yml
-- ansible.builtin.include_tasks: acme-dns.yml
-- ansible.builtin.include_tasks: caddyfile.yml
-- ansible.builtin.include_tasks: tuning.yml
-- ansible.builtin.include_tasks: backup.yml
-- ansible.builtin.include_tasks: tailscale.yml
+- name: Install caddy
+  ansible.builtin.include_tasks: install.yml
+- name: Configure ACME DNS challenge
+  ansible.builtin.include_tasks: acme-dns.yml
+- name: Configure caddyfile
+  ansible.builtin.include_tasks: caddyfile.yml
+- name: Apply caddy tuning
+  ansible.builtin.include_tasks: tuning.yml
+- name: Configure caddy backup
+  ansible.builtin.include_tasks: backup.yml
+- name: Configure tailscale integration
+  ansible.builtin.include_tasks: tailscale.yml
   when: tailscale_configured is defined and tailscale_configured
-- ansible.builtin.set_fact:
+- name: Mark caddy as configured
+  ansible.builtin.set_fact:
     caddy_configured: true
     caddy_version: "{{ caddy_version }}"

@@ -18,10 +18,12 @@ import {
   domainBase,
   namePrefix,
   hardDelete,
+  billingTags,
   tailscaleTags,
   msupplyTailscaleTags,
   normalizedStack,
   patientPortalDomain,
+  cloneOf,
 } from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
@@ -66,7 +68,12 @@ for (const [i, inst] of instances.entries()) {
     TamanuServerType: inst.id === 'central' ? 'central' : 'facility',
     Purpose: 'tamanu-server',
     ManagedBy: 'pulumi',
+    ...billingTags,
   };
+
+  if (cloneOf) {
+    tags.TamanuCloneOf = cloneOf;
+  }
 
   if (patientPortalDomain && inst.id === 'central') {
     tags.PatientPortalFQDN = patientPortalDomain;
@@ -144,6 +151,7 @@ for (const [i, inst] of instances.entries()) {
             Name: `${namePrefix}${inst.name} ${name}`,
             Purpose: 'tamanu-server',
             ManagedBy: 'pulumi',
+            ...billingTags,
           },
         },
         { deleteBeforeReplace: true, ignoreChanges: ['size'] },
@@ -171,6 +179,7 @@ for (const [i, inst] of instances.entries()) {
       ManagedBy: 'pulumi',
       Purpose: 'tamanu-server',
       FQDN: inst.fqdn,
+      ...billingTags,
     },
   });
 

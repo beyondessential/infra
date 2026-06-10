@@ -18,14 +18,18 @@
     - name: Download msedit archive
       become: true
       ansible.builtin.get_url:
-        url: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture'] }}-linux-gnu.tar.zst
+        url: https://github.com/microsoft/edit/releases/download/v{{ edit_version }}/edit-{{ edit_version }}-{{ ansible_facts['architecture']
+          }}-linux-gnu.tar.zst
         dest: /tmp/msedit-{{ edit_version }}.tar.zst
         mode: "0644"
 
-    - name: Extract msedit
+    - name: Extract msedit  # noqa: command-instead-of-module
+      # The unarchive module cannot handle zstd-compressed tarballs, so we shell
+      # out to tar with its --zstd flag.
       become: true
       ansible.builtin.command:
         cmd: tar --zstd -xf /tmp/msedit-{{ edit_version }}.tar.zst -C /usr/local/bin
+      changed_when: true
 
     - name: Set msedit permissions
       become: true

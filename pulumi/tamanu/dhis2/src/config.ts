@@ -1,4 +1,5 @@
 import { getStack } from '@pulumi/pulumi';
+import { billingTags } from '../../../common/billing.ts';
 import { cfg } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
@@ -23,3 +24,11 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 }
 
 export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
+
+export const deployment = cfg.get('deployment') ?? 'dhis2';
+export const stage = cfg.get('stage') ?? 'prod';
+export const costLabels = billingTags({
+  product: 'senaite',
+  stage,
+  deployment,
+});

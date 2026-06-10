@@ -1,5 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
-import { CNPG_VERSION } from '../versions.ts';
+import { BARMAN_CLOUD_PLUGIN_VERSION, CNPG_VERSION } from '../versions.ts';
 
 const namespace = new k8s.core.v1.Namespace('cnpg-system', {
   metadata: {
@@ -49,4 +49,27 @@ new k8s.yaml.v2.ConfigFile('catalog-postgres', {
 });
 new k8s.yaml.v2.ConfigFile('catalog-postgis', {
   file: 'https://raw.githubusercontent.com/cloudnative-pg/postgis-containers/main/image-catalogs/postgis-system-bookworm.yaml',
+});
+
+new k8s.helm.v3.Chart('barman-cloud-plugin', {
+  repo: 'cnpg',
+  chart: 'plugin-barman-cloud',
+  version: BARMAN_CLOUD_PLUGIN_VERSION,
+  fetchOpts: {
+    repo: 'https://cloudnative-pg.github.io/charts',
+  },
+  namespace: namespace.metadata.name,
+  values: {
+    affinity: {
+      nodeAffinity: {
+        requiredDuringSchedulingIgnoredDuringExecution: {
+          nodeSelectorTerms: [
+            {
+              matchExpressions: [{ key: 'bes.node.purpose', operator: 'In', values: ['system'] }],
+            },
+          ],
+        },
+      },
+    },
+  },
 });

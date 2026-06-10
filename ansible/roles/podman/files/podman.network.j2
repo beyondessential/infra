@@ -1,14 +1,15 @@
 [Match]
 Name=podman0
 
+# The spaces are defensive against Ansible's stupid templating
+
 [Network]
 Description=Default podman network interface
-Domains=tamanu.internal msupply.internal
-# Without this, resolved treats the podman link's DNS (aardvark at the
-# bridge gateway) as a global upstream and forwards arbitrary queries to it.
-# Aardvark then forwards back to resolved, which tries aardvark first → loop.
-# DNSDefaultRoute=no restricts use of aardvark to queries matching Domains=.
+
+Domains=tamanu.internal{% if msupply_enabled | default(false) %} msupply.internal{% endif %}
+
 DNSDefaultRoute=no
+
 {% for subnet in podman_network_subnets %}
 Address={{ subnet.subnet }}
 DNS={{ subnet.gateway }}

@@ -1,0 +1,58 @@
+---
+# When day-to-day access goes through a dedicated admin user, greet anyone
+# SSHing in as the stock `ubuntu` user with a banner pointing them at the
+# right one. This lives in the ubuntu user's own ~/.profile so it cannot
+# fire for any other user.
+
+- name: Check whether the ubuntu user exists
+  ansible.builtin.getent:
+    database: passwd
+    key: ubuntu
+    fail_key: false
+
+- name: Manage ubuntu user login warning
+  when: ansible_facts.getent_passwd['ubuntu'] is not none
+  vars:
+    ubuntu_profile: "{{ ansible_facts.getent_passwd['ubuntu'][4] }}/.profile"
+    warning: YOU LIKELY SHOULD BE USING THE {{ ansible_user }} USER INSTEAD
+    bangs: "{{ '!' * (warning | length) }}"
+    warning_wanted: >-
+      {{ ansible_user != 'ubuntu'
+         and ansible_facts['distribution'] == 'Ubuntu'
+         and not (ansible_user == 'iti' and (is_iti | default(false))) }}
+  block:
+    - name: Check for the ubuntu user's .profile
+      become: true
+      ansible.builtin.stat:
+        path: "{{ ubuntu_profile }}"
+      register: ubuntu_profile_stat
+
+    - name: Remove hand-written login warning
+      become: true
+      when: ubuntu_profile_stat.stat.exists
+      ansible.builtin.replace:
+        path: "{{ ubuntu_profile }}"
+        regexp: |-
+          # tell people to prefer the bes-dev user
+          if \[ ! -z "\$SSH_CONNECTION" \]; then
+          (\s*echo.*\n)+fi\n?
+        replace: ""
+
+    - name: Manage login warning in the ubuntu user's .profile
+      become: true
+      ansible.builtin.blockinfile:
+        path: "{{ ubuntu_profile }}"
+        state: "{{ 'present' if warning_wanted else 'absent' }}"
+        create: true
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+        marker: "# {mark} ansible-managed: prefer the admin user"
+        block: |
+          if [ -n "$SSH_CONNECTION" ]; then
+              echo
+              echo "{{ bangs }}"
+              echo "{{ warning }}"
+              echo "{{ bangs }}"
+              echo
+          fi

@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { normalizedStack, namePrefix } from './config.ts';
+import { billingTags, normalizedStack, namePrefix } from './config.ts';
 import { $network } from '../../../common/coreRef.ts';
 import * as securityGroupRules from '../../../common/securityGroupRules.ts';
 
@@ -19,6 +19,7 @@ export const sg = new aws.ec2.SecurityGroup(
       Name: `${namePrefix}${normalizedStack}`,
       ManagedBy: 'pulumi',
       Purpose: 'tamanu-server',
+      ...billingTags,
     },
   },
   {

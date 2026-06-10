@@ -7,10 +7,6 @@ import { nativeTags } from '../common/tags.ts';
 import { controlPlaneRole } from './roles.ts';
 
 export const version = cfg.require('version');
-if (parseInt(version.split('.')?.[1]) < 21) {
-  // 1.20 and below don't support IPv6 in AWS
-  throw new Error('EKS version must be >= 1.21');
-}
 
 export const tags = {
   Cluster: `k8s-${stackName}`,
@@ -36,23 +32,51 @@ export const cluster = new aws.eks.Cluster(
     tags: nativeTags(tags, {
       Purpose: 'k8s-system',
     }),
+    bootstrapSelfManagedAddons: false,
+    logging: {
+      clusterLogging: {
+        // when new logging types are added, add them here too
+        // because somehow "log everything" isn't the default
+        enabledTypes: [
+          { type: 'api' },
+          { type: 'audit' },
+          { type: 'authenticator' },
+          { type: 'controllerManager' },
+          { type: 'scheduler' },
+        ],
+      },
+    },
+    accessConfig: {
+      // required for backups to work and somehow not the default
+      authenticationMode: 'API_AND_CONFIG_MAP',
+    },
   },
   {
     // changing this Cluster in any way causes pulumi to throw a tantrum,
     // so protect it and ignore certain bits forcefully
-    ignoreChanges: ['tags', 'resourcesVpcConfig', 'version'],
+    ignoreChanges: ['tags', 'resourcesVpcConfig', 'version', 'bootstrapSelfManagedAddons'],
     // protect: true, // actually that's more annoying than useful
   },
 );
 
 export const clusterName = cluster.name.apply((n) => n!);
 
+// Live lookup keyed by the static cluster name. The Cluster resource's
+// outputs all go unknown during preview whenever it has a pending update,
+// which poisons everything derived from them (kubeconfig provider, OIDC url)
+// into spurious planned replacements. The live lookup stays known. dependsOn
+// keeps initial cluster creation ordered before the lookup.
+export const liveCluster = awsClassic.eks.getClusterOutput(
+  { name: stackName },
+  { dependsOn: [cluster] },
+);
+
 // OIDC provider for the cluster
 export const oidcProvider = new aws.iam.OidcProvider(
   'eks-oidc',
   {
     clientIdList: [AWS_STS],
-    url: cluster.openIdConnectIssuerUrl,
+    url: liveCluster.identities.apply((ids) => ids[0].oidcs[0].issuer),
   },
   { ignoreChanges: ['thumbprintList'] },
 );

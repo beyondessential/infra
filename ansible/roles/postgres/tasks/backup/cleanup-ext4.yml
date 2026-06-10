@@ -5,7 +5,7 @@
   community.postgresql.postgresql_user:
     name: kopia
     state: absent
-  ignore_errors: true
+  failed_when: false
 
 - name: Remove kopia peer access from pg_hba
   become: true
@@ -18,7 +18,7 @@
     address: ""
     state: absent
   notify: Reload postgres
-  ignore_errors: true
+  failed_when: false
 
 - name: Remove kopia pgdata mountpoint
   become: true
@@ -32,5 +32,5 @@
     if mountpoint -q /var/lib/kopia/pgdata; then
       fusermount -u /var/lib/kopia/pgdata || umount /var/lib/kopia/pgdata
     fi
-  ignore_errors: true
+  failed_when: false
   changed_when: false

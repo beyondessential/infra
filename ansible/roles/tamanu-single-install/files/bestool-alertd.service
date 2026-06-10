@@ -6,7 +6,10 @@ After=network.target
 Type=simple
 User=tamanu
 Group=tamanu
-ExecStart=/usr/bin/bestool tamanu alertd run --glob /etc/tamanu/current/alerts --glob /etc/tamanu/alerts
+SupplementaryGroups=systemd-journal
+# Alert checks are built into bestool; there is no on-disk alert config.
+ExecStart=/usr/bin/bestool tamanu alertd run
+MemoryMax=500M
 Restart=always
 RestartSec=10
 

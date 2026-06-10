@@ -8,3 +8,7 @@ User=kopia
 Group=kopia
 Environment=KOPIA_CHECK_FOR_UPDATES=false
 ExecStart=kopia maintenance run --full
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

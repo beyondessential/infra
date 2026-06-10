@@ -1,7 +1,9 @@
+---
 - name: Common setup
   hosts: all
   pre_tasks:
-    - when: ansible_facts['system_vendor'] == 'Amazon EC2'
+    - name: Gather EC2 metadata facts
+      when: ansible_facts['system_vendor'] == 'Amazon EC2'
       amazon.aws.ec2_metadata_facts:
     - name: Gather PostgreSQL facts
       ansible.builtin.include_tasks: tasks/gather-postgres-version.yml
@@ -46,7 +48,7 @@
       tags: [base, elastic]
 
     - role: ufw
-      when: not (dangerously_leave_ufw_alone | default(false))
+      when: not (dangerously_leave_ufw_alone | bool)
       tags: [base, ufw]
     - role: iti
       when: is_iti | default(false)

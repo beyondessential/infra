@@ -15,7 +15,7 @@
   ansible.builtin.systemd_service:
     name: caddy.socket
     state: stopped
-  ignore_errors: true
+  failed_when: false
 
 - name: Stop caddy service if running (migration only)
   become: true
@@ -23,7 +23,7 @@
   ansible.builtin.systemd_service:
     name: caddy.service
     state: stopped
-  ignore_errors: true
+  failed_when: false
 
 - name: Remove old caddy binary (migration only)
   become: true
@@ -51,6 +51,7 @@
     fi
   args:
     executable: /bin/bash
+  changed_when: true
 
 - name: Remove old caddy user (migration only)
   become: true
@@ -59,7 +60,7 @@
     name: caddy
     state: absent
     remove: true
-  ignore_errors: true
+  failed_when: false
 
 - name: Remove old caddy group (migration only)
   become: true
@@ -67,7 +68,7 @@
   ansible.builtin.group:
     name: caddy
     state: absent
-  ignore_errors: true
+  failed_when: false
 
 - name: Install caddy from bes-tools repo
   become: true
@@ -95,6 +96,7 @@
     path: /etc/default/tailscaled
     line: TS_PERMIT_CERT_UID=caddy
     create: true
+    mode: "0644"
 
 - name: Enable caddy socket
   become: true
@@ -109,3 +111,23 @@
   ansible.builtin.systemd_service:
     name: caddy.service
     enabled: false
+
+- name: Create caddy QoS drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install caddy QoS drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMScoreAdjust=-500
+  notify:
+    - Reload systemd
+    - Restart caddy

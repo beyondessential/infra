@@ -3,6 +3,10 @@
   // Modifications will be overwritten!
   // Use the production.json5 instead.
 
+  proxy: {
+    trusted: "loopback, linklocal, uniquelocal",
+  },
+
   db: {
     name: "{{ tamanu_db_name }}",
     verbose: false,
@@ -26,8 +30,9 @@
   },
 
   {% if bestool_installed_version is defined and bestool_installed_version is version('1.8.0', '>=') %}
-  // bestool-doctor.timer sends status to the meta server from the host every
-  // minute via `bestool tamanu doctor --send`, so disable the in-app sender.
+  // bestool sends status to the meta server from the host (via the
+  // bestool-doctor.timer on < 1.11.0, or the bestool-alertd daemon on >=
+  // 1.11.0), so disable the in-app sender.
   schedules: {
     sendStatusToMetaServer: {
       enabled: false,

@@ -8,6 +8,7 @@ import { cfg } from '../common/coreRef.ts';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.ts';
 import { EXTDNS_VERSION } from './versions.ts';
+import { withBootstrap } from './nodes/groups.ts';
 
 const externalDnsZones: { [domain: string]: string } = cfg.requireObject('externalDnsZones');
 export const externalDnsZoneDomains = Object.keys(externalDnsZones);
@@ -201,5 +202,5 @@ new k8s.apps.v1.Deployment(
       },
     },
   },
-  { provider },
+  { provider, dependsOn: withBootstrap() },
 );

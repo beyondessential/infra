@@ -1,0 +1,6 @@
+name: pgro
+description: Postgres Restore Operator
+runtime:
+  name: nodejs
+  options:
+    typescript: false

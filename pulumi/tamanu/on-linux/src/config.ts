@@ -1,4 +1,5 @@
-import { all, getStack, type Input, interpolate, type Output } from '@pulumi/pulumi';
+import { all, getStack, Config, type Input, interpolate, type Output } from '@pulumi/pulumi';
+import { billingTags as makeBillingTags } from '../../../common/billing.ts';
 import { cfg, zone } from '../../../common/coreRef.ts';
 import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
 
@@ -52,6 +53,12 @@ export const namePrefix = cfg.get('namePrefix') ?? '';
 export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
 
+// When set, this stack does not provision its own kopia bucket, IAM users, or
+// role; it re-exports the referenced stack's outputs. AWS Backup, EC2, DNS,
+// and ACME-DNS users are unaffected. Expected value is a fully-qualified
+// stack reference, e.g. `bes/tamanu-on-linux/palau-prod`.
+export const cloneOf = cfg.get('cloneOf') ?? null;
+
 const patientPortalDomainName = cfg.get('patientPortalDomain') ?? 'patient';
 export const patientPortalDomain =
   patientPortalDomainName && interpolate`${patientPortalDomainName}.${domainBase}`;
@@ -69,6 +76,13 @@ const typeGuess = (() => {
     return 'prod';
   }
 })();
+
+const billingCfg = new Config('billing');
+export const billingTags = makeBillingTags({
+  product: billingCfg.get('product') ?? 'tamanu',
+  stage: billingCfg.get('stage') ?? typeGuess ?? 'prod',
+  deployment: billingCfg.get('deployment'),
+});
 
 export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   const tags = cfg.get('tailscaleTags')?.split(/,\s*/);
@@ -180,6 +194,10 @@ export const central: Server = {
     cfgCentral === false || centralHasExternalIps || (cfgCentral && cfgCentral.external) || false,
   name: 'Central',
   subdomain: 'central',
+  // Default kept at t4g.medium. Central servers under sustained load exceed
+  // its 20% baseline and accrue surplus CPU credits; size those up per-stack
+  // via the `central: { instance: t4g.large }` config (don't bump the default
+  // — most centrals run within baseline and would just cost more).
   instance: 't4g.medium',
   tailscaleName: interpolate`${tailscaleBase}-central`,
   legacyDisk,

@@ -1,0 +1,40 @@
+---
+# `bestool tamanu start` (1.13.0+) is the source of truth for which Tamanu
+# units must come up at boot. Container quadlets ship without an [Install]
+# block; this play also tears down any leftover enable symlinks from before
+# the switch.
+
+- name: Disable tamanu container services at boot
+  become: true
+  loop:
+    - tamanu-frontend@a.service
+    - tamanu-frontend@b.service
+    - tamanu-central-api@1.service
+    - tamanu-central-api@2.service
+    - tamanu-central-tasks.service
+    - tamanu-central-fhir-refresh.service
+    - tamanu-central-fhir-resolve.service
+    - tamanu-facility-api@1.service
+    - tamanu-facility-api@2.service
+    - tamanu-facility-tasks.service
+    - tamanu-facility-sync.service
+    - tamanu-patientportal.service
+  ansible.builtin.file:
+    path: /etc/systemd/system/multi-user.target.wants/{{ item }}
+    state: absent
+  notify: Reload systemd
+
+- name: Install tamanu-boot oneshot
+  become: true
+  ansible.builtin.copy:
+    src: tamanu-boot.service
+    dest: /etc/systemd/system/tamanu-boot.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable tamanu-boot at boot
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-boot.service
+    enabled: true
+    daemon_reload: true

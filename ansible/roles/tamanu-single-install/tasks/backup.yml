@@ -11,6 +11,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-tamanu-config.service') }}"
     dest: /etc/systemd/system/kopia-backup-tamanu-config.service
+    mode: "0644"
   notify:
     - Reload systemd
 
@@ -19,6 +20,7 @@
   ansible.builtin.copy:
     src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-tamanu-config.timer') }}"
     dest: /etc/systemd/system/kopia-backup-tamanu-config.timer
+    mode: "0644"
   notify:
     - Reload systemd
 

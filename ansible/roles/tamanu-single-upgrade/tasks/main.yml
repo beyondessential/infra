@@ -1,7 +1,9 @@
 ---
-- name: Set patient portal enabled fact
-  ansible.builtin.set_fact:
-    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined) or (patient_portal_fqdn is defined)) }}"
+- name: Report what this upgrade will do
+  ansible.builtin.debug:
+    msg: >-
+      tamanu_version: {{ previous_tamanu_version | default('(none)') }} -> {{ tamanu_version }};
+      tamanu_frontend_version: {{ previous_tamanu_frontend_version | default('(none)') }} -> {{ tamanu_frontend_version }}
 
 - name: Collect which services are running
   ansible.builtin.service_facts:
@@ -9,13 +11,34 @@
   ansible.builtin.debug:
     msg: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
 
-- name: Stop the application services
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
+# Stops only the kind-scoped API/tasks/sync/fhir services. The trailing
+# dash filters out the legacy `tamanu-facility` singleton (no dash after
+# `facility`) and tamanu-frontend (no kind segment), so the frontend keeps
+# serving traffic while we migrate.
+- name: Stop the API/tasks/sync/fhir services
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu stop tamanu-{{ tamanu_server_type }}-
+  changed_when: true
+
+- name: Stop old singleton patient portal service
+  when: tamanu_server_type == 'central'
   become: true
   ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: tamanu-patientportal
     state: stopped
+    enabled: false
+  failed_when: false
   notify: Reload caddy
+
+- name: Mask old singleton patient portal service
+  when: tamanu_server_type == 'central'
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/tamanu-patientportal.service
+    src: /dev/null
+    state: link
+    force: true
+  notify: Reload systemd
 
 - name: Stop old single facility service
   when: tamanu_server_type == 'facility'
@@ -46,56 +69,29 @@
   notify: Reload systemd
 
 - name: Reload caddy
-  meta: flush_handlers
-
-- name: Upgrade the frontend service A
+  ansible.builtin.meta: flush_handlers
+- name: Roll the frontend and patient portal services
   become: true
-  ansible.builtin.systemd:
-    name: tamanu-frontend@a
-    state: restarted
-    enabled: true
-  notify: Reload caddy
+  ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend tamanu-patientportal
+  changed_when: true
 
-- name: Reload caddy
-  meta: flush_handlers
-
-- name: Wait for new frontend to start
-  ansible.builtin.wait_for:
-    timeout: 10
-    # This used to be a check for the frontend to exist in DNS, but that was
-    # unreliable as it depended on the system DNS connecting to the netavark
-    # DNS, which was not always the case. Waiting for 10 seconds is suboptimal,
-    # but it's better than nothing.
-
-- name: Upgrade the frontend service B
-  become: true
-  ansible.builtin.systemd:
-    name: tamanu-frontend@b
-    state: restarted
-    enabled: true
-  notify: Reload caddy
-
-- name: Reload caddy
-  meta: flush_handlers
-
-- name: Upgrade the patient portal service
-  when: patient_portal_enabled
-  become: true
-  ansible.builtin.systemd:
-    name: tamanu-patientportal
-    state: restarted
-    enabled: true
-  notify: Reload caddy
-
-- name: Reload caddy
-  when: patient_portal_enabled
-  meta: flush_handlers
-
-# cleanup any legacy or experiments;
-# two frontend services is way more than enough and only really serves
-# to provide a way to do a rolling upgrade
+# cleanup any legacy or experiments; bestool's frontend and patient portal
+# expectations only admit @a/@b, so any other instance has to be cleaned
+# up by hand.
 - name: Stop frontend services that don't need to be running
-  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$') }}"
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$')
+    }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  notify: Reload caddy
+
+- name: Stop patient portal services that don't need to be running
+  when: tamanu_server_type == 'central'
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-patientportal@.*') | reject('match', '^tamanu-patientportal@(a|b)[.]service$') | reject('match',
+    '.+@[.]service$') }}"
   become: true
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -104,43 +100,37 @@
   notify: Reload caddy
 
 - name: Reload caddy
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
+- name: Drop reporting schema if present
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    login_db: "{{ db_name }}"
+    name: reporting
+    state: absent
+    cascade_drop: true
 
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
+  changed_when: true
 
-# we ensure that the standard loadout is up
-# we used to restore all services as they
-# existed on the machine, but that led to drift
-
-- name: Start the standard facility services
-  when: tamanu_server_type == 'facility'
-  loop:
-    - "api@1"
-    - "api@2"
-    - tasks
-    - sync
+- name: Create reporting schema owned by tamanu
   become: true
-  ansible.builtin.systemd:
-    name: "tamanu-facility-{{ item }}.service"
-    state: started
-    enabled: true
-  notify: Reload caddy
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    login_db: "{{ db_name }}"
+    name: reporting
+    owner: tamanu
+    state: present
 
-- name: Start the standard central services
-  when: tamanu_server_type == 'central'
-  loop:
-    - "api@1"
-    - "api@2"
-    - tasks
-    - fhir-refresh
-    - fhir-resolve
+# Bring everything that should be Up back up. Idempotent: services already
+# running are left alone, so this also doubles as recovery for a partial
+# previous run that left things stopped.
+- name: Start the standard services
   become: true
-  ansible.builtin.systemd:
-    name: "tamanu-central-{{ item }}.service"
-    state: started
-    enabled: true
+  ansible.builtin.command: /usr/bin/bestool tamanu start
+  changed_when: true
   notify: Reload caddy
 
 - name: Reload caddy
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers

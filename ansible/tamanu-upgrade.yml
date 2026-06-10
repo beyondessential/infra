@@ -1,10 +1,11 @@
+---
 - name: Sanity check
   hosts: all
   gather_facts: false
   tasks:
     - name: Check if the tamanu_version is set
       tags: [pre, go]
-      assert:
+      ansible.builtin.assert:
         that: tamanu_version is defined
         msg: "tamanu_version is not defined. Please set it in the inventory file."
 
@@ -15,6 +16,10 @@
 - name: Central pre-upgrade (if needed)
   hosts: central
   roles:
+    - role: postgres-database
+      dbname: tamanu
+      tags: [pre, postgres]
+
     - role: tamanu-single-install
       type: central
       db_name: tamanu
@@ -23,6 +28,10 @@
 - name: Facility pre-upgrade  (if needed)
   hosts: facility
   roles:
+    - role: postgres-database
+      dbname: tamanu
+      tags: [pre, postgres]
+
     - role: tamanu-single-install
       type: facility
       db_name: tamanu
@@ -36,6 +45,7 @@
   roles:
     - role: tamanu-single-upgrade
       type: central
+      db_name: tamanu
       tags: [go, tamanu]
 
 - name: Facility upgrade
@@ -43,6 +53,7 @@
   roles:
     - role: tamanu-single-upgrade
       type: facility
+      db_name: tamanu
       tags: [go, tamanu]
 
     - role: msupply-upgrade

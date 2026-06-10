@@ -3,6 +3,7 @@ import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { addAddon, oidcProvider } from '../cluster.ts';
 import { provider } from '../kubeconfig.ts';
 import { cfg } from '../../common/coreRef.ts';
+import { withBootstrap } from '../nodes/groups.ts';
 
 const ebsRole = eksServiceAccount('eks-ebs-csi', {
   serviceAccountName: 'ebs-csi-controller-sa',
@@ -11,16 +12,24 @@ const ebsRole = eksServiceAccount('eks-ebs-csi', {
   managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy'],
 });
 
-const addonStorage = addAddon('aws-ebs-csi-driver', {
-  purpose: 'system',
-  serviceAccountRoleArn: ebsRole.arn,
-  resolveConflicts: 'PRESERVE',
-});
+const addonStorage = addAddon(
+  'aws-ebs-csi-driver',
+  {
+    purpose: 'system',
+    serviceAccountRoleArn: ebsRole.arn,
+    resolveConflicts: 'PRESERVE',
+  },
+  { dependsOn: withBootstrap() },
+);
 
-const addonSnapshot = addAddon('snapshot-controller', {
-  purpose: 'system',
-  resolveConflicts: 'PRESERVE',
-});
+const addonSnapshot = addAddon(
+  'snapshot-controller',
+  {
+    purpose: 'system',
+    resolveConflicts: 'PRESERVE',
+  },
+  { dependsOn: withBootstrap() },
+);
 
 if (cfg.getBoolean('enableGP2Storage') ?? false) {
   new k8s.storage.v1.StorageClass(

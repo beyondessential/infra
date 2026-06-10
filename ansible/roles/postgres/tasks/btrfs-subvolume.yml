@@ -7,7 +7,10 @@
 
 - name: Check root mount options for subvol=@
   ansible.builtin.shell: |
+    set -o pipefail
     findmnt -n -o OPTIONS / | grep -E 'subvol=/?(/@|@)($|,)'
+  args:
+    executable: /bin/bash
   register: pg_root_subvol
   changed_when: false
   failed_when: false
@@ -56,6 +59,7 @@
       ansible.builtin.command:
         cmd: btrfs subvolume create /mnt/btrfs-toplevel/@postgres
       when: pg_subvol_exists.rc != 0
+      changed_when: true
 
     - name: Unmount btrfs top-level
       become: true
@@ -66,7 +70,10 @@
     - name: Check if /var/lib/postgresql has existing data
       become: true
       ansible.builtin.shell: |
+        set -o pipefail
         ls -A /var/lib/postgresql 2>/dev/null | head -1
+      args:
+        executable: /bin/bash
       register: pg_existing_data
       changed_when: false
       failed_when: false
@@ -102,34 +109,17 @@
       become: true
       ansible.builtin.lineinfile:
         path: /etc/fstab
-        regexp: '^\S+\s+/var/lib/postgresql\s+'
+        regexp: "^\\S+\\s+/var/lib/postgresql\\s+"
         line: "UUID={{ pg_root_uuid.stdout }} /var/lib/postgresql btrfs compress=zstd:6,subvol=@postgres 0 2"
         state: present
 
+    # noqa command-instead-of-module: activate the fstab entry written by the
+    # previous task; ansible.posix.mount would rewrite fstab and change semantics.
     - name: Mount /var/lib/postgresql
       become: true
-      ansible.builtin.command:
+      ansible.builtin.command:  # noqa: command-instead-of-module
         cmd: mount /var/lib/postgresql
       changed_when: true
-
-    - name: Create snapper config for postgres subvolume
-      become: true
-      ansible.builtin.shell: |
-        if ! command -v snapper >/dev/null 2>&1; then
-          echo "snapper not installed"
-          exit 0
-        fi
-        if [ -f "/etc/snapper/configs/postgres" ]; then
-          echo "already exists"
-          exit 0
-        fi
-        snapper -c postgres create-config /var/lib/postgresql
-        snapper -c postgres set-config \
-          TIMELINE_CREATE=no \
-          {{ snapper_timeline_settings | dict2items | map(attribute='key') | zip(snapper_timeline_settings | dict2items | map(attribute='value')) | map('join', '=') | join(' ') }}
-        echo "created"
-      register: snapper_pg_config
-      changed_when: "'created' in snapper_pg_config.stdout"
 
     - name: Start postgresql after migration
       become: true

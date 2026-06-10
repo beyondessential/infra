@@ -1,4 +1,4 @@
-import { ComponentResource, output, type Input, type Output } from '@pulumi/pulumi';
+import { ComponentResource, interpolate, output, type Input, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from './waitFor.ts';
@@ -7,6 +7,12 @@ import { RUN_ON_SPOT } from './affinities.ts';
 import { postgresUrlSecret } from './postgresUrl.ts';
 import { backups } from './coreRef.ts';
 import { DEFAULT_POSTGRES_VERSION } from '../../constants/internal.ts';
+
+export interface BarmanBackupArgs {
+  bucket: Input<string>;
+  deployName: string;
+  retentionDays: number;
+}
 
 export interface PostgresArgs {
   parent?: ComponentResource;
@@ -21,6 +27,20 @@ export interface PostgresArgs {
   roles?: Input<Input<ManagedRole>[]>;
   initSql?: Input<string>;
   seedSnapshotName?: Input<string>;
+  // Labels propagated via inheritedMetadata to all pods in the cluster.
+  // Used for AWS split cost allocation (CUR pod label attribution).
+  inheritedMetadataLabels?: Record<string, string>;
+  // When provided, overrides the default IRSA annotation in serviceAccountTemplate.
+  // Pass this for every cluster (even when barmanBackup is absent) so the annotation
+  // is pre-populated and ready when barmanBackup is later enabled.
+  barmanRoleArn?: string;
+  // When provided, enables Barman Cloud WAL archiving + scheduled base backups.
+  barmanBackup?: BarmanBackupArgs;
+  // Require all instances of this cluster in the same AZ (still on different
+  // nodes via CNPG's default hostname anti-affinity). Keeps replication
+  // traffic off the cross-AZ meter at the cost of AZ-failure tolerance; for
+  // environments that don't need to survive an AZ loss.
+  colocateAz?: boolean;
 }
 
 // https://cloudnative-pg.io/documentation/1.26/cloudnative-pg.v1/#postgresql-cnpg-io-v1-RoleConfiguration
@@ -53,6 +73,10 @@ export function runPostgres({
   roles = [],
   initSql,
   seedSnapshotName,
+  barmanRoleArn,
+  barmanBackup,
+  inheritedMetadataLabels,
+  colocateAz = false,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -71,6 +95,9 @@ export function runPostgres({
         },
       },
       spec: {
+        ...(inheritedMetadataLabels
+          ? { inheritedMetadata: { labels: inheritedMetadataLabels } }
+          : {}),
         imageCatalogRef: {
           apiGroup: 'postgresql.cnpg.io',
           kind: 'ClusterImageCatalog',
@@ -98,6 +125,21 @@ export function runPostgres({
           parameters: {
             // should be about 25% of requested memory
             shared_buffers: '200MB',
+            // and this about 75%; it's a planner hint, not an allocation
+            effective_cache_size: '560MB',
+            // halves-ish WAL volume on full-page-write-heavy churn, which
+            // shrinks replication traffic, pg_wal I/O, and backup sizes
+            wal_compression: 'lz4',
+            // gp3 is SSD-class: seeks are nearly as cheap as sequential reads,
+            // and it has queue depth to exploit
+            random_page_cost: '1.1',
+            effective_io_concurrency: '200',
+            // JIT causes CPU spikes and slow planning on simple OLTP queries
+            jit: 'off',
+            // PG18 note: do NOT port io_method=io_uring from the ansible
+            // role — cnpg pods run seccompProfile RuntimeDefault, which
+            // blocks io_uring syscalls. The PG18 default (worker) is the
+            // right setting in pods.
             // Cap the WAL a replication slot may retain so a stranded or
             // long-lagging standby can't fill the primary's disk (slots have
             // no bound by default). If a replica falls further behind than
@@ -152,21 +194,43 @@ export function runPostgres({
               },
             ],
           },
+          ...(colocateAz
+            ? {
+                additionalPodAffinity: {
+                  requiredDuringSchedulingIgnoredDuringExecution: [
+                    {
+                      labelSelector: { matchLabels: { 'cnpg.io/cluster': `${name}-db` } },
+                      topologyKey: 'topology.kubernetes.io/zone',
+                    },
+                  ],
+                },
+              }
+            : {}),
         },
         serviceAccountTemplate: {
           metadata: {
             annotations: {
-              'eks.amazonaws.com/role-arn': backups.sa,
+              'eks.amazonaws.com/role-arn': barmanRoleArn ?? backups.sa,
             },
           },
         },
-        backup: backupSchedule
+        ...(barmanBackup
           ? {
-              volumeSnapshot: {
-                className: 'ebs',
-              },
+              plugins: [
+                {
+                  name: 'barman-cloud.cloudnative-pg.io',
+                  isWALArchiver: true,
+                  parameters: {
+                    barmanObjectName: `${name}-db-object-store`,
+                    serverName: `${name}-db`,
+                  },
+                },
+              ],
             }
-          : {},
+          : {}),
+        backup: {
+          ...(backupSchedule ? { volumeSnapshot: { className: 'ebs' } } : {}),
+        },
         // logLevel: 'trace',
       },
     },
@@ -198,6 +262,61 @@ export function runPostgres({
         },
       },
       { parent, ignoreChanges: ['spec.schedule'] },
+    );
+  }
+
+  if (barmanBackup) {
+    const objectStore = new k8s.apiextensions.CustomResource(
+      `${name}-db-object-store`,
+      {
+        apiVersion: 'barmancloud.cnpg.io/v1',
+        kind: 'ObjectStore',
+        metadata: {
+          name: `${name}-db-object-store`,
+          namespace,
+        },
+        spec: {
+          retentionPolicy: `${barmanBackup.retentionDays}d`,
+          configuration: {
+            destinationPath: interpolate`s3://${barmanBackup.bucket}/${barmanBackup.deployName}/${name}-db/`,
+            s3Credentials: {
+              inheritFromIAMRole: true,
+            },
+            wal: {
+              compression: 'gzip',
+            },
+            data: {
+              compression: 'gzip',
+            },
+          },
+        },
+      },
+      { parent },
+    );
+
+    new k8s.apiextensions.CustomResource(
+      `${name}-db-scheduled-backup`,
+      {
+        apiVersion: 'postgresql.cnpg.io/v1',
+        kind: 'ScheduledBackup',
+        metadata: {
+          name: `${name}-db-scheduled`,
+          namespace,
+        },
+        spec: {
+          schedule: '0 0 2 * * *',
+          immediate: true,
+          backupOwnerReference: 'self',
+          cluster: {
+            name: `${name}-db`,
+          },
+          method: 'plugin',
+          pluginConfiguration: {
+            name: 'barman-cloud.cloudnative-pg.io',
+          },
+        },
+      },
+      { dependsOn: [objectStore], parent },
     );
   }
 

@@ -8,7 +8,7 @@
         name: elastic-agent
         state: stopped
         enabled: false
-      ignore_errors: true
+      failed_when: false
 
     - name: Stop ElasticEndpoint service
       become: true
@@ -16,7 +16,7 @@
         name: ElasticEndpoint
         state: stopped
         enabled: false
-      ignore_errors: true
+      failed_when: false
 
 - name: Uninstall Elastic security agent
   when: (not elastic_agent_enabled) or (elastic_agent_enrollment_token is not defined)
@@ -27,7 +27,7 @@
         name: elastic-agent
         state: stopped
         enabled: false
-      ignore_errors: true
+      failed_when: false
 
     - name: Uninstall Elastic agent
       become: true
@@ -46,7 +46,7 @@
   when: (elastic_agent_enabled) and (elastic_agent_enrollment_token is defined)
   block:
     - name: Set elastic_architecture
-      set_fact:
+      ansible.builtin.set_fact:
         elastic_architecture: |-
           {{
             "amd64" if ansible_facts['architecture'] == "x86_64"
@@ -61,18 +61,27 @@
       ansible.builtin.copy:
         src: "{{ lookup('ansible.builtin.fileglob', 'elasticsearch.asc') }}"
         dest: /etc/apt/keyrings/elasticsearch.asc
+        mode: "0644"
 
     - name: Add Elastic repo
       become: true
-      ansible.builtin.apt_repository:
-        repo: deb [signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
-        state: present
-        filename: elastic
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/elastic.list
+        mode: "0644"
+        content: |
+          deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
+
+    - name: Remove duplicate Elastic apt source
+      become: true
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/artifacts_elastic_co_packages_9_x_apt.list
+        state: absent
 
     - name: Prioritise Elastic repo
       become: true
       ansible.builtin.copy:
         dest: /etc/apt/preferences.d/99-elastic
+        mode: "0644"
         content: |
           Package: *
           Pin: release o=artifacts.elastic.co
@@ -107,6 +116,7 @@
           elastic-agent enroll
           --url={{ elastic_agent_fleet_url }}
           --enrollment-token={{ elastic_agent_enrollment_token }}
+      changed_when: true
       when: >
         elastic_agent_fleet_url and
         (elastic_agent_status.stdout | from_json).FleetMessage == "Not enrolled into Fleet"

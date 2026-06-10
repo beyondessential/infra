@@ -1,7 +1,9 @@
+---
 - name: Install
   hosts: all
   pre_tasks:
-    - when: ansible_facts['system_vendor'] == 'Amazon EC2'
+    - name: Gather EC2 metadata facts
+      when: ansible_facts['system_vendor'] == 'Amazon EC2'
       amazon.aws.ec2_metadata_facts:
   roles:
     - role: baseline

@@ -28,4 +28,5 @@
       echo 'RTC_BBAT_VCHG=3000000' >> "$tmp"
       rpi-eeprom-config --apply "$tmp"
     executable: /bin/bash
+  changed_when: true
   notify: Reboot

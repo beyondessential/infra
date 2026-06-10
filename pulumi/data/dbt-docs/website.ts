@@ -129,7 +129,7 @@ const distribution = new aws.cloudfront.Distribution(
       minimumProtocolVersion: 'TLSv1.2_2021',
     },
   },
-  { deleteBeforeReplace: true, ignoreChanges: ['origins'] },
+  { deleteBeforeReplace: true, ignoreChanges: ['origins', 'webAclId'] },
 );
 
 new aws.s3.BucketPolicy(

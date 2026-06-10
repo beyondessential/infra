@@ -16,7 +16,7 @@
     path: /usr/local/bin/netavark
     state: absent
 
-- name: Install netavark and aardvark-dns
+- name: Install netavark and aardvark-dns  # noqa: package-latest
   become: true
   ansible.builtin.apt:
     name:

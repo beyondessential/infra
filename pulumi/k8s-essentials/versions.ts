@@ -27,8 +27,6 @@ export const PROMETHEUS_VERSION = '28.13.0';
 // helm chart version
 export const CNPG_VERSION = '0.27.1';
 
-// PGRO version is in the pulumi config
-
 // https://tailscale.com/docs/features/kubernetes-operator
 // tailscale version
 export const TAILSCALE_VERSION = '1.94.2';
@@ -36,3 +34,7 @@ export const TAILSCALE_VERSION = '1.94.2';
 // https://caas-team.github.io/helm-charts/index.yaml (chart: py-kube-downscaler)
 // helm chart version
 export const KUBE_DOWNSCALER_VERSION = '0.3.12';
+
+// https://artifacthub.io/packages/helm/cloudnative-pg/plugin-barman-cloud
+// helm chart version (plugin image version is v0.12.0)
+export const BARMAN_CLOUD_PLUGIN_VERSION = '0.6.0';

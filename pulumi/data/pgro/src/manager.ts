@@ -1,11 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
-import * as pulumi from '@pulumi/pulumi';
 import { namespace, ns } from './namespace.ts';
-
-const cfg = new pulumi.Config('pgro');
-const imageTag = cfg.get('imageTag') ?? 'latest';
-const image = `ghcr.io/beyondessential/postgres-restore-operator:${imageTag}`;
-const maxConcurrentRestores = cfg.getNumber('maxConcurrentRestores') ?? 2;
+import { image, maxConcurrentRestores } from './config.ts';
 
 const labels = {
   'app.kubernetes.io/name': 'postgres-restore-operator',
@@ -138,11 +133,11 @@ new k8s.apps.v1.Deployment(
               resources: {
                 requests: {
                   cpu: '50m',
-                  memory: '64Mi',
+                  memory: '128Mi',
                 },
                 limits: {
                   cpu: '500m',
-                  memory: '256Mi',
+                  memory: '1Gi',
                 },
               },
               securityContext: {

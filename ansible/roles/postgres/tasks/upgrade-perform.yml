@@ -10,7 +10,11 @@
   failed_when: false
 
 - name: Detect filesystem type for PostgreSQL data directory
-  ansible.builtin.shell: df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  ansible.builtin.shell: |
+    set -o pipefail
+    df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
+  args:
+    executable: /bin/bash
   register: postgresql_filesystem_type
   changed_when: false
 
@@ -22,25 +26,63 @@
   ansible.builtin.debug:
     msg: "Using pg_upgrade method: {{ pg_upgrade_method }} (filesystem: {{ postgresql_filesystem_type.stdout }})"
 
-- name: Check if snapper has a postgres configuration
-  when: postgresql_filesystem_type.stdout == 'btrfs'
-  become: true
-  ansible.builtin.shell: snapper -c postgres list >/dev/null 2>&1
-  register: snapper_postgres_config
-  changed_when: false
-  ignore_errors: true
+- name: Determine snapshot method for upgrade
+  ansible.builtin.set_fact:
+    postgresql_snapshot_method: "{{ 'btrfs' if postgresql_filesystem_type.stdout == 'btrfs' else 'none' }}"
 
-- name: Create pre-upgrade snapshot with snapper
-  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
-  become: true
-  ansible.builtin.command:
-    cmd: snapper -c postgres create --print-number --type pre --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
-  register: snapper_pre_snapshot
-
-- name: Display snapshot information
-  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
+- name: Display chosen snapshot method
   ansible.builtin.debug:
-    msg: "Created pre-upgrade snapshot with snapper for postgres configuration"
+    msg: "Snapshot method for this upgrade: {{ postgresql_snapshot_method }}"
+
+- name: Create pre-upgrade snapshot with btrfs
+  when: postgresql_snapshot_method == 'btrfs'
+  become: true
+  block:
+    - name: Get UUID of /var/lib/postgresql mount
+      ansible.builtin.command:
+        cmd: findmnt -n -o UUID /var/lib/postgresql
+      register: pg_mount_uuid
+      changed_when: false
+
+    - name: Get FSROOT of /var/lib/postgresql mount
+      ansible.builtin.command:
+        cmd: findmnt -n -o FSROOT /var/lib/postgresql
+      register: pg_mount_fsroot
+      changed_when: false
+
+    - name: Set btrfs snapshot facts
+      ansible.builtin.set_fact:
+        pg_btrfs_subvol_name: "{{ pg_mount_fsroot.stdout | trim | regex_replace('^/', '') }}"
+        pg_btrfs_snapshot_name: "{{ pg_mount_fsroot.stdout | trim | regex_replace('^/', '') }}-pre-pgupgrade-{{ installed_postgresql_version }}-to-{{ postgresql_desired_version
+          }}-{{ ansible_date_time.iso8601_basic_short }}"
+
+    - name: Mount btrfs top-level for snapshot
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          mkdir -p /mnt/btrfs-toplevel
+          mountpoint -q /mnt/btrfs-toplevel || mount -o subvolid=5 UUID={{ pg_mount_uuid.stdout }} /mnt/btrfs-toplevel
+      changed_when: true
+
+    - name: Create read-only pre-upgrade snapshot
+      ansible.builtin.command:
+        cmd: btrfs subvolume snapshot -r /mnt/btrfs-toplevel/{{ pg_btrfs_subvol_name }} /mnt/btrfs-toplevel/{{ pg_btrfs_snapshot_name }}
+      register: btrfs_pre_snapshot
+      changed_when: true
+
+    - name: Unmount btrfs top-level
+      ansible.builtin.command:
+        cmd: umount /mnt/btrfs-toplevel
+      changed_when: true
+
+    - name: Display btrfs snapshot information
+      ansible.builtin.debug:
+        msg: "Created pre-upgrade btrfs snapshot: {{ pg_btrfs_snapshot_name }} (visible at top-level subvolid=5)"
+
+- name: Warn when no snapshot is taken
+  when: postgresql_snapshot_method == 'none'
+  ansible.builtin.debug:
+    msg: "No snapshot will be taken (filesystem is {{ postgresql_filesystem_type.stdout }}, not btrfs); the upgrade will proceed without a rollback point."
 
 - name: Install new PostgreSQL version
   become: true
@@ -72,7 +114,7 @@
   ansible.builtin.systemd:
     name: "postgresql@{{ postgresql_desired_version }}-main"
     state: stopped
-  ignore_errors: true
+  failed_when: false
 
 - name: Check if new cluster was auto-initialized
   become: true
@@ -104,6 +146,7 @@
     dest: /etc/postgresql/{{ postgresql_desired_version }}/main/
     owner: postgres
     group: postgres
+    mode: preserve
 
 - name: Update data_directory in new PostgreSQL config
   become: true
@@ -144,6 +187,7 @@
   become: true
   ansible.builtin.shell:
     cmd: rm -rf /var/lib/postgresql/{{ postgresql_desired_version }}/main/* /var/lib/postgresql/{{ postgresql_desired_version }}/main/.[!.]* 2>/dev/null || true
+  changed_when: true
 
 - name: Initialize new PostgreSQL cluster
   become: true
@@ -151,6 +195,7 @@
   ansible.builtin.command:
     cmd: /usr/lib/postgresql/{{ postgresql_desired_version }}/bin/initdb -D /var/lib/postgresql/{{ postgresql_desired_version }}/main
   register: initdb_result
+  changed_when: true
 
 - name: Stop all PostgreSQL services
   become: true
@@ -163,6 +208,39 @@
   ansible.builtin.systemd:
     name: "postgresql@{{ postgresql_desired_version }}-main"
     state: stopped
+
+- name: Check data checksum status on old cluster
+  become: true
+  become_user: postgres
+  ansible.builtin.shell:
+    cmd: >
+      set -o pipefail;
+      /usr/lib/postgresql/{{ installed_postgresql_version }}/bin/pg_controldata
+      /var/lib/postgresql/{{ installed_postgresql_version }}/main
+      | awk -F': *' '/Data page checksum version/ {print $2}'
+    executable: /bin/bash
+  register: old_cluster_checksum_version
+  changed_when: false
+
+- name: Notify before enabling data checksums
+  when: old_cluster_checksum_version.stdout | trim == '0'
+  ansible.builtin.debug:
+    msg: >-
+      Data checksums are disabled on the old cluster. Enabling them now with
+      pg_checksums; this rewrites every page and may take a long time on large
+      databases.
+
+- name: Enable data checksums on old cluster
+  when: old_cluster_checksum_version.stdout | trim == '0'
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: >
+      /usr/lib/postgresql/{{ installed_postgresql_version }}/bin/pg_checksums
+      --enable
+      --pgdata=/var/lib/postgresql/{{ installed_postgresql_version }}/main
+  register: pg_checksums_result
+  changed_when: true
 
 - name: Check upgrade compatibility
   become: true
@@ -227,7 +305,8 @@
   when: pg_upgrade_check.rc != 0
   become: true
   ansible.builtin.shell:
-    cmd: find /var/lib/postgresql/{{ postgresql_desired_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null || echo "No log file found"
+    cmd: find /var/lib/postgresql/{{ postgresql_desired_version }}/main/pg_upgrade_output.d -name "pg_upgrade_server.log" -exec tail -100 {} \; 2>/dev/null ||
+      echo "No log file found"
   register: pg_upgrade_log_content
   changed_when: false
 
@@ -261,22 +340,11 @@
       {{ pg_upgrade_method }}
     chdir: /var/lib/postgresql
   register: pg_upgrade_result
+  changed_when: true
 
 - name: Display upgrade results
   ansible.builtin.debug:
     var: pg_upgrade_result.stdout_lines
-
-- name: Create post-upgrade snapshot with snapper
-  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
-  become: true
-  ansible.builtin.command:
-    cmd: snapper -c postgres create --type post --pre-number "{{ snapper_pre_snapshot.stdout }}" --cleanup-algorithm number --description "PostgreSQL upgrade from {{ installed_postgresql_version }} to {{ postgresql_desired_version }}"
-  register: snapper_post_snapshot
-
-- name: Display post-upgrade snapshot information
-  when: postgresql_filesystem_type.stdout == 'btrfs' and snapper_postgres_config.rc == 0
-  ansible.builtin.debug:
-    msg: "Created post-upgrade snapshot with snapper for postgres configuration"
 
 - name: Start new PostgreSQL service
   become: true
@@ -311,13 +379,14 @@
   register: vacuumdb_job
 
 - name: Delete old PostgreSQL cluster
-  when: postgresql_cleanup_old_cluster is defined and postgresql_cleanup_old_cluster
+  when: postgresql_cleanup_old_cluster is defined and postgresql_cleanup_old_cluster | bool
   become: true
   become_user: postgres
   ansible.builtin.command:
     cmd: /var/lib/postgresql/delete_old_cluster.sh
     chdir: /var/lib/postgresql
   register: delete_old_cluster
+  changed_when: true
 
 - name: Delete upgrade scripts
   become: true
@@ -343,3 +412,9 @@
   loop:
     - postgresql-{{ postgresql_desired_version }}
     - postgresql-client-{{ postgresql_desired_version }}
+
+- name: Refresh version facts so later tasks and handlers use the new version
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_desired_version }}"
+    postgresql_installed_version: "{{ postgresql_desired_version }}"
+    postgresql_version: "{{ postgresql_desired_version }}"

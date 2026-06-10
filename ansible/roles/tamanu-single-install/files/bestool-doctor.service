@@ -6,3 +6,7 @@ Type=oneshot
 User=tamanu
 Group=tamanu
 ExecStart=/usr/bin/bestool tamanu doctor --send
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

@@ -1,10 +1,4 @@
 ---
-- name: Legacy rm app config
-  become: true
-  ansible.builtin.file:
-    path: /etc/tamanu/production.json5
-    state: absent
-
 - name: Restart bestool-alertd
   become: true
   ansible.builtin.systemd:

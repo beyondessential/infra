@@ -1,0 +1,511 @@
+---
+# Restore a tamanu DB clone from a kopia snapshot, then refresh the
+# postgres credentials and config so the clone's deterministic, host-keyed
+# passwords match. Run on a freshly-installed clone host after the empty
+# tamanu DB is in place but before the real data has been loaded.
+#
+# Required CLI vars (-e):
+#   central_snapshot_id=<kopia snapshot ID>   for hosts in the central group
+#   facility_snapshot_id=<kopia snapshot ID>  for hosts in the facility group
+#
+# Refuses to run unless both the inventory name and the machine hostname
+# contain "clone" — these steps are destructive.
+#
+# Not automated:
+#   * kopia setup — the playbook fails fast if `kopia repository status`
+#     reports the repo isn't configured; run `sudo bes-setup-kopia` with
+#     the readonly AWS creds first.
+#   * copying the original production.json5 from prod — the operator does
+#     that out of band before re-running, if app-level config differs from
+#     the bundled defaults.
+#   * starting tamanu — the operator runs `bestool tamanu start` manually
+#     once the playbook completes.
+
+- name: Pre-flight checks
+  hosts: central:facility
+  gather_facts: true
+  pre_tasks:
+    - name: Gather EC2 metadata facts
+      when: ansible_facts['system_vendor'] == 'Amazon EC2'
+      amazon.aws.ec2_metadata_facts:
+    - name: Gather PostgreSQL facts
+      ansible.builtin.include_tasks: tasks/gather-postgres-version.yml
+  tasks:
+    - name: Refuse to run on non-clone hosts
+      ansible.builtin.assert:
+        that:
+          - "'clone' in inventory_hostname"
+        fail_msg: >-
+          Refusing to run a destructive restore on a non-clone host. The
+          inventory name ({{ inventory_hostname }}) must contain "clone".
+
+    - name: Determine tamanu_server_type from inventory groups
+      ansible.builtin.set_fact:
+        tamanu_server_type: "{{ 'central' if (inventory_hostname in (groups['central'] | default([]))) else 'facility' }}"
+
+    - name: Resolve kopia snapshot id for this host's role
+      ansible.builtin.set_fact:
+        target_snapshot_id: "{{ central_snapshot_id if tamanu_server_type == 'central' else facility_snapshot_id }}"
+
+    - name: Require a snapshot id for this host's role
+      ansible.builtin.assert:
+        that:
+          - target_snapshot_id is defined
+          - (target_snapshot_id | string) | length > 0
+        fail_msg: >-
+          {{ tamanu_server_type }}_snapshot_id is required for this host;
+          pass with `-e {{ tamanu_server_type }}_snapshot_id=<kopia snapshot ID>`.
+
+    - name: Check kopia repository status
+      become: true
+      become_user: kopia
+      ansible.builtin.command: kopia repository status
+      register: kopia_status
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if kopia is not configured
+      when: kopia_status.rc != 0
+      ansible.builtin.fail:
+        msg: >-
+          kopia repository is not configured on this host. Run
+          `sudo bes-setup-kopia` with the readonly AWS credentials, then
+          re-run this playbook.
+
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Set bestool installed version fact
+      when: "'bestool' in ansible_facts.packages"
+      ansible.builtin.set_fact:
+        bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
+
+    - name: Require bestool >= 1.15.0 for `bestool tamanu stop`
+      ansible.builtin.assert:
+        that:
+          - bestool_installed_version is defined
+          - bestool_installed_version is version('1.15.0', '>=')
+        fail_msg: >-
+          bestool >= 1.15.0 is required for `bestool tamanu stop`
+          (found {{ bestool_installed_version | default('none') }}).
+
+    - name: List kopia snapshots to look up the target's size
+      become: true
+      become_user: kopia
+      ansible.builtin.command: kopia snapshot list --json --all
+      register: kopia_snapshot_list
+      changed_when: false
+
+    - name: Locate the target snapshot in the listing
+      ansible.builtin.set_fact:
+        target_snapshot: >-
+          {{ (kopia_snapshot_list.stdout | from_json
+              | selectattr('id', 'equalto', target_snapshot_id)
+              | list | first) | default(none) }}
+
+    - name: Require target snapshot to exist with a known size
+      ansible.builtin.assert:
+        that:
+          - target_snapshot is mapping
+          - target_snapshot.stats is defined
+          - (target_snapshot.stats.totalSize | default(0) | int) > 0
+        fail_msg: >-
+          Snapshot {{ target_snapshot_id }} not found in the kopia repo,
+          or has no recorded size.
+
+    - name: Capture snapshot size + required headroom
+      ansible.builtin.set_fact:
+        target_snapshot_size_bytes: "{{ target_snapshot.stats.totalSize | int }}"
+        target_snapshot_required_bytes: "{{ ((target_snapshot.stats.totalSize | int) * 1.2) | round(0, 'ceil') | int }}"
+
+- name: Restore tamanu data from kopia snapshot
+  hosts: central:facility
+  gather_facts: false
+  tasks:
+    - name: Stop tamanu services
+      become: true
+      ansible.builtin.command: bestool tamanu stop
+      register: bestool_stop
+      changed_when: bestool_stop.rc == 0
+      failed_when: false # already-stopped is fine
+
+    # Decide reuse before any destructive op so refusing-to-overwrite
+    # doesn't leave the host with a dropped DB and no path forward.
+    - name: Check whether a kopia restore dir already exists
+      become: true
+      ansible.builtin.stat:
+        path: /var/lib/kopia/restore
+      register: existing_restore_dir
+
+    - name: Check for a previous restore marker
+      when: existing_restore_dir.stat.exists
+      become: true
+      ansible.builtin.stat:
+        path: /var/lib/kopia/restore.snapshot-id
+      register: existing_restore_marker
+
+    - name: Read the previous restore marker
+      when: existing_restore_marker.stat.exists | default(false)
+      become: true
+      ansible.builtin.slurp:
+        src: /var/lib/kopia/restore.snapshot-id
+      register: existing_restore_marker_content
+
+    - name: Decide whether to reuse the existing restore dir
+      ansible.builtin.set_fact:
+        reuse_existing_restore: >-
+          {{ (existing_restore_dir.stat.exists | bool) and (
+               (resume_existing_restore | default(false) | bool)
+               or (
+                 (existing_restore_marker.stat.exists | default(false) | bool)
+                 and ((existing_restore_marker_content.content | default('') | b64decode | trim) == (target_snapshot_id | string))
+               )
+             ) }}
+
+    - name: Refuse to overwrite an existing restore dir
+      when:
+        - existing_restore_dir.stat.exists
+        - not reuse_existing_restore
+      ansible.builtin.fail:
+        msg: >-
+          /var/lib/kopia/restore already exists but no marker confirms it
+          matches snapshot {{ target_snapshot_id }}. To re-use the existing
+          restore (e.g. resuming after a failure further down the playbook)
+          re-run with `-e resume_existing_restore=true`. Otherwise remove
+          the directory manually.
+
+    - name: Note that the existing restore dir is being reused
+      when: reuse_existing_restore
+      ansible.builtin.debug:
+        msg: "Reusing existing /var/lib/kopia/restore for snapshot {{ target_snapshot_id }}; skipping kopia restore."
+
+    - name: Drop the existing tamanu database
+      become: true
+      become_user: postgres
+      ansible.builtin.command: dropdb tamanu -f
+      register: dropdb_result
+      changed_when: dropdb_result.rc == 0
+      failed_when: false # already-dropped is fine
+
+    - name: VACUUM FULL to reclaim space
+      become: true
+      become_user: postgres
+      ansible.builtin.command: psql -c 'VACUUM FULL'
+      changed_when: false
+      failed_when: false # already-dropped is fine
+
+    - name: Stop all postgresql clusters  # noqa: command-instead-of-module
+      # systemd module can't expand the postgresql@* instance glob.
+      become: true
+      ansible.builtin.shell: systemctl stop 'postgresql@*'
+      changed_when: true
+
+    - name: Read available bytes on the postgres data filesystem
+      when: not reuse_existing_restore
+      ansible.builtin.command: findmnt -n -o AVAIL --bytes -T /var/lib/postgresql
+      register: pg_avail_raw
+      changed_when: false
+
+    - name: Refuse to restore when disk space is short
+      when:
+        - not reuse_existing_restore
+        - (pg_avail_raw.stdout | trim | int) < (target_snapshot_required_bytes | int)
+      vars:
+        pg_avail_bytes: "{{ pg_avail_raw.stdout | trim | int }}"
+        suggest_add_gib: "{{ (((target_snapshot_size_bytes | int) * 1.2) / (1024**3)) | round(0, 'ceil') | int }}"
+        size_gib: "{{ ((target_snapshot_size_bytes | int) / (1024**3)) | round(2) }}"
+        avail_gib: "{{ ((pg_avail_bytes | int) / (1024**3)) | round(2) }}"
+        required_gib: "{{ ((target_snapshot_required_bytes | int) / (1024**3)) | round(2) }}"
+      ansible.builtin.fail:
+        msg: |
+          Not enough disk space to restore snapshot {{ target_snapshot_id }}.
+            Snapshot size: {{ size_gib }} GB
+            Available:     {{ avail_gib }} GB (/var/lib/postgresql)
+            Required:      {{ required_gib }} GB (snapshot size + 20%)
+          Add at least {{ suggest_add_gib }} GB to the disk and reboot, then re-run.
+          Compression on btrfs may shrink the on-disk footprint, but we can't
+          rely on it leaving enough headroom.
+
+    - name: Check whether the existing data dir is still present
+      become: true
+      ansible.builtin.stat:
+        path: /var/lib/postgresql/{{ postgresql_installed_version }}/main
+      register: pg_main_dir
+
+    - name: Move existing data dir aside (timestamped)
+      when: pg_main_dir.stat.exists
+      become: true
+      ansible.builtin.command:
+        cmd: >-
+          mv /var/lib/postgresql/{{ postgresql_installed_version }}/main
+             /var/lib/postgresql/{{ postgresql_installed_version }}/main.replaced-{{ ansible_date_time.iso8601_basic_short }}
+      changed_when: true
+
+    - name: Announce kopia restore log path
+      when: not reuse_existing_restore
+      ansible.builtin.debug:
+        msg: "Restoring kopia snapshot. Monitor progress with: tail -f /var/lib/kopia/restore.log"
+
+    - name: Restore the kopia snapshot
+      when: not reuse_existing_restore
+      become: true
+      become_user: kopia
+      ansible.builtin.shell:
+        cmd: kopia snapshot restore {{ target_snapshot_id }} restore > /var/lib/kopia/restore.log 2>&1
+        chdir: /var/lib/kopia
+      async: 14400
+      poll: 10
+      register: kopia_restore
+      changed_when: true
+      failed_when: kopia_restore.rc != 0
+
+    - name: Show kopia restore log tail on failure
+      when:
+        - kopia_restore is defined
+        - kopia_restore is failed
+      ansible.builtin.command: tail -n 200 /var/lib/kopia/restore.log
+      register: kopia_restore_log
+      changed_when: false
+
+    - name: Display kopia restore log tail on failure
+      when:
+        - kopia_restore is defined
+        - kopia_restore is failed
+      ansible.builtin.debug:
+        var: kopia_restore_log.stdout_lines
+
+    - name: Mark restore dir with snapshot id for future resumes
+      become: true
+      ansible.builtin.copy:
+        content: "{{ target_snapshot_id }}\n"
+        dest: /var/lib/kopia/restore.snapshot-id
+        owner: kopia
+        group: kopia
+        mode: "0644"
+
+    - name: Check for PG_VERSION file (one-cluster layout)
+      become: true
+      ansible.builtin.stat:
+        path: /var/lib/kopia/restore/PG_VERSION
+      register: restore_pg_version_file
+
+    - name: Read PG_VERSION (one-cluster layout)
+      when: restore_pg_version_file.stat.exists
+      become: true
+      ansible.builtin.slurp:
+        src: /var/lib/kopia/restore/PG_VERSION
+      register: restore_pg_version_slurp
+
+    - name: Find versioned subdirs (whole-install layout)
+      when: not restore_pg_version_file.stat.exists
+      become: true
+      ansible.builtin.find:
+        paths: /var/lib/kopia/restore
+        file_type: directory
+        depth: 1
+        patterns: "^[0-9]+$"
+        use_regex: true
+      register: restore_version_dirs
+
+    - name: Set restore layout + version facts
+      ansible.builtin.set_fact:
+        restore_layout: "{{ 'one_cluster' if restore_pg_version_file.stat.exists else 'whole_install' }}"
+        restore_pg_version: >-
+          {{ (restore_pg_version_slurp.content | b64decode | trim)
+             if restore_pg_version_file.stat.exists
+             else ((restore_version_dirs.files | map(attribute='path') | map('basename') | list) | first) }}
+
+    - name: Show detected restore layout
+      ansible.builtin.debug:
+        msg: "layout={{ restore_layout }} pg_version={{ restore_pg_version }}"
+
+    - name: Install matching postgres package if version differs
+      when: restore_pg_version != postgresql_installed_version
+      become: true
+      ansible.builtin.apt:
+        name: postgresql-{{ restore_pg_version }}
+        state: present
+        update_cache: true
+
+    # apt install auto-initdb's a fresh cluster at /var/lib/postgresql/{version}/main,
+    # which would block the cp below. Tear it down before restoring real data.
+    - name: Stop restore-version postgres cluster if running
+      become: true
+      ansible.builtin.systemd:
+        name: "postgresql@{{ restore_pg_version }}-main"
+        state: stopped
+      failed_when: false
+
+    - name: Remove any auto-initialized main dir for the restore version
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/postgresql/{{ restore_pg_version }}/main
+        state: absent
+
+    - name: Reflink restored data into postgres data dir
+      become: true
+      ansible.builtin.command:
+        cmd: >-
+          cp -r --reflink=auto
+          {{ ('/var/lib/kopia/restore/' ~ restore_pg_version ~ '/main')
+             if restore_layout == 'whole_install'
+             else '/var/lib/kopia/restore' }}
+          /var/lib/postgresql/{{ restore_pg_version }}/main
+      changed_when: true
+
+    - name: Chown postgres data tree
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/postgresql
+        owner: postgres
+        group: postgres
+        recurse: true
+
+    - name: Lock down postgres data dir to 0750
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/postgresql/{{ restore_pg_version }}/main
+        mode: "0750"
+
+    - name: Update /var/lib/postgresql/current symlink
+      when: restore_pg_version != postgresql_installed_version
+      become: true
+      ansible.builtin.file:
+        src: /var/lib/postgresql/{{ restore_pg_version }}/main
+        dest: /var/lib/postgresql/current
+        state: link
+        force: true
+
+    - name: Update /etc/postgresql/current symlink
+      when: restore_pg_version != postgresql_installed_version
+      become: true
+      ansible.builtin.file:
+        src: /etc/postgresql/{{ restore_pg_version }}
+        dest: /etc/postgresql/current
+        state: link
+        force: true
+
+    - name: Refresh postgres version facts to the restored version
+      ansible.builtin.set_fact:
+        postgresql_installed_version: "{{ restore_pg_version }}"
+        postgresql_version: "{{ restore_pg_version }}"
+
+    - name: Start postgres
+      become: true
+      ansible.builtin.systemd:
+        name: postgresql@{{ postgresql_installed_version }}-main
+        state: started
+      register: pg_start
+      ignore_errors: true
+
+    - name: Reset WAL if start failed
+      when: pg_start is failed
+      become: true
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: /usr/lib/postgresql/{{ postgresql_installed_version }}/bin/pg_resetwal /var/lib/postgresql/{{ postgresql_installed_version }}/main -f
+      changed_when: true
+
+    - name: Retry starting postgres after WAL reset
+      when: pg_start is failed
+      become: true
+      ansible.builtin.systemd:
+        name: postgresql@{{ postgresql_installed_version }}-main
+        state: started
+
+    - name: Verify restored data (patient count)
+      become: true
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: psql tamanu -tAc 'select count(*) from patients'
+      register: patient_count
+      changed_when: false
+
+    - name: Show restored patient count
+      ansible.builtin.debug:
+        msg: "Restored tamanu DB has {{ patient_count.stdout | trim }} patients"
+
+- name: Postgres setup + tuning
+  hosts: central:facility
+  gather_facts: false
+  tasks:
+    - name: Apply postgres access settings
+      ansible.builtin.include_role:
+        name: postgres
+        tasks_from: access.yml
+
+    - name: Apply postgres tuning
+      when: postgresql_tune_enabled | default(true) | bool
+      ansible.builtin.include_role:
+        name: postgres
+        tasks_from: tune.yml
+
+- name: Refresh tamanu DB credentials + local.json5
+  hosts: central:facility
+  gather_facts: false
+  tasks:
+    - name: Read installed tamanu_version from /etc/tamanu/env  # noqa: command-instead-of-module
+      become: true
+      ansible.builtin.shell: |
+        set -o pipefail
+        sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
+      args:
+        executable: /bin/bash
+      register: clone_tamanu_version_cmd
+      changed_when: false
+      check_mode: false
+
+    - name: Require an installed tamanu version
+      ansible.builtin.assert:
+        that:
+          - (clone_tamanu_version_cmd.stdout | trim) | length > 0
+        fail_msg: >-
+          /etc/tamanu/env has no TAMANU_VERSION; tamanu must already be
+          installed before running clone-restore.
+
+    - name: Set tamanu_version fact from env
+      ansible.builtin.set_fact:
+        tamanu_version: "{{ clone_tamanu_version_cmd.stdout | trim }}"
+
+    # local.json5 references patient_portal_* and bestool_installed_version.
+    # Gather only those — the full facts.yml include would also run the
+    # tamanu_version downgrade assert against the role's default version.
+    - name: Fetch PatientPortalFQDN EC2 tag (central only)
+      when: tamanu_server_type == 'central'
+      ansible.builtin.include_tasks: tasks/fetch-ec2-tag.yml
+      vars:
+        ec2_tag_name: PatientPortalFQDN
+
+    - name: Set patient portal enabled fact
+      ansible.builtin.set_fact:
+        patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is
+          defined) or (patient_portal_fqdn is defined)) }}"
+
+    - name: Set patient portal FQDN fact
+      when: patient_portal_enabled
+      ansible.builtin.set_fact:
+        patient_portal_fqdn: "{{ ansible_ec2_tag_PatientPortalFQDN | default(patient_portal_fqdn) }}"
+
+    - name: Reset tamanu user password + ensure database
+      ansible.builtin.include_role:
+        name: postgres-database
+      vars:
+        dbname: tamanu
+
+    - name: Reset reporting/raw users + pg_hba grants
+      ansible.builtin.include_role:
+        name: tamanu-single-install
+        tasks_from: reporting-users.yml
+      vars:
+        db_name: tamanu
+        type: "{{ tamanu_server_type }}"
+
+    - name: Rewrite tamanu local.json5 with refreshed credentials
+      ansible.builtin.include_role:
+        name: tamanu-single-install
+        tasks_from: local-config.yml
+      vars:
+        db_name: tamanu
+        type: "{{ tamanu_server_type }}"
+        version: "{{ tamanu_version }}"

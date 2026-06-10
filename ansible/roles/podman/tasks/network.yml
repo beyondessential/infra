@@ -4,16 +4,21 @@
   ansible.builtin.file:
     path: /etc/containers/networks
     state: directory
+    mode: "0755"
 
 - name: Configure default podman network
   become: true
   ansible.builtin.template:
     src: "{{ lookup('ansible.builtin.fileglob', 'networks-podman.json.j2') }}"
     dest: /etc/containers/networks/podman.json
+    mode: "0644"
 
 - name: Configure resolved to look into the podman network
   become: true
   ansible.builtin.template:
     src: "{{ lookup('ansible.builtin.fileglob', 'podman.network.j2') }}"
     dest: /etc/systemd/network/podman.network
-  notify: Reload systemd-networkd
+    mode: "0644"
+  notify:
+    - Reload systemd-networkd
+    - Restart systemd-resolved
