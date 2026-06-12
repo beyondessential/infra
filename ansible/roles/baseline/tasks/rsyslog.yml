@@ -1,0 +1,17 @@
+---
+- name: Drop noisy programs from rsyslog output (e.g. /var/log/syslog)
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/10-exclude-from-syslog.conf
+    mode: "0644"
+    content: |
+      # Managed by Ansible (baseline role).
+      # These programs are dropped from rsyslog output, such as /var/log/syslog.
+      # They are still recorded in the systemd journal — read them with `journalctl`.
+      {% for program in baseline_syslog_excludes %}
+      if $programname == '{{ program }}' then stop
+      {% endfor %}
+      {% for prefix in baseline_syslog_exclude_prefixes %}
+      if $programname startswith '{{ prefix }}' then stop
+      {% endfor %}
+  notify: Restart rsyslog

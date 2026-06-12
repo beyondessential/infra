@@ -35,6 +35,9 @@
 - name: Configure journald
   ansible.builtin.import_tasks: journald.yml
   tags: journald
+- name: Configure rsyslog
+  ansible.builtin.import_tasks: rsyslog.yml
+  tags: rsyslog
 - name: Configure kopia user
   ansible.builtin.import_tasks: kopia-user.yml
   tags: kopia-user
