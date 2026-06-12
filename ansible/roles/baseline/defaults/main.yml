@@ -6,6 +6,7 @@
 baseline_syslog_excludes:
   - caddy
   - bestool-alertd
+  - aardvark-dns
 # Container services run under podman/quadlet, which names containers
 # "systemd-<unit>" — so their journal identifier is "systemd-tamanu-…" /
 # "systemd-msupply", not the bare unit name.
