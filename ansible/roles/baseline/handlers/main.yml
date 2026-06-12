@@ -11,6 +11,12 @@
     name: systemd-journald
     state: restarted
 
+- name: Restart rsyslog
+  become: true
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: restarted
+
 - name: Reload chrony sources
   become: true
   ansible.builtin.command:
