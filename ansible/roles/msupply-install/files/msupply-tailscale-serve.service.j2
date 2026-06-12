@@ -7,7 +7,7 @@ Requires=tailscaled.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do /usr/bin/tailscale status --json 2>/dev/null | grep -q "\"BackendState\": *\"Running\"" && exit 0; sleep 2; done; exit 1'
+ExecStartPre=/usr/local/bin/wait-for-tailscale
 ExecStart=/usr/bin/tailscale serve --service={{ msupply_tailscale_service }} --https=443 http://127.0.0.1:8000
 ExecStart=/usr/bin/tailscale serve --service={{ msupply_tailscale_service }} --http=80 http://127.0.0.1:8000
 ExecStop=/usr/bin/tailscale serve --service={{ msupply_tailscale_service }} off

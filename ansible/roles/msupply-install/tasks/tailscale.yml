@@ -1,4 +1,12 @@
 ---
+- name: Install tailscale readiness helper
+  when: msupply_tailscale_service is defined
+  become: true
+  ansible.builtin.copy:
+    src: wait-for-tailscale.sh
+    dest: /usr/local/bin/wait-for-tailscale
+    mode: "0755"
+
 - name: Install msupply tailscale-serve unit
   when: msupply_tailscale_service is defined
   become: true
@@ -33,3 +41,8 @@
         path: /etc/systemd/system/msupply-tailscale-serve.service
         state: absent
       notify: Reload systemd
+
+    - name: Remove tailscale readiness helper
+      ansible.builtin.file:
+        path: /usr/local/bin/wait-for-tailscale
+        state: absent
