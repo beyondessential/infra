@@ -8,7 +8,13 @@ Type=simple
 # bestool invocations (which all otherwise log as "bestool").
 SyslogIdentifier=bestool-alertd
 # Alert checks are built into bestool; there is no on-disk alert config.
+# alertd moved out from under the `tamanu` subcommand in bestool 1.22.7; the old
+# `tamanu alertd` path stays as back-compat for a while, but prefer the new one.
+{% if bestool_installed_version is version('1.22.7', '>=') %}
+ExecStart=/usr/bin/bestool alertd run
+{% else %}
 ExecStart=/usr/bin/bestool tamanu alertd run
+{% endif %}
 MemoryMax=500M
 Restart=always
 RestartSec=10
