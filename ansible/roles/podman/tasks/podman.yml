@@ -165,6 +165,17 @@
       #!/bin/sh
       podman image prune --all --filter until=24h --force
 
+# The rootful API socket at /run/podman/podman.sock lets clients (e.g. the
+# hardened bestool-alertd unit, which sets CONTAINER_HOST to it) drive podman
+# over the API instead of forking a privileged CLI.
+- name: Enable podman API socket
+  become: true
+  ansible.builtin.systemd:
+    name: podman.socket
+    daemon_reload: true
+    state: started
+    enabled: true
+
 - name: Make quadlet directory
   become: true
   ansible.builtin.file:

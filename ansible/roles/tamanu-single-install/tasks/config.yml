@@ -8,14 +8,63 @@
     group: tamanu
     state: directory
 
+# Owned by root because the bestool-alertd service runs as root with
+# CAP_DAC_OVERRIDE dropped, so it can only write here as the directory owner.
+# setgid + group tamanu so files written by the root service are inheritable by
+# the tamanu group, which the login user belongs to — bestool gets run
+# interactively as that user, and as kopia/tamanu, against the same config.
+# (The service's UMask is relaxed to 0007 to keep those group bits.)
 - name: Create bestool config directory
   become: true
   ansible.builtin.file:
     path: /etc/bestool
-    mode: "0775"
-    owner: tamanu
+    mode: "2775"
+    owner: root
     group: tamanu
     state: directory
+
+# Pre-existing contents may have been left by the old alertd that ran as tamanu
+# (so tamanu:tamanu), which the now-rootful service can't rewrite without owning
+# them. Re-home everything to root:tamanu with the same group-shared perms — dirs
+# get setgid 2775, files 0660 (find is needed because those modes differ).
+- name: Find existing bestool config subdirectories
+  become: true
+  ansible.builtin.find:
+    paths: /etc/bestool
+    recurse: true
+    file_type: directory
+  register: bestool_existing_dirs
+
+- name: Normalise existing bestool config subdirectories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "2775"
+    owner: root
+    group: tamanu
+  loop: "{{ bestool_existing_dirs.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Find existing bestool config files
+  become: true
+  ansible.builtin.find:
+    paths: /etc/bestool
+    recurse: true
+    file_type: file
+  register: bestool_existing_files
+
+- name: Normalise existing bestool config files
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "0660"
+    owner: root
+    group: tamanu
+  loop: "{{ bestool_existing_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
 
 - name: Add tamanu-run script
   become: true
