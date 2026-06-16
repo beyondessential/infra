@@ -240,10 +240,14 @@ internet-facing pod:
    to **`get` Secrets** (repo passwords) in Canopy's namespace. It must
    **not** be trusted by any maintenance/fullaccess role.
 
-2. **`canopy-jobs`** — used by the maintenance/inspection scheduler pods and
-   the per-group Jobs they spawn. Trusted by **per-bucket maintenance roles**
-   in deployment accounts (direct web-identity) and granted Kubernetes RBAC to
-   **create Jobs** and **`get` Secrets**.
+2. **`canopy-jobs`** — used by the single **`backups`** scheduler pod (which
+   runs the preflight / maintenance / inspection / s3-metrics loops in one
+   process) and the per-group Jobs it spawns. Trusted by **per-bucket
+   maintenance roles** in deployment accounts (direct web-identity) and granted
+   Kubernetes RBAC to **create/list/delete Jobs** and **`get` Secrets**. Because
+   the four loops share this one SA, its IRSA role also carries the
+   **CloudWatch read** the s3-metrics loop needs (see below) — there is no
+   separate metrics SA.
 
 Use the existing helper:
 
@@ -360,37 +364,51 @@ exactly as today.) Then:
   the operator UI serves Secret-backed data from private-server (it gates the
   Secret-read RBAC). Confirm against the Canopy side; default to issuer SA if
   unsure (private-server is Tailscale-gated, lower exposure than public).
-- the new scheduler Deployments (B4) → `serviceAccountName: 'canopy-jobs'`.
+- the new `backups` scheduler Deployment (B4) → `serviceAccountName:
+  'canopy-jobs'`.
 
-Note: `spec.ts` sets the container `args` to `command`; for the new scheduler
-bins this is just the binary name (e.g. `['backup-maintenance']`), exactly
-like `['reachability']`.
+Note: `spec.ts` sets the container `args` to `command`; for the new `backups`
+scheduler this is just the binary name (`['backups']`), exactly like the
+existing `['monitor']` (the `reachability` bin, renamed — see B4).
 
-### B4. New scheduler Deployments in `jobs.ts`
+### B4. One new scheduler Deployment in `jobs.ts` (+ rename `reachability` → `monitor`)
 
-The Canopy plan adds new `crates/jobs/src/bin/*.rs` scheduler loops (following
-the `reachability`/`pingtask` template). Each needs a single-replica
-Deployment in `tamanu/meta/src/jobs.ts`, mirroring the existing `reachability`
-block but with `serviceAccountName: 'canopy-jobs'` plumbed via `spec()`'s new
-`podArgs`. Expected new bins (names to confirm against the Canopy crate as it
-lands):
+The Canopy plan adds a single new scheduler binary, **`backups`**
+(`crates/jobs/src/bin/backups.rs`), that runs all four backup control-plane
+loops as concurrent tasks in one process (following the `reachability` /
+`pingtask` template). It needs **one** single-replica Deployment in
+`tamanu/meta/src/jobs.ts`, mirroring the existing reachability block but with
+`serviceAccountName: 'canopy-jobs'` plumbed via `spec()`'s new `podArgs`.
 
-- **backup-maintenance** — scheduler loop that spawns per-group maintenance
-  Jobs (assert-retention → `kopia snapshot expire` → `kopia maintenance run`),
-  quick-daily / full-weekly, hash-jittered.
-- **backup-inspection** — scheduler loop that spawns per-group read-only
-  inspection Jobs (`kopia snapshot list` + verify), writing
-  `backup_repo_snapshots` / `backup_repo_stats`.
-- **backup-preflight** — the upstream preflight loop (shared
-  `GetCallerIdentity` ~minute; per-group deep checks hourly, hash-jittered).
-- possibly a **backup-staleness** loop (signal-1 scanner) — but that's a pure
-  DB sweep like `reachability` and needs no SA/IRSA; it may fold into an
-  existing loop. Confirm with the Canopy side.
+The four loops the `backups` pod runs:
 
-Each follows the exact `reachability` Deployment shape (replicas 1, strategy
-Recreate, `labels(name)`, `{ ...labels(name), ...costLabels }` on the pod
-template, `dependsOn: [migrator]`), differing only by `spec(name, [name], {},
-{ serviceAccountName: 'canopy-jobs' })`.
+- **preflight** — upstream preflight (shared `GetCallerIdentity` ~minute;
+  per-group deep checks hourly, hash-jittered). AWS-touching (STS/S3).
+- **maintenance** — spawns per-group maintenance Jobs (assert-retention →
+  `kopia snapshot expire` → `kopia maintenance run`), quick-daily / full-weekly,
+  hash-jittered.
+- **inspection** — spawns per-group read-only inspection Jobs (`kopia snapshot
+  list` + verify), writing `backup_repo_snapshots` / `backup_repo_stats`.
+- **s3-metrics** — reads CloudWatch `BucketSizeBytes` per group (the billing
+  basis). AWS-touching (CloudWatch).
+
+These were originally specced as four separate bins/Deployments; Canopy
+consolidated them into one bin/pod. They already shared the `canopy-jobs` SA,
+so per-pod isolation was nominal — the real isolation is the per-Job kopia
+roles, which stay separate. One pod ⇒ one Deployment to declare here.
+
+**Staleness folds into `monitor`, not its own pod.** The staleness +
+report-vs-inventory reconciliation sweep is DB-only and minute-cadence, so it
+rides the existing reachability loop. That loop now runs reachability + tailnet
+key-expiry + backup-staleness, so the Canopy bin was **renamed `reachability` →
+`monitor`**. When landing this, **rename the existing reachability Deployment's
+command (and name) to `monitor`** (`['monitor']`). No new Deployment for
+staleness.
+
+The `backups` Deployment follows the exact reachability shape (replicas 1,
+strategy Recreate, `labels(name)`, `{ ...labels(name), ...costLabels }` on the
+pod template, `dependsOn: [migrator]`), differing only by `spec('backups',
+['backups'], {}, { serviceAccountName: 'canopy-jobs' })`.
 
 The **per-group Jobs** themselves are spawned at runtime by the Canopy
 scheduler via the k8s API (using the `canopy-jobs` SA), **not** declared in
@@ -667,35 +685,41 @@ the Job. **No internal maintenance-report endpoint is needed.** RBAC for the
 scheduler SA must therefore include Jobs **list + delete** (not only create) +
 `get` Secrets.
 
-### Four new scheduler Deployments, not three (B4 update)
+### One consolidated scheduler Deployment (B4 update — supersedes earlier drafts)
 
-Add `backup-preflight` (`['backup_preflight']`) alongside `backup-maintenance`
-/ `backup-inspection` / `backup-s3-metrics`. `backup_preflight` and
-`backup_s3_metrics` are AWS-touching (STS/S3 and CloudWatch respectively).
+The backup loops landed as a **single** `backups` bin/Deployment, not the
+three-then-four separate ones earlier drafts described. One pod runs the
+preflight, maintenance, inspection, and s3-metrics loops as concurrent tasks
+(preflight is AWS STS/S3-touching; s3-metrics is AWS CloudWatch-touching). All
+share the `canopy-jobs` SA, so there is nothing isolation-wise to gain from
+separate pods — see B4.
 
-**No separate `backup-staleness` Deployment.** The signal-1 staleness +
-report-vs-inventory reconciliation sweep is DB-only and minute-cadence, so it
-was folded into the **existing `reachability` loop** (which already runs
-minute-cadence DB sweeps) rather than its own bin/pod — there is no
-`backup_staleness` binary. The earlier draft of this note listed five; it's
-four new Deployments plus the staleness sweep riding `reachability`.
+**No separate `backup-staleness` Deployment, and `reachability` is renamed.**
+The staleness + report-vs-inventory reconciliation sweep is DB-only and
+minute-cadence, so it was folded into the existing reachability loop rather
+than its own bin/pod — there is no `backup_staleness` binary. Because that loop
+now also runs the staleness sweep (on top of reachability + tailnet
+key-expiry), the Canopy bin was **renamed `reachability` → `monitor`**; rename
+the existing Deployment's command (and name) accordingly.
 
-### Scheduler env config the Deployments must set
+### Scheduler env config the Deployment must set
 
-Read from env (like `DATABASE_URL`): `CANOPY_NAMESPACE`,
-`CANOPY_BACKUP_IMAGE`, `CANOPY_BACKUP_MAINTENANCE_SA`,
+Read from env (like `DATABASE_URL`) by the single `backups` Deployment:
+`CANOPY_NAMESPACE`, `CANOPY_BACKUP_IMAGE`, `CANOPY_BACKUP_MAINTENANCE_SA`,
 `CANOPY_BACKUP_INSPECTION_SA`, `CANOPY_BACKUP_PASSWORD_KEY` (default
-`password`).
+`password`). (The `*_SA` vars name the SAs put on the **spawned per-group
+Jobs**, which stay separate — not the scheduler pod's own `canopy-jobs` SA.)
 
 ### S3-metrics CloudWatch read (resolves open-Q on the dimension)
 
-`backup_s3_metrics` calls `GetMetricStatistics` on `AWS/S3` `BucketSizeBytes`
+The s3-metrics loop calls `GetMetricStatistics` on `AWS/S3` `BucketSizeBytes`
 with dimensions `BucketName=<bucket>` + **`StorageType=StandardStorage`**
 (confirm empirically against a versioned+locked bucket — change here if it
 reports a different dimension). The metric is in the **deployment** account →
-the s3-metrics task needs a **cross-account CloudWatch read** (dedicated
-least-privilege IRSA or assume-the-group-role). This is in addition to the
-per-bucket S3 roles.
+the loop needs a **cross-account CloudWatch read**. Since it now shares the
+`backups` pod (one `canopy-jobs` SA, no separate metrics pod), grant that read
+on the **`canopy-jobs` IRSA role** (or have the loop assume the group role).
+This is in addition to the per-bucket S3 roles.
 
 ### Per-bucket role must allow the restore session-policy base actions
 
