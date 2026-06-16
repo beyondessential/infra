@@ -618,3 +618,89 @@ per-bucket roles, lifecycle, and IRSA are all per-*group* (one repo serves
 all of a group's types). Nothing here keys on type. (If per-type cost
 attribution is ever wanted, that'd be a future CloudWatch/inventory
 concern, not a change to these roles/buckets.)
+
+---
+
+## Implementation-frozen contract (from canopy, 2026-06-16)
+
+These were loose or "decide later" in the spec above; the canopy
+implementation (PRs #224–#227) froze them. They are what the ops-built kopia
+image entrypoint and the scheduler Deployments must match.
+
+### Kopia Job entrypoint args (the image must accept these verbatim)
+
+The scheduler builds each Job's container `args` as:
+
+```
+<kind> --bucket <b> --prefix <p> --role-arn <arn> [--region <r>] \
+       [--retention <json>] [--run-id <i64>]
+```
+
+- `<kind>` is the **first positional arg**, one of `maint-quick` |
+  `maint-full` | `inspect` | `init`.
+- `--retention <json>` is passed for `maint-*` and `init` only (a kopia
+  keep-policy object, already org-floor-enforced by canopy); **omitted for
+  `inspect`**.
+- `--run-id <i64>` is passed for `maint-*` only (the `backup_maintenance_runs`
+  row id); omitted for `inspect`/`init`.
+- The repo password is **env `KOPIA_PASSWORD`** via `secretKeyRef` (never an
+  arg, never a plain-value env). The bucket/prefix/region/role are args.
+- Source-host convention inside the repo is `canopy@<server-id>` with snapshot
+  tags `canopy-device` / `canopy-run` / `canopy-type` (shared with bestool).
+
+### Job manifest fields canopy sets (so RBAC + image + GC align)
+
+- Labels on the Job **and** pod template: `canopy-group=<uuid>`,
+  `canopy-backup-kind=<kind>`, and (maint only) `canopy-run-id=<id>`, plus
+  `billing.{product,deployment,stage}` (B5).
+- `metadata.generateName = canopy-backup-<kind>-<group-short>-`.
+- `spec.backoffLimit = 2`, `spec.ttlSecondsAfterFinished = 3600`,
+  `restartPolicy: Never`, per-kind `serviceAccountName` (maintenance SA for
+  `maint-*`/`init`, inspection SA for `inspect`).
+
+### Completion is poll-list, not a report endpoint (resolves open-Q on the signal)
+
+The scheduler **lists** Jobs by the `canopy-backup-kind` label each tick,
+reads `status.succeeded`/`status.failed`, maps back to the run via the
+`canopy-run-id` label, writes `backup_maintenance_runs.finish`, then deletes
+the Job. **No internal maintenance-report endpoint is needed.** RBAC for the
+scheduler SA must therefore include Jobs **list + delete** (not only create) +
+`get` Secrets.
+
+### Five scheduler Deployments, not three (B4 update)
+
+Add `backup-preflight` (`['backup_preflight']`) and `backup-staleness`
+(`['backup_staleness']`) alongside `backup-maintenance` / `backup-inspection`
+/ `backup-s3-metrics`. `backup_staleness` is DB-only; `backup_preflight` and
+`backup_s3_metrics` are AWS-touching (STS/S3 and CloudWatch respectively).
+
+### Scheduler env config the Deployments must set
+
+Read from env (like `DATABASE_URL`): `CANOPY_NAMESPACE`,
+`CANOPY_BACKUP_IMAGE`, `CANOPY_BACKUP_MAINTENANCE_SA`,
+`CANOPY_BACKUP_INSPECTION_SA`, `CANOPY_BACKUP_PASSWORD_KEY` (default
+`password`).
+
+### S3-metrics CloudWatch read (resolves open-Q on the dimension)
+
+`backup_s3_metrics` calls `GetMetricStatistics` on `AWS/S3` `BucketSizeBytes`
+with dimensions `BucketName=<bucket>` + **`StorageType=StandardStorage`**
+(confirm empirically against a versioned+locked bucket — change here if it
+reports a different dimension). The metric is in the **deployment** account →
+the s3-metrics task needs a **cross-account CloudWatch read** (dedicated
+least-privilege IRSA or assume-the-group-role). This is in addition to the
+per-bucket S3 roles.
+
+### Per-bucket role must allow the restore session-policy base actions
+
+The `restore` session policy canopy ANDs down to is `s3:GetObject` +
+unconditioned `s3:GetBucketLocation` + prefix-conditioned `s3:ListBucket`. The
+per-bucket (device) role's own policy must already grant these (it does via
+`AWS_S3_MULTIPART_ACTIONS`), or the restore leg returns nothing usable.
+
+### `k8s-openapi` pinned to `v1_32`
+
+Canopy's jobs + public-server crates pin `k8s-openapi = 0.27.1` features
+`["v1_32"]`. **Confirm `v1_32` matches the EKS control-plane version**; a
+mismatch is only a feature-flag bump on the canopy side, but it must agree
+with the cluster.
