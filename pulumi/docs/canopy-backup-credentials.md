@@ -667,12 +667,18 @@ the Job. **No internal maintenance-report endpoint is needed.** RBAC for the
 scheduler SA must therefore include Jobs **list + delete** (not only create) +
 `get` Secrets.
 
-### Five scheduler Deployments, not three (B4 update)
+### Four new scheduler Deployments, not three (B4 update)
 
-Add `backup-preflight` (`['backup_preflight']`) and `backup-staleness`
-(`['backup_staleness']`) alongside `backup-maintenance` / `backup-inspection`
-/ `backup-s3-metrics`. `backup_staleness` is DB-only; `backup_preflight` and
+Add `backup-preflight` (`['backup_preflight']`) alongside `backup-maintenance`
+/ `backup-inspection` / `backup-s3-metrics`. `backup_preflight` and
 `backup_s3_metrics` are AWS-touching (STS/S3 and CloudWatch respectively).
+
+**No separate `backup-staleness` Deployment.** The signal-1 staleness +
+report-vs-inventory reconciliation sweep is DB-only and minute-cadence, so it
+was folded into the **existing `reachability` loop** (which already runs
+minute-cadence DB sweeps) rather than its own bin/pod — there is no
+`backup_staleness` binary. The earlier draft of this note listed five; it's
+four new Deployments plus the staleness sweep riding `reachability`.
 
 ### Scheduler env config the Deployments must set
 
