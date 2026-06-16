@@ -11,7 +11,7 @@
   when: msupply_tailscale_service is defined
   become: true
   ansible.builtin.template:
-    src: "{{ lookup('ansible.builtin.fileglob', 'msupply-tailscale-serve.service.j2') }}"
+    src: msupply-tailscale-serve.service.j2
     dest: /etc/systemd/system/msupply-tailscale-serve.service
     mode: "0644"
   notify: Reload systemd

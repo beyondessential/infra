@@ -13,7 +13,7 @@
   become: true
   ansible.builtin.template:
     dest: /usr/local/bin/ts-up
-    src: "{{ lookup('ansible.builtin.fileglob', 'ts-up.j2') }}"
+    src: ts-up.j2
     mode: "0755"
 
 - name: Remove ts-up scripts

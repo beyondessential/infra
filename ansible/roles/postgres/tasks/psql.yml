@@ -8,5 +8,5 @@
   become: true
   ansible.builtin.copy:
     dest: "{{ pg_config_output.stdout }}/psqlrc"
-    src: "{{ lookup('ansible.builtin.fileglob', 'psqlrc') }}"
+    src: psqlrc
     mode: "0644"

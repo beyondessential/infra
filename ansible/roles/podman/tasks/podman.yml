@@ -186,7 +186,7 @@
 - name: Add podman images pruning service
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'podman-images-clean.service') }}"
+    src: podman-images-clean.service
     dest: /etc/systemd/system/podman-images-clean.service
     mode: "0644"
   notify:
@@ -195,7 +195,7 @@
 - name: Add podman images pruning timer
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'podman-images-clean.timer') }}"
+    src: podman-images-clean.timer
     dest: /etc/systemd/system/podman-images-clean.timer
     mode: "0644"
   notify:

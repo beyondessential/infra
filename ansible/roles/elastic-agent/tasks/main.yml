@@ -59,7 +59,7 @@
     - name: Add Elastic apt key
       become: true
       ansible.builtin.copy:
-        src: "{{ lookup('ansible.builtin.fileglob', 'elasticsearch.asc') }}"
+        src: elasticsearch.asc
         dest: /etc/apt/keyrings/elasticsearch.asc
         mode: "0644"
 

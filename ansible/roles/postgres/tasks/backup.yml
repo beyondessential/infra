@@ -42,7 +42,7 @@
 - name: Add kopia backup for postgres (timer)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.timer') }}"
+    src: kopia-backup-postgres.timer
     dest: /etc/systemd/system/kopia-backup-postgres.timer
     mode: "0644"
   notify:
@@ -59,7 +59,7 @@
 - name: Add kopia backup for postgres config (service)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-config.service') }}"
+    src: kopia-backup-postgres-config.service
     dest: /etc/systemd/system/kopia-backup-postgres-config.service
     mode: "0644"
   notify:
@@ -68,7 +68,7 @@
 - name: Add kopia backup for postgres config (timer)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-config.timer') }}"
+    src: kopia-backup-postgres-config.timer
     dest: /etc/systemd/system/kopia-backup-postgres-config.timer
     mode: "0644"
   notify:
