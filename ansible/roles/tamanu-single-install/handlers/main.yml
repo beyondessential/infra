@@ -1,6 +1,0 @@
----
-- name: Restart bestool-alertd
-  become: true
-  ansible.builtin.systemd:
-    name: bestool-alertd.service
-    state: restarted

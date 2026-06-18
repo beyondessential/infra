@@ -10,7 +10,7 @@ SyslogIdentifier=bestool-alertd
 # Alert checks are built into bestool; there is no on-disk alert config.
 # alertd moved out from under the `tamanu` subcommand in bestool 1.22.7; the old
 # `tamanu alertd` path stays as back-compat for a while, but prefer the new one.
-{% if bestool_installed_version is version('1.22.7', '>=') %}
+{% if bestool_installed_version is defined and bestool_installed_version is version('1.22.7', '>=') %}
 ExecStart=/usr/bin/bestool alertd run
 {% else %}
 ExecStart=/usr/bin/bestool tamanu alertd run
@@ -22,8 +22,8 @@ RestartSec=10
 # Talk to the rootful podman API socket instead of forking a privileged podman.
 # Every podman call becomes a thin API client — the privileged container work
 # happens in the daemon — so this unit can drop caps, namespaces, devices, and
-# @mount below. Requires `systemctl enable --now podman.socket` (done in the
-# podman role). The CLI reads CONTAINER_HOST from the env automatically.
+# @mount below. Requires `systemctl enable --now podman.socket` (enabled by this
+# role). The CLI reads CONTAINER_HOST from the env automatically.
 Environment=CONTAINER_HOST=unix:///run/podman/podman.sock
 
 # Runs as root, but declawed. Keep only read-bypass: with no caps, root loses
