@@ -26,6 +26,14 @@ RestartSec=10
 # role). The CLI reads CONTAINER_HOST from the env automatically.
 Environment=CONTAINER_HOST=unix:///run/podman/podman.sock
 
+# Doctor's DB checks connect as a dedicated read-only Postgres role over the
+# socket, authenticated by peer (pg_ident maps root -> that role) so there's no
+# password to keep in sync with the app. The fact is set by tamanu-single-common,
+# so it's present only on tamanu hosts; a no-op on bestool too old to read it.
+{% if tamanu_alertd_database_url is defined %}
+Environment=TAMANU_DATABASE_URL={{ tamanu_alertd_database_url }}
+{% endif %}
+
 # Runs as root with a restricted capability bounding set rather than the full
 # root set. As uid 0 the kernel grants the whole bounding set into the effective
 # set on exec (and the btrfs child below re-derives it the same way), so listing

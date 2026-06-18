@@ -2,6 +2,17 @@
 # Shared tamanu-host setup, run as a dependency of every tamanu-single-* role
 # so it's present regardless of which phase (install/upgrade/frontend) runs.
 
+# Resolve the alertd monitoring connection string here, where db_name is in
+# scope, into a host fact the (later, separate) bestool role can read to set
+# TAMANU_DATABASE_URL on the alertd unit. db_name is a role-scoped param of the
+# tamanu-single-* roles, so the bestool role can't reach tamanu_db_name itself;
+# a fact bridges it. Peer auth (see tamanu-single-install/monitoring-user.yml)
+# means no password in the URL. Hosts without a tamanu install never set this,
+# so the unit there simply omits the override.
+- name: Expose the alertd monitoring database URL to the bestool role
+  ansible.builtin.set_fact:
+    tamanu_alertd_database_url: "postgresql://{{ tamanu_monitoring_db_user }}@/{{ tamanu_db_name }}?host=/var/run/postgresql"
+
 - name: Add tamanu group
   become: true
   ansible.builtin.group:
