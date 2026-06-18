@@ -645,26 +645,38 @@ These were loose or "decide later" in the spec above; the canopy
 implementation (PRs #224–#227) froze them. They are what the ops-built kopia
 image entrypoint and the scheduler Deployments must match.
 
-### Kopia Job entrypoint args (the image must accept these verbatim)
+### Kopia Job image + entrypoint contract (env vars, not CLI args)
 
-The scheduler builds each Job's container `args` as:
+The image now **exists in-repo** at canopy `images/kopia-job/` (Dockerfile +
+`entrypoint.sh` + `CONTRACT.md` + README), built/worked against there for now;
+it is to be **moved to `~/code/work/third-party-builds`** and built/published
+by ops. `CONTRACT.md` is the authoritative canopy⇄image contract.
 
-```
-<kind> --bucket <b> --prefix <p> --role-arn <arn> [--region <r>] \
-       [--retention <json>] [--run-id <i64>]
-```
+The scheduler passes config to the container as **environment variables** (the
+earlier draft used CLI args; switched to env to match the image + the password
+mechanism):
 
-- `<kind>` is the **first positional arg**, one of `maint-quick` |
-  `maint-full` | `inspect` | `init`.
-- `--retention <json>` is passed for `maint-*` and `init` only (a kopia
-  keep-policy object, already org-floor-enforced by canopy); **omitted for
-  `inspect`**.
-- `--run-id <i64>` is passed for `maint-*` only (the `backup_maintenance_runs`
-  row id); omitted for `inspect`/`init`.
-- The repo password is **env `KOPIA_PASSWORD`** via `secretKeyRef` (never an
-  arg, never a plain-value env). The bucket/prefix/region/role are args.
+- `KIND` — one of `maint-quick` | `maint-full` | `inspect` | `init`.
+- `BUCKET`, `PREFIX`, `REGION`, `TARGET_ROLE_ARN` — repo location + the
+  per-bucket role the entrypoint assumes via the pod's IRSA web-identity.
+- `RETENTION_JSON` — kopia keep-policy object (org-floor-enforced by canopy),
+  set for `maint-*`/`init`, **omitted for `inspect`**.
+- `KOPIA_PASSWORD` — env via `secretKeyRef` (never an arg, never a plain-value
+  env).
+- The `backup_maintenance_runs` row id is carried on the Job's
+  **`canopy-run-id` label** (maint only), not passed to the image.
 - Source-host convention inside the repo is `canopy@<server-id>` with snapshot
   tags `canopy-device` / `canopy-run` / `canopy-type` (shared with bestool).
+
+**Results return via the pod termination message.** The entrypoint writes a
+single-line JSON result to `/dev/termination-log`; the Job manifest sets
+`terminationMessagePolicy: File`. The scheduler reads
+`pod.status.containerStatuses[0].state.terminated.message` and parses it —
+`init`: `{ok,error}`; `maint-*`: `{ok,bytes_reclaimed}`; `inspect`:
+`{ok,verify_ok,snapshot/source counts,logical/physical bytes,sources[]}`.
+Schema: `images/kopia-job/CONTRACT.md`. RBAC consequence: the scheduler SA
+needs **`pods` get/list** (to read the termination message) on top of Jobs
+create/list/delete + Secrets get.
 
 ### Job manifest fields canopy sets (so RBAC + image + GC align)
 
@@ -673,17 +685,22 @@ The scheduler builds each Job's container `args` as:
   `billing.{product,deployment,stage}` (B5).
 - `metadata.generateName = canopy-backup-<kind>-<group-short>-`.
 - `spec.backoffLimit = 2`, `spec.ttlSecondsAfterFinished = 3600`,
-  `restartPolicy: Never`, per-kind `serviceAccountName` (maintenance SA for
-  `maint-*`/`init`, inspection SA for `inspect`).
+  `restartPolicy: Never`, **`terminationMessagePolicy: File`** (so results land
+  in the pod termination message), per-kind `serviceAccountName` (maintenance
+  SA for `maint-*`/`init`, inspection SA for `inspect`).
 
-### Completion is poll-list, not a report endpoint (resolves open-Q on the signal)
+### Completion is poll-list + termination-message, not a report endpoint (resolves open-Q on the signal)
 
-The scheduler **lists** Jobs by the `canopy-backup-kind` label each tick,
-reads `status.succeeded`/`status.failed`, maps back to the run via the
-`canopy-run-id` label, writes `backup_maintenance_runs.finish`, then deletes
-the Job. **No internal maintenance-report endpoint is needed.** RBAC for the
-scheduler SA must therefore include Jobs **list + delete** (not only create) +
-`get` Secrets.
+The scheduler **lists** Jobs by the `canopy-backup-kind` label each tick, reads
+`status.succeeded`/`status.failed`, reads the pod's termination message for the
+result payload, then deletes the Job. **No internal maintenance-report endpoint
+is needed.** By kind: `maint-*` maps to the `backup_maintenance_runs` row via
+the `canopy-run-id` label and records outcome + `bytes_reclaimed`; `inspect`
+writes the ground-truth `backup_repo_snapshots`/`backup_repo_stats` and raises
+the `backup-corruption` alert on `verify_ok:false`; `init` advances the config
+`provisioning→escrow_pending`/`→ready` (or records `last_init_error`). RBAC for
+the scheduler SA must therefore include Jobs **create/list/delete**, **`pods`
+get/list** (termination message), and `get` Secrets.
 
 ### One consolidated scheduler Deployment (B4 update — supersedes earlier drafts)
 
