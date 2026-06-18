@@ -23,3 +23,28 @@
     method: scram-sha-256
     address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
   notify: Reload postgres
+
+# From Tamanu TAM-6862, Tamanu creates and manages its own tamanu_reporting /
+# tamanu_raw login roles (with derived passwords) at startup rather than us
+# provisioning the reporting/raw users above. It needs CREATEROLE to do so, and
+# a pg_hba entry to then log in as those roles over the local socket.
+- name: Allow tamanu to create its reporting roles
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    login_db: tamanu
+    query: 'ALTER ROLE "{{ tamanu_db_user }}" WITH CREATEROLE;'
+
+- name: Allow Tamanu-managed reporting roles access to postgres
+  loop:
+    - tamanu_reporting
+    - tamanu_raw
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ item }}"
+    databases: tamanu
+    method: scram-sha-256
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
+  notify: Reload postgres

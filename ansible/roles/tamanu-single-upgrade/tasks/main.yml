@@ -123,6 +123,18 @@
     owner: tamanu
     state: present
 
+# Ensure reporting DB access is set up (idempotent). Notably grants the tamanu
+# user CREATEROLE and opens pg_hba for the tamanu_reporting / tamanu_raw roles,
+# which Tamanu creates and manages itself from TAM-6862. Only the install and
+# clone-restore paths run this otherwise, so existing servers need it on upgrade.
+- name: Set up reporting DB access
+  ansible.builtin.include_role:
+    name: tamanu-single-install
+    tasks_from: reporting-users.yml
+  vars:
+    db_name: "{{ db_name }}"
+    type: "{{ tamanu_server_type }}"
+
 # Bring everything that should be Up back up. Idempotent: services already
 # running are left alone, so this also doubles as recovery for a partial
 # previous run that left things stopped.
