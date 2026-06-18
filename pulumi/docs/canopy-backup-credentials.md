@@ -18,17 +18,29 @@ central-account pod (via IRSA) does a cross-account `sts:AssumeRole` on a
 **per-group, per-bucket role** in the deployment account and hands the
 resulting short-lived creds to the device over mTLS. Canopy also runs
 repository **maintenance**, read-only **inspection**, and an **upstream
-preflight** as Kubernetes Jobs, and (later) lends read-only creds to **PGRO**
-for restore-verification. The bucket isolation boundary is one S3 bucket per
-server-group. Object Lock (GOVERNANCE 30d) + versioning + lifecycle is the
-destruction backstop; no device cred ever gets `s3:DeleteObject`.
+preflight** from a single long-lived `backups` Deployment that drives kopia as
+**in-process subprocesses** (no Kubernetes Jobs), and (later) lends read-only
+creds to **PGRO** for restore-verification. The bucket isolation boundary is
+one S3 bucket per server-group. Object Lock (GOVERNANCE 30d) + versioning +
+lifecycle is the destruction backstop; no device cred ever gets
+`s3:DeleteObject`.
 
 Everything ops owns is: the **per-bucket roles and bucket config** (in the
 deployment account, the `backups` / `tamanu/on-linux` stacks), the
-**central-account ServiceAccount + IRSA** for Canopy's pods and Jobs (in the
+**central-account ServiceAccount + IRSA** for Canopy's pods (in the
 `tamanu/meta` stack), and the **cross-account OIDC provider registration** in
-each deployment account so the central cluster's Job web-identities can be
-trusted there.
+each deployment account so the central cluster's `backups`-pod web-identity can
+be trusted there.
+
+> **UPDATE (shipped): no Kubernetes Jobs.** This spec was originally written
+> for a model where the private-server / scheduler spawned one-shot kopia Jobs
+> that reported back. The shipped architecture replaced that with a single
+> long-lived `backups` Deployment (single replica, `Recreate`) that runs the
+> kopia CLI as **in-process subprocesses** against each group's per-bucket S3
+> repo. There is no separate kopia "job" image, no per-op Jobs, no report
+> endpoint, and no `CANOPY_BACKUP_IMAGE`. Inline notes below mark the
+> superseded mechanism; the dead Job/termination-message/report details have
+> been removed outright since they would mislead an implementer.
 
 ---
 
@@ -56,11 +68,11 @@ working during/after migration).
 
 ### A1. Trust Canopy's principals (not only EC2)
 
-The roles Canopy or its Jobs assume need their `assumeRolePolicyDocument`
-extended with **cross-account** trust statements alongside the existing EC2
-service principal. This is cross-account: Canopy's IRSA role and the Job IRSA
-roles live in the **central account** (where `tamanu/meta` deploys), while
-this stack runs in the **deployment account**.
+The roles Canopy assumes need their `assumeRolePolicyDocument` extended with
+**cross-account** trust statements alongside the existing EC2 service
+principal. This is cross-account: Canopy's IRSA roles live in the **central
+account** (where `tamanu/meta` deploys), while this stack runs in the
+**deployment account**.
 
 Two trust mechanisms are in play and they are different:
 
@@ -74,18 +86,18 @@ Two trust mechanisms are in play and they are different:
      Principal: { AWS: canopyIssuerRoleArn } }
    ```
 
-2. **Maintenance / inspection / PGRO Jobs** authenticate with a *direct*
+2. **Maintenance / inspection (and later PGRO)** authenticate with a *direct*
    web-identity (`sts:AssumeRoleWithWebIdentity`) against the **central
    cluster's OIDC provider, registered in this deployment account** (see
    Component C). So those roles trust the `Federated` OIDC provider ARN with a
-   `sub` condition pinning the central-cluster ServiceAccount(s):
+   `sub` condition pinning the central-cluster `canopy-jobs` ServiceAccount:
 
    ```ts
    { Effect: 'Allow', Action: 'sts:AssumeRoleWithWebIdentity',
      Principal: { Federated: deploymentAccountOidcProviderArn },
      Condition: { StringEquals: {
        [`${oidcId}:aud`]: 'sts.amazonaws.com',
-       [`${oidcId}:sub`]: 'system:serviceaccount:<canopy-ns>:<canopy-jobs-sa>',
+       [`${oidcId}:sub`]: 'system:serviceaccount:<canopy-ns>:canopy-jobs',
      } } }
    ```
 
@@ -95,18 +107,29 @@ Two trust mechanisms are in play and they are different:
    issuer is the *central* cluster, but the provider object and the role are
    in the *deployment* account.
 
+   > **UPDATE (shipped): this trust model is unchanged and load-bearing.** The
+   > `backups` Deployment runs as the IRSA-annotated `canopy-jobs` SA. For each
+   > kopia subprocess it spawns, it overrides `AWS_ROLE_ARN` to the group's
+   > per-bucket role (`target_role_arn`) while keeping the SA's projected
+   > web-identity token, so kopia assumes the per-bucket role via a **direct**
+   > `AssumeRoleWithWebIdentity` (not chained off an intermediate session).
+   > Therefore each per-bucket maintenance role must still **trust the
+   > `canopy-jobs` SA's OIDC subject directly** — exactly the statement above.
+   > See the in-process note replacing the old image-contract section below.
+
 The mapping of which principal trusts which role:
 
 | Role (deployment acct)                 | Trusts (central acct)                              | Mechanism                          |
 |----------------------------------------|----------------------------------------------------|------------------------------------|
 | per-bucket **device/issuer role** (kopia role, reduced) | `public-server` issuer IRSA role ARN     | chained `AssumeRole`               |
-| per-bucket **maintenance role** (fullaccess role) | maintenance/inspection Job SA via OIDC          | direct `AssumeRoleWithWebIdentity` |
-| per-bucket **maintenance role** (or a RO sibling) | PGRO Job SA via OIDC (later stage)              | direct `AssumeRoleWithWebIdentity` |
+| per-bucket **maintenance role** (fullaccess role) | `canopy-jobs` SA via OIDC (the `backups` pod's in-process kopia) | direct `AssumeRoleWithWebIdentity` |
+| per-bucket **maintenance role** (or a RO sibling) | PGRO SA via OIDC (later stage)                  | direct `AssumeRoleWithWebIdentity` |
 
 **Hard requirement (from the threat model): the maintenance / fullaccess role
 trust must NEVER include the `public-server` issuer principal.** Delete +
-`BypassGovernanceRetention` stay reachable only from the Job web-identity
-path, so a `public-server` compromise cannot reach the delete capability.
+`BypassGovernanceRetention` stay reachable only from the `canopy-jobs`
+web-identity path (the `backups` pod), so a `public-server` compromise cannot
+reach the delete capability.
 Keep the issuer-role trust on the *reduced* role only.
 
 These trust principals are **inputs** the stack reads from config (the central
@@ -162,6 +185,24 @@ preflight gets `AccessDenied`. Add it (bucket-level resource
 `arn:aws:s3:::<bucket>`) to the role Canopy assumes for the preflight — the
 device/issuer role is the natural home since the preflight uses the same
 issuance path. It's read-only and harmless on the device set.
+
+### A3b. Per-bucket (maintenance) role: high `MaxSessionDuration` + CloudWatch
+
+> **UPDATE (shipped).** Because kopia now runs as a long-lived in-process
+> subprocess of the `backups` pod (rather than a short one-shot Job), a single
+> maintenance / inspection run can outlast the default 1-hour STS session cap.
+> Set the per-bucket role's **`MaxSessionDuration` high (e.g. 12h / `43200`)**
+> so a long maintenance or inspection run doesn't hit a session expiry. (There
+> is no auto-refresh problem — the web-identity token refreshes — but the
+> assumed-role *session* cap still bites, so raise it.)
+>
+> Additionally grant **`cloudwatch:GetMetricStatistics`** on the per-bucket
+> role: the s3-metrics loop assumes the same per-bucket role to read
+> `BucketSizeBytes` cross-account, so the role itself must carry the CloudWatch
+> read (there is no canopy-side CloudWatch IRSA). See the S3-metrics section.
+>
+> Keep the existing S3 maintenance / fullaccess actions (`AWS_S3_BACKUP_ACTIONS`,
+> full delete set) and the Object-Lock read on this role unchanged.
 
 ### A4. Export the role ARNs
 
@@ -240,16 +281,25 @@ internet-facing pod:
    to **`get` Secrets** (repo passwords) in Canopy's namespace. It must
    **not** be trusted by any maintenance/fullaccess role.
 
-2. **`canopy-jobs`** — used by the single **`backups`** scheduler pod (which
-   runs the preflight / maintenance / inspection / s3-metrics loops in one
-   process) and the per-group Jobs it spawns. Trusted by **per-bucket
-   maintenance roles** in deployment accounts (direct web-identity) and granted
-   Kubernetes RBAC to **create/list/delete Jobs**, **`get pods`** (read the
-   completion result from the pod termination message), and **`get` Secrets**.
+2. **`canopy-jobs`** — used by the single long-lived **`backups`** Deployment,
+   which runs the preflight / maintenance / inspection / s3-metrics loops in one
+   process and drives kopia as in-process subprocesses (no Jobs). Trusted by
+   **per-bucket maintenance roles** in deployment accounts (direct
+   web-identity: the pod runs as this SA and overrides `AWS_ROLE_ARN` to the
+   per-bucket role per kopia subprocess, keeping the SA's projected token).
+   Granted Kubernetes RBAC to **`get` Secrets** only (it reads each group's
+   repo-password Secret to feed `KOPIA_PASSWORD` into the kopia subprocess).
    The s3-metrics loop does **not** need cross-account CloudWatch on this SA —
    it **assumes the group's per-bucket role** and reads CloudWatch with those
    creds (see below). So there is no separate metrics SA and no CloudWatch
    permission on `canopy-jobs` itself.
+
+   > **UPDATE (shipped): RBAC shrank to `get secrets` only.** The earlier draft
+   > granted Jobs create/list/watch/delete, `pods`/`pods/log`, and
+   > `tokenreviews` so the scheduler could spawn one-shot Job pods and read
+   > their results. With kopia running in-process there are no Jobs or pods to
+   > manage and no report token to review, so all of those are **removed** — the
+   > SA only needs `get secrets`.
 
 Use the existing helper:
 
@@ -313,27 +363,25 @@ new k8s.rbac.v1.Role('canopy-issuer', {
 });
 ```
 
-`canopy-jobs` — create/manage Jobs + read Secrets:
+`canopy-jobs` — read repo-password Secrets only (kopia runs in-process, so no
+Jobs/pods RBAC):
 
 ```ts
 new k8s.rbac.v1.Role('canopy-jobs', {
   metadata: { namespace },
-  rules: [
-    { apiGroups: ['batch'], resources: ['jobs'], verbs: ['create', 'get', 'list', 'watch', 'delete'] },
-    { apiGroups: [''], resources: ['secrets'], verbs: ['get'] },
-    { apiGroups: [''], resources: ['pods', 'pods/log'], verbs: ['get', 'list', 'watch'] }, // read Job pod status/logs
-  ],
+  rules: [{ apiGroups: [''], resources: ['secrets'], verbs: ['get'] }],
 });
 ```
 
-Bind each Role to its ServiceAccount with a `RoleBinding`. Scope decisions
-(narrow vs. broad verb list, whether `secrets` should be name-restricted via a
-`resourceNames`) are flagged as open questions.
+> **UPDATE (shipped).** This Role previously also granted `batch/jobs`
+> create/get/list/watch/delete and `pods`/`pods/log` get/list/watch (and a
+> draft added `tokenreviews`). Those were for spawning one-shot kopia Job pods
+> and reading their results; with kopia in-process they are all **removed** —
+> the SA needs only `get secrets`.
 
-`delete` on Jobs lets the scheduler clean up finished Jobs (or rely on
-`ttlSecondsAfterFinished` on the Job spec, as `schedule.ts` does, and drop
-`delete`). Prefer `ttlSecondsAfterFinished` + drop `delete` if the scheduler
-doesn't need imperative cleanup — decide at implementation.
+Bind each Role to its ServiceAccount with a `RoleBinding`. Scope decisions
+(whether `secrets` should be name-restricted via a `resourceNames`) are
+flagged as open questions.
 
 ### B3. Wire the ServiceAccount through `spec.ts`
 
@@ -386,18 +434,20 @@ The four loops the `backups` pod runs:
 
 - **preflight** — upstream preflight (shared `GetCallerIdentity` ~minute;
   per-group deep checks hourly, hash-jittered). AWS-touching (STS/S3).
-- **maintenance** — spawns per-group maintenance Jobs (assert-retention →
-  `kopia snapshot expire` → `kopia maintenance run`), quick-daily / full-weekly,
-  hash-jittered.
-- **inspection** — spawns per-group read-only inspection Jobs (`kopia snapshot
-  list` + verify), writing `backup_repo_snapshots` / `backup_repo_stats`.
+- **maintenance** — runs per-group maintenance as in-process kopia subprocesses
+  (assert-retention → `kopia snapshot expire` → `kopia maintenance run`),
+  quick-daily / full-weekly, hash-jittered.
+- **inspection** — runs per-group read-only inspection in-process (`kopia
+  snapshot list` + verify), writing `backup_repo_snapshots` /
+  `backup_repo_stats`.
 - **s3-metrics** — reads CloudWatch `BucketSizeBytes` per group (the billing
   basis). AWS-touching (CloudWatch).
 
 These were originally specced as four separate bins/Deployments; Canopy
-consolidated them into one bin/pod. They already shared the `canopy-jobs` SA,
-so per-pod isolation was nominal — the real isolation is the per-Job kopia
-roles, which stay separate. One pod ⇒ one Deployment to declare here.
+consolidated them into one bin/pod. They share the `canopy-jobs` SA, so per-pod
+isolation was nominal — the real isolation is the per-bucket kopia roles, which
+stay separate (the pod overrides `AWS_ROLE_ARN` per subprocess). One pod ⇒ one
+Deployment to declare here.
 
 **Staleness folds into `monitor`, not its own pod.** The staleness +
 report-vs-inventory reconciliation sweep is DB-only and minute-cadence, so it
@@ -410,43 +460,43 @@ staleness.
 The `backups` Deployment follows the exact reachability shape (replicas 1,
 strategy Recreate, `labels(name)`, `{ ...labels(name), ...costLabels }` on the
 pod template, `dependsOn: [migrator]`), differing only by `spec('backups',
-['backups'], {}, { serviceAccountName: 'canopy-jobs' })`.
+['backups'], {}, { serviceAccountName: 'canopy-jobs' })`. Its **image bundles
+the kopia CLI** — see the in-process note below (canopy `images/backups`,
+`FROM kopia/kopia:0.23.1` + the compiled `backups` bin). There is no separate
+kopia image.
 
-The **per-group Jobs** themselves are spawned at runtime by the Canopy
-scheduler via the k8s API (using the `canopy-jobs` SA), **not** declared in
-Pulumi. Pulumi declares the *scheduler* Deployments and the SA/RBAC/IRSA they
-use; the Jobs are dynamic. The Canopy plan owns the Job pod template
-(image = kopia image, `secretKeyRef` mount of the repo password, billing.*
-labels, the `canopy-jobs` SA reference for direct web-identity).
+> **UPDATE (shipped): no spawned Jobs.** The earlier draft had this Deployment
+> spawn one-shot per-group kopia Job pods at runtime via the k8s API. That is
+> gone: the `backups` bin runs kopia as in-process subprocesses inside this one
+> pod. Pulumi declares only this Deployment plus the SA/RBAC/IRSA it uses;
+> there are no dynamic Jobs and no per-Job pod template.
 
-### B5. `billing.*` labels on spawned Jobs (contract, not Pulumi resource)
+### B5. Per-group cost is per-bucket (no per-Job billing labels)
 
-The plan requires spawned Jobs to carry `billing.product` / `billing.stage` /
-`billing.deployment` pod labels for AWS split-cost allocation. Pulumi already
-emits these via `billingTags()` (`common/billing.ts`) as `costLabels` in
-`tamanu/meta/src/config.ts` (`product: 'tamanu'`, `stage`, `deployment`), and
-puts them on every Deployment pod template. **Canopy must produce the same
-label keys** on the Jobs it spawns. The contract:
+> **UPDATE (shipped): per-Job billing labels are gone.** The earlier draft had
+> Canopy stamp `billing.product` / `billing.stage` / `billing.deployment` pod
+> labels on each spawned Job for AWS split-cost allocation. With no Jobs there
+> are no per-Job pod labels. **Per-group S3 cost is inherently per-bucket** —
+> the isolation boundary is one bucket per server-group, so cost attribution
+> rides the bucket (and the s3-metrics loop reads each bucket's
+> `BucketSizeBytes` directly), not pod labels.
 
-- keys are exactly `billing.product`, `billing.stage`, `billing.deployment`
-  (matching `billingTags()` output);
-- `stage` values must match the existing CUR tags ops emits — note
-  `ServerRank::Production` → `"prod"` (not `"production"`); Canopy maps
-  explicitly (`Production→prod`, `Demo→demo`, …) and picks a fallback for
-  all-unranked groups. This is Canopy-side logic; ops only owns the label-key
-  convention and the existing `costLabels` on its own Deployments. No Pulumi
-  resource captures the dynamic Job labels — they're set by Canopy at Job
-  creation. This section is the *contract* so the two stay aligned.
+The `backups` Deployment's own pod template still carries the standard
+`costLabels` (`billing.product` / `billing.stage` / `billing.deployment` from
+`billingTags()` in `tamanu/meta/src/config.ts`), exactly like every other
+Deployment — that is unchanged and ops-owned. There is no dynamic per-group
+label contract anymore.
 
 ---
 
 ## Component C — central-cluster OIDC provider in each deployment account
 
-The maintenance/inspection/PGRO Jobs use **direct** `AssumeRoleWithWebIdentity`
-against the **central cluster's** OIDC issuer. For a deployment-account role to
-trust that issuer, the deployment account must have an **IAM OIDC provider**
-registered for the central cluster's OIDC issuer URL (an account can only
-federate an issuer it has a provider object for).
+The maintenance/inspection (and later PGRO) kopia subprocesses use **direct**
+`AssumeRoleWithWebIdentity` — with the `backups` pod's `canopy-jobs`
+web-identity token — against the **central cluster's** OIDC issuer. For a
+deployment-account role to trust that issuer, the deployment account must have
+an **IAM OIDC provider** registered for the central cluster's OIDC issuer URL
+(an account can only federate an issuer it has a provider object for).
 
 Pattern (mirrors `core/src/oidc.ts`, which registers the GitHub Actions OIDC
 provider):
@@ -495,7 +545,9 @@ one account don't collide on the provider — see open questions.
   delete.
 - **maintenance role ARN** (`backups` export `maintenanceRoleArn`) = the
   `s3:*` fullaccess role; the `canopy-jobs` IRSA web-identity assumes it
-  directly (no 1-hour chain cap) for maintenance/inspection/init Jobs.
+  directly (no chained-session cap) for the in-process maintenance / inspection
+  / init kopia subprocesses. Needs a high `MaxSessionDuration` (A3b) and
+  `cloudwatch:GetMetricStatistics` (s3-metrics).
 - **`server_group_backup_config.bucket`** / `region` = the bucket name and
   region the stack provisions (`backups` exports `bucketName`, region from the
   stack's account).
@@ -508,10 +560,9 @@ one account don't collide on the provider — see open questions.
 - **`canopyIssuerRoleArn`** (central) — trusted by per-bucket device roles.
 - **`canopyJobsRoleArn`** + the **`canopy-jobs` ServiceAccount `sub`**
   (`system:serviceaccount:<canopy-ns>:canopy-jobs`) — trusted by per-bucket
-  maintenance roles via web-identity.
+  maintenance roles via web-identity (the `backups` pod overrides `AWS_ROLE_ARN`
+  per kopia subprocess).
 - **central cluster OIDC issuer URL** — for the Component C provider.
-- **`billing.{product,stage,deployment}`** label keys — Canopy stamps them on
-  spawned Jobs; ops owns the convention + its own `costLabels`.
 
 ### Consumed by ops from existing ops infra
 
@@ -598,10 +649,9 @@ smoke-checks above.
    Depends on whether the operator UI (onboarding, escrow reveal, stats) reads
    repo-password Secrets from private-server or proxies through public-server.
    Confirm against the Canopy private-server implementation.
-3. **Job cleanup: `ttlSecondsAfterFinished` vs. RBAC `delete` on Jobs.** Prefer
-   TTL (as `schedule.ts` does) and drop `delete` from `canopy-jobs` RBAC if the
-   scheduler doesn't need imperative deletion. Confirm with the scheduler
-   design.
+3. ~~**Job cleanup: `ttlSecondsAfterFinished` vs. RBAC `delete` on Jobs.**~~
+   **RESOLVED — moot.** Kopia runs in-process; there are no Jobs to clean up,
+   so `canopy-jobs` RBAC is `get secrets` only.
 4. **Should Secret-read RBAC be name-restricted (`resourceNames`)?** Repo
    passwords are per-group Secrets with names from `repo_password_ref`; the
    names are dynamic, so a blanket `get secrets` in the namespace is the
@@ -644,76 +694,61 @@ concern, not a change to these roles/buckets.)
 ## Implementation-frozen contract (from canopy, 2026-06-16)
 
 These were loose or "decide later" in the spec above; the canopy
-implementation (PRs #224–#227) froze them. They are what the ops-built kopia
-image entrypoint and the scheduler Deployments must match.
+implementation froze them. They are what the `backups` image and Deployment
+must match.
 
-### Kopia Job image + entrypoint contract (env vars, not CLI args)
+### Kopia runs in-process — bundled in the `backups` image (no Job, no result contract)
 
-The image now **exists in-repo** at canopy `images/kopia-job/` (Dockerfile +
-`entrypoint.sh` + `CONTRACT.md` + README), built/worked against there for now;
-it is to be **moved to `~/code/work/third-party-builds`** and built/published
-by ops. `CONTRACT.md` is the authoritative canopy⇄image contract.
+> **UPDATE (shipped): the Job image + entrypoint contract is GONE.** The
+> earlier draft had ops build a standalone `images/kopia-job/` image whose
+> `entrypoint.sh` took `KIND` / `BUCKET` / `PREFIX` / `REGION` /
+> `TARGET_ROLE_ARN` / `RETENTION_JSON` / `KOPIA_PASSWORD` env vars, assumed the
+> per-bucket role, ran kopia, and returned a JSON result via the pod
+> termination message (`terminationMessagePolicy: File`,
+> `/dev/termination-log`). **None of that exists.** There is no separate kopia
+> image, no env-var entrypoint contract, no termination-message result, and no
+> per-kind Job manifest.
 
-The scheduler passes config to the container as **environment variables** (the
-earlier draft used CLI args; switched to env to match the image + the password
-mechanism):
+Instead, kopia is invoked **in-process** by the `backups` bin as
+subprocesses. The kopia CLI is **bundled into the `backups` image** (canopy
+`images/backups`: `FROM kopia/kopia:0.23.1` + the compiled `backups` bin). The
+`backups` pod:
 
-- `KIND` — one of `maint-quick` | `maint-full` | `inspect` | `init`.
-- `BUCKET`, `PREFIX`, `REGION`, `TARGET_ROLE_ARN` — repo location + the
-  per-bucket role the entrypoint assumes via the pod's IRSA web-identity.
-- `RETENTION_JSON` — a `{type → keep-policy}` **map** (per-`(group,type)`
-  effective retention, org-floor-enforced by canopy), set for `maint-*`/`init`,
-  **omitted for `inspect`**. `maint-*` applies each type's policy **per source**
-  (`canopy@<server-id>:<type>`); `init` sets a strictest-of-map global baseline.
-- `KOPIA_PASSWORD` — env via `secretKeyRef` (never an arg, never a plain-value
-  env).
-- The `backup_maintenance_runs` row id is carried on the Job's
-  **`canopy-run-id` label** (maint only), not passed to the image.
-- Source-host convention inside the repo is `canopy@<server-id>` with snapshot
-  tags `canopy-device` / `canopy-run` / `canopy-type` (shared with bestool).
+- reads each group's repo-password Secret (`get secrets` RBAC) and feeds it to
+  the kopia subprocess;
+- overrides `AWS_ROLE_ARN` to the group's per-bucket `target_role_arn` per
+  subprocess (keeping the SA's projected web-identity token) so kopia assumes
+  the per-bucket role via **direct** `AssumeRoleWithWebIdentity`;
+- consumes results directly from the subprocess (stdout/exit), writing
+  `backup_maintenance_runs` / `backup_repo_snapshots` / `backup_repo_stats` and
+  raising the `backup-corruption` alert in-process — **no report endpoint, no
+  poll-list of Jobs**.
 
-**Results return via the pod termination message.** The entrypoint writes a
-single-line JSON result to `/dev/termination-log`; the Job manifest sets
-`terminationMessagePolicy: File`. The scheduler reads
-`pod.status.containerStatuses[0].state.terminated.message` and parses it —
-`init`: `{ok,error}`; `maint-*`: `{ok,bytes_reclaimed}`; `inspect`:
-`{ok,verify_ok,snapshot/source counts,logical/physical bytes,sources[]}`.
-Schema: `images/kopia-job/CONTRACT.md`. RBAC consequence: the scheduler SA
-needs **`pods` get/list** (to read the termination message) on top of Jobs
-create/list/delete + Secrets get.
+The source-host convention inside the repo (`canopy@<server-id>`, snapshot tags
+`canopy-device` / `canopy-run` / `canopy-type`, shared with bestool) and the
+per-`(group,type)` retention map are canopy-internal — they no longer cross an
+image/process boundary, so ops owns none of it.
 
-### Job manifest fields canopy sets (so RBAC + image + GC align)
+**Ops-relevant requirements on the per-bucket role** (the only IaC consequences
+of the in-process model), all on the per-bucket *maintenance* role unless
+noted:
 
-- Labels on the Job **and** pod template: `canopy-group=<uuid>`,
-  `canopy-backup-kind=<kind>`, and (maint only) `canopy-run-id=<id>`, plus
-  `billing.{product,deployment,stage}` (B5).
-- `metadata.generateName = canopy-backup-<kind>-<group-short>-`.
-- `spec.backoffLimit = 2`, `spec.ttlSecondsAfterFinished = 3600`,
-  `restartPolicy: Never`, **`terminationMessagePolicy: File`** (so results land
-  in the pod termination message), per-kind `serviceAccountName` (maintenance
-  SA for `maint-*`/`init`, inspection SA for `inspect`).
-
-### Completion is poll-list + termination-message, not a report endpoint (resolves open-Q on the signal)
-
-The scheduler **lists** Jobs by the `canopy-backup-kind` label each tick, reads
-`status.succeeded`/`status.failed`, reads the pod's termination message for the
-result payload, then deletes the Job. **No internal maintenance-report endpoint
-is needed.** By kind: `maint-*` maps to the `backup_maintenance_runs` row via
-the `canopy-run-id` label and records outcome + `bytes_reclaimed`; `inspect`
-writes the ground-truth `backup_repo_snapshots`/`backup_repo_stats` and raises
-the `backup-corruption` alert on `verify_ok:false`; `init` advances the config
-`provisioning→escrow_pending`/`→ready` (or records `last_init_error`). RBAC for
-the scheduler SA must therefore include Jobs **create/list/delete**, **`pods`
-get/list** (termination message), and `get` Secrets.
+- the role must **trust the `canopy-jobs` SA's OIDC subject directly** (A1
+  mechanism 2 — unchanged, kept);
+- **`MaxSessionDuration` high** (e.g. 12h / `43200`) so a long maintenance or
+  inspection run doesn't hit a session expiry (A3b);
+- **`cloudwatch:GetMetricStatistics`** so the s3-metrics loop can read
+  `BucketSizeBytes` cross-account under the same role (A3b / S3-metrics section);
+- the existing S3 maintenance/fullaccess actions + the Object-Lock read stay.
 
 ### One consolidated scheduler Deployment (B4 update — supersedes earlier drafts)
 
 The backup loops landed as a **single** `backups` bin/Deployment, not the
-three-then-four separate ones earlier drafts described. One pod runs the
-preflight, maintenance, inspection, and s3-metrics loops as concurrent tasks
-(preflight is AWS STS/S3-touching; s3-metrics is AWS CloudWatch-touching). All
-share the `canopy-jobs` SA, so there is nothing isolation-wise to gain from
-separate pods — see B4.
+three-then-four separate ones earlier drafts described. One long-lived pod runs
+the preflight, maintenance, inspection, and s3-metrics loops as concurrent
+tasks (preflight is AWS STS/S3-touching; s3-metrics is AWS CloudWatch-touching),
+driving kopia as in-process subprocesses. It runs as the `canopy-jobs` SA. See
+B4.
 
 **No separate `backup-staleness` Deployment, and `reachability` is renamed.**
 The staleness + report-vs-inventory reconciliation sweep is DB-only and
@@ -725,11 +760,16 @@ the existing Deployment's command (and name) accordingly.
 
 ### Scheduler env config the Deployment must set
 
-Read from env (like `DATABASE_URL`) by the single `backups` Deployment:
-`CANOPY_NAMESPACE`, `CANOPY_BACKUP_IMAGE`, `CANOPY_BACKUP_MAINTENANCE_SA`,
-`CANOPY_BACKUP_INSPECTION_SA`, `CANOPY_BACKUP_PASSWORD_KEY` (default
-`password`). (The `*_SA` vars name the SAs put on the **spawned per-group
-Jobs**, which stay separate — not the scheduler pod's own `canopy-jobs` SA.)
+> **UPDATE (shipped): no `CANOPY_BACKUP_IMAGE`, no per-Job `*_SA` vars.** The
+> earlier draft listed `CANOPY_BACKUP_IMAGE` (the kopia Job image to spawn) and
+> `CANOPY_BACKUP_MAINTENANCE_SA` / `CANOPY_BACKUP_INSPECTION_SA` (the SAs to put
+> on spawned per-group Jobs). With kopia bundled into the `backups` image and
+> run in-process under the pod's own `canopy-jobs` SA, none of these apply —
+> there is no image to reference and no separate Job SA. The `backups`
+> Deployment reads only the env it needs for its own operation (e.g.
+> `DATABASE_URL`, `CANOPY_NAMESPACE`, `CANOPY_BACKUP_PASSWORD_KEY` default
+> `password` for the Secret key it reads). Confirm the exact env set against
+> the canopy `backups` bin at implementation.
 
 ### S3-metrics CloudWatch read (assume-the-group-role)
 
