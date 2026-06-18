@@ -70,7 +70,14 @@
 
 - name: Reload caddy
   ansible.builtin.meta: flush_handlers
+- name: Roll the frontend service
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend
+  changed_when: true
+
 - name: Roll the frontend and patient portal services
+  when: tamanu_server_type == 'central'
   become: true
   ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend tamanu-patientportal
   changed_when: true
