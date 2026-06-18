@@ -26,11 +26,18 @@ RestartSec=10
 # role). The CLI reads CONTAINER_HOST from the env automatically.
 Environment=CONTAINER_HOST=unix:///run/podman/podman.sock
 
-# Runs as root, but declawed. Keep only read-bypass: with no caps, root loses
-# DAC override and can't read the kopia user's repo config (mode 0600) — which
-# flips kopia to want sudo, which NoNewPrivileges then blocks. DAC_READ_SEARCH
-# preserves "root can read anything" without write-override or anything else.
-CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+# Runs as root with a restricted capability bounding set rather than the full
+# root set. As uid 0 the kernel grants the whole bounding set into the effective
+# set on exec (and the btrfs child below re-derives it the same way), so listing
+# the caps here is enough and AmbientCapabilities stays empty.
+#   - CAP_DAC_READ_SEARCH: root reads any file (e.g. kopia's mode-0600 repo
+#     config) without also gaining DAC write-override. Without it kopia flips to
+#     wanting sudo, which NoNewPrivileges then blocks.
+#   - CAP_SYS_ADMIN: the btrfs disk-stats doctor check shells out to `btrfs
+#     device stats`, whose device-info ioctls return EPERM without it.
+# CAP_SYS_ADMIN is broad (near root-equivalent), so the Protect*/seccomp/
+# namespace directives below carry the hardening here, not the capability set.
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_ADMIN
 AmbientCapabilities=
 NoNewPrivileges=yes
 
