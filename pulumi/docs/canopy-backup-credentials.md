@@ -196,10 +196,12 @@ issuance path. It's read-only and harmless on the device set.
 > is no auto-refresh problem — the web-identity token refreshes — but the
 > assumed-role *session* cap still bites, so raise it.)
 >
-> Additionally grant **`cloudwatch:GetMetricStatistics`** on the per-bucket
-> role: the s3-metrics loop assumes the same per-bucket role to read
-> `BucketSizeBytes` cross-account, so the role itself must carry the CloudWatch
-> read (there is no canopy-side CloudWatch IRSA). See the S3-metrics section.
+> Additionally grant **`cloudwatch:GetMetricStatistics`** and
+> **`cloudwatch:ListMetrics`** on the per-bucket role: the s3-metrics loop
+> assumes the same per-bucket role to read `BucketSizeBytes` cross-account
+> (discovering the bucket's `StorageType`s via ListMetrics, then summing), so the
+> role itself must carry the CloudWatch read (there is no canopy-side CloudWatch
+> IRSA). See the S3-metrics section.
 >
 > Keep the existing S3 maintenance / fullaccess actions (`AWS_S3_BACKUP_ACTIONS`,
 > full delete set) and the Object-Lock read on this role unchanged.
@@ -547,7 +549,7 @@ one account don't collide on the provider — see open questions.
   `s3:*` fullaccess role; the `canopy-jobs` IRSA web-identity assumes it
   directly (no chained-session cap) for the in-process maintenance / inspection
   / init kopia subprocesses. Needs a high `MaxSessionDuration` (A3b) and
-  `cloudwatch:GetMetricStatistics` (s3-metrics).
+  `cloudwatch:GetMetricStatistics` + `cloudwatch:ListMetrics` (s3-metrics).
 - **`server_group_backup_config.bucket`** / `region` = the bucket name and
   region the stack provisions (`backups` exports `bucketName`, region from the
   stack's account).
@@ -737,7 +739,8 @@ noted:
   mechanism 2 — unchanged, kept);
 - **`MaxSessionDuration` high** (e.g. 12h / `43200`) so a long maintenance or
   inspection run doesn't hit a session expiry (A3b);
-- **`cloudwatch:GetMetricStatistics`** so the s3-metrics loop can read
+- **`cloudwatch:GetMetricStatistics`** + **`cloudwatch:ListMetrics`** so the
+  s3-metrics loop can discover the bucket's `StorageType`s and read
   `BucketSizeBytes` cross-account under the same role (A3b / S3-metrics section);
 - the existing S3 maintenance/fullaccess actions + the Object-Lock read stay.
 
@@ -773,15 +776,20 @@ the existing Deployment's command (and name) accordingly.
 
 ### S3-metrics CloudWatch read (assume-the-group-role)
 
-The s3-metrics loop calls `GetMetricStatistics` on `AWS/S3` `BucketSizeBytes`
-with dimensions `BucketName=<bucket>` + **`StorageType=StandardStorage`** (the
-standard storage class — versioned objects are still counted under their
-class). The metric is in the **deployment** account → the loop **assumes the
+`AWS/S3 BucketSizeBytes` is reported **per `StorageType`** (storage class) with
+no "all storage types" total, and the class depends on bucket config — Standard
+vs **Intelligent-Tiering** tiers (`IntelligentTieringFAStorage`/`IAStorage`/
+archive tiers). So the s3-metrics loop **`ListMetrics`-discovers** whichever
+`StorageType`s the bucket actually emits and **sums** the latest
+`GetMetricStatistics` datapoint across them — no hardcoded class (an earlier
+draft assumed `StandardStorage`, which would read ~0 for an Intelligent-Tiering
+bucket). The metric is in the **deployment** account → the loop **assumes the
 group's per-bucket role** (the same `target_role_arn` preflight assumes) and
 reads CloudWatch with those cross-account creds. **Ops change:** the per-bucket
-role must grant **`cloudwatch:GetMetricStatistics`** (in addition to the S3
-actions). No cross-account CloudWatch permission is needed on `canopy-jobs`
-itself, and there is no dedicated metrics IRSA.
+role must grant **`cloudwatch:GetMetricStatistics`** and
+**`cloudwatch:ListMetrics`** (in addition to the S3 actions). No cross-account
+CloudWatch permission is needed on `canopy-jobs` itself, and there is no
+dedicated metrics IRSA.
 
 ### Per-bucket role must allow the restore session-policy base actions
 
