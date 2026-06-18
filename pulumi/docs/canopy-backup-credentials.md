@@ -244,10 +244,12 @@ internet-facing pod:
    runs the preflight / maintenance / inspection / s3-metrics loops in one
    process) and the per-group Jobs it spawns. Trusted by **per-bucket
    maintenance roles** in deployment accounts (direct web-identity) and granted
-   Kubernetes RBAC to **create/list/delete Jobs** and **`get` Secrets**. Because
-   the four loops share this one SA, its IRSA role also carries the
-   **CloudWatch read** the s3-metrics loop needs (see below) — there is no
-   separate metrics SA.
+   Kubernetes RBAC to **create/list/delete Jobs**, **`get pods`** (read the
+   completion result from the pod termination message), and **`get` Secrets**.
+   The s3-metrics loop does **not** need cross-account CloudWatch on this SA —
+   it **assumes the group's per-bucket role** and reads CloudWatch with those
+   creds (see below). So there is no separate metrics SA and no CloudWatch
+   permission on `canopy-jobs` itself.
 
 Use the existing helper:
 
@@ -659,8 +661,10 @@ mechanism):
 - `KIND` — one of `maint-quick` | `maint-full` | `inspect` | `init`.
 - `BUCKET`, `PREFIX`, `REGION`, `TARGET_ROLE_ARN` — repo location + the
   per-bucket role the entrypoint assumes via the pod's IRSA web-identity.
-- `RETENTION_JSON` — kopia keep-policy object (org-floor-enforced by canopy),
-  set for `maint-*`/`init`, **omitted for `inspect`**.
+- `RETENTION_JSON` — a `{type → keep-policy}` **map** (per-`(group,type)`
+  effective retention, org-floor-enforced by canopy), set for `maint-*`/`init`,
+  **omitted for `inspect`**. `maint-*` applies each type's policy **per source**
+  (`canopy@<server-id>:<type>`); `init` sets a strictest-of-map global baseline.
 - `KOPIA_PASSWORD` — env via `secretKeyRef` (never an arg, never a plain-value
   env).
 - The `backup_maintenance_runs` row id is carried on the Job's
@@ -727,16 +731,17 @@ Read from env (like `DATABASE_URL`) by the single `backups` Deployment:
 `password`). (The `*_SA` vars name the SAs put on the **spawned per-group
 Jobs**, which stay separate — not the scheduler pod's own `canopy-jobs` SA.)
 
-### S3-metrics CloudWatch read (resolves open-Q on the dimension)
+### S3-metrics CloudWatch read (assume-the-group-role)
 
 The s3-metrics loop calls `GetMetricStatistics` on `AWS/S3` `BucketSizeBytes`
-with dimensions `BucketName=<bucket>` + **`StorageType=StandardStorage`**
-(confirm empirically against a versioned+locked bucket — change here if it
-reports a different dimension). The metric is in the **deployment** account →
-the loop needs a **cross-account CloudWatch read**. Since it now shares the
-`backups` pod (one `canopy-jobs` SA, no separate metrics pod), grant that read
-on the **`canopy-jobs` IRSA role** (or have the loop assume the group role).
-This is in addition to the per-bucket S3 roles.
+with dimensions `BucketName=<bucket>` + **`StorageType=StandardStorage`** (the
+standard storage class — versioned objects are still counted under their
+class). The metric is in the **deployment** account → the loop **assumes the
+group's per-bucket role** (the same `target_role_arn` preflight assumes) and
+reads CloudWatch with those cross-account creds. **Ops change:** the per-bucket
+role must grant **`cloudwatch:GetMetricStatistics`** (in addition to the S3
+actions). No cross-account CloudWatch permission is needed on `canopy-jobs`
+itself, and there is no dedicated metrics IRSA.
 
 ### Per-bucket role must allow the restore session-policy base actions
 
