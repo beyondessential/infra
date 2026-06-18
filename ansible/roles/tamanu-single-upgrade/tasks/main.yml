@@ -11,6 +11,23 @@
   ansible.builtin.debug:
     msg: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
 
+- name: Detect installed bestool version
+  become: true
+  ansible.builtin.command: /usr/bin/bestool --version
+  register: bestool_version_cmd
+  changed_when: false
+  check_mode: false
+
+# --ignore-unmatched (bestool 1.23.0+) makes start/restart skip service names
+# that don't exist on this server type instead of failing. Empty on older
+# bestool, where the explicit server-type gating below is still required.
+- name: Set bestool start/restart flags
+  ansible.builtin.set_fact:
+    bestool_unmatched_arg: >-
+      {{ '--ignore-unmatched'
+         if (bestool_version_cmd.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+')) is version('1.23.0', '>=')
+         else '' }}
+
 # Stops only the kind-scoped API/tasks/sync/fhir services. The trailing
 # dash filters out the legacy `tamanu-facility` singleton (no dash after
 # `facility`) and tamanu-frontend (no kind segment), so the frontend keeps
@@ -73,13 +90,13 @@
 - name: Roll the frontend service
   when: tamanu_server_type == 'facility'
   become: true
-  ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend
+  ansible.builtin.command: /usr/bin/bestool tamanu restart {{ bestool_unmatched_arg }} tamanu-frontend
   changed_when: true
 
 - name: Roll the frontend and patient portal services
   when: tamanu_server_type == 'central'
   become: true
-  ansible.builtin.command: /usr/bin/bestool tamanu restart tamanu-frontend tamanu-patientportal
+  ansible.builtin.command: /usr/bin/bestool tamanu restart {{ bestool_unmatched_arg }} tamanu-frontend tamanu-patientportal
   changed_when: true
 
 # cleanup any legacy or experiments; bestool's frontend and patient portal
@@ -135,7 +152,7 @@
 # previous run that left things stopped.
 - name: Start the standard services
   become: true
-  ansible.builtin.command: /usr/bin/bestool tamanu start
+  ansible.builtin.command: /usr/bin/bestool tamanu start {{ bestool_unmatched_arg }}
   changed_when: true
   notify: Reload caddy
 
