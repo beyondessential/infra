@@ -24,6 +24,8 @@ const canopyInfraRef = config.get('canopyInfra');
 const canopy = canopyInfraRef ? new CrossStack(canopyInfraRef) : undefined;
 const canopyIssuerRoleArn = canopy?.get<string>('canopyIssuerRoleArn');
 const canopyJobsRoleArn = canopy?.get<string>('canopyJobsRoleArn');
+// private-server's wizard probes the bucket by assuming both per-bucket roles.
+const canopyPrivateRoleArn = canopy?.get<string>('canopyPrivateRoleArn');
 export const bucketName: string = config.get('bucketName') ?? `bes-kopia-backups-${getStack()}`;
 
 const tags = {
@@ -114,7 +116,7 @@ const fullAccessPolicy = new awsNative.iam.ManagedPolicy(
 
 const fullAccessRole = new awsNative.iam.Role('backups-fullaccess-role', {
   managedPolicyArns: [fullAccessPolicy.policyArn],
-  assumeRolePolicyDocument: maintenanceAssumeRolePolicy(canopyJobsRoleArn),
+  assumeRolePolicyDocument: maintenanceAssumeRolePolicy(canopyJobsRoleArn, canopyPrivateRoleArn),
 });
 export const roleForFullAccess = fullAccessRole.roleName;
 
@@ -166,7 +168,7 @@ const devicePolicy = canopy
 
 const kopiaRole = new awsNative.iam.Role(`backups-kopia-role`, {
   managedPolicyArns: [(devicePolicy ?? kopiaPolicy).policyArn],
-  assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn),
+  assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn, canopyPrivateRoleArn),
 });
 export const roleForKopia = kopiaRole.roleName;
 

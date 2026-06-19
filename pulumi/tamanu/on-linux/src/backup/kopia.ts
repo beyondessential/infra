@@ -20,6 +20,8 @@ const canopyInfraRef = cfg.get('canopyInfra');
 const canopy = canopyInfraRef ? new CrossStack(canopyInfraRef) : undefined;
 const canopyIssuerRoleArn = canopy?.get<string>('canopyIssuerRoleArn');
 const canopyJobsRoleArn = canopy?.get<string>('canopyJobsRoleArn');
+// private-server's wizard probes the bucket by assuming both per-bucket roles.
+const canopyPrivateRoleArn = canopy?.get<string>('canopyPrivateRoleArn');
 
 interface KopiaOutputs {
   backupBucket: Output<string>;
@@ -168,7 +170,7 @@ function createOwnBucket(): KopiaOutputs {
     `backups-kopia-role-${normalizedStack}`,
     {
       managedPolicyArns: [(devicePolicy ?? kopiaPolicy).policyArn],
-      assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn),
+      assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn, canopyPrivateRoleArn),
       tags,
     },
     { parent: bucket, protect: false },
@@ -203,7 +205,10 @@ function createOwnBucket(): KopiaOutputs {
               { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
             ).policyArn,
           ],
-          assumeRolePolicyDocument: maintenanceAssumeRolePolicy(canopyJobsRoleArn),
+          assumeRolePolicyDocument: maintenanceAssumeRolePolicy(
+            canopyJobsRoleArn,
+            canopyPrivateRoleArn,
+          ),
           tags,
         },
         { parent: bucket, protect: false },

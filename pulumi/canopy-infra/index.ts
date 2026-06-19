@@ -4,7 +4,12 @@ import * as awsNative from '@pulumi/aws-native';
 import { failIfIncorrectAccount, cfg } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
-import { CANOPY_SA_ISSUER, CANOPY_SA_JOBS, canopyNamespace } from '../constants/canopy.ts';
+import {
+  CANOPY_SA_ISSUER,
+  CANOPY_SA_JOBS,
+  CANOPY_SA_PRIVATE,
+  canopyNamespace,
+} from '../constants/canopy.ts';
 
 failIfIncorrectAccount();
 
@@ -44,5 +49,17 @@ const jobsRole = eksServiceAccount('canopy-jobs', {
   managedPolicyArns: [assumeRolePolicy('canopy-jobs-assume').policyArn],
 });
 
+// private-server: the backup setup wizard probes the target bucket by assuming
+// both the device and maintenance roles (get-caller-identity / content-probe /
+// connect-verify). Dedicated identity to leave room for future private-server
+// AWS features.
+const privateRole = eksServiceAccount('canopy-private', {
+  serviceAccountName: CANOPY_SA_PRIVATE,
+  oidcProviderArn,
+  namespace,
+  managedPolicyArns: [assumeRolePolicy('canopy-private-assume').policyArn],
+});
+
 export const canopyIssuerRoleArn = issuerRole.arn;
 export const canopyJobsRoleArn = jobsRole.arn;
+export const canopyPrivateRoleArn = privateRole.arn;

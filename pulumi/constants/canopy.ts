@@ -3,6 +3,7 @@
 // names, and the IRSA trust subjects line up.
 export const CANOPY_SA_ISSUER = 'canopy-issuer';
 export const CANOPY_SA_JOBS = 'canopy-jobs';
+export const CANOPY_SA_PRIVATE = 'canopy-private';
 
 // Canopy's k8s namespace. Pinned to `tamanu-meta-<stack>` to match
 // `canopy/src/config.ts` normalizedStack (the live namespace was kept when the

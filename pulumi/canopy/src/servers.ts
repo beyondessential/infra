@@ -21,7 +21,7 @@ import { caRootCert } from './ca.ts';
 import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
-import { canopyIssuerSa } from './canopy-sa.ts';
+import { canopyIssuerSa, canopyPrivateSa } from './canopy-sa.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -372,7 +372,7 @@ new k8s.apps.v1.Deployment(
               },
             },
           },
-          { serviceAccountName: canopyIssuerSa },
+          { serviceAccountName: canopyPrivateSa },
         ),
       },
     },

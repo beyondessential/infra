@@ -19,25 +19,33 @@ export const DEVICE_S3_ACTIONS = [
 
 const ec2 = { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { Service: AWS_EC2 } };
 
-// Device/issuer role trust: existing EC2 service principal plus a chained
-// AssumeRole from canopy-issuer (passed when the stack is onboarded to Canopy).
-export function deviceAssumeRolePolicy(issuerRoleArn?: Input<string>): Output<string> {
+function assumeRolePolicy(trustedRoleArns: (Input<string> | undefined)[]): Output<string> {
+  const principals = trustedRoleArns.filter((arn): arn is Input<string> => arn !== undefined);
   return jsonStringify({
     Version: '2012-10-17',
-    Statement: issuerRoleArn
-      ? [ec2, { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: issuerRoleArn } }]
+    Statement: principals.length
+      ? [ec2, { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: principals } }]
       : [ec2],
   });
 }
 
-// Maintenance/fullaccess role trust: EC2 plus a chained AssumeRole from
-// canopy-jobs. Must NEVER trust canopy-issuer — the delete/BypassGovernance
+// Device/issuer role trust: EC2 service principal plus chained AssumeRole from
+// canopy-issuer (mints device creds) and canopy-private (wizard validation).
+// Both passed only when the stack is onboarded to Canopy.
+export function deviceAssumeRolePolicy(
+  issuerRoleArn?: Input<string>,
+  privateRoleArn?: Input<string>,
+): Output<string> {
+  return assumeRolePolicy([issuerRoleArn, privateRoleArn]);
+}
+
+// Maintenance/fullaccess role trust: EC2 plus chained AssumeRole from canopy-jobs
+// (maintenance/inspection/s3-metrics) and canopy-private (wizard content-probe /
+// connect-verify). Must NEVER trust canopy-issuer — the delete/BypassGovernance
 // capability stays unreachable from the internet-facing public-server.
-export function maintenanceAssumeRolePolicy(jobsRoleArn?: Input<string>): Output<string> {
-  return jsonStringify({
-    Version: '2012-10-17',
-    Statement: jobsRoleArn
-      ? [ec2, { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: jobsRoleArn } }]
-      : [ec2],
-  });
+export function maintenanceAssumeRolePolicy(
+  jobsRoleArn?: Input<string>,
+  privateRoleArn?: Input<string>,
+): Output<string> {
+  return assumeRolePolicy([jobsRoleArn, privateRoleArn]);
 }
