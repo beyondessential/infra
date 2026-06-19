@@ -149,7 +149,7 @@ function makeBootstrapNodegroups(
         // recovery) from being clobbered by later `pulumi up` runs.
         scalingConfig: { minSize: 0, desiredSize: bootstrap ? 1 : 0, maxSize: 1 },
         updateConfig: { maxUnavailable: 1 },
-        // k[node.label.purpose] k[node.label.schedule] k[node.label.arch] k[node.label.group]
+        // k[node.label.purpose+2] k[node.label.schedule] k[node.label.arch] k[node.label.group]
         // Karpenter's controller has a DoNotSchedule topology spread on
         // `karpenter.sh/capacity-type` — without the label here, the
         // controller pods can't schedule on bootstrap nodes and the whole

@@ -135,3 +135,37 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
   },
   { provider, dependsOn: [karpenter] },
 );
+
+// k[placement.exit-node-subnets] k[capacity.exit-node-dedicated]
+// Dedicated class for the Tailscale exit node. Public subnet so the exit
+// node's client traffic egresses straight out (avoiding NAT data-processing
+// charges on its ~100GiB/mo), and a distinctive `bes.node.purpose` tag so
+// GuardDuty findings for its egress (the operator's DoH to public resolvers
+// lands on this node) can be attributed and suppressed by instance tag rather
+// than blinding DoH detection cluster-wide. Few pods ever schedule here (the
+// exit node plus the daemonsets that tolerate its taint), so cap max-pods low
+// to reclaim the kubelet memory reservation on a small burstable node.
+export const exitNodeClass = new k8s.apiextensions.CustomResource(
+  'nodeclass-tailscale-exit',
+  {
+    apiVersion: 'karpenter.k8s.aws/v1',
+    kind: 'EC2NodeClass',
+    metadata: { name: 'tailscale-exit' },
+    spec: {
+      role: nodeRoleName,
+      amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
+      subnetSelectorTerms: natSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
+      metadataOptions: commonMetadataOptions,
+      blockDeviceMappings: ebs('15Gi'),
+      kubelet: { maxPods: 15 },
+      tags: {
+        'bes.node.purpose': 'tailscale-exit',
+        Name: `${namePrefix} tailscale-exit`,
+        Purpose: 'k8s-tailscale-exit',
+        ...inheritedTags,
+      },
+    },
+  },
+  { provider, dependsOn: [karpenter] },
+);
