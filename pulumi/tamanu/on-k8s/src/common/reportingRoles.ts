@@ -53,10 +53,9 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
     // and also before anything is migrated by the application, so
     // the reporting schema is not available.
     //
-    // From Tamanu TAM-6862 reporting is always on, and Tamanu creates and
-    // manages its own tamanu_reporting/tamanu_raw login roles at startup
-    // (with derived passwords), so the app role needs CREATEROLE. The raw/
-    // reporting roles below are legacy and no longer used by Tamanu.
+    // Tamanu creates and manages its own tamanu_reporting/tamanu_raw roles at
+    // startup, so the app role needs CREATEROLE. The raw/reporting roles below
+    // are legacy and unused by Tamanu.
     initSql: `
       CREATE ROLE raw LOGIN;
       CREATE ROLE reporting LOGIN;

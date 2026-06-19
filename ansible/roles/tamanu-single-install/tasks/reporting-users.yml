@@ -24,10 +24,8 @@
     address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
   notify: Reload postgres
 
-# From Tamanu TAM-6862, Tamanu creates and manages its own tamanu_reporting /
-# tamanu_raw login roles (with derived passwords) at startup rather than us
-# provisioning the reporting/raw users above. It needs CREATEROLE to do so, and
-# a pg_hba entry to then log in as those roles over the local socket.
+# Tamanu creates and manages its own tamanu_reporting/tamanu_raw roles at
+# startup; it needs CREATEROLE to do so and pg_hba entries to log in as them.
 - name: Allow tamanu to create its reporting roles
   become: true
   become_user: postgres
