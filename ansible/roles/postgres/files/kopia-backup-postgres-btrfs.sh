@@ -16,6 +16,14 @@ export KOPIA_CHECK_FOR_UPDATES=false
 POSTGRES_DIR="/var/lib/postgresql"
 HOSTNAME=$(hostname)
 
+# Stable path the ephemeral snapshot is mounted at for kopia to read. It must
+# NOT vary between runs: kopia tracks snapshot history, incremental dedup, and
+# retention per source path (user@host:path), so a per-run path would make
+# every backup a brand-new source with a single snapshot and no history. The
+# $PG_VERSION/$PG_CLUSTER suffix below changes only across a major-version
+# upgrade, which is a genuinely new cluster and an acceptable history boundary.
+KOPIA_MOUNT_STABLE="/var/lib/kopia/mnt-postgres"
+
 PGDATA=$(readlink -f "$POSTGRES_DIR/current")
 if [ ! -f "$PGDATA/PG_VERSION" ]; then
   echo "ERROR: $PGDATA is not a postgres data dir" >&2
@@ -70,10 +78,44 @@ cleanup() {
 }
 trap cleanup ERR EXIT
 
+# Reap leftovers from a previously crashed run. A hard reboot mid-backup skips
+# the EXIT trap, so without this the stable kopia mount, per-PID toplevel
+# mounts, and ephemeral @postgres-kopia-* snapshot subvolumes accumulate:
+# mounts pin the device and orphaned subvolumes consume space indefinitely.
+reap_stale() {
+  if mountpoint -q "$KOPIA_MOUNT_STABLE" 2>/dev/null; then
+    umount "$KOPIA_MOUNT_STABLE" || true
+  fi
+  local stale
+  for stale in /mnt/btrfs-toplevel-kopia.*; do
+    [ -d "$stale" ] || continue
+    if mountpoint -q "$stale" 2>/dev/null; then
+      umount "$stale" || true
+    fi
+    rmdir "$stale" 2>/dev/null || true
+  done
+  # Delete orphaned ephemeral snapshot subvolumes via a fresh top-level mount.
+  # The "-kopia-" infix guarantees the glob never matches the live @postgres
+  # subvolume, only our own ephemeral ones.
+  local reap_mount="/mnt/btrfs-toplevel-kopia-reap.$$"
+  mkdir -p "$reap_mount"
+  if mount -o subvolid=5 "$1" "$reap_mount" 2>/dev/null; then
+    local sub
+    for sub in "$reap_mount"/@postgres-kopia-*; do
+      [ -e "$sub" ] || continue
+      btrfs subvolume delete "$sub" || true
+    done
+    umount "$reap_mount" || true
+  fi
+  rmdir "$reap_mount" 2>/dev/null || true
+}
+
 if ! sudo -u postgres pg_isready -q; then
   echo "ERROR: PostgreSQL is not running" >&2
   exit 1
 fi
+
+reap_stale "$FSDEV"
 
 TOPLEVEL_MOUNT="/mnt/btrfs-toplevel-kopia.$$"
 SNAPSHOT_NAME="@postgres-kopia-$$"
@@ -100,8 +142,7 @@ PSQL_FD_OPEN=true
 
 # Timeout is per psql block, in tenths of a second. pg_backup_start with
 # fast=false can take up to checkpoint_completion_target * checkpoint_timeout
-# (default ~4.5 min); wait_for_archive=true on pg_backup_stop can also be
-# slow if WAL archiving is backed up. 10 minutes gives generous headroom.
+# (default ~4.5 min). 10 minutes gives generous headroom.
 psql_run() {
   local marker="$PSQL_DIR/m.$RANDOM.$RANDOM"
   printf '%s\n\\! touch %s\n' "$1" "$marker" >&9
@@ -131,11 +172,14 @@ btrfs subvolume snapshot "$POSTGRES_DIR" "$SNAPSHOT_PATH"
 # the tablespace_map contents (spcmapfile). Write the latter two straight
 # into the snapshot's data dir; psql does the file write itself via `\g`,
 # running as the postgres user, into a postgres-owned directory.
+# wait_for_archive is false: we do not archive WAL (archive_command is a
+# no-op), and the snapshot already contains the pg_wal needed to recover, so
+# there is nothing to wait for -- blocking on archiving here would be a lie.
 echo "Stopping PostgreSQL backup mode (writing backup metadata into snapshot)..."
 psql_run "\\pset format unaligned
 \\pset tuples_only on
 \\pset recordsep ''
-SELECT lsn::text AS lsn, labelfile, spcmapfile FROM pg_backup_stop(wait_for_archive => true) \\gset
+SELECT lsn::text AS lsn, labelfile, spcmapfile FROM pg_backup_stop(wait_for_archive => false) \\gset
 SELECT :'labelfile' \\g $SNAPSHOT_DATADIR/backup_label
 SELECT :'spcmapfile' \\g $SNAPSHOT_DATADIR/tablespace_map"
 
@@ -156,7 +200,7 @@ if [ ! -s "$SNAPSHOT_DATADIR/backup_label" ]; then
   exit 1
 fi
 
-KOPIA_MOUNT="/var/lib/kopia/mnt-postgres-$$"
+KOPIA_MOUNT="$KOPIA_MOUNT_STABLE"
 mkdir -p "$KOPIA_MOUNT"
 
 echo "Mount snapshot for kopia at $KOPIA_MOUNT"
