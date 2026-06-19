@@ -19,13 +19,19 @@ export const DEVICE_S3_ACTIONS = [
 
 const ec2 = { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { Service: AWS_EC2 } };
 
-function assumeRolePolicy(trustedRoleArns: (Input<string> | undefined)[]): Output<string> {
+function assumeRolePolicy(
+  trustedRoleArns: (Input<string> | undefined)[],
+  includeEc2: boolean,
+): Output<string> {
   const principals = trustedRoleArns.filter((arn): arn is Input<string> => arn !== undefined);
   return jsonStringify({
     Version: '2012-10-17',
-    Statement: principals.length
-      ? [ec2, { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: principals } }]
-      : [ec2],
+    Statement: [
+      ...(includeEc2 ? [ec2] : []),
+      ...(principals.length
+        ? [{ Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: principals } }]
+        : []),
+    ],
   });
 }
 
@@ -35,8 +41,9 @@ function assumeRolePolicy(trustedRoleArns: (Input<string> | undefined)[]): Outpu
 export function deviceAssumeRolePolicy(
   issuerRoleArn?: Input<string>,
   privateRoleArn?: Input<string>,
+  includeEc2 = true,
 ): Output<string> {
-  return assumeRolePolicy([issuerRoleArn, privateRoleArn]);
+  return assumeRolePolicy([issuerRoleArn, privateRoleArn], includeEc2);
 }
 
 // Maintenance/fullaccess role trust: EC2 plus chained AssumeRole from canopy-jobs
@@ -46,6 +53,7 @@ export function deviceAssumeRolePolicy(
 export function maintenanceAssumeRolePolicy(
   jobsRoleArn?: Input<string>,
   privateRoleArn?: Input<string>,
+  includeEc2 = true,
 ): Output<string> {
-  return assumeRolePolicy([jobsRoleArn, privateRoleArn]);
+  return assumeRolePolicy([jobsRoleArn, privateRoleArn], includeEc2);
 }

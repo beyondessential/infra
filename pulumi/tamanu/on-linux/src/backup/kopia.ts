@@ -23,9 +23,16 @@ const canopyJobsRoleArn = canopy?.get<string>('canopyJobsRoleArn');
 // private-server's wizard probes the bucket by assuming both per-bucket roles.
 const canopyPrivateRoleArn = canopy?.get<string>('canopyPrivateRoleArn');
 
+// Once a deployment is fully on Canopy, retire the legacy direct path: no
+// long-lived per-instance IAM-User keys, and the roles drop their EC2 trust so
+// they are assumable only by Canopy. Defaults on; turning it off requires Canopy
+// onboarding (else the roles would trust nobody and the device role lose its
+// policy).
+const legacyKopiaAccess = cfg.getBoolean('legacyKopiaAccess') ?? true;
+
 interface KopiaOutputs {
   backupBucket: Output<string>;
-  backupReadOnlyUser: Output<string>;
+  backupReadOnlyUser: Output<string> | undefined;
   backupUsers: Output<string[]>;
   deviceRoleArn: Output<string>;
   maintenanceRoleArn: Output<string> | undefined;
@@ -45,6 +52,12 @@ function cloneFromStack(ref: string): KopiaOutputs {
 }
 
 function createOwnBucket(): KopiaOutputs {
+  if (!legacyKopiaAccess && !canopy) {
+    throw new Error(
+      'on-linux backups: legacyKopiaAccess=false requires Canopy onboarding (set canopyInfra)',
+    );
+  }
+
   const tags = nativeTags(
     {
       Purpose: 'tamanu-backups',
@@ -121,25 +134,29 @@ function createOwnBucket(): KopiaOutputs {
     { protect: false },
   );
 
-  const kopiaPolicy = new awsNative.iam.ManagedPolicy(
-    'backups-kopia-policy',
-    {
-      policyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: AWS_S3_BACKUP_ACTIONS,
-            Resource: bucket.bucketName.apply((name) => [
-              `arn:aws:s3:::${name}`,
-              `arn:aws:s3:::${name}/*`,
-            ]),
-          },
-        ],
-      }),
-    },
-    { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
-  );
+  // Full-access (delete) policy for the legacy per-instance IAM Users and the
+  // EC2-assumed device role. Skipped when the legacy path is retired.
+  const kopiaPolicy = legacyKopiaAccess
+    ? new awsNative.iam.ManagedPolicy(
+        'backups-kopia-policy',
+        {
+          policyDocument: jsonStringify({
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: AWS_S3_BACKUP_ACTIONS,
+                Resource: bucket.bucketName.apply((name) => [
+                  `arn:aws:s3:::${name}`,
+                  `arn:aws:s3:::${name}/*`,
+                ]),
+              },
+            ],
+          }),
+        },
+        { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
+      )
+    : undefined;
 
   // The role Canopy issues device creds from drops delete/retention and gains
   // the Object Lock read; the IAM Users keep the full kopiaPolicy. Without
@@ -166,11 +183,21 @@ function createOwnBucket(): KopiaOutputs {
       )
     : undefined;
 
+  const deviceManagedPolicy = devicePolicy ?? kopiaPolicy;
+  if (!deviceManagedPolicy) {
+    throw new Error(
+      'on-linux backups: device role has no policy — set legacyKopiaAccess or onboard to Canopy',
+    );
+  }
   const kopiaRole = new awsNative.iam.Role(
     `backups-kopia-role-${normalizedStack}`,
     {
-      managedPolicyArns: [(devicePolicy ?? kopiaPolicy).policyArn],
-      assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn, canopyPrivateRoleArn),
+      managedPolicyArns: [deviceManagedPolicy.policyArn],
+      assumeRolePolicyDocument: deviceAssumeRolePolicy(
+        canopyIssuerRoleArn,
+        canopyPrivateRoleArn,
+        legacyKopiaAccess,
+      ),
       tags,
     },
     { parent: bucket, protect: false },
@@ -208,6 +235,7 @@ function createOwnBucket(): KopiaOutputs {
           assumeRolePolicyDocument: maintenanceAssumeRolePolicy(
             canopyJobsRoleArn,
             canopyPrivateRoleArn,
+            legacyKopiaAccess,
           ),
           tags,
         },
@@ -241,46 +269,51 @@ function createOwnBucket(): KopiaOutputs {
     },
   );
 
-  const users = instances.map(
-    (inst) =>
-      new awsNative.iam.User(
-        `backups-kopia-${normalizedStack}-${inst.id}`,
-        {
-          managedPolicyArns: [kopiaPolicy.policyArn],
-          tags,
-        },
-        { parent: bucket, protect: false },
-      ).userName,
-  );
+  const users = legacyKopiaAccess
+    ? instances.map(
+        (inst) =>
+          new awsNative.iam.User(
+            `backups-kopia-${normalizedStack}-${inst.id}`,
+            {
+              managedPolicyArns: [kopiaPolicy!.policyArn],
+              tags,
+            },
+            { parent: bucket, protect: false },
+          ).userName,
+      )
+    : [];
 
-  const kopiaReadOnlyPolicy = new awsNative.iam.ManagedPolicy(
-    'backups-kopia-readonly-policy',
-    {
-      policyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: AWS_S3_READ_ACTIONS,
-            Resource: bucket.bucketName.apply((name) => [
-              `arn:aws:s3:::${name}`,
-              `arn:aws:s3:::${name}/*`,
-            ]),
-          },
-        ],
-      }),
-    },
-    { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
-  );
+  let readOnlyUser: Output<string> | undefined;
+  if (legacyKopiaAccess) {
+    const kopiaReadOnlyPolicy = new awsNative.iam.ManagedPolicy(
+      'backups-kopia-readonly-policy',
+      {
+        policyDocument: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: AWS_S3_READ_ACTIONS,
+              Resource: bucket.bucketName.apply((name) => [
+                `arn:aws:s3:::${name}`,
+                `arn:aws:s3:::${name}/*`,
+              ]),
+            },
+          ],
+        }),
+      },
+      { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
+    );
 
-  const readOnlyUser = new awsNative.iam.User(
-    `backups-kopia-${normalizedStack}-readonly`,
-    {
-      managedPolicyArns: [kopiaReadOnlyPolicy.policyArn],
-      tags,
-    },
-    { parent: bucket, protect: false },
-  ).userName;
+    readOnlyUser = new awsNative.iam.User(
+      `backups-kopia-${normalizedStack}-readonly`,
+      {
+        managedPolicyArns: [kopiaReadOnlyPolicy.policyArn],
+        tags,
+      },
+      { parent: bucket, protect: false },
+    ).userName;
+  }
 
   return {
     backupBucket: bucket.bucketName.apply((name) => name!),
