@@ -46,11 +46,56 @@
     state: started
     enabled: true
 
+# bestool 1.26.0 ships its own bestool-alertd.service in the package. From that
+# version on we stop managing the unit file: a self-managed copy under
+# /etc/systemd/system would shadow the packaged unit, so we delete it and inject
+# only the host-specific database URL via a drop-in. Older bestool has no
+# packaged unit, so keep templating the full unit for it (and when the version
+# fact is somehow absent, fall back to templating rather than leave nothing).
+- name: Determine whether bestool ships its own alertd unit
+  ansible.builtin.set_fact:
+    bestool_ships_alertd_unit: "{{ bestool_installed_version is defined and bestool_installed_version is version('1.26.0', '>=') }}"
+
 - name: Install bestool-alertd systemd unit
+  when: not bestool_ships_alertd_unit
   become: true
   ansible.builtin.template:
     src: bestool-alertd.service.j2
     dest: /etc/systemd/system/bestool-alertd.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart bestool-alertd
+
+- name: Remove self-managed bestool-alertd unit superseded by the package
+  when: bestool_ships_alertd_unit
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-alertd.service
+    state: absent
+  notify:
+    - Reload systemd
+    - Restart bestool-alertd
+
+# The doctor's DB checks connect as a dedicated read-only Postgres role over the
+# socket (peer auth). The fact is set by tamanu-single-common, so it's present
+# only on tamanu hosts; absent elsewhere we leave the packaged unit's default.
+- name: Create bestool-alertd unit drop-in directory
+  when: bestool_ships_alertd_unit and tamanu_alertd_database_url is defined
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-alertd.service.d
+    state: directory
+    mode: "0755"
+
+- name: Drop in bestool-alertd database URL
+  when: bestool_ships_alertd_unit and tamanu_alertd_database_url is defined
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/bestool-alertd.service.d/10-database.conf
+    content: |
+      [Service]
+      Environment=TAMANU_DATABASE_URL={{ tamanu_alertd_database_url }}
     mode: "0644"
   notify:
     - Reload systemd
