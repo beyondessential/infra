@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 import { costLabels, dbExpose, dbStorage, normalizedStack } from './config.ts';
-import { runPostgres } from '../../../common/k8s/postgres.ts';
+import { runPostgres } from '../../common/k8s/postgres.ts';
 
 import { namespace } from './namespace.ts';
 import './ca.ts';

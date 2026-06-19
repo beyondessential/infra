@@ -1,9 +1,13 @@
 import { getStack } from '@pulumi/pulumi';
-import { billingTags } from '../../../common/billing.ts';
-import { cfg } from '../../../common/k8s/coreRef.ts';
-import type { Architecture } from '../../../common/k8s/affinities.ts';
-import { truncateDomainIfNeeded } from '../../../common/dns.ts';
+import { billingTags } from '../../common/billing.ts';
+import { cfg } from '../../common/k8s/coreRef.ts';
+import type { Architecture } from '../../common/k8s/affinities.ts';
+import { truncateDomainIfNeeded } from '../../common/dns.ts';
 
+// Kept as `tamanu-meta-<stack>` even though the project is now `canopy`: this
+// string is the live k8s namespace (and derived tailscale/service hostnames),
+// so changing it would recreate the whole control plane. Renaming the project
+// is a Pulumi/CrossStack-ref concern only; the in-cluster identity is pinned.
 export const normalizedStack = `tamanu-meta-${getStack()}`
   .toLowerCase()
   .replace(/[^a-z0-9-]+/g, '-')

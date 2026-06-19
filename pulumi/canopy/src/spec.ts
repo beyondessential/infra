@@ -1,21 +1,23 @@
 import * as k8s from '@pulumi/kubernetes';
 import { architecture } from './config.ts';
-import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
-import { PostgresUrlSecretKey } from '../../../common/k8s/postgresUrl.ts';
+import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
+import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
+import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.ts';
 
 import { image } from './image.ts';
 import './ca.ts';
 import { dbReady } from './db.ts';
-import { all } from '@pulumi/pulumi';
+import { all, type Input } from '@pulumi/pulumi';
 
 export function spec(
   name: string,
   command: string[] = [],
   containerArgs: Partial<k8s.types.input.core.v1.Container> = {},
+  podArgs: { serviceAccountName?: Input<string> } = {},
 ): k8s.types.input.core.v1.PodSpec {
   return {
     ...containerArgs,
+    ...(podArgs.serviceAccountName ? { serviceAccountName: podArgs.serviceAccountName } : {}),
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
       nodeAffinity: {

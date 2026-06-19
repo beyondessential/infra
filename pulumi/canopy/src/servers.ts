@@ -1,17 +1,27 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { costLabels, domains, normalizedStack, publicServerVersionsSecret, replicas, tailscaleClientId, tailscaleClientSecret, tailscaleHostname } from './config.ts';
+import {
+  costLabels,
+  domains,
+  normalizedStack,
+  publicServerVersionsSecret,
+  replicas,
+  tailscaleClientId,
+  tailscaleClientSecret,
+  tailscaleHostname,
+} from './config.ts';
 
-import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN, TAILNET_ID } from '../../../constants/internal.ts';
-import { Gateway } from '../../../common/k8s/gateway/Gateway.ts';
-import { HTTPRoute } from '../../../common/k8s/gateway/HTTPRoute.ts';
-import { API_GROUP as GATEWAY_API_GROUP } from '../../../common/k8s/gateway/consts/API.ts';
+import { GATEWAY_CLASS_ENVOY, TAILNET_DOMAIN, TAILNET_ID } from '../../constants/internal.ts';
+import { Gateway } from '../../common/k8s/gateway/Gateway.ts';
+import { HTTPRoute } from '../../common/k8s/gateway/HTTPRoute.ts';
+import { API_GROUP as GATEWAY_API_GROUP } from '../../common/k8s/gateway/consts/API.ts';
 
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
 import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
+import { canopyIssuerSa } from './canopy-sa.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -161,42 +171,47 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: { ...labels('public'), ...costLabels },
         },
-        spec: spec('server', ['public-server'], {
-          env: [
-            {
-              name: 'STATUS_PAGE_URL',
-              value: `https://${normalizedStack}.${TAILNET_DOMAIN}/`,
+        spec: spec(
+          'server',
+          ['public-server'],
+          {
+            env: [
+              {
+                name: 'STATUS_PAGE_URL',
+                value: `https://${normalizedStack}.${TAILNET_DOMAIN}/`,
+              },
+              {
+                name: 'CLIENT_IP_SOURCE',
+                value: 'RightmostXForwardedFor',
+              },
+              {
+                name: 'SERVER_VERSIONS_SECRET',
+                value: publicServerVersionsSecret,
+              },
+            ],
+            // Wait up to 60 seconds for the server to start...
+            startupProbe: {
+              periodSeconds: 1,
+              failureThreshold: 60,
+              httpGet: {
+                path: '/readyz',
+                port: 8000,
+                scheme: 'HTTP',
+              },
             },
-            {
-              name: 'CLIENT_IP_SOURCE',
-              value: 'RightmostXForwardedFor',
-            },
-            {
-              name: 'SERVER_VERSIONS_SECRET',
-              value: publicServerVersionsSecret,
-            },
-          ],
-          // Wait up to 60 seconds for the server to start...
-          startupProbe: {
-            periodSeconds: 1,
-            failureThreshold: 60,
-            httpGet: {
-              path: '/readyz',
-              port: 8000,
-              scheme: 'HTTP',
+            // ...then continuously check if it's up, and restart if it fails
+            livenessProbe: {
+              periodSeconds: 10,
+              failureThreshold: 2,
+              httpGet: {
+                path: '/livez',
+                port: 8000,
+                scheme: 'HTTP',
+              },
             },
           },
-          // ...then continuously check if it's up, and restart if it fails
-          livenessProbe: {
-            periodSeconds: 10,
-            failureThreshold: 2,
-            httpGet: {
-              path: '/livez',
-              port: 8000,
-              scheme: 'HTTP',
-            },
-          },
-        }),
+          { serviceAccountName: canopyIssuerSa },
+        ),
       },
     },
   },
@@ -306,54 +321,59 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: { ...labels('private'), ...costLabels },
         },
-        spec: spec('server', ['private-server'], {
-          env: [
-            {
-              name: 'PUBLIC_URL',
-              value: `https://${domains[0]}`,
+        spec: spec(
+          'server',
+          ['private-server'],
+          {
+            env: [
+              {
+                name: 'PUBLIC_URL',
+                value: `https://${domains[0]}`,
+              },
+              {
+                name: 'CLIENT_IP_SOURCE',
+                value: 'RightmostXForwardedFor',
+              },
+              {
+                name: 'SERVER_VERSIONS_SECRET',
+                value: publicServerVersionsSecret,
+              },
+              {
+                name: 'TAILSCALE_OAUTH_CLIENT_ID',
+                value: tailscaleClientId,
+              },
+              {
+                name: 'TAILSCALE_OAUTH_CLIENT_SECRET',
+                value: tailscaleClientSecret,
+              },
+              {
+                name: 'TAILSCALE_TAILNET',
+                value: TAILNET_ID,
+              },
+            ],
+            // Wait up to 60 seconds for the server to start...
+            startupProbe: {
+              periodSeconds: 1,
+              failureThreshold: 60,
+              httpGet: {
+                path: '/readyz',
+                port: 8000,
+                scheme: 'HTTP',
+              },
             },
-            {
-              name: 'CLIENT_IP_SOURCE',
-              value: 'RightmostXForwardedFor',
-            },
-            {
-              name: 'SERVER_VERSIONS_SECRET',
-              value: publicServerVersionsSecret,
-            },
-            {
-              name: 'TAILSCALE_OAUTH_CLIENT_ID',
-              value: tailscaleClientId,
-            },
-            {
-              name: 'TAILSCALE_OAUTH_CLIENT_SECRET',
-              value: tailscaleClientSecret,
-            },
-            {
-              name: 'TAILSCALE_TAILNET',
-              value: TAILNET_ID,
-            },
-          ],
-          // Wait up to 60 seconds for the server to start...
-          startupProbe: {
-            periodSeconds: 1,
-            failureThreshold: 60,
-            httpGet: {
-              path: '/readyz',
-              port: 8000,
-              scheme: 'HTTP',
+            // ...then continuously check if it's up, and restart if it fails
+            livenessProbe: {
+              periodSeconds: 10,
+              failureThreshold: 2,
+              httpGet: {
+                path: '/livez',
+                port: 8000,
+                scheme: 'HTTP',
+              },
             },
           },
-          // ...then continuously check if it's up, and restart if it fails
-          livenessProbe: {
-            periodSeconds: 10,
-            failureThreshold: 2,
-            httpGet: {
-              path: '/livez',
-              port: 8000,
-              scheme: 'HTTP',
-            },
-          },
-        }),
+          { serviceAccountName: canopyIssuerSa },
+        ),
       },
     },
   },

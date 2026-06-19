@@ -1,4 +1,4 @@
-import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
+import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
 import './db.ts';

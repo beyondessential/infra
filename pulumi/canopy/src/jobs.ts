@@ -1,11 +1,18 @@
 import * as k8s from '@pulumi/kubernetes';
-import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
-import { postgresCronJob } from '../../../common/k8s/postgresCron.ts';
+import { TAILNET_DOMAIN } from '../../constants/internal.ts';
+import { postgresCronJob } from '../../common/k8s/postgresCron.ts';
 import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
+import { canopyJobsSa } from './canopy-sa.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
-import { architecture, costLabels, slackerOpenUrl, slackerCloseUrl, normalizedStack } from './config.ts';
+import {
+  architecture,
+  costLabels,
+  slackerOpenUrl,
+  slackerCloseUrl,
+  normalizedStack,
+} from './config.ts';
 
 export const migrator = new k8s.batch.v1.Job('migrator', {
   metadata: {
@@ -119,7 +126,7 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: { ...labels('backups'), ...costLabels },
         },
-        spec: spec('backups', ['backups']),
+        spec: spec('backups', ['backups'], {}, { serviceAccountName: canopyJobsSa }),
       },
     },
   },
