@@ -75,10 +75,10 @@ new k8s.apps.v1.Deployment(
 );
 
 new k8s.apps.v1.Deployment(
-  'reachability',
+  'monitor',
   {
     metadata: {
-      labels: labels('reachability'),
+      labels: labels('monitor'),
       namespace,
     },
     spec: {
@@ -87,13 +87,39 @@ new k8s.apps.v1.Deployment(
         type: 'Recreate',
       },
       selector: {
-        matchLabels: labels('reachability'),
+        matchLabels: labels('monitor'),
       },
       template: {
         metadata: {
-          labels: { ...labels('reachability'), ...costLabels },
+          labels: { ...labels('monitor'), ...costLabels },
         },
-        spec: spec('reachability', ['reachability']),
+        spec: spec('monitor', ['monitor']),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
+
+new k8s.apps.v1.Deployment(
+  'backups',
+  {
+    metadata: {
+      labels: labels('backups'),
+      namespace,
+    },
+    spec: {
+      replicas: 1,
+      strategy: {
+        type: 'Recreate',
+      },
+      selector: {
+        matchLabels: labels('backups'),
+      },
+      template: {
+        metadata: {
+          labels: { ...labels('backups'), ...costLabels },
+        },
+        spec: spec('backups', ['backups']),
       },
     },
   },
