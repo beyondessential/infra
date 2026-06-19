@@ -52,11 +52,17 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
     // initsql runs before the roles are created/updated by the above
     // and also before anything is migrated by the application, so
     // the reporting schema is not available.
+    //
+    // From Tamanu TAM-6862 reporting is always on, and Tamanu creates and
+    // manages its own tamanu_reporting/tamanu_raw login roles at startup
+    // (with derived passwords), so the app role needs CREATEROLE. The raw/
+    // reporting roles below are legacy and no longer used by Tamanu.
     initSql: `
       CREATE ROLE raw LOGIN;
       CREATE ROLE reporting LOGIN;
       GRANT USAGE ON SCHEMA public TO raw;
       GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+      ALTER ROLE app CREATEROLE;
     `
       .replace(/^[ \t]+/gm, '')
       .trim(),
