@@ -37,7 +37,13 @@ function serviceAccount(name: string, roleArn: Output<string>, secretVerbs: stri
 if (infraRef) {
   const infra = new CrossStack(infraRef);
   serviceAccount(CANOPY_SA_ISSUER, infra.get<string>('canopyIssuerRoleArn'), ['get']);
-  serviceAccount(CANOPY_SA_JOBS, infra.get<string>('canopyJobsRoleArn'), ['get']);
+  // backups writes the rotated passphrase back, so canopy-jobs needs secret write.
+  serviceAccount(CANOPY_SA_JOBS, infra.get<string>('canopyJobsRoleArn'), [
+    'get',
+    'create',
+    'update',
+    'patch',
+  ]);
   // The setup wizard creates the passphrase Secret, so private-server also gets create.
   serviceAccount(CANOPY_SA_PRIVATE, infra.get<string>('canopyPrivateRoleArn'), ['get', 'create']);
 }
