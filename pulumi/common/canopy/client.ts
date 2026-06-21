@@ -1,27 +1,37 @@
-// Thin client for Canopy's private admin API, reached over the tailnet. Auth is
-// implicit: the tailscale ingress proxy injects the caller's identity
-// (Tailscale-User-Login) — same trust model as pulumi->k8s, so no auth header
-// and no stored credentials. See docs/plans/canopy-k8s-registration-provider.md.
-//
-// SKELETON — TODO(TAM-6877): the endpoint paths and request/response field
-// shapes below are provisional. Confirm them against canopy's generated
-// /api/openapi.json before the resource is wired into any stack. Until then no
-// stack instantiates CanopyBackupConfig, so none of this runs.
+// Thin client for Canopy's private admin API (backups config-as-a-resource),
+// reached over the tailnet. Auth is implicit: the tailscale ingress proxy injects
+// the caller's identity, and upsert/delete require a tailscale-admin (group:ops)
+// caller — same trust model as pulumi->k8s, so no auth header / stored creds.
+// Routes: POST /api/backups/{upsert,get,delete} (canopy fns/backups.rs).
 
-export interface BackupConfigInput {
+export interface BackupConfigInputs {
   serverGroupId: string;
   bucket: string;
   prefix: string;
-  region: string;
-  targetRoleArn: string; // device role (server_group_backup_config.target_role_arn)
+  region?: string;
+  targetRoleArn: string;
   maintenanceRoleArn: string;
-  mode: string; // machine flow: 'from_birth' (canopy generates the passphrase)
+  // Optional schedule reconciliation; Canopy applies its defaults when omitted
+  // (type=tamanu-postgres, manual-only, inherited retention). NOTE: upsert
+  // reconciles the schedule for `backupType` on every call.
+  backupType?: string;
+  expectedIntervalSeconds?: number;
+  retention?: unknown;
+}
+
+// The subset of BackupConfigView we reflect for drift detection.
+export interface BackupConfigState {
+  bucket: string;
+  prefix: string;
+  region: string;
+  targetRoleArn: string;
+  maintenanceRoleArn: string;
 }
 
 const ENDPOINTS = {
-  upsert: '/api/backup_configs/upsert',
-  get: '/api/backup_configs/get',
-  delete: '/api/backup_configs/delete',
+  upsert: '/api/backups/upsert',
+  get: '/api/backups/get',
+  delete: '/api/backups/delete',
 };
 
 async function request(baseUrl: string, path: string, body: unknown): Promise<unknown> {
@@ -30,50 +40,53 @@ async function request(baseUrl: string, path: string, body: unknown): Promise<un
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (res.status === 404) return undefined;
+  if (res.status === 404) return undefined; // group/config absent
   const text = await res.text();
   if (!res.ok) throw new Error(`canopy ${path} failed: ${res.status} ${text}`);
   return text ? JSON.parse(text) : undefined;
 }
 
-function toWire(cfg: BackupConfigInput): Record<string, string> {
-  return {
+// Idempotent from-birth upsert; Canopy runs its server-side probe before
+// persisting, so a non-empty/inaccessible bucket or bad role fails fast.
+// bucket/prefix are immutable — changing them returns 409.
+export async function upsertBackupConfig(baseUrl: string, cfg: BackupConfigInputs): Promise<void> {
+  const body: Record<string, unknown> = {
     server_group_id: cfg.serverGroupId,
     bucket: cfg.bucket,
     prefix: cfg.prefix,
-    region: cfg.region,
     target_role_arn: cfg.targetRoleArn,
     maintenance_role_arn: cfg.maintenanceRoleArn,
-    mode: cfg.mode,
   };
+  if (cfg.region !== undefined) body.region = cfg.region;
+  if (cfg.backupType !== undefined) body.type = cfg.backupType;
+  if (cfg.expectedIntervalSeconds !== undefined)
+    body.expected_interval = cfg.expectedIntervalSeconds;
+  if (cfg.retention !== undefined) body.retention = cfg.retention;
+  await request(baseUrl, ENDPOINTS.upsert, body);
 }
 
-// Idempotent upsert; canopy runs its server-side access-check (the probe) before
-// persisting, so a misconfigured role/bucket fails fast.
-export async function upsertBackupConfig(baseUrl: string, cfg: BackupConfigInput): Promise<void> {
-  await request(baseUrl, ENDPOINTS.upsert, toWire(cfg));
-}
-
+// get returns Option<BackupConfigView>: 200 null = no config, 404 = group gone.
+// Either way → undefined (pulumi recreates).
 export async function getBackupConfig(
   baseUrl: string,
   serverGroupId: string,
-): Promise<BackupConfigInput | undefined> {
-  const res = (await request(baseUrl, ENDPOINTS.get, { server_group_id: serverGroupId })) as
-    | Record<string, string>
+): Promise<BackupConfigState | undefined> {
+  const view = (await request(baseUrl, ENDPOINTS.get, { server_group_id: serverGroupId })) as
+    | Record<string, unknown>
+    | null
     | undefined;
-  if (!res) return undefined;
+  if (!view) return undefined;
   return {
-    serverGroupId: res.server_group_id,
-    bucket: res.bucket,
-    prefix: res.prefix ?? '',
-    region: res.region,
-    targetRoleArn: res.target_role_arn,
-    maintenanceRoleArn: res.maintenance_role_arn,
-    mode: res.mode,
+    bucket: view.bucket as string,
+    prefix: view.prefix as string,
+    region: (view.region as string) ?? '',
+    targetRoleArn: view.target_role_arn as string,
+    maintenanceRoleArn: view.maintenance_role_arn as string,
   };
 }
 
-// Delete removes the config and the canopy-owned passphrase Secret.
+// Removes the config row + the Canopy-owned passphrase Secret (the bucket and its
+// object-locked objects persist). 404 (already gone) is tolerated by request().
 export async function deleteBackupConfig(baseUrl: string, serverGroupId: string): Promise<void> {
   await request(baseUrl, ENDPOINTS.delete, { server_group_id: serverGroupId });
 }

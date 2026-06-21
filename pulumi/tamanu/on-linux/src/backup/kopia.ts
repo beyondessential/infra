@@ -9,7 +9,8 @@ import {
   deviceAssumeRolePolicy,
   maintenanceAssumeRolePolicy,
 } from '../../../../common/canopyBackup.ts';
-import { cfg } from '../../../../common/coreRef.ts';
+import { cfg, region } from '../../../../common/coreRef.ts';
+import { CanopyBackupConfig } from '../../../../common/canopy/CanopyBackupConfig.ts';
 import { nativeTags } from '../../../../common/tags.ts';
 import { billingTags, cloneOf, instances, normalizedStack } from '../config.ts';
 
@@ -287,6 +288,24 @@ function createOwnBucket(): KopiaOutputs {
     },
     { parent: bucket, protect: false },
   ).userName;
+
+  // Register the config with Canopy when a server_group_id is set (the gate).
+  // Requires Canopy onboarding (the maintenance role only exists then).
+  const serverGroupId = cfg.get('serverGroupId');
+  if (serverGroupId) {
+    if (!maintenanceRole) {
+      throw new Error(
+        'on-linux backups: serverGroupId requires Canopy onboarding (set canopyInfra)',
+      );
+    }
+    new CanopyBackupConfig('canopy-backup-config', {
+      serverGroupId,
+      bucket: bucket.bucketName.apply((name) => name!),
+      region,
+      targetRoleArn: kopiaRole.arn,
+      maintenanceRoleArn: maintenanceRole.arn,
+    });
+  }
 
   return {
     backupBucket: bucket.bucketName.apply((name) => name!),

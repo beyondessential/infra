@@ -3,8 +3,9 @@ import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { AWS_S3_BACKUP_ACTIONS } from '../constants/external.ts';
 
-import { failIfIncorrectAccount } from '../common/coreRef.ts';
+import { failIfIncorrectAccount, region } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
+import { registerBackupConfig } from '../common/canopy/CanopyBackupConfig.ts';
 import {
   DEVICE_S3_ACTIONS,
   CLOUDWATCH_METRIC_ACTIONS,
@@ -207,6 +208,15 @@ new awsClassic.s3.BucketObjectv2(
 export const deviceRoleArn = kopiaRole.arn;
 export const maintenanceRoleArn = fullAccessRole.arn;
 export const bucketArn = bucket.arn;
+
+// Register the config with Canopy when a server_group_id is set (the gate).
+registerBackupConfig('canopy-backup-config', {
+  serverGroupId: config.get('serverGroupId'),
+  bucket: bucketName,
+  region,
+  targetRoleArn: kopiaRole.arn,
+  maintenanceRoleArn: fullAccessRole.arn,
+});
 
 export const backupUsers = ((config.getObject('users') as string[]) ?? []).map(
   (name) =>

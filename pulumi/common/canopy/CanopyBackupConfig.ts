@@ -6,62 +6,59 @@ import {
   type Output,
 } from '@pulumi/pulumi';
 import {
-  type BackupConfigInput,
+  type BackupConfigInputs,
   upsertBackupConfig,
   getBackupConfig,
   deleteBackupConfig,
 } from './client.ts';
 
-// Registers a server-group's backup config with Canopy as a managed resource, so
+// Registers a server-group's backup config with Canopy as a managed resource so
 // pulumi (which creates the bucket + roles) stops hand-copying ARNs into the UI.
 // Calls the private admin API over the tailnet; identity is injected by the
-// tailscale ingress (TailscaleAdmin), so there are no credentials here.
-//
-// SKELETON: the API shapes live in ./client.ts and are provisional pending
-// canopy's OpenAPI (TAM-6877). No stack instantiates this yet — wiring is: read
-// a `serverGroupId` stack config (which also gates provisioning) and pass it plus
-// the existing deviceRoleArn / maintenanceRoleArn / bucket / region exports.
+// tailscale ingress (the caller must be a tailscale-admin / group:ops), so there
+// are no credentials here. Upsert is from-birth onto an empty bucket only.
 
 export interface CanopyBackupConfigArgs {
-  /** server_group_id; the idempotency anchor (replace-on-change). */
+  /** server_group_id; the identity/idempotency anchor (replace-on-change). */
   serverGroupId: Input<string>;
+  /** Immutable on re-apply (replace-on-change, matching the API's 409). */
   bucket: Input<string>;
-  /** Empty/root for our single-group-per-bucket usage. */
+  /** Immutable; empty/root for our single-group-per-bucket usage. */
   prefix?: Input<string>;
-  region: Input<string>;
+  region?: Input<string>;
   /** Device role ARN (`deviceRoleArn`). */
   targetRoleArn: Input<string>;
   maintenanceRoleArn: Input<string>;
-  /** Machine flow; defaults to `from_birth`. */
-  mode?: Input<string>;
-  /** Override the canopy private API base URL (default `canopy:apiUrl` config). */
+  /** Optional schedule reconciliation; Canopy defaults apply when omitted. */
+  backupType?: Input<string>;
+  expectedIntervalSeconds?: Input<number>;
+  retention?: Input<unknown>;
+  /** Override the canopy private API base URL (default `canopy:apiUrl`). */
   apiUrl?: Input<string>;
 }
 
-interface Props extends BackupConfigInput {
+interface Props extends Omit<BackupConfigInputs, 'region'> {
+  region: string;
   apiUrl: string;
 }
 
-const MANAGED_KEYS = [
-  'bucket',
-  'prefix',
+// Replace-on-change (the API treats these as immutable identity).
+const REPLACE_KEYS = ['serverGroupId', 'bucket', 'prefix'] as const;
+// Reconciled in place on update.
+const UPDATE_KEYS = [
   'region',
   'targetRoleArn',
   'maintenanceRoleArn',
-  'mode',
+  'backupType',
+  'expectedIntervalSeconds',
+  'retention',
   'apiUrl',
 ] as const;
 
 const provider: dynamic.ResourceProvider<Props, Props> = {
   async check(_olds, news) {
     const failures: dynamic.CheckFailure[] = [];
-    for (const k of [
-      'serverGroupId',
-      'bucket',
-      'region',
-      'targetRoleArn',
-      'maintenanceRoleArn',
-    ] as const) {
+    for (const k of ['serverGroupId', 'bucket', 'targetRoleArn', 'maintenanceRoleArn'] as const) {
       if (!news[k]) failures.push({ property: k, reason: `${k} is required` });
     }
     return { inputs: news, failures: failures.length ? failures : undefined };
@@ -69,12 +66,11 @@ const provider: dynamic.ResourceProvider<Props, Props> = {
 
   // Pure comparison, no network — preview / unchanged `up` never contacts Canopy.
   async diff(_id, olds, news) {
-    const replaces = olds.serverGroupId !== news.serverGroupId ? ['serverGroupId'] : [];
-    const changes = MANAGED_KEYS.filter((k) => olds[k] !== news[k]);
-    return {
-      replaces: replaces.length ? replaces : undefined,
-      changes: changes.length + replaces.length > 0,
-    };
+    const replaces = REPLACE_KEYS.filter((k) => olds[k] !== news[k]);
+    const changed =
+      replaces.length > 0 ||
+      UPDATE_KEYS.some((k) => JSON.stringify(olds[k]) !== JSON.stringify(news[k]));
+    return { replaces: replaces.length ? [...replaces] : undefined, changes: changed };
   },
 
   async create(inputs) {
@@ -92,9 +88,10 @@ const provider: dynamic.ResourceProvider<Props, Props> = {
   },
 
   async read(id, olds) {
-    const fetched = await getBackupConfig(olds.apiUrl, id);
-    if (!fetched) return { id: '' }; // gone canopy-side → pulumi recreates
-    return { id, props: { ...olds, ...fetched } };
+    const state = await getBackupConfig(olds.apiUrl, id);
+    if (!state) return { id: '' }; // gone canopy-side → pulumi recreates
+    // Reflect drift on the server-owned core fields; leave schedule inputs as-is.
+    return { id, props: { ...olds, ...state } };
   },
 };
 
@@ -116,10 +113,12 @@ export class CanopyBackupConfig extends dynamic.Resource {
         serverGroupId: args.serverGroupId,
         bucket: args.bucket,
         prefix: args.prefix ?? '',
-        region: args.region,
+        region: args.region ?? '',
         targetRoleArn: args.targetRoleArn,
         maintenanceRoleArn: args.maintenanceRoleArn,
-        mode: args.mode ?? 'from_birth',
+        backupType: args.backupType,
+        expectedIntervalSeconds: args.expectedIntervalSeconds,
+        retention: args.retention,
         apiUrl,
       },
       opts,
@@ -127,4 +126,20 @@ export class CanopyBackupConfig extends dynamic.Resource {
       'BackupConfig',
     );
   }
+}
+
+export interface RegisterBackupConfigArgs extends Omit<CanopyBackupConfigArgs, 'serverGroupId'> {
+  /** When absent, no config is registered (the stack isn't onboarded yet). */
+  serverGroupId?: Input<string>;
+}
+
+// Convenience for bucket-owner stacks: instantiate only when serverGroupId is set
+// (its presence is the provisioning gate).
+export function registerBackupConfig(
+  name: string,
+  args: RegisterBackupConfigArgs,
+  opts?: CustomResourceOptions,
+): CanopyBackupConfig | undefined {
+  if (!args.serverGroupId) return undefined;
+  return new CanopyBackupConfig(name, { ...args, serverGroupId: args.serverGroupId }, opts);
 }
