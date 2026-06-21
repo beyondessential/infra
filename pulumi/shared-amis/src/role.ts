@@ -16,6 +16,7 @@ const EC2_PUBLISH_ACTIONS = [
   'ec2:CreateTags',
   'ec2:ModifyImageAttribute',
   'ec2:ModifySnapshotAttribute',
+  'ec2:CopyImage', // to copy between regions
 ];
 
 export const role = new awsClassic.iam.Role('gha-linux-images-upload', {
