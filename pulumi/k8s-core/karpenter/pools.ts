@@ -9,7 +9,12 @@ import {
   instancesSizedAtLeast,
   instancesSizedExactly,
 } from '../../common/k8s/instanceTypeGroups.ts';
-import { workloadNodeClass, ingressNodeClass, systemNodeClass } from './classes.ts';
+import {
+  workloadNodeClass,
+  ingressNodeClass,
+  systemNodeClass,
+  exitNodeClass,
+} from './classes.ts';
 
 // Instance type lists, mirroring what nodes/groups.ts uses for the equivalent
 // managed nodegroups. The helpers price-cap spot against on-demand and exclude
@@ -79,8 +84,14 @@ interface DisruptionBudget {
   duration?: string;
 }
 
+interface Taint {
+  key: string;
+  value: string;
+  effect: 'NoSchedule' | 'PreferNoSchedule' | 'NoExecute';
+}
+
 interface PoolArgs {
-  purpose: 'workload' | 'ingress' | 'system';
+  purpose: 'workload' | 'ingress' | 'system' | 'tailscale-exit';
   schedule: 'spot' | 'ondemand' | 'mixed';
   arch: 'arm64' | 'amd64';
   nodeClassRef: k8s.apiextensions.CustomResource;
@@ -89,6 +100,8 @@ interface PoolArgs {
   consolidateAfter?: string;
   consolidationPolicy?: 'WhenEmpty' | 'WhenEmptyOrUnderutilized';
   spotTaint?: boolean;
+  // Taints to dedicate the pool; tolerating pods must opt in explicitly.
+  extraTaints?: Taint[];
   capacityTypes: ('spot' | 'on-demand')[];
   limits: { cpu: number; memory: string };
   budgets?: DisruptionBudget[];
@@ -105,6 +118,7 @@ function pool(name: string, args: PoolArgs) {
     consolidateAfter = '5m',
     consolidationPolicy = 'WhenEmptyOrUnderutilized',
     spotTaint = false,
+    extraTaints = [],
     capacityTypes,
     limits,
     budgets,
@@ -119,7 +133,7 @@ function pool(name: string, args: PoolArgs) {
       spec: {
         template: {
           metadata: {
-            // k[node.label.purpose] k[node.label.schedule] k[node.label.arch] k[node.label.group]
+            // k[node.label.purpose+2] k[node.label.schedule] k[node.label.arch] k[node.label.group]
             labels: {
               'bes.node.purpose': purpose,
               'bes.node.schedule': schedule === 'mixed' ? 'spot' : schedule,
@@ -145,9 +159,12 @@ function pool(name: string, args: PoolArgs) {
               { key: 'node.kubernetes.io/instance-type', operator: 'In', values: instanceTypes },
             ],
             // k[node.taint.spot]
-            taints: spotTaint
-              ? [{ key: 'spotInstance', value: 'true', effect: 'PreferNoSchedule' }]
-              : [],
+            taints: [
+              ...(spotTaint
+                ? [{ key: 'spotInstance', value: 'true', effect: 'PreferNoSchedule' }]
+                : []),
+              ...extraTaints,
+            ],
           },
         },
         limits,
@@ -261,4 +278,27 @@ pool('system-arm-spot', {
   consolidationPolicy: 'WhenEmpty',
   limits: { cpu: 50, memory: '100Gi' },
   weight: 45,
+});
+
+// k[capacity.exit-node-dedicated]
+// Dedicated single-node pool for the Tailscale exit node. On-demand only — it's
+// a live network path, so a spot reclaim would blip routing for connected
+// clients. Pinned to the smallest burstable arm shapes that fit the exit node
+// plus the daemonsets that ride every node; peak usage is ~0.2 vCPU / ~220MiB,
+// dwarfed by the daemonset floor. The NoSchedule taint keeps all other
+// workloads off; the exit node tolerates it and selects this pool via its
+// ProxyClass (see k8s-essentials/tailscale.ts). WhenEmpty consolidation avoids
+// churning the node just because it looks underutilised.
+pool('tailscale-exit', {
+  purpose: 'tailscale-exit',
+  schedule: 'ondemand',
+  arch: 'arm64',
+  nodeClassRef: exitNodeClass,
+  instanceTypes: ['t4g.small', 't4g.medium'],
+  capacityTypes: ['on-demand'],
+  extraTaints: [{ key: 'bes.node.purpose', value: 'tailscale-exit', effect: 'NoSchedule' }],
+  consolidateAfter: '30m',
+  consolidationPolicy: 'WhenEmpty',
+  limits: { cpu: 4, memory: '8Gi' },
+  weight: 10,
 });

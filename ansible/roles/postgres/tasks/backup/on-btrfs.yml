@@ -22,7 +22,7 @@
 - name: Add kopia backup for postgres (btrfs script)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-btrfs.sh') }}"
+    src: kopia-backup-postgres-btrfs.sh
     dest: /var/lib/kopia/backup-postgres.sh
     mode: "0755"
     owner: root
@@ -31,7 +31,7 @@
 - name: Add kopia backup for postgres (btrfs service)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-btrfs.service') }}"
+    src: kopia-backup-postgres-btrfs.service
     dest: /etc/systemd/system/kopia-backup-postgres.service
     mode: "0644"
   notify:

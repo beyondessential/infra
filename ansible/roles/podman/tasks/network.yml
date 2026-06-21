@@ -9,14 +9,14 @@
 - name: Configure default podman network
   become: true
   ansible.builtin.template:
-    src: "{{ lookup('ansible.builtin.fileglob', 'networks-podman.json.j2') }}"
+    src: networks-podman.json.j2
     dest: /etc/containers/networks/podman.json
     mode: "0644"
 
 - name: Configure resolved to look into the podman network
   become: true
   ansible.builtin.template:
-    src: "{{ lookup('ansible.builtin.fileglob', 'podman.network.j2') }}"
+    src: podman.network.j2
     dest: /etc/systemd/network/podman.network
     mode: "0644"
   notify:

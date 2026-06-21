@@ -1,0 +1,5 @@
+{
+  "name": "@bes/shared-amis",
+  "type": "module",
+  "main": "src/index.ts"
+}

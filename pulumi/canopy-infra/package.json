@@ -1,0 +1,5 @@
+{
+  "name": "@bes/canopy-infra",
+  "type": "module",
+  "main": "index.ts"
+}

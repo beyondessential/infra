@@ -23,7 +23,7 @@
   become: true
   ansible.builtin.template:
     dest: /etc/msupply/local.yaml
-    src: "{{ lookup('ansible.builtin.fileglob', 'local.yaml.j2') }}"
+    src: local.yaml.j2
     mode: "0660"
     owner: msupply
     group: msupply
@@ -33,7 +33,7 @@
   become: true
   ansible.builtin.template:
     dest: /etc/caddy/servers/msupply
-    src: "{{ lookup('ansible.builtin.fileglob', 'caddy/msupply.j2') }}"
+    src: caddy/msupply.j2
     mode: "0644"
   notify: Reload caddy
 

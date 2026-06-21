@@ -3,7 +3,7 @@
   become: true
   ansible.builtin.template:
     dest: /etc/caddy/config/issuer
-    src: "{{ lookup('ansible.builtin.fileglob', 'issuer.j2') }}"
+    src: issuer.j2
     mode: "0644"
   notify: Restart caddy
 

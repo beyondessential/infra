@@ -25,6 +25,11 @@
       db_name: tamanu
       tags: [pre, tamanu]
 
+    # Runs after tamanu-single-install so its tamanu-single-common dependency has
+    # set up /etc/bestool first.
+    - role: bestool
+      tags: [pre, bestool]
+
 - name: Facility pre-upgrade  (if needed)
   hosts: facility
   roles:
@@ -36,6 +41,10 @@
       type: facility
       db_name: tamanu
       tags: [pre, tamanu]
+
+    # See the central pre-upgrade play above.
+    - role: bestool
+      tags: [pre, bestool]
 
     - role: msupply-install
       tags: [pre, msupply]

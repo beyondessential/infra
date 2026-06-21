@@ -2,7 +2,7 @@
 - name: Add kopia apt key
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'apt.gpg') }}"
+    src: apt.gpg
     dest: /etc/apt/keyrings/kopia-keyring.gpg
     mode: "0644"
 
@@ -41,7 +41,7 @@
 - name: Install bes-setup-kopia script
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'bes-setup-kopia') }}"
+    src: bes-setup-kopia
     dest: /usr/local/bin/bes-setup-kopia
     mode: "0755"
     owner: root

@@ -9,5 +9,5 @@
   become: true
   ansible.builtin.template:
     dest: /etc/tmux.conf
-    src: "{{ lookup('ansible.builtin.fileglob', 'tmux.conf.j2') }}"
+    src: tmux.conf.j2
     mode: "0644"

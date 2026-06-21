@@ -2,7 +2,7 @@
 - name: Add bes-tools apt key
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'bes-tools.gpg') }}"
+    src: bes-tools.gpg
     dest: /etc/apt/keyrings/bes-tools.gpg
     mode: "0644"
 

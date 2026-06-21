@@ -1,8 +1,6 @@
 ---
 - name: Gather tamanu facts
   ansible.builtin.include_tasks: facts.yml
-- name: Configure tamanu user
-  ansible.builtin.include_tasks: user.yml
 - name: Configure tamanu
   ansible.builtin.include_tasks: config.yml
 - name: Install tamanu quadlets
@@ -18,8 +16,6 @@
   when: tamanu_server_type != 'central'
 - name: Configure tamanu backup
   ansible.builtin.include_tasks: backup.yml
-- name: Configure tamanu alertd
-  ansible.builtin.include_tasks: alertd.yml
 - name: Configure tamanu doctor
   ansible.builtin.include_tasks: doctor.yml
   when: bestool_installed_version is defined and bestool_installed_version is version('1.8.0', '>=')

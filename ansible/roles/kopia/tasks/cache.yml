@@ -2,7 +2,7 @@
 - name: Add kopia cache-clean service
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-cache-clean.service') }}"
+    src: kopia-cache-clean.service
     dest: /etc/systemd/system/kopia-cache-clean.service
     mode: "0644"
   notify:
@@ -11,7 +11,7 @@
 - name: Add kopia cache-clean timer
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-cache-clean.timer') }}"
+    src: kopia-cache-clean.timer
     dest: /etc/systemd/system/kopia-cache-clean.timer
     mode: "0644"
   notify:

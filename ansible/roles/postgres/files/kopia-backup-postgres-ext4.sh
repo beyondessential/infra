@@ -109,10 +109,11 @@ inotifywait -e modify $pout &
 wait_pid=$!
 
 : tell postgres we are done
-# technically we don't really need to do wait_for_archive because that's configured to `true`
-# but better to follow what the documentation says exactly
+# wait_for_archive is false: we do not archive WAL (archive_command is a
+# no-op) and the snapshot already contains the pg_wal needed to recover, so
+# there is nothing to wait for -- blocking on archiving here would be a lie.
 pgmeta=$tmpdir/meta.csv
-echo "\copy (SELECT * FROM pg_backup_stop(wait_for_archive => true)) TO '$pgmeta' WITH (FORMAT CSV)" > $pin
+echo "\copy (SELECT * FROM pg_backup_stop(wait_for_archive => false)) TO '$pgmeta' WITH (FORMAT CSV)" > $pin
 
 : wait for the backup to complete
 wait $wait_pid

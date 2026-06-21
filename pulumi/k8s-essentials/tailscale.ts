@@ -97,6 +97,37 @@ if (tailscaleEnabled) {
   // again, and that should pick up the new hostname defined here.
   const exitNodeName = cfg.get('tailscaleExitNodeName');
   if (exitNodeName) {
+    // k[capacity.exit-node-dedicated]
+    // Pin the exit node onto the dedicated `tailscale-exit` Karpenter pool
+    // (k8s-core) and give it real resource requests. The operator otherwise
+    // requests almost nothing (1m/1Mi), which would let Karpenter under-
+    // provision; peak usage is ~0.2 vCPU / ~220MiB.
+    const exitNodeProxyClass = new k8s.apiextensions.CustomResource('exit-node-proxyclass', {
+      metadata: { name: 'exit-node' },
+      apiVersion: 'tailscale.com/v1alpha1',
+      kind: 'ProxyClass',
+      spec: {
+        statefulSet: {
+          pod: {
+            nodeSelector: { 'bes.node.purpose': 'tailscale-exit' },
+            tolerations: [
+              {
+                key: 'bes.node.purpose',
+                operator: 'Equal',
+                value: 'tailscale-exit',
+                effect: 'NoSchedule',
+              },
+            ],
+            tailscaleContainer: {
+              resources: {
+                requests: { cpu: '250m', memory: '256Mi' },
+              },
+            },
+          },
+        },
+      },
+    });
+
     new k8s.apiextensions.CustomResource('exit-node', {
       metadata: {
         namespace: ns.metadata.name,
@@ -107,6 +138,7 @@ if (tailscaleEnabled) {
         hostname: exitNodeName,
         tags: ['tag:server'],
         exitNode: true,
+        proxyClass: exitNodeProxyClass.metadata.name,
       },
     });
   }

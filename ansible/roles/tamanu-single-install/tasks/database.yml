@@ -2,6 +2,9 @@
 - name: Configure reporting users
   ansible.builtin.include_tasks: reporting-users.yml
 
+- name: Configure bestool-alertd monitoring user
+  ansible.builtin.include_tasks: monitoring-user.yml
+
 - name: Create backup folders
   become: true
   loop:
@@ -20,7 +23,7 @@
     - tamanu-backup.service
   ansible.builtin.template:
     dest: /etc/systemd/system/{{ item }}
-    src: "{{ lookup('ansible.builtin.fileglob', item ~ '.j2') }}"
+    src: "{{ item }}.j2"
     mode: "0660"
     force: true
   notify: Reload systemd

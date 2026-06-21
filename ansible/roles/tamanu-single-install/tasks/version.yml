@@ -26,7 +26,7 @@
   become: true
   ansible.builtin.template:
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
-    src: "{{ lookup('ansible.builtin.fileglob', tamanu_server_type + '.json5.j2') }}"
+    src: "{{ tamanu_server_type }}.json5.j2"
     mode: "0660"
     owner: tamanu
     group: tamanu
