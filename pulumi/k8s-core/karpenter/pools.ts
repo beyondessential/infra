@@ -21,18 +21,23 @@ import {
 // burstable types from large workload pools.
 
 // k[capacity.spot-price-cap] k[capacity.no-burstable-large] k[capacity.workload-node-floor]
+// Spot pools cast a wide net: lots of (instance-type, AZ) offerings so a per-AZ
+// capacity drought in one family doesn't strand pods. Floor matches the spec
+// minimum (4 vCPU / 8 GiB) and the price cap is sized to admit the 2xlarge
+// shapes of the same families — Karpenter still picks the cheapest available
+// offering, so larger shapes only land when smaller ones can't be provisioned.
 const workloadArmSpot = upToMonthly(
-  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 16)), 'linux'),
+  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8)), 'linux'),
   'linux',
   'spot',
-  100,
+  200,
 ).map((i) => i.instance_type);
 
 const workloadX86Spot = upToMonthly(
   spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)), 'linux'),
   'linux',
   'spot',
-  75,
+  150,
 ).map((i) => i.instance_type);
 
 // k[capacity.workload-node-floor]
