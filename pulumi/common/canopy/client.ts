@@ -11,13 +11,9 @@ export interface BackupConfigInputs {
   region?: string;
   targetRoleArn: string;
   maintenanceRoleArn: string;
-  // Optional schedule reconciliation; Canopy applies its defaults when omitted
-  // (type=tamanu-postgres, manual-only, inherited retention). NOTE: upsert
-  // reconciles the schedule for `backupType` on every call.
-  backupType?: string;
-  expectedIntervalSeconds?: number;
-  retention?: unknown;
 }
+// Schedule/retention are not part of this API — they're UI-owned (managed via
+// Canopy's separate schedule endpoints). upsert covers bucket/roles/region only.
 
 // The subset of BackupConfigView we reflect for drift detection.
 export interface BackupConfigState {
@@ -58,10 +54,6 @@ export async function upsertBackupConfig(baseUrl: string, cfg: BackupConfigInput
     maintenance_role_arn: cfg.maintenanceRoleArn,
   };
   if (cfg.region !== undefined) body.region = cfg.region;
-  if (cfg.backupType !== undefined) body.type = cfg.backupType;
-  if (cfg.expectedIntervalSeconds !== undefined)
-    body.expected_interval = cfg.expectedIntervalSeconds;
-  if (cfg.retention !== undefined) body.retention = cfg.retention;
   await request(baseUrl, ENDPOINTS.upsert, body);
 }
 

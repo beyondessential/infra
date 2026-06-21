@@ -29,10 +29,6 @@ export interface CanopyBackupConfigArgs {
   /** Device role ARN (`deviceRoleArn`). */
   targetRoleArn: Input<string>;
   maintenanceRoleArn: Input<string>;
-  /** Optional schedule reconciliation; Canopy defaults apply when omitted. */
-  backupType?: Input<string>;
-  expectedIntervalSeconds?: Input<number>;
-  retention?: Input<unknown>;
   /** Override the canopy private API base URL (default `canopy:apiUrl`). */
   apiUrl?: Input<string>;
 }
@@ -45,15 +41,7 @@ interface Props extends Omit<BackupConfigInputs, 'region'> {
 // Replace-on-change (the API treats these as immutable identity).
 const REPLACE_KEYS = ['serverGroupId', 'bucket', 'prefix'] as const;
 // Reconciled in place on update.
-const UPDATE_KEYS = [
-  'region',
-  'targetRoleArn',
-  'maintenanceRoleArn',
-  'backupType',
-  'expectedIntervalSeconds',
-  'retention',
-  'apiUrl',
-] as const;
+const UPDATE_KEYS = ['region', 'targetRoleArn', 'maintenanceRoleArn', 'apiUrl'] as const;
 
 const provider: dynamic.ResourceProvider<Props, Props> = {
   async check(_olds, news) {
@@ -87,11 +75,14 @@ const provider: dynamic.ResourceProvider<Props, Props> = {
     await deleteBackupConfig(olds.apiUrl, id);
   },
 
+  // Also the import path (`pulumi import` / { import: serverGroupId }); olds may
+  // be empty then, so fall back to the default API URL.
   async read(id, olds) {
-    const state = await getBackupConfig(olds.apiUrl, id);
+    const apiUrl = (olds && olds.apiUrl) || DEFAULT_API_URL;
+    const state = await getBackupConfig(apiUrl, id);
     if (!state) return { id: '' }; // gone canopy-side → pulumi recreates
-    // Reflect drift on the server-owned core fields; leave schedule inputs as-is.
-    return { id, props: { ...olds, ...state } };
+    // Reflect drift on the server-owned core fields.
+    return { id, props: { ...olds, ...state, apiUrl } };
   },
 };
 
@@ -116,9 +107,6 @@ export class CanopyBackupConfig extends dynamic.Resource {
         region: args.region ?? '',
         targetRoleArn: args.targetRoleArn,
         maintenanceRoleArn: args.maintenanceRoleArn,
-        backupType: args.backupType,
-        expectedIntervalSeconds: args.expectedIntervalSeconds,
-        retention: args.retention,
         apiUrl,
       },
       opts,
