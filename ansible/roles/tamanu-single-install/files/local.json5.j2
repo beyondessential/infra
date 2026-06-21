@@ -8,12 +8,11 @@
   },
 
   db: {
-    name: "{{ tamanu_db_name }}",
+    // Single connection string for the core user (unix socket). Derived password
+    // is alphanumeric so it needs no URL-encoding. The reporting connections below
+    // reuse the host/name from this URL but keep their own credentials.
+    url: "postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql",
     verbose: false,
-    username: "{{ tamanu_db_user }}",
-    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}",
-    host: "/var/run/postgresql",
-    port: null,
     migrateOnStartup: false,
     reportSchemas: {
       connections: {
