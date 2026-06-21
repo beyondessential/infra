@@ -22,6 +22,7 @@ import { labels } from './labels.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 import { canopyIssuerSa, canopyPrivateSa } from './canopy-sa.ts';
+import { recoveryKeysEnv } from './canopy-recovery.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -350,6 +351,8 @@ new k8s.apps.v1.Deployment(
                 name: 'TAILSCALE_TAILNET',
                 value: TAILNET_ID,
               },
+              // For issuing the DR vault verification-ceremony age challenges.
+              ...recoveryKeysEnv,
             ],
             // Wait up to 60 seconds for the server to start...
             startupProbe: {
