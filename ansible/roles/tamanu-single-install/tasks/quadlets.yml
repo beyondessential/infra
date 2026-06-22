@@ -27,6 +27,28 @@
     state: absent
   notify: Reload systemd
 
+# Legacy combined FHIR worker quadlet — split into separate resolve and
+# refresh workers. Stop the running service and remove the unit (and any
+# drop-ins) so it can't linger on hosts provisioned before the split.
+- name: Stop old combined FHIR worker service
+  when: tamanu_server_type == 'central'
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-central-fhir-worker.service
+    state: stopped
+  failed_when: false
+
+- name: Remove old combined FHIR worker quadlet
+  when: tamanu_server_type == 'central'
+  become: true
+  loop:
+    - /etc/containers/systemd/tamanu-central-fhir-worker.container
+    - /etc/containers/systemd/tamanu-central-fhir-worker.container.d
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  notify: Reload systemd
+
 - name: Install specific container quadlets
   become: true
   with_fileglob: tamanu-{{ tamanu_server_type }}*.container
