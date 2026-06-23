@@ -1,4 +1,4 @@
-import { jsonStringify } from '@pulumi/pulumi';
+import { asset, jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { AWS_ROOT_ID, AWS_TUPAIA_ACCOUNT_ID } from '../../constants/internal.ts';
 import { region } from '../../common/awsAccount.ts';
@@ -253,3 +253,79 @@ new aws.cloudformation.StackSetInstance(
   },
   { dependsOn: [cleanupStackSet] },
 );
+
+// ---------------------------------------------------------------------------
+// The management account is exempt from service-managed StackSets and SCPs, so
+// the above never reaches it. Run the same empty-only sweep natively here to
+// remove this account's own default VPCs (the easiest accidental-launch
+// surface), and keep them gone with a daily schedule.
+// ---------------------------------------------------------------------------
+const primaryCleanupRole = new aws.iam.Role('primary-default-vpc-cleanup', {
+  assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: 'lambda.amazonaws.com' }),
+  tags,
+});
+
+new aws.iam.RolePolicy('primary-default-vpc-cleanup', {
+  role: primaryCleanupRole.id,
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: [
+          'ec2:DescribeRegions',
+          'ec2:DescribeVpcs',
+          'ec2:DescribeNetworkInterfaces',
+          'ec2:DescribeSubnets',
+          'ec2:DescribeInternetGateways',
+          'ec2:DescribeRouteTables',
+          'ec2:DeleteSubnet',
+          'ec2:DetachInternetGateway',
+          'ec2:DeleteInternetGateway',
+          'ec2:DeleteRouteTable',
+          'ec2:DeleteVpc',
+        ],
+        Resource: '*',
+      },
+      {
+        Effect: 'Allow',
+        Action: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+        Resource: 'arn:aws:logs:*:*:*',
+      },
+    ],
+  }),
+});
+
+const primaryCleanupFn = new aws.lambda.Function('primary-default-vpc-cleanup', {
+  runtime: 'python3.12',
+  handler: 'index.handler',
+  timeout: 300,
+  memorySize: 256,
+  role: primaryCleanupRole.arn,
+  code: new asset.AssetArchive({ 'index.py': new asset.StringAsset(cleanupCode) }),
+  tags,
+});
+
+// Sweep once on deploy (no 'RequestType' -> the scheduled code path).
+new aws.lambda.Invocation('primary-default-vpc-cleanup', {
+  functionName: primaryCleanupFn.name,
+  input: jsonStringify({ trigger: '1' }),
+});
+
+const primaryCleanupSchedule = new aws.cloudwatch.EventRule('primary-default-vpc-cleanup', {
+  description: 'Periodically delete empty default VPCs in the management account',
+  scheduleExpression: 'rate(1 day)',
+  tags,
+});
+
+new aws.cloudwatch.EventTarget('primary-default-vpc-cleanup', {
+  rule: primaryCleanupSchedule.name,
+  arn: primaryCleanupFn.arn,
+});
+
+new aws.lambda.Permission('primary-default-vpc-cleanup-events', {
+  action: 'lambda:InvokeFunction',
+  function: primaryCleanupFn.name,
+  principal: 'events.amazonaws.com',
+  sourceArn: primaryCleanupSchedule.arn,
+});
