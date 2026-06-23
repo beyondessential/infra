@@ -1,0 +1,24 @@
+---
+# When PostgreSQL restarts, Tamanu's pooled DB connections are severed and every
+# service has to reconnect. Rather than tie the services to postgres in systemd
+# (which would stop/start them in lockstep and drop traffic), a oneshot calls
+# `bestool tamanu restart` to roll the workload gracefully once the DB is back.
+#
+# The unit is wired to postgres with WantedBy=/After= (see the template) so each
+# `systemctl restart postgresql@N-main` re-pulls and runs it. WantedBy means a
+# plain stop/start re-arms it too — it can't get permanently disarmed.
+
+- name: Install the roll-Tamanu-on-postgres-restart unit
+  become: true
+  ansible.builtin.template:
+    src: tamanu-roll-on-postgres.service.j2
+    dest: /etc/systemd/system/tamanu-roll-on-postgres.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable roll-Tamanu-on-postgres-restart
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-roll-on-postgres.service
+    enabled: true
+    daemon_reload: true
