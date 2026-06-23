@@ -5,6 +5,7 @@ import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
 import { canopyJobsSa } from './canopy-sa.ts';
 import { recoveryEnv } from './canopy-recovery.ts';
+import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
 import {
@@ -130,7 +131,7 @@ new k8s.apps.v1.Deployment(
         spec: spec(
           'backups',
           ['backups'],
-          { env: recoveryEnv },
+          { env: [...recoveryEnv, ...sharedBackupsJobsEnv] },
           { serviceAccountName: canopyJobsSa },
         ),
       },

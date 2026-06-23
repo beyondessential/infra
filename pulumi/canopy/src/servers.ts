@@ -19,6 +19,7 @@ import { API_GROUP as GATEWAY_API_GROUP } from '../../common/k8s/gateway/consts/
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
 import { labels } from './labels.ts';
+import { sharedBackupsServerEnv } from './canopy-backups-shared.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 import { canopyIssuerSa, canopyPrivateSa } from './canopy-sa.ts';
@@ -189,6 +190,7 @@ new k8s.apps.v1.Deployment(
                 name: 'SERVER_VERSIONS_SECRET',
                 value: publicServerVersionsSecret,
               },
+              ...sharedBackupsServerEnv,
             ],
             // Wait up to 60 seconds for the server to start...
             startupProbe: {
