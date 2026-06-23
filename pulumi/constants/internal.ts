@@ -1,6 +1,10 @@
 export const AWS_ORG_ID = 'o-asiuh5s5mc';
 export const AWS_ROOT_ID = 'r-veli';
 
+// Tupaia predates `core` and intentionally uses its default VPC, so it is
+// exempt from default-VPC cleanup and the create-default-VPC deny SCP.
+export const AWS_TUPAIA_ACCOUNT_ID = '843218180240';
+
 /// https://github.com/beyondessential/linux-images
 // ubuntu-26.04-bes-cloud-amd64-2026.06.22
 export const AMI_UBUNTU_AMD64 = {
