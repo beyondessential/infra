@@ -14,7 +14,7 @@ type Env = { name: string; value: Input<string> }[];
 const sharedBackupsRef = cfg.get('backupsShared');
 const sharedBackups = sharedBackupsRef ? new CrossStack(sharedBackupsRef) : undefined;
 
-// backups pod (canopy-jobs): provisioning + maintenance.
+// backups pod (canopy-jobs): the full shared-backup config.
 export const sharedBackupsJobsEnv: Env = sharedBackups
   ? [
       {
@@ -24,6 +24,10 @@ export const sharedBackupsJobsEnv: Env = sharedBackups
       {
         name: 'CANOPY_SHARED_BACKUP_MAINTENANCE_ROLE_ARN',
         value: sharedBackups.get<string>('maintenanceRoleArn'),
+      },
+      {
+        name: 'CANOPY_SHARED_BACKUP_DEVICE_ROLE_ARN',
+        value: sharedBackups.get<string>('deviceRoleArn'),
       },
       { name: 'CANOPY_SHARED_BACKUP_REGION', value: sharedBackups.get<string>('backupRegion') },
     ]
