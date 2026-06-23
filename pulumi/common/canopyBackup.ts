@@ -19,19 +19,24 @@ export const DEVICE_S3_ACTIONS = [
 
 const ec2 = { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { Service: AWS_EC2 } };
 
+// Trust for the per-bucket roles: chained AssumeRole from the named Canopy IRSA
+// roles. With no Canopy principals the role falls back to the legacy EC2
+// service-principal trust (the EC2-direct path); once a stack is onboarded to
+// Canopy that legacy EC2 trust is dropped — Canopy reaches the role by chained
+// AssumeRole only.
 function assumeRolePolicy(trustedRoleArns: (Input<string> | undefined)[]): Output<string> {
   const principals = trustedRoleArns.filter((arn): arn is Input<string> => arn !== undefined);
   return jsonStringify({
     Version: '2012-10-17',
     Statement: principals.length
-      ? [ec2, { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: principals } }]
+      ? [{ Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: principals } }]
       : [ec2],
   });
 }
 
-// Device/issuer role trust: EC2 service principal plus chained AssumeRole from
-// canopy-issuer (mints device creds) and canopy-private (wizard validation).
-// Both passed only when the stack is onboarded to Canopy.
+// Device/issuer role trust: chained AssumeRole from canopy-issuer (mints device
+// creds) and canopy-private (wizard validation), passed only when the stack is
+// onboarded to Canopy. Falls back to EC2-only trust otherwise.
 export function deviceAssumeRolePolicy(
   issuerRoleArn?: Input<string>,
   privateRoleArn?: Input<string>,
@@ -39,10 +44,11 @@ export function deviceAssumeRolePolicy(
   return assumeRolePolicy([issuerRoleArn, privateRoleArn]);
 }
 
-// Maintenance/fullaccess role trust: EC2 plus chained AssumeRole from canopy-jobs
+// Maintenance/fullaccess role trust: chained AssumeRole from canopy-jobs
 // (maintenance/inspection/s3-metrics) and canopy-private (wizard content-probe /
 // connect-verify). Must NEVER trust canopy-issuer — the delete/BypassGovernance
-// capability stays unreachable from the internet-facing public-server.
+// capability stays unreachable from the internet-facing public-server. Falls back
+// to EC2-only trust when not onboarded to Canopy.
 export function maintenanceAssumeRolePolicy(
   jobsRoleArn?: Input<string>,
   privateRoleArn?: Input<string>,
