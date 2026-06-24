@@ -5,18 +5,6 @@
 # snapshot or pg_basebackup), so the old btrfs/ext4 snapshot scaffolding and the
 # self-driven kopia timers are retired below.
 
-# archive_mode is left `on` (see wal.yml) so real archiving can be switched on
-# later without a restart, but archive_mode=on requires a command that succeeds
-# or WAL piles up unrecycled and fills the disk. archive_command=/bin/true is
-# that no-op: it lets WAL recycle normally while sending it nowhere. It is not a
-# real archive target, and is unrelated to how backups are taken.
-- name: Set archive command to a no-op (no WAL archiving; see comment above)
-  become: true
-  become_user: postgres
-  community.postgresql.postgresql_alter_system:
-    param: archive_command
-    value: "/bin/true"
-
 - name: Stop and disable old postgres kopia backup timers
   become: true
   ansible.builtin.systemd:

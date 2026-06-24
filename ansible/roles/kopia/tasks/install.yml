@@ -36,27 +36,6 @@
   notify:
     - Update package facts
 
-# Kopia user/home is created in baseline
-
-- name: Install bes-setup-kopia script
-  become: true
-  ansible.builtin.copy:
-    src: bes-setup-kopia
-    dest: /usr/local/bin/bes-setup-kopia
-    mode: "0755"
-    owner: root
-    group: root
-
-- name: Check if kopia is configured
-  become: true
-  ansible.builtin.stat:
-    path: /var/lib/kopia/.config/kopia/repository.config
-  register: kopia_ready
-
-- name: Display kopia configuration status
-  when: not kopia_ready.stat.exists
-  ansible.builtin.debug:
-    msg:
-      - "Kopia is not yet configured on this host."
-      - "After Ansible completes, run: sudo bes-setup-kopia"
-      - "This will prompt for S3 credentials and repository password."
+# Kopia user/home is created in baseline. The binary is all we install: bestool
+# drives kopia against a Canopy-provided repository, so there is no local
+# repository to set up.

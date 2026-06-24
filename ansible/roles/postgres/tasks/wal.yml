@@ -8,15 +8,23 @@
     # recommended to be no shorter than 1 minute
     # this helps keep pg_wal size reasonable
 
-- name: Enable archive mode in postgres
+# Backups are taken by bestool/Canopy (volume snapshot or pg_basebackup, which
+# streams its own WAL); nothing on the host archives WAL. Reset the archiving
+# scaffolding the old kopia backups carried back to PostgreSQL's defaults:
+# archive_mode off and no archive_command. archive_mode is restart-only, so this
+# restarts postgres when it was previously on.
+- name: Disable WAL archiving (archive_mode)
   become: true
   become_user: postgres
   community.postgresql.postgresql_alter_system:
     param: archive_mode
-    value: "on"
-    # Changing archive_mode requires a restart, so we turn it on up front:
-    # this lets us switch on real WAL archiving (for point-in-time recovery)
-    # later without a restart-under-load. Today we do NOT archive anywhere --
-    # archive_command is a no-op (/bin/true, see backup.yml) and each kopia
-    # backup is a self-contained base backup. So archive_mode=on currently
-    # buys only the no-restart future option, nothing more.
+    value: _RESET
+  notify: Restart postgres
+
+- name: Clear the no-op archive_command
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: archive_command
+    value: _RESET
+  notify: Restart postgres
