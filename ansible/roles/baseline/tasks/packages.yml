@@ -42,6 +42,7 @@
       - ca-certificates
       - curl
       - gnupg
+      - needrestart # restart services when the underlying package updates
       - python3-psycopg2 # required for ansible postgres modules
       - software-properties-common
       - tzdata
