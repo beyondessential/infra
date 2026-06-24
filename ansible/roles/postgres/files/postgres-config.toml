@@ -1,0 +1,7 @@
+type = "postgres-config"
+
+[tags]
+area = "postgres-config"
+
+[simple]
+path = "/etc/postgresql"

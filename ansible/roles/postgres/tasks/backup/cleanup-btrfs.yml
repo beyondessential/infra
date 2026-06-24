@@ -1,8 +1,0 @@
----
-# Cleanup tasks for btrfs backup method
-# Currently the btrfs method doesn't create any resources that need cleanup
-# beyond the script and service files which will be overwritten by the ext4 method
-
-- name: No btrfs-specific cleanup needed
-  ansible.builtin.debug:
-    msg: "BTRFS backup method has no resources requiring cleanup"

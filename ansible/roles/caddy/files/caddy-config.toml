@@ -1,0 +1,7 @@
+type = "caddy-config"
+
+[tags]
+area = "caddy-config"
+
+[simple]
+path = "/etc/caddy"

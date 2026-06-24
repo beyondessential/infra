@@ -1,0 +1,4 @@
+type = "tamanu-postgres"
+
+[postgresql]
+cluster = "main"

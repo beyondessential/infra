@@ -1,12 +1,8 @@
 ---
+# bestool drives the kopia binary, so kopia is still installed. Scheduling,
+# retention, maintenance and cache management are now owned by Canopy, so the
+# central-host timers and policy this role used to manage are torn down.
 - name: Install kopia
   ansible.builtin.include_tasks: install.yml
-- name: Configure kopia policy
-  ansible.builtin.include_tasks: policy.yml
-- name: Configure kopia cache cleanup
-  ansible.builtin.include_tasks: cache.yml
-- name: Configure kopia expiry
-  ansible.builtin.include_tasks: expiry.yml
-- name: Configure kopia maintenance
-  ansible.builtin.include_tasks: maintenance.yml
-  when: "'central' in group_names"
+- name: Tear down self-managed kopia scheduling
+  ansible.builtin.include_tasks: teardown.yml

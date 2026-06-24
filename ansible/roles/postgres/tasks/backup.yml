@@ -1,29 +1,15 @@
 ---
-- name: Detect filesystem type for PostgreSQL data directory
-  ansible.builtin.shell: |
-    set -o pipefail
-    df -T /var/lib/postgresql | tail -1 | awk '{print $2}'
-  args:
-    executable: /bin/bash
-  register: postgresql_filesystem_type
-  changed_when: false
+# Postgres is backed up by bestool/Canopy: the cluster via the `postgresql`
+# method (tamanu-postgres.toml) and /etc/postgresql via the `simple` method
+# (postgres-config.toml). bestool does its own crash-consistent capture (volume
+# snapshot or pg_basebackup), so the old btrfs/ext4 snapshot scaffolding and the
+# self-driven kopia timers are retired below.
 
-- name: Set backup method based on filesystem
-  ansible.builtin.set_fact:
-    postgres_backup_method: "{{ 'btrfs' if postgresql_filesystem_type.stdout == 'btrfs' else 'ext4' }}"
-
-- name: Display backup method
-  ansible.builtin.debug:
-    msg: "Using {{ postgres_backup_method }} backup method for postgres (filesystem: {{ postgresql_filesystem_type.stdout }})"
-
-# We deliberately do NOT archive WAL anywhere: each kopia backup is a
-# self-contained base backup (the atomic snapshot includes pg_wal), so there
-# is no point-in-time recovery and RPO equals the backup timer interval. That
-# is an accepted trade-off, not an oversight. archive_mode is left `on` (see
-# wal.yml) so real archiving can be switched on later without a restart, but
-# archive_mode=on requires a command that succeeds or WAL piles up unrecycled
-# and fills the disk. archive_command=/bin/true is that no-op: it lets WAL
-# recycle normally while sending it nowhere. It is not a real archive target.
+# archive_mode is left `on` (see wal.yml) so real archiving can be switched on
+# later without a restart, but archive_mode=on requires a command that succeeds
+# or WAL piles up unrecycled and fills the disk. archive_command=/bin/true is
+# that no-op: it lets WAL recycle normally while sending it nowhere. It is not a
+# real archive target, and is unrelated to how backups are taken.
 - name: Set archive command to a no-op (no WAL archiving; see comment above)
   become: true
   become_user: postgres
@@ -31,61 +17,101 @@
     param: archive_command
     value: "/bin/true"
 
-- name: Cleanup ext4 backup method before switching to btrfs
-  when: postgres_backup_method == 'btrfs'
-  ansible.builtin.include_tasks: backup/cleanup-ext4.yml
-
-- name: Include btrfs backup tasks
-  when: postgres_backup_method == 'btrfs'
-  ansible.builtin.include_tasks: backup/on-btrfs.yml
-
-- name: Cleanup btrfs backup method before switching to ext4
-  when: postgres_backup_method == 'ext4'
-  ansible.builtin.include_tasks: backup/cleanup-btrfs.yml
-
-- name: Include ext4 backup tasks
-  when: postgres_backup_method == 'ext4'
-  ansible.builtin.include_tasks: backup/on-ext4.yml
-
-- name: Add kopia backup for postgres (timer)
-  become: true
-  ansible.builtin.copy:
-    src: kopia-backup-postgres.timer
-    dest: /etc/systemd/system/kopia-backup-postgres.timer
-    mode: "0644"
-  notify:
-    - Reload systemd
-
-- name: Enable kopia backup for postgres
+- name: Stop and disable old postgres kopia backup timers
   become: true
   ansible.builtin.systemd:
-    name: kopia-backup-postgres.timer
-    daemon_reload: true
-    state: started
-    enabled: true
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  failed_when: false
+  loop:
+    - kopia-backup-postgres.timer
+    - kopia-backup-postgres-config.timer
 
-- name: Add kopia backup for postgres config (service)
+- name: Remove old postgres kopia backup units and script
   become: true
-  ansible.builtin.copy:
-    src: kopia-backup-postgres-config.service
-    dest: /etc/systemd/system/kopia-backup-postgres-config.service
-    mode: "0644"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/kopia-backup-postgres.timer
+    - /etc/systemd/system/kopia-backup-postgres.service
+    - /etc/systemd/system/kopia-backup-postgres-config.timer
+    - /etc/systemd/system/kopia-backup-postgres-config.service
+    - /var/lib/kopia/backup-postgres.sh
   notify:
     - Reload systemd
 
-- name: Add kopia backup for postgres config (timer)
+# The ext4 snapshot method exposed the data directory to kopia through a bindfs
+# mount and a dedicated superuser role for the CHECKPOINT/pg_backup_start dance.
+# bestool's postgresql method handles its own access and capture, so tear all of
+# that down.
+# Best-effort: unmount any leftover mount from a crashed run before removing the
+# mountpoints. FUSE mounts are unreliable in the mounts fact, so just attempt it.
+- name: Unmount leftover ext4-method bindfs mount
+  become: true
+  ansible.builtin.command:
+    cmd: fusermount -u /var/lib/kopia/pgdata
+  changed_when: false
+  failed_when: false
+
+- name: Remove ext4-method kopia pgdata mountpoint
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kopia/pgdata
+    state: absent
+
+- name: Unmount leftover btrfs-method snapshot mount
+  become: true
+  ansible.builtin.command:
+    cmd: umount /var/lib/kopia/mnt-postgres
+  changed_when: false
+  failed_when: false
+
+- name: Remove btrfs-method kopia snapshot mountpoint
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kopia/mnt-postgres
+    state: absent
+
+- name: Remove peer access for the old kopia postgres role
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: kopia
+    databases: postgres
+    method: peer
+    address: ""
+    state: absent
+  notify: Reload postgres
+  failed_when: false
+
+- name: Remove the old kopia postgres role
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: kopia
+    state: absent
+  failed_when: false
+
+- name: Ensure bestool backups directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool/backups
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install postgres backup definitions
   become: true
   ansible.builtin.copy:
-    src: kopia-backup-postgres-config.timer
-    dest: /etc/systemd/system/kopia-backup-postgres-config.timer
+    src: "{{ item }}"
+    dest: "/etc/bestool/backups/{{ item }}"
+    owner: root
+    group: root
     mode: "0644"
-  notify:
-    - Reload systemd
-
-- name: Enable kopia backup for postgres config
-  become: true
-  ansible.builtin.systemd:
-    name: kopia-backup-postgres-config.timer
-    daemon_reload: true
-    state: started
-    enabled: true
+  loop:
+    - tamanu-postgres.toml
+    - postgres-config.toml
