@@ -1,6 +1,9 @@
 ---
 # Tamanu config is backed up by bestool/Canopy via a backup definition in
-# /etc/bestool/backups. The old self-driven kopia snapshot timer is retired.
+# /etc/bestool/backups. The old self-driven kopia snapshot timer is retired, as
+# is the local `bestool tamanu backup` logical-dump timer and its
+# /opt/tamanu-backup output dir (superseded by the Canopy-driven tamanu-postgres
+# backup).
 
 - name: Stop and disable old tamanu config kopia backup timer
   become: true
@@ -10,7 +13,15 @@
     enabled: false
   failed_when: false
 
-- name: Remove old tamanu config kopia backup units
+- name: Stop and disable old tamanu logical backup timer
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-backup.timer
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Remove old tamanu backup units
   become: true
   ansible.builtin.file:
     path: "/etc/systemd/system/{{ item }}"
@@ -18,8 +29,16 @@
   loop:
     - kopia-backup-tamanu-config.timer
     - kopia-backup-tamanu-config.service
+    - tamanu-backup.timer
+    - tamanu-backup.service
   notify:
     - Reload systemd
+
+- name: Remove the old tamanu logical backup output directory
+  become: true
+  ansible.builtin.file:
+    path: /opt/tamanu-backup
+    state: absent
 
 - name: Ensure bestool backups directory exists
   become: true
