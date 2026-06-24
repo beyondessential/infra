@@ -103,3 +103,5 @@
   loop:
     - tamanu-postgres.toml
     - postgres-config.toml
+  notify:
+    - Reload bestool-alertd
