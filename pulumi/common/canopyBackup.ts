@@ -1,5 +1,5 @@
 import { type Input, type Output, jsonStringify } from '@pulumi/pulumi';
-import { AWS_EC2, AWS_S3_MULTIPART_ACTIONS } from '../constants/external.ts';
+import { AWS_EC2, AWS_S3_DELETE_ACTIONS } from '../constants/external.ts';
 
 // s3-metrics reads BucketSizeBytes per StorageType (ListMetrics to discover the
 // classes, GetMetricStatistics to read them), assuming the per-bucket maintenance
@@ -9,11 +9,16 @@ export const CLOUDWATCH_METRIC_ACTIONS = [
   'cloudwatch:ListMetrics',
 ];
 
-// Device creds (handed to a remote server's kopia client): S3 multipart, no delete
-// and no PutObjectRetention (the bucket's default GOVERNANCE retention auto-locks
-// every PUT), plus a read of the Object Lock config for the preflight.
+// Device creds (handed to a remote server's kopia client): S3 multipart + delete,
+// but NO DeleteObjectVersion / BypassGovernanceRetention / PutObjectRetention.
+// kopia needs DeleteObject to manage its own metadata (session markers, index
+// compaction, manifests); on the versioned + GOVERNANCE-locked bucket a
+// version-less delete only writes a delete-marker, so the locked version stays
+// immutable (reclaimed by the lifecycle once the lock lapses) — a compromised
+// device still can't destroy or shorten-lock anything, only write recoverable
+// delete-markers. Plus a read of the Object Lock config for the preflight.
 export const DEVICE_S3_ACTIONS = [
-  ...AWS_S3_MULTIPART_ACTIONS,
+  ...AWS_S3_DELETE_ACTIONS,
   's3:GetBucketObjectLockConfiguration',
 ];
 
