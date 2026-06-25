@@ -1,8 +1,10 @@
 ---
-# bestool drives the kopia binary, so kopia is still installed. Scheduling,
-# retention, maintenance and cache management are now owned by Canopy, so the
-# central-host timers and policy this role used to manage are torn down.
-- name: Install kopia
-  ansible.builtin.include_tasks: install.yml
+# Kopia itself is installed via the baseline package list (from the bes-tools
+# apt repo, which also owns the kopia user/group/home). This role only undoes
+# the host's old kopia setup: the upstream apt repo and the self-managed
+# scheduling/repository that Canopy now owns. It can be deleted outright once
+# every host has converged.
+- name: Remove the upstream kopia apt repo
+  ansible.builtin.include_tasks: cleanup-upstream-repo.yml
 - name: Tear down self-managed kopia scheduling
   ansible.builtin.include_tasks: teardown.yml
