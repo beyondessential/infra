@@ -1,5 +1,5 @@
 ---
-caddy_version: "2.10.2-bes1"
+caddy_version: "2.11.4-bes1"
 caddy_email: tls-renewal@bes.au
 # Enable the ZeroSSL certificate issuer
 # caddy_zerossl_api_key: APIKEY
