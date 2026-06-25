@@ -46,8 +46,8 @@ export function runFhirWorker({
           spec: podSpec({
             podType: `fhir-${name}`,
             command: topics
-              ? ['startFhirWorker', '--topics', topics.join(',')]
-              : ['startFhirWorker'],
+              ? ['sh', '-c', `command -v startFhirWorker >/dev/null 2>&1 && exec startFhirWorker --topics ${topics.join(',')} || sleep infinity`]
+              : ['sh', '-c', 'command -v startFhirWorker >/dev/null 2>&1 && exec startFhirWorker || sleep infinity'],
           }),
         },
       },
