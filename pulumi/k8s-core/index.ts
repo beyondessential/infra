@@ -29,6 +29,15 @@ export const externalDnsZoneDomains: string[] = Object.keys(
   (cfg.getObject<Record<string, string>>('externalDnsZones')) ?? {},
 );
 
+// Per-cluster Tailscale proxy tags the operator's OAuth client is authorised to
+// mint on proxy devices. k8s-essentials applies these as the operator's
+// proxyConfig defaultTags; on-k8s reads them back to tag DB LoadBalancer proxies
+// with the cluster-appropriate proxy tag rather than hardcoding one.
+export const tailscaleProxyDefaultTags: string[] = cfg.getObject('tailscaleProxyDefaultTags') ?? [
+  'tag:k8s',
+  'tag:k8s-proxy',
+];
+
 import './awsBackup.ts';
 import './nodes/groups.ts';
 import './nodes/monitor.ts';

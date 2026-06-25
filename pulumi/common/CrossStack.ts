@@ -44,6 +44,7 @@ export interface CrossStackK8sCoreOutput {
   opencostExportBucketName: Output<string>;
   envoyGatewayEnabled: Output<boolean>;
   externalDnsZoneDomains: Output<string[]>;
+  tailscaleProxyDefaultTags: Output<string[]>;
 }
 
 export class CrossStack {
@@ -139,6 +140,7 @@ export class CrossStack {
       opencostExportBucketName: this.get('opencostExportBucketName'),
       envoyGatewayEnabled: this.get('envoyGatewayEnabled'),
       externalDnsZoneDomains: this.get('externalDnsZoneDomains'),
+      tailscaleProxyDefaultTags: this.get('tailscaleProxyDefaultTags'),
     };
   }
 }

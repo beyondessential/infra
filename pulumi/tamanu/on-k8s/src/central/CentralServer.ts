@@ -21,6 +21,7 @@ import {
   dbAzColocate,
   dbBackups,
   dbExpose,
+  dbExposeTags,
   dbStorage,
   normalizedStack,
   seedSnapshot,
@@ -174,7 +175,7 @@ export class CentralServer extends ComponentResource {
             annotations: {
               // k8s-pg and tamanu are the same length so we don't need to retruncate the name
               'tailscale.com/hostname': `k8s-pg-${normalizedStack}`,
-              'tailscale.com/tags': 'tag:k8s-proxy,tag:server,tag:server-tamanu',
+              'tailscale.com/tags': dbExposeTags,
             },
           },
           spec: {

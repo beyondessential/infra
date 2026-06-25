@@ -11,6 +11,9 @@ export const $core = core.k8sCoreOutput();
 // follows.
 export const envoyGatewayEnabled = ((await core.getValue<boolean>('envoyGatewayEnabled')) ?? false);
 export const externalDnsZoneDomains = ((await core.getValue<string[]>('externalDnsZoneDomains')) ?? []);
+// Per-cluster Tailscale proxy tags, sourced from k8s-core. Empty until k8s-core
+// publishes the output; consumers fall back to the unqualified defaults.
+export const tailscaleProxyDefaultTags = ((await core.getValue<string[]>('tailscaleProxyDefaultTags')) ?? []);
 
 export const clusterName = $core.name;
 export const clusterFullName = core.name.split('/')[2];
