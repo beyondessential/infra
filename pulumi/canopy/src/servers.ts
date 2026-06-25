@@ -334,6 +334,10 @@ new k8s.apps.v1.Deployment(
                 value: `https://${domains[0]}`,
               },
               {
+                name: 'CANOPY_MCP_ALLOWED_HOSTS',
+                value: `${tailscaleHostname}.${TAILNET_DOMAIN}`,
+              },
+              {
                 name: 'CLIENT_IP_SOURCE',
                 value: 'RightmostXForwardedFor',
               },
