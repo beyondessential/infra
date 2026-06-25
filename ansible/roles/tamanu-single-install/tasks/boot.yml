@@ -18,8 +18,6 @@
     - tamanu-facility-api@2.service
     - tamanu-facility-tasks.service
     - tamanu-facility-sync.service
-    - tamanu-facility-fhir-refresh.service
-    - tamanu-facility-fhir-resolver.service
     - tamanu-patientportal.service
   ansible.builtin.file:
     path: /etc/systemd/system/multi-user.target.wants/{{ item }}
