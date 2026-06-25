@@ -59,7 +59,8 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/tamanu/env
-    mode: "0664"
+    # 0640: carries the core DB password in DATABASE_URL, so not world-readable.
+    mode: "0640"
     owner: tamanu
     group: tamanu
     content: |
@@ -69,6 +70,7 @@
       TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
       TAMANU_FRONTEND_VERSION={{ tamanu_frontend_version }}
       TAMANU_FRONTEND_VERSION_DOMAIN={{ tamanu_frontend_version | replace('.', '-') }}
+      DATABASE_URL=postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql
 
 - name: Pull the Tamanu images
   become: true
