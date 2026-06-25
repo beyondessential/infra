@@ -76,11 +76,14 @@ const provisionerRole = new awsNative.iam.Role('backups-shared-provisioner-role'
   tags: nativeTags(tags),
 });
 
-// 2. Shared device role — write-without-delete kopia creds for remote devices.
-// Trusted by canopy-issuer (mints device creds) + canopy-private (wizard probe).
-// MUST NOT grant DeleteObject / PutObjectRetention: the device-compromise defense
-// relies on the device being unable to delete or shorten locks; retention is
-// applied server-side by each bucket's default GOVERNANCE rule. Canopy further
+// 2. Shared device role — kopia creds for remote devices (multipart + version-less
+// DeleteObject, via DEVICE_S3_ACTIONS). Trusted by canopy-issuer (mints device
+// creds) + canopy-private (wizard probe). MUST NOT grant DeleteObjectVersion /
+// BypassGovernanceRetention / PutObjectRetention: a compromised device must stay
+// unable to remove a locked version or shorten a lock. DeleteObject itself is
+// safe here — on the versioned + GOVERNANCE-locked bucket it only writes a
+// delete-marker (the locked version is reclaimed by the lifecycle after the lock
+// lapses) — and kopia genuinely needs it to manage its metadata. Canopy further
 // scopes every issued credential to a single bucket via an STS session policy.
 const devicePolicy = new awsNative.iam.ManagedPolicy(
   'backups-shared-device-policy',

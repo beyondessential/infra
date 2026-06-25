@@ -67,6 +67,9 @@ const bucket = new awsNative.s3.Bucket(
           id: 'expire-noncurrent-and-incomplete',
           status: 'Enabled',
           noncurrentVersionExpiration: { noncurrentDays: 35 },
+          // kopia deletes are version-less, so each leaves a delete-marker; reap
+          // the dangling marker once its last noncurrent version is gone.
+          expiredObjectDeleteMarker: true,
           abortIncompleteMultipartUpload: { daysAfterInitiation: 7 },
         },
       ],
