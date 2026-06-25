@@ -10,6 +10,8 @@
     password: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'postgres' + item, chars=['ascii_letters', 'digits'])
       }}"
 
+# TODO: When all deployed Tamanus are managing their own
+# reporting/raw users, stop creating our own.
 - name: Allow reporting users access to postgres
   loop:
     - reporting

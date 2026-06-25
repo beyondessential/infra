@@ -73,7 +73,7 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
     // startup, so the app role needs CREATEROLE. The ALTER below grants it
     // immediately at first bootstrap (the managed `app` role above covers
     // existing clusters on reconcile). The raw/reporting roles are legacy and
-    // unused by Tamanu.
+    // unused by Tamanu. TODO: remove them once no longer needed.
     initSql: `
       CREATE ROLE raw LOGIN;
       CREATE ROLE reporting LOGIN;
