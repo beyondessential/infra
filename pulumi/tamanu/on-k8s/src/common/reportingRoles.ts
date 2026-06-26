@@ -65,15 +65,11 @@ export function reportingRoles({ parent, server }: ReportingRolesArgs): Reportin
         createrole: true,
       },
     ],
-    // initsql runs before the roles are created/updated by the above
-    // and also before anything is migrated by the application, so
-    // the reporting schema is not available.
-    //
-    // Tamanu creates and manages its own tamanu_reporting/tamanu_raw roles at
-    // startup, so the app role needs CREATEROLE. The ALTER below grants it
-    // immediately at first bootstrap (the managed `app` role above covers
-    // existing clusters on reconcile). The raw/reporting roles are legacy and
-    // unused by Tamanu. TODO: remove them once no longer needed.
+    // initSql runs before the managed roles above and before the app migrates,
+    // so the reporting schema doesn't exist yet. The ALTER grants `app`
+    // CREATEROLE at first bootstrap (the managed role above covers existing
+    // clusters on reconcile). raw/reporting are legacy, unused by Tamanu.
+    // TODO: remove them once no longer needed.
     initSql: `
       CREATE ROLE raw LOGIN;
       CREATE ROLE reporting LOGIN;
