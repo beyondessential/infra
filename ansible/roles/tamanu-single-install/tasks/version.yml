@@ -59,8 +59,9 @@
   become: true
   ansible.builtin.copy:
     dest: /etc/tamanu/env
-    # 0640: carries the core DB password in DATABASE_URL, so not world-readable.
-    mode: "0640"
+    # 0660: carries the core DB password in DATABASE_URL, so not world-readable;
+    # group-writable (like production.json5) so the tamanu group can edit without sudo.
+    mode: "0660"
     owner: tamanu
     group: tamanu
     content: |
