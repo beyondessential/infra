@@ -62,7 +62,7 @@
 - name: Add kopia backup for postgres (ext4 script)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-ext4.sh') }}"
+    src: kopia-backup-postgres-ext4.sh
     dest: /var/lib/kopia/backup-postgres.sh
     mode: "0755"
     owner: kopia
@@ -71,7 +71,7 @@
 - name: Add kopia backup for postgres (ext4 service)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-ext4.service') }}"
+    src: kopia-backup-postgres-ext4.service
     dest: /etc/systemd/system/kopia-backup-postgres.service
     mode: "0644"
   notify:

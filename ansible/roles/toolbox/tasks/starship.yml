@@ -36,7 +36,7 @@
 - name: Configure starship for current user
   ansible.builtin.copy:
     dest: "{{ ansible_facts['env']['HOME'] }}/.config/starship.toml"
-    src: "{{ lookup('ansible.builtin.fileglob', 'starship.toml') }}"
+    src: starship.toml
     mode: "0644"
 
 - name: Create .config for root
@@ -50,5 +50,5 @@
   become: true
   ansible.builtin.copy:
     dest: /root/.config/starship.toml
-    src: "{{ lookup('ansible.builtin.fileglob', 'starship.toml') }}"
+    src: starship.toml
     mode: "0644"

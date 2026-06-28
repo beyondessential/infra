@@ -5,7 +5,7 @@
 - name: Add tailscale apt key
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'apt.gpg') }}"
+    src: apt.gpg
     dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
     mode: "0644"
 

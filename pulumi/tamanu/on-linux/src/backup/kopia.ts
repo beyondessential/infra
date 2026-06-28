@@ -1,19 +1,40 @@
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { all, jsonStringify, type Output } from '@pulumi/pulumi';
-import {
-  AWS_S3_BACKUP_ACTIONS,
-  AWS_S3_READ_ACTIONS,
-  AWS_EC2,
-} from '../../../../constants/external.ts';
+import { AWS_S3_BACKUP_ACTIONS, AWS_S3_READ_ACTIONS } from '../../../../constants/external.ts';
 import { CrossStack } from '../../../../common/CrossStack.ts';
+import {
+  DEVICE_S3_ACTIONS,
+  CLOUDWATCH_METRIC_ACTIONS,
+  deviceAssumeRolePolicy,
+  maintenanceAssumeRolePolicy,
+} from '../../../../common/canopyBackup.ts';
+import { cfg, region } from '../../../../common/coreRef.ts';
+import { CanopyBackupConfig } from '../../../../common/canopy/CanopyBackupConfig.ts';
 import { nativeTags } from '../../../../common/tags.ts';
 import { billingTags, cloneOf, instances, normalizedStack } from '../config.ts';
+
+// See backups/index.ts: onboarding to Canopy adds chained-assume trust for
+// Canopy's IRSA roles, reduces the device role, and adds a maintenance role
+// (on-linux has none otherwise). Without the ref, the EC2-only path is unchanged.
+const canopyInfraRef = cfg.get('canopyInfra');
+const canopy = canopyInfraRef ? new CrossStack(canopyInfraRef) : undefined;
+const canopyIssuerRoleArn = canopy?.get<string>('canopyIssuerRoleArn');
+const canopyJobsRoleArn = canopy?.get<string>('canopyJobsRoleArn');
+// private-server's wizard probes the bucket by assuming both per-bucket roles.
+const canopyPrivateRoleArn = canopy?.get<string>('canopyPrivateRoleArn');
+
+// The legacy per-instance IAM-User keys / EC2 role trust stay provisioned
+// unconditionally: once Canopy imports a repo it rotates the kopia passphrase, so
+// non-canopy access stops working on its own — no explicit teardown needed.
 
 interface KopiaOutputs {
   backupBucket: Output<string>;
   backupReadOnlyUser: Output<string>;
   backupUsers: Output<string[]>;
+  deviceRoleArn: Output<string>;
+  maintenanceRoleArn: Output<string> | undefined;
+  bucketArn: Output<string>;
 }
 
 function cloneFromStack(ref: string): KopiaOutputs {
@@ -22,6 +43,9 @@ function cloneFromStack(ref: string): KopiaOutputs {
     backupBucket: source.get<string>('backupBucket'),
     backupReadOnlyUser: source.get<string>('backupReadOnlyUser'),
     backupUsers: source.get<string[]>('backupUsers'),
+    deviceRoleArn: source.get<string>('deviceRoleArn'),
+    maintenanceRoleArn: source.get<string>('maintenanceRoleArn'),
+    bucketArn: source.get<string>('bucketArn'),
   };
 }
 
@@ -102,6 +126,8 @@ function createOwnBucket(): KopiaOutputs {
     { protect: false },
   );
 
+  // Full-access (delete) policy for the legacy per-instance IAM Users and the
+  // EC2-assumed device role. Skipped when the legacy path is retired.
   const kopiaPolicy = new awsNative.iam.ManagedPolicy(
     'backups-kopia-policy',
     {
@@ -122,26 +148,79 @@ function createOwnBucket(): KopiaOutputs {
     { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
   );
 
-  new awsNative.iam.Role(
+  // The role Canopy issues device creds from drops delete/retention and gains
+  // the Object Lock read; the IAM Users keep the full kopiaPolicy. Without
+  // Canopy the role stays on the full kopiaPolicy, unchanged.
+  const devicePolicy = canopy
+    ? new awsNative.iam.ManagedPolicy(
+        'backups-device-policy',
+        {
+          policyDocument: jsonStringify({
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: DEVICE_S3_ACTIONS,
+                Resource: bucket.bucketName.apply((name) => [
+                  `arn:aws:s3:::${name}`,
+                  `arn:aws:s3:::${name}/*`,
+                ]),
+              },
+            ],
+          }),
+        },
+        { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
+      )
+    : undefined;
+
+  const kopiaRole = new awsNative.iam.Role(
     `backups-kopia-role-${normalizedStack}`,
     {
-      managedPolicyArns: [kopiaPolicy.policyArn],
-      assumeRolePolicyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: 'sts:AssumeRole',
-            Principal: {
-              Service: AWS_EC2,
-            },
-          },
-        ],
-      }),
+      managedPolicyArns: [(devicePolicy ?? kopiaPolicy).policyArn],
+      assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn, canopyPrivateRoleArn),
       tags,
     },
     { parent: bucket, protect: false },
   );
+
+  // Maintenance/fullaccess role: only when onboarded to Canopy (the EC2 model
+  // never had one). s3:* + CloudWatch for the s3-metrics loop; trusts canopy-jobs
+  // (never the issuer).
+  const maintenanceRole = canopy
+    ? new awsNative.iam.Role(
+        `backups-fullaccess-role-${normalizedStack}`,
+        {
+          managedPolicyArns: [
+            new awsNative.iam.ManagedPolicy(
+              'backups-fullaccess-policy',
+              {
+                policyDocument: jsonStringify({
+                  Version: '2012-10-17',
+                  Statement: [
+                    {
+                      Effect: 'Allow',
+                      Action: ['s3:*'],
+                      Resource: bucket.bucketName.apply((name) => [
+                        `arn:aws:s3:::${name}`,
+                        `arn:aws:s3:::${name}/*`,
+                      ]),
+                    },
+                    { Effect: 'Allow', Action: CLOUDWATCH_METRIC_ACTIONS, Resource: '*' },
+                  ],
+                }),
+              },
+              { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
+            ).policyArn,
+          ],
+          assumeRolePolicyDocument: maintenanceAssumeRolePolicy(
+            canopyJobsRoleArn,
+            canopyPrivateRoleArn,
+          ),
+          tags,
+        },
+        { parent: bucket, protect: false },
+      )
+    : undefined;
 
   new awsClassic.s3.BucketObjectv2(
     'kopia-storageconfig',
@@ -210,10 +289,31 @@ function createOwnBucket(): KopiaOutputs {
     { parent: bucket, protect: false },
   ).userName;
 
+  // Register the config with Canopy when a server_group_id is set (the gate).
+  // Requires Canopy onboarding (the maintenance role only exists then).
+  const serverGroupId = cfg.get('serverGroupId');
+  if (serverGroupId) {
+    if (!maintenanceRole) {
+      throw new Error(
+        'on-linux backups: serverGroupId requires Canopy onboarding (set canopyInfra)',
+      );
+    }
+    new CanopyBackupConfig('canopy-backup-config', {
+      serverGroupId,
+      bucket: bucket.bucketName.apply((name) => name!),
+      region,
+      targetRoleArn: kopiaRole.arn,
+      maintenanceRoleArn: maintenanceRole.arn,
+    });
+  }
+
   return {
     backupBucket: bucket.bucketName.apply((name) => name!),
     backupReadOnlyUser: readOnlyUser,
     backupUsers: all(users),
+    deviceRoleArn: kopiaRole.arn,
+    maintenanceRoleArn: maintenanceRole?.arn,
+    bucketArn: bucket.arn,
   };
 }
 
@@ -222,3 +322,6 @@ const outputs = cloneOf ? cloneFromStack(cloneOf) : createOwnBucket();
 export const backupBucket = outputs.backupBucket;
 export const backupReadOnlyUser = outputs.backupReadOnlyUser;
 export const backupUsers = outputs.backupUsers;
+export const deviceRoleArn = outputs.deviceRoleArn;
+export const maintenanceRoleArn = outputs.maintenanceRoleArn;
+export const bucketArn = outputs.bucketArn;

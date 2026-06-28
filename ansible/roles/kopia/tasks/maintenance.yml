@@ -2,7 +2,7 @@
 - name: Add kopia maintenance service
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-maintenance.service') }}"
+    src: kopia-maintenance.service
     dest: /etc/systemd/system/kopia-maintenance.service
     mode: "0644"
   notify:
@@ -11,7 +11,7 @@
 - name: Add kopia maintenance timer
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-maintenance.timer') }}"
+    src: kopia-maintenance.timer
     dest: /etc/systemd/system/kopia-maintenance.timer
     mode: "0644"
   notify:

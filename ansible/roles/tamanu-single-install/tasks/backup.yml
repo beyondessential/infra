@@ -9,7 +9,7 @@
 - name: Add kopia backup for tamanu config (service)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-tamanu-config.service') }}"
+    src: kopia-backup-tamanu-config.service
     dest: /etc/systemd/system/kopia-backup-tamanu-config.service
     mode: "0644"
   notify:
@@ -18,7 +18,7 @@
 - name: Add kopia expiry tamanu config (timer)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-tamanu-config.timer') }}"
+    src: kopia-backup-tamanu-config.timer
     dest: /etc/systemd/system/kopia-backup-tamanu-config.timer
     mode: "0644"
   notify:

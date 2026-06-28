@@ -16,7 +16,15 @@
   ansible.builtin.debug:
     msg: "Using {{ postgres_backup_method }} backup method for postgres (filesystem: {{ postgresql_filesystem_type.stdout }})"
 
-- name: Set archive command
+# We deliberately do NOT archive WAL anywhere: each kopia backup is a
+# self-contained base backup (the atomic snapshot includes pg_wal), so there
+# is no point-in-time recovery and RPO equals the backup timer interval. That
+# is an accepted trade-off, not an oversight. archive_mode is left `on` (see
+# wal.yml) so real archiving can be switched on later without a restart, but
+# archive_mode=on requires a command that succeeds or WAL piles up unrecycled
+# and fills the disk. archive_command=/bin/true is that no-op: it lets WAL
+# recycle normally while sending it nowhere. It is not a real archive target.
+- name: Set archive command to a no-op (no WAL archiving; see comment above)
   become: true
   become_user: postgres
   community.postgresql.postgresql_alter_system:
@@ -42,7 +50,7 @@
 - name: Add kopia backup for postgres (timer)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres.timer') }}"
+    src: kopia-backup-postgres.timer
     dest: /etc/systemd/system/kopia-backup-postgres.timer
     mode: "0644"
   notify:
@@ -59,7 +67,7 @@
 - name: Add kopia backup for postgres config (service)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-config.service') }}"
+    src: kopia-backup-postgres-config.service
     dest: /etc/systemd/system/kopia-backup-postgres-config.service
     mode: "0644"
   notify:
@@ -68,7 +76,7 @@
 - name: Add kopia backup for postgres config (timer)
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'kopia-backup-postgres-config.timer') }}"
+    src: kopia-backup-postgres-config.timer
     dest: /etc/systemd/system/kopia-backup-postgres-config.timer
     mode: "0644"
   notify:

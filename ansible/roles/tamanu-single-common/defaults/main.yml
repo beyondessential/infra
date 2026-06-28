@@ -3,6 +3,9 @@ tamanu_version: "{{ version | default('v2.10.0') }}"
 tamanu_frontend_version: "{{ frontend_version | default(tamanu_version) }}"
 tamanu_db_name: "{{ db_name }}"
 tamanu_db_user: "{{ db_user | default(db_name) }}"
+# Read-only Postgres role bestool-alertd's doctor connects as, via peer auth
+# (pg_ident maps root -> this role), so there's no DB password to keep in sync.
+tamanu_monitoring_db_user: tamanu_monitoring
 tamanu_server_type: "{{ type }}"
 tamanu_image_server: "ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:{{ tamanu_version }}"
 tamanu_image_frontend: "ghcr.io/beyondessential/tamanu-frontend:{{ tamanu_frontend_version }}"

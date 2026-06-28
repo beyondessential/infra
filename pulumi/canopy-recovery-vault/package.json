@@ -1,0 +1,5 @@
+{
+  "name": "@bes/canopy-recovery-vault",
+  "type": "module",
+  "main": "index.ts"
+}

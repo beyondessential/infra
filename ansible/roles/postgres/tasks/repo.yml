@@ -2,7 +2,7 @@
 - name: Add pgdg apt key
   become: true
   ansible.builtin.copy:
-    src: "{{ lookup('ansible.builtin.fileglob', 'apt.asc') }}"
+    src: apt.asc
     dest: /etc/apt/keyrings/pgdg.asc
     mode: "0644"
 

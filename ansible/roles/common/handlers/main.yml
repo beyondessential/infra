@@ -4,6 +4,12 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
+- name: Restart bestool-alertd
+  become: true
+  ansible.builtin.systemd:
+    name: bestool-alertd.service
+    state: restarted
+
 - name: Reboot
   become: true
   ansible.builtin.reboot:

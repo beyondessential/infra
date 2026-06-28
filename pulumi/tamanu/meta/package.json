@@ -1,5 +1,0 @@
-{
-  "name": "@bes/tamanu-meta",
-  "type": "module",
-  "main": "src/index.ts"
-}

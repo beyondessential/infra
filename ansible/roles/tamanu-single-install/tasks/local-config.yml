@@ -6,7 +6,7 @@
   become: true
   ansible.builtin.template:
     dest: /etc/tamanu/{{ tamanu_version }}/local.json5
-    src: "{{ lookup('ansible.builtin.fileglob', 'local.json5.j2') }}"
+    src: local.json5.j2
     mode: "0440"
     owner: root
     group: tamanu
