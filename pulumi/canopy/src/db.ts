@@ -13,6 +13,9 @@ export const dbReady = runPostgres({
   timezone: 'Etc/UTC',
   backupSchedule: true,
   inheritedMetadataLabels: costLabels,
+  maxConnections: 200,
+  memoryRequest: '2Gi',
+  scrapeMetrics: true,
 });
 
 if (dbExpose) {

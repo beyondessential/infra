@@ -41,6 +41,16 @@ export interface PostgresArgs {
   // traffic off the cross-AZ meter at the cost of AZ-failure tolerance; for
   // environments that don't need to survive an AZ loss.
   colocateAz?: boolean;
+  // Override the postmaster max_connections (default: CNPG's built-in 100).
+  // Raising it needs matching per-backend memory headroom, so bump
+  // memoryRequest alongside. Changing it triggers a rolling restart.
+  maxConnections?: Input<number>;
+  // Memory request for the postgres container (default 750Mi).
+  memoryRequest?: Input<string>;
+  // Expose CNPG's :9187 metrics to the (annotation-based, operator-less)
+  // Prometheus via a dedicated metrics-only Service. Annotating the cluster
+  // pods directly would also annotate the rw/r/ro services and double-scrape.
+  scrapeMetrics?: boolean;
 }
 
 // https://cloudnative-pg.io/documentation/1.26/cloudnative-pg.v1/#postgresql-cnpg-io-v1-RoleConfiguration
@@ -77,6 +87,9 @@ export function runPostgres({
   barmanBackup,
   inheritedMetadataLabels,
   colocateAz = false,
+  maxConnections,
+  memoryRequest = '750Mi',
+  scrapeMetrics = false,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
     `${name}-db`,
@@ -117,12 +130,16 @@ export function runPostgres({
         ],
         resources: {
           requests: {
-            memory: '750Mi',
+            memory: memoryRequest,
             cpu: '10m',
           },
         },
         postgresql: {
           parameters: {
+            ...(maxConnections !== undefined
+              ? { max_connections: output(maxConnections).apply((n) => `${n}`) }
+              : {}),
+
             // should be about 25% of requested memory
             shared_buffers: '200MB',
 
@@ -318,6 +335,36 @@ export function runPostgres({
         },
       },
       { dependsOn: [objectStore], parent },
+    );
+  }
+
+  if (scrapeMetrics) {
+    // Metrics-only Service: the annotation-based Prometheus scrapes CNPG's
+    // :9187 exporter once per instance pod through this endpoint. Kept separate
+    // from the rw/r/ro services so only this one carries the scrape annotation.
+    new k8s.core.v1.Service(
+      `${name}-db-metrics`,
+      {
+        metadata: {
+          name: `${name}-db-metrics`,
+          namespace,
+          labels: {
+            'app.kubernetes.io/name': name,
+            'app.kubernetes.io/component': 'database',
+          },
+          annotations: {
+            'prometheus.io/scrape': 'true',
+            'prometheus.io/port': '9187',
+            'prometheus.io/path': '/metrics',
+          },
+        },
+        spec: {
+          clusterIP: 'None',
+          selector: { 'cnpg.io/cluster': `${name}-db` },
+          ports: [{ name: 'metrics', port: 9187, targetPort: 'metrics', protocol: 'TCP' }],
+        },
+      },
+      { parent },
     );
   }
 
