@@ -73,11 +73,9 @@
       TAMANU_FRONTEND_VERSION_DOMAIN={{ tamanu_frontend_version | replace('.', '-') }}
       DATABASE_URL=postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql
 
-# Per-server AES key for encrypting local_system_secrets (device key, reporting
-# secret, sync password). Stored as a podman secret (mounted into containers at
-# /run/secrets/tamanu-config-key) and generated on first run with /dev/urandom
-# piped straight into podman so the bytes never pass through Ansible. Never
-# regenerated — if this host dies, anything encrypted under it must be reissued.
+# Per-server AES key for local_system_secrets encryption, kept as a podman secret.
+# Piped from /dev/urandom straight into podman so it never touches Ansible; never
+# regenerated (anything encrypted under it is lost if the host dies).
 - name: Ensure tamanu config key podman secret exists
   become: true
   ansible.builtin.shell:
