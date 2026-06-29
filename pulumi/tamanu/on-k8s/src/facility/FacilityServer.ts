@@ -104,12 +104,44 @@ export class FacilityServer extends ComponentResource {
       appConfig,
     });
 
+    // Seed the central host/credentials/facility into local system facts so the
+    // server is fact-configured without the setup wizard. The sync user is the
+    // provisioned admin. Runs after migrate (needs the facts table) and gates the
+    // sync/api/tasks processes so they boot already configured.
+    const syncUrl = provisioning.apply((p) => {
+      const url = new URL(centralApiUrl);
+      url.username = 'admin@tamanu.io';
+      url.password = p.users['admin@tamanu.io'].password;
+      return url.toString();
+    });
+    const setupSyncJob = new k8s.batch.v1.Job(
+      `facility-${name}-setup-sync`,
+      {
+        metadata: { namespace },
+        spec: {
+          backoffLimit: 5,
+          template: {
+            spec: {
+              ...podSpec({
+                podType: 'setup-sync',
+                command: ['setupSync'],
+                env: [{ name: 'SYNC_URL', value: syncUrl }],
+              }),
+              restartPolicy: 'Never',
+            },
+          },
+        },
+      },
+      { parent: this, dependsOn: [migratorJob] },
+    );
+
     if (replicas.tasks > 0) {
       runTasks(name, {
         parent: this,
         deviceId,
         podSpec,
-        migratorJob,
+        // Gate on the sync-config seed (which itself waits on the migrator).
+        migratorJob: setupSyncJob,
       });
     }
 
@@ -117,14 +149,14 @@ export class FacilityServer extends ComponentResource {
       parent: this,
       deviceId,
       podSpec,
-      dependsOn: [migratorJob],
+      dependsOn: [setupSyncJob],
     });
 
     const api = runServer(name, 'api', {
       parent: this,
       deviceId,
       podSpec,
-      dependsOn: [migratorJob, sync.service],
+      dependsOn: [setupSyncJob, sync.service],
       replicas: replicas.api,
     });
 

@@ -5,9 +5,6 @@
   },
   sync: {
     enabled: true,
-    host: '{{ centralApiUrl }}',
-    email: 'admin@tamanu.io',
-    password: '{{ provisioning.users["admin@tamanu.io"].password }}',
     syncApiConnection: {
       host: '{{ syncApiUrl }}',
       port: {{ syncApiPort }},
