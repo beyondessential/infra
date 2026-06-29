@@ -73,6 +73,24 @@
       TAMANU_FRONTEND_VERSION_DOMAIN={{ tamanu_frontend_version | replace('.', '-') }}
       DATABASE_URL=postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql
 
+# Per-server AES key for encrypting local_system_secrets (device key, reporting
+# secret, sync password). Stored as a podman secret (mounted into containers at
+# /run/secrets/tamanu-config-key) and generated on first run with /dev/urandom
+# piped straight into podman so the bytes never pass through Ansible. Never
+# regenerated — if this host dies, anything encrypted under it must be reissued.
+- name: Ensure tamanu config key podman secret exists
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      if podman secret exists tamanu-config-key; then
+        exit 0
+      fi
+      dd if=/dev/urandom bs=32 count=1 status=none | podman secret create tamanu-config-key -
+      echo created
+  register: tamanu_config_key
+  changed_when: tamanu_config_key.stdout == "created"
+
 - name: Pull the Tamanu images
   become: true
   loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"

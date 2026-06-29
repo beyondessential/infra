@@ -65,6 +65,15 @@
     state: directory
     mode: "0755"
 
+- name: Mount the tamanu config key secret into containers
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/tamanu-.container.d/crypto-secret.conf
+    content: |
+      [Container]
+      Secret=tamanu-config-key,mode=0400
+  notify: Reload systemd
+
 - name: Enable IPv6 for quadlets
   when: tamanu_ipv6 | bool
   become: true
