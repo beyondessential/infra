@@ -178,6 +178,13 @@ new k8s.apps.v1.Deployment(
           ['public-server'],
           {
             env: [
+              // Front-line API server: more concurrent DB work than the jobs,
+              // so a larger pool than the crate's default. Stays well under the
+              // cluster's max_connections across both replicas.
+              {
+                name: 'DB_MAX_OPEN_CONNECTIONS',
+                value: '10',
+              },
               {
                 name: 'STATUS_PAGE_URL',
                 value: `https://${normalizedStack}.${TAILNET_DOMAIN}/`,
@@ -329,6 +336,13 @@ new k8s.apps.v1.Deployment(
           ['private-server'],
           {
             env: [
+              // Front-line API server: more concurrent DB work than the jobs,
+              // so a larger pool than the crate's default. Stays well under the
+              // cluster's max_connections across both replicas.
+              {
+                name: 'DB_MAX_OPEN_CONNECTIONS',
+                value: '10',
+              },
               {
                 name: 'PUBLIC_URL',
                 value: `https://${domains[0]}`,
