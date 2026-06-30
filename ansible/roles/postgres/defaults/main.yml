@@ -6,3 +6,9 @@ postgresql_upgrade_detect_only: false
 postgresql_upgrade_enabled: false
 postgresql_tune_enabled: true
 postgresql_tune_max_connections: 100
+# Per-session cap on temp file usage (sorts/hashes/temp tables spilling to
+# disk) to stop a runaway query from filling the disk. Empty = auto-derive as
+# a percentage of the data filesystem size; set an explicit value (e.g. "10GB")
+# to override.
+postgresql_tune_temp_file_limit: ""
+postgresql_tune_temp_file_limit_percent: 25
