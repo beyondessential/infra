@@ -9,10 +9,6 @@
     keyFile: "/run/secrets/tamanu-config-key",
   },
 
-  proxy: {
-    trusted: "loopback, linklocal, uniquelocal",
-  },
-
   db: {
     name: "{{ tamanu_db_name }}",
     verbose: false,
@@ -20,7 +16,6 @@
     password: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}",
     host: "/var/run/postgresql",
     port: null,
-    migrateOnStartup: false,
     reportSchemas: {
       connections: {
         raw: {
@@ -47,9 +42,6 @@
   {% endif %}
 
   {% if tamanu_server_type == 'central' %}
-  disk: {
-    diskPath: '/var/lib/postgresql',
-  },
   {% if patient_portal_enabled %}
   patientPortal: {
     portalUrl: "https://{{ patient_portal_fqdn }}",
