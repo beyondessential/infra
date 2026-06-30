@@ -1,6 +1,4 @@
 {
-  countryTimeZone: "{{ timezone }}",
-  primaryTimeZone: "{{ timezone }}",
   canonicalHostName: "{{ tamanu_central_canonical_url }}",
   auth: {
     secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'tamanuauth') }}",
