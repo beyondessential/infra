@@ -1,8 +1,5 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
-  db: {
-    migrateOnStartup: false,
-  },
   sync: {
     enabled: true,
     host: '{{ centralApiUrl }}',
@@ -19,9 +16,6 @@
   },
   errors: {
     enabled: true,
-  },
-  proxy: {
-    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
   countryTimeZone: '{{ timezone }}',
   localisation: {

@@ -1,8 +1,5 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
-  db: {
-    migrateOnStartup: false,
-  },
   auth: {
     secret: '{{ 40 | randomstring }}',
     refreshSecret: '{{ 40 | randomstring }}',
@@ -11,9 +8,6 @@
   },
   errors: {
     enabled: true,
-  },
-  proxy: {
-    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
   localisation: {
     data: {
@@ -72,9 +66,6 @@
   },
   updateUrls: {
     mobile: 'https://install.appcenter.ms/orgs/beyond-essential/apps/tamanu-mobile-only/distribution_groups/staging',
-  },
-  disk: {
-    diskPath: '/',
   },
   schedules: {
     fhirMaterialiser: {

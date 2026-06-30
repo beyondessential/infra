@@ -67,6 +67,7 @@
     content: |
       # this is controlled by Ansible and will be overwritten if you make changes
       TZ={{ timezone }}
+      TAMANU_PRIMARY_TIMEZONE={{ timezone }}
       PROXY_TRUSTED=loopback, linklocal, uniquelocal
       DISK_PATH=/var/lib/postgresql
       TAMANU_VERSION={{ tamanu_version }}

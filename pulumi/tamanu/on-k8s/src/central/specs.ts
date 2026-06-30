@@ -2,6 +2,7 @@ import { type Output, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { compact } from 'lodash-es';
 import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
+import { $network } from '../../../../common/k8s/coreRef.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
 import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
@@ -97,6 +98,18 @@ export function podSpecFactory({
             {
               name: 'TZ',
               value: timezone,
+            },
+            {
+              name: 'TAMANU_PRIMARY_TIMEZONE',
+              value: timezone,
+            },
+            {
+              name: 'PROXY_TRUSTED',
+              value: $network.apply((n) => `loopback, ${n.v4Cidr}, ${n.v6Cidr}`),
+            },
+            {
+              name: 'DISK_PATH',
+              value: '/',
             },
             {
               name: 'NODE_ENV',

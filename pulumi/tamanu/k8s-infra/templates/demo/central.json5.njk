@@ -12,12 +12,6 @@
   errors: {
     enabled: true,
   },
-  proxy: {
-    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
-  },
-  db: {
-    migrateOnStartup: false,
-  },
   sync: {
     lookupTable: {
       enabled: true,
@@ -82,9 +76,6 @@
   },
   updateUrls: {
     mobile: 'https://install.appcenter.ms/orgs/beyond-essential/apps/tamanu-mobile-only/distribution_groups/staging',
-  },
-  disk: {
-    diskPath: '/',
   },
   integrations: {
     fhir: {
