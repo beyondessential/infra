@@ -284,7 +284,6 @@ export const CONFIG_FROM_ENV = {
       },
     },
   },
-  countryTimeZone: 'TZ',
   localisation: {
     timeZone: 'TZ',
   },
