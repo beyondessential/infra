@@ -12,3 +12,8 @@ postgresql_tune_max_connections: 100
 # to override.
 postgresql_tune_temp_file_limit: ""
 postgresql_tune_temp_file_limit_percent: 25
+# Cap the @postgres btrfs subvolume with a quota so postgres can never fill the
+# whole disk. Disabled by default; uncomment to enable. Value is a percentage
+# of the data filesystem size — the temp_file_limit tuning above then derives
+# its basis from this ceiling instead of the raw disk size.
+# postgresql_btrfs_quota_percent: 80
