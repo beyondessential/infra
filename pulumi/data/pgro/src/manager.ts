@@ -125,11 +125,12 @@ const controllerEnv: k8s.types.input.core.v1.EnvVar[] = [
 ];
 
 // Canopy integration. CANOPY_BASE_URL opts the operator into the canopy path;
-// the client auto-prefers the tailnet SOCKS5 proxy the sidecar exposes on
-// [::1]:1055 (its default) and only uses this URL for the mTLS fallback. The
-// path is only activated when the sidecar is present — the tailnet is the
-// primary route, so enabling canopy without it would be a broken half-state.
-const canopyActive = !!(authkeySecret && canopyBaseUrl);
+// the client prefers the tailnet SOCKS5 proxy the sidecar exposes on
+// [::1]:1055 (its default) and falls back to mTLS against this URL. It needs
+// at least one working transport — the tailnet sidecar (authkey) or the mTLS
+// device key — or bestool-canopy errors on construction. So require the base
+// URL plus either transport.
+const canopyActive = !!(canopyBaseUrl && (authkeySecret || canopyDeviceKey));
 if (canopyActive) {
   controllerEnv.push({ name: 'CANOPY_BASE_URL', value: canopyBaseUrl! });
   if (canopyDeviceKey) {
