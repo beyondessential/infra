@@ -4,6 +4,7 @@ import { compact } from 'lodash-es';
 import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
 import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
+import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
 import type { PodSpecArgs, PodSpecFactory } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
 import { image, imageTag } from '../image.ts';
@@ -104,6 +105,17 @@ export function podSpecFactory({
             imageTag.startsWith('sha-') && {
               name: 'REVISION',
               value: imageTag.replace(/^sha-/, '').slice(0, 10),
+            },
+            {
+              // Single connection string for the core user. Tamanu prefers this
+              // over the structured DB_* vars below, which stay as a fallback.
+              name: 'DATABASE_URL',
+              valueFrom: {
+                secretKeyRef: dbReady.apply(url => ({
+                  name: url.metadata.name,
+                  key: PostgresUrlSecretKey.AppDbUrl,
+                })),
+              },
             },
             {
               name: 'DB_HOST',
