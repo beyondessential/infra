@@ -6,7 +6,7 @@ export const maxConcurrentRestores = cfg.getNumber('maxConcurrentRestores') ?? 2
 
 // Tailscale sidecar authkey (carries tag:pgro-operator). When set, the
 // operator pod joins the tailnet and the canopy path can be activated.
-export const tailscaleAuthkey = cfg.getSecret('tailscaleAuthkey');
+export const tailscaleAuthkey = cfg.getSecret('tailscaleAuthKey');
 
 // Public canopy hostname. Presence opts the operator into the canopy path;
 // unset keeps it in legacy-only mode (existing PostgresPhysicalReplica CRDs).
