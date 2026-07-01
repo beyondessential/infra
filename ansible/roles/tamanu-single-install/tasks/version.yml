@@ -69,7 +69,6 @@
       TZ={{ timezone }}
       TAMANU_PRIMARY_TIMEZONE={{ timezone }}
       PROXY_TRUSTED=loopback, linklocal, uniquelocal
-      DISK_PATH=/var/lib/postgresql
       TAMANU_VERSION={{ tamanu_version }}
       TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
       TAMANU_FRONTEND_VERSION={{ tamanu_frontend_version }}
