@@ -101,7 +101,7 @@ jobs:
             type=ref,event=branch
             type=match,pattern=pgsnap-v(.*),group=1
           labels: |
-            org.opencontainers.image.vendor=BES
+            org.opencontainers.image.vendor=BES International
             org.opencontainers.image.title=pgsnap
             org.opencontainers.image.url=https://github.com/beyondessential/ops/
             org.opencontainers.image.source=https://github.com/beyondessential/ops/
