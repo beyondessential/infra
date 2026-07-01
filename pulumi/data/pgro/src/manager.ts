@@ -46,10 +46,11 @@ const authkeySecret = tailscaleAuthkey
     )
   : undefined;
 
-// The operator's own device key (private key + self-signed cert, PEM). Its
-// public key is the canopy device identity, promoted to backup-restore
-// canopy-side. pgro reads the first entry of this Secret and uses it as its
-// mTLS client identity when the tailnet probe fails.
+// The operator's own device private key (P-256 EC, PEM). bestool-canopy
+// self-signs a short-lived cert from it; its public key is the canopy device
+// identity, promoted to backup-restore canopy-side. pgro reads the first
+// entry of this Secret and uses it as its mTLS identity when the tailnet
+// probe fails.
 if (canopyDeviceKey) {
   new k8s.core.v1.Secret(
     'pgro-canopy-device-key',
