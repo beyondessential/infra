@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { TAILSCALE_VERSION } from '../../../k8s-essentials/versions.ts';
 import { namespace, ns } from './namespace.ts';
 import {
   image,
@@ -201,7 +202,7 @@ const containers: k8s.types.input.core.v1.Container[] = [
 if (authkeySecret) {
   containers.push({
     name: 'tailscale',
-    image: 'ghcr.io/tailscale/tailscale:v1.80',
+    image: `ghcr.io/tailscale/tailscale:v${TAILSCALE_VERSION}`,
     env: [
       { name: 'TS_USERSPACE', value: 'true' },
       { name: 'TS_SOCKS5_SERVER', value: '[::]:1055' },
