@@ -19,6 +19,12 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
       name: 'postgres-restore-operator',
     },
     rules: [
+      // CRD install (operator applies its own CRDs on startup)
+      {
+        apiGroups: ['apiextensions.k8s.io'],
+        resources: ['customresourcedefinitions'],
+        verbs: ['get', 'list', 'create', 'update', 'patch'],
+      },
       // CRD access
       {
         apiGroups: ['pgro.bes.au'],
