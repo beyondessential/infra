@@ -13,6 +13,7 @@ import {
   costLabels,
   slackerOpenUrl,
   slackerCloseUrl,
+  slackerSelfAlertUrl,
   normalizedStack,
 } from './config.ts';
 
@@ -164,6 +165,7 @@ new k8s.apps.v1.Deployment(
             { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
             { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
             { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
+            { name: 'SLACK_WEBHOOK_SELF_ALERT_URL', value: slackerSelfAlertUrl },
           ],
         }),
       },
