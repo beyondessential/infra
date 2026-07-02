@@ -29,6 +29,7 @@ import {
 } from '../config.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
+import { reportingGrants } from '../common/reportingGrants.ts';
 import { cloneSeedSnapshot } from './seedSnapshot.ts';
 
 export interface CentralServerArgs {
@@ -98,6 +99,9 @@ export class CentralServer extends ComponentResource {
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
     });
+
+    // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
+    reportingGrants('central', { parent: this });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
     const { job: provisionerJob, provisioning } = provisioner({
