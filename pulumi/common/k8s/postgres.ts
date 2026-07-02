@@ -118,6 +118,10 @@ export function runPostgres({
           major: majorVersion,
         },
         instances: replicas,
+        // Maintain the <name>-db-superuser secret: the reporting-grants Job and
+        // the postgres URLs in <name>-db-url read it, and CNPG only creates it
+        // when superuser access is enabled (off by default since CNPG 1.21).
+        enableSuperuserAccess: true,
         primaryUpdateStrategy: 'unsupervised',
         storage: {
           size: storage,
