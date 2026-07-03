@@ -10,8 +10,9 @@ import { DEFAULT_POSTGRES_VERSION } from '../../../../constants/internal.ts';
 // server on startup. Reconcile the grants as superuser on each deploy; a no-op
 // when the roles are absent (fresh cluster: app creates them itself) or already
 // granted.
+// Named dollar-quoting: kubelet command expansion collapses an anonymous $$ to $.
 const GRANTS_SQL = `
-DO $$
+DO $do$
 BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_reporting') THEN
     GRANT tamanu_reporting TO app WITH ADMIN OPTION;
@@ -19,7 +20,7 @@ BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_raw') THEN
     GRANT tamanu_raw TO app WITH ADMIN OPTION;
   END IF;
-END $$;
+END $do$;
 `.trim();
 
 export interface ReportingGrantsArgs {
