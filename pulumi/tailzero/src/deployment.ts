@@ -80,18 +80,24 @@ export const deployment = new k8s.apps.v1.Deployment('tailzero', {
             name: 'tailzero',
             image,
             imagePullPolicy: 'Always',
-            args: ['--border0-invite-code', '$(BORDER0_INVITE_CODE)'],
-            env: [
-              {
-                name: 'BORDER0_INVITE_CODE',
-                valueFrom: {
-                  secretKeyRef: {
-                    name: secret.metadata.name,
-                    key: 'BORDER0_INVITE_CODE',
-                  },
-                },
-              },
-            ],
+            // The invite code is only passed while the secret is set (first-run
+            // enrollment); once unset, the connector runs off persisted state.
+            ...(secret
+              ? {
+                  args: ['--border0-invite-code', '$(BORDER0_INVITE_CODE)'],
+                  env: [
+                    {
+                      name: 'BORDER0_INVITE_CODE',
+                      valueFrom: {
+                        secretKeyRef: {
+                          name: secret.metadata.name,
+                          key: 'BORDER0_INVITE_CODE',
+                        },
+                      },
+                    },
+                  ],
+                }
+              : {}),
             volumeMounts: [
               {
                 name: 'state',

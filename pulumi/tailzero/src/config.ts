@@ -9,7 +9,10 @@ export const normalizedStack = `tailzero-${getStack()}`
   .slice(0, 63) // 63 is the max length of a k8s namespace
   .replace(/^-+|-+$/g, '');
 
-export const border0InviteCode = cfg.requireSecret('border0InviteCode');
+// Optional: the invite code is a single-use enrollment token. Set it for the
+// first run, then unset it (`pulumi config rm --secret border0InviteCode`) once
+// the connector has enrolled and persisted its state to the volume.
+export const border0InviteCode = cfg.getSecret('border0InviteCode');
 
 const imageTag = cfg.require('imageTag');
 export const image = `ghcr.io/borderzero/tailzero:${imageTag}`;
