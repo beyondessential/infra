@@ -10,6 +10,17 @@
     name: bestool-alertd.service
     state: restarted
 
+# Re-read the backups directory after a definition changes. The packaged unit
+# (bestool >= 1.26) defines a reload, so this re-registers without dropping the
+# daemon; the older self-templated unit has no ExecReload, so reload-or-restart
+# falls back to a restart there. The daemon also watches the directory, so this
+# is belt-and-braces.
+- name: Reload bestool-alertd
+  become: true
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    cmd: systemctl reload-or-restart bestool-alertd.service
+  changed_when: true
+
 - name: Reboot
   become: true
   ansible.builtin.reboot:

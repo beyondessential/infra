@@ -7,6 +7,9 @@
   ansible.builtin.include_tasks: quadlets.yml
 - name: Configure tamanu boot
   ansible.builtin.include_tasks: boot.yml
+- name: Configure graceful Tamanu roll on postgres restart
+  when: postgresql_installed_version is defined
+  ansible.builtin.include_tasks: postgres-restart-hook.yml
 - name: Configure tamanu database
   ansible.builtin.include_tasks: database.yml
 - name: Set tamanu version

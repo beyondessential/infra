@@ -19,6 +19,12 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
       name: 'postgres-restore-operator',
     },
     rules: [
+      // CRD install (operator applies its own CRDs on startup)
+      {
+        apiGroups: ['apiextensions.k8s.io'],
+        resources: ['customresourcedefinitions'],
+        verbs: ['get', 'list', 'create', 'update', 'patch'],
+      },
       // CRD access
       {
         apiGroups: ['pgro.bes.au'],
@@ -65,6 +71,13 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         apiGroups: [''],
         resources: ['pods'],
         verbs: ['get', 'list', 'patch', 'delete'],
+      },
+      // Namespaces (canopy-path replica namespaces are labelled + annotated by
+      // the worklist syncer, and torn down when a declaration goes away)
+      {
+        apiGroups: [''],
+        resources: ['namespaces'],
+        verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
       },
       // Pod port-forward (overlay FDW reconciliation)
       {
@@ -136,6 +149,14 @@ const configRole = new k8s.rbac.v1.Role(
         resources: ['configmaps'],
         resourceNames: ['postgres-restore-operator-config'],
         verbs: ['get', 'list', 'watch'],
+      },
+      // The Tailscale sidecar persists tailnet state in this Secret under the
+      // operator's ServiceAccount, so a restart rejoins as the same node.
+      {
+        apiGroups: [''],
+        resources: ['secrets'],
+        resourceNames: ['pgro-operator-tailscale-state'],
+        verbs: ['get', 'update', 'patch', 'create'],
       },
     ],
   },

@@ -24,13 +24,14 @@ const canopyJobsRoleArn = canopy?.get<string>('canopyJobsRoleArn');
 // private-server's wizard probes the bucket by assuming both per-bucket roles.
 const canopyPrivateRoleArn = canopy?.get<string>('canopyPrivateRoleArn');
 
-// The legacy per-instance IAM-User keys / EC2 role trust stay provisioned
-// unconditionally: once Canopy imports a repo it rotates the kopia passphrase, so
-// non-canopy access stops working on its own — no explicit teardown needed.
+// The legacy per-instance IAM-User keys / EC2 role trust exist only while a stack
+// is not onboarded to Canopy. Once `canopyInfra` is set the device role drops to
+// the reduced device policy, the EC2 trust falls away (see canopyBackup.ts), and
+// the static-key writer and read-only users are no longer provisioned.
 
 interface KopiaOutputs {
   backupBucket: Output<string>;
-  backupReadOnlyUser: Output<string>;
+  backupReadOnlyUser: Output<string> | undefined;
   backupUsers: Output<string[]>;
   deviceRoleArn: Output<string>;
   maintenanceRoleArn: Output<string> | undefined;
@@ -127,26 +128,28 @@ function createOwnBucket(): KopiaOutputs {
   );
 
   // Full-access (delete) policy for the legacy per-instance IAM Users and the
-  // EC2-assumed device role. Skipped when the legacy path is retired.
-  const kopiaPolicy = new awsNative.iam.ManagedPolicy(
-    'backups-kopia-policy',
-    {
-      policyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: AWS_S3_BACKUP_ACTIONS,
-            Resource: bucket.bucketName.apply((name) => [
-              `arn:aws:s3:::${name}`,
-              `arn:aws:s3:::${name}/*`,
-            ]),
-          },
-        ],
-      }),
-    },
-    { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
-  );
+  // EC2-assumed device role. Retired once a stack is onboarded to Canopy.
+  const kopiaPolicy = canopy
+    ? undefined
+    : new awsNative.iam.ManagedPolicy(
+        'backups-kopia-policy',
+        {
+          policyDocument: jsonStringify({
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: AWS_S3_BACKUP_ACTIONS,
+                Resource: bucket.bucketName.apply((name) => [
+                  `arn:aws:s3:::${name}`,
+                  `arn:aws:s3:::${name}/*`,
+                ]),
+              },
+            ],
+          }),
+        },
+        { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
+      );
 
   // The role Canopy issues device creds from drops delete/retention and gains
   // the Object Lock read; the IAM Users keep the full kopiaPolicy. Without
@@ -176,7 +179,8 @@ function createOwnBucket(): KopiaOutputs {
   const kopiaRole = new awsNative.iam.Role(
     `backups-kopia-role-${normalizedStack}`,
     {
-      managedPolicyArns: [(devicePolicy ?? kopiaPolicy).policyArn],
+      // Exactly one of devicePolicy (Canopy) / kopiaPolicy (legacy) is defined.
+      managedPolicyArns: [(devicePolicy ?? kopiaPolicy)!.policyArn],
       assumeRolePolicyDocument: deviceAssumeRolePolicy(canopyIssuerRoleArn, canopyPrivateRoleArn),
       tags,
     },
@@ -248,46 +252,55 @@ function createOwnBucket(): KopiaOutputs {
     },
   );
 
-  const users = instances.map(
-    (inst) =>
-      new awsNative.iam.User(
-        `backups-kopia-${normalizedStack}-${inst.id}`,
-        {
-          managedPolicyArns: [kopiaPolicy.policyArn],
-          tags,
-        },
-        { parent: bucket, protect: false },
-      ).userName,
-  );
+  // Per-instance writer users (static keys): legacy path only. Canopy issues
+  // per-device STS creds instead.
+  const users = canopy
+    ? []
+    : instances.map(
+        (inst) =>
+          new awsNative.iam.User(
+            `backups-kopia-${normalizedStack}-${inst.id}`,
+            {
+              managedPolicyArns: [kopiaPolicy!.policyArn],
+              tags,
+            },
+            { parent: bucket, protect: false },
+          ).userName,
+      );
 
-  const kopiaReadOnlyPolicy = new awsNative.iam.ManagedPolicy(
-    'backups-kopia-readonly-policy',
-    {
-      policyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: AWS_S3_READ_ACTIONS,
-            Resource: bucket.bucketName.apply((name) => [
-              `arn:aws:s3:::${name}`,
-              `arn:aws:s3:::${name}/*`,
-            ]),
-          },
-        ],
-      }),
-    },
-    { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
-  );
+  // Read-only restore/inspection user (static keys): legacy path only, dropped
+  // once onboarded to Canopy.
+  let readOnlyUser: Output<string> | undefined;
+  if (!canopy) {
+    const kopiaReadOnlyPolicy = new awsNative.iam.ManagedPolicy(
+      'backups-kopia-readonly-policy',
+      {
+        policyDocument: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: AWS_S3_READ_ACTIONS,
+              Resource: bucket.bucketName.apply((name) => [
+                `arn:aws:s3:::${name}`,
+                `arn:aws:s3:::${name}/*`,
+              ]),
+            },
+          ],
+        }),
+      },
+      { parent: bucket, protect: false, ignoreChanges: ['users', 'roles', 'groups'] },
+    );
 
-  const readOnlyUser = new awsNative.iam.User(
-    `backups-kopia-${normalizedStack}-readonly`,
-    {
-      managedPolicyArns: [kopiaReadOnlyPolicy.policyArn],
-      tags,
-    },
-    { parent: bucket, protect: false },
-  ).userName;
+    readOnlyUser = new awsNative.iam.User(
+      `backups-kopia-${normalizedStack}-readonly`,
+      {
+        managedPolicyArns: [kopiaReadOnlyPolicy.policyArn],
+        tags,
+      },
+      { parent: bucket, protect: false },
+    ).userName;
+  }
 
   // Register the config with Canopy when a server_group_id is set (the gate).
   // Requires Canopy onboarding (the maintenance role only exists then).

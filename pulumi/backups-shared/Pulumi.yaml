@@ -1,0 +1,6 @@
+name: tamanu-backups-shared
+description: Cross-account IAM for Canopy-provisioned shared backup buckets
+runtime:
+  name: nodejs
+  options:
+    typescript: false

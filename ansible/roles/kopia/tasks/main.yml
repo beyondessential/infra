@@ -1,12 +1,10 @@
 ---
-- name: Install kopia
-  ansible.builtin.include_tasks: install.yml
-- name: Configure kopia policy
-  ansible.builtin.include_tasks: policy.yml
-- name: Configure kopia cache cleanup
-  ansible.builtin.include_tasks: cache.yml
-- name: Configure kopia expiry
-  ansible.builtin.include_tasks: expiry.yml
-- name: Configure kopia maintenance
-  ansible.builtin.include_tasks: maintenance.yml
-  when: "'central' in group_names"
+# Kopia itself is installed via the baseline package list (from the bes-tools
+# apt repo, which also owns the kopia user/group/home). This role only undoes
+# the host's old kopia setup: the upstream apt repo and the self-managed
+# scheduling/repository that Canopy now owns. It can be deleted outright once
+# every host has converged.
+- name: Remove the upstream kopia apt repo
+  ansible.builtin.include_tasks: cleanup-upstream-repo.yml
+- name: Tear down self-managed kopia scheduling
+  ansible.builtin.include_tasks: teardown.yml

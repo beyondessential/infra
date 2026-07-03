@@ -25,6 +25,7 @@ import { runTasks } from './tasks.ts';
 import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
+import { reportingGrants } from '../common/reportingGrants.ts';
 
 export interface FacilityServerArgs {
   fqdn: string;
@@ -105,6 +106,9 @@ export class FacilityServer extends ComponentResource {
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
     });
+
+    // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
+    reportingGrants(`facility-${name}`, { parent: this });
 
     const migratorJob = migrator(`facility-${name}`, {
       parent: this,

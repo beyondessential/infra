@@ -1,6 +1,12 @@
 import { Config, getStack, output, type Output } from '@pulumi/pulumi';
 import { billingTags } from '../../../common/billing.ts';
-import { backups, cfg, clusterFullName, externalDnsZoneDomains } from '../../../common/k8s/coreRef.ts';
+import {
+  backups,
+  cfg,
+  clusterFullName,
+  externalDnsZoneDomains,
+  tailscaleProxyDefaultTags,
+} from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
 
@@ -32,7 +38,17 @@ export const domainBase =
   truncateDomainIfNeeded(_domainStack, _clusterBaseDomain);
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const dbExpose = cfg.getBoolean('dbExpose') ?? !_isDemoCluster;
+export const dbExpose = cfg.getBoolean('dbExpose') ?? true;
+// Tags for the Tailscale proxy device fronting the central DB. The proxy tag is
+// cluster-specific (each cluster's operator OAuth client only owns its own), so
+// take it from k8s-core rather than hardcoding; append the server tags the ACLs
+// grant DB access on.
+export const dbExposeTags = [
+  ...tailscaleProxyDefaultTags,
+  'tag:server',
+  'tag:server-tamanu',
+  ...(_isDemoCluster ? ['tag:server-tamanu-demo'] : []),
+].join(',');
 export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
 // Pin each db cluster's instances to one AZ (cross-AZ replication is billed).
 // This package currently deploys demo/branch environments, where losing an AZ
