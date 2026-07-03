@@ -8,7 +8,8 @@ import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
 import { runServer } from './server.ts';
 import { ingress } from '../common/ingress.ts';
 import { WebFrontend } from '../web/WebFrontend.ts';
-import { appVersion,
+import {
+  appVersion,
   type ReplicaConfig,
   BARMAN_BACKUP_BUCKET,
   BARMAN_BACKUP_ROLE_ARN,
@@ -64,7 +65,11 @@ export class FacilityServer extends ComponentResource {
       initSql: roles.initSql,
       barmanRoleArn: BARMAN_BACKUP_ROLE_ARN,
       barmanBackup: backupsEnabled
-        ? { bucket: BARMAN_BACKUP_BUCKET, deployName: normalizedStack, retentionDays: backupRetentionDays }
+        ? {
+            bucket: BARMAN_BACKUP_BUCKET,
+            deployName: normalizedStack,
+            retentionDays: backupRetentionDays,
+          }
         : undefined,
       inheritedMetadataLabels: costLabels,
     });
@@ -129,25 +134,25 @@ export class FacilityServer extends ComponentResource {
     const setupSyncJob = !hasSetupSync
       ? undefined
       : new k8s.batch.v1.Job(
-      `facility-${name}-setup-sync`,
-      {
-        metadata: { namespace },
-        spec: {
-          backoffLimit: 5,
-          template: {
+          `facility-${name}-setup-sync`,
+          {
+            metadata: { namespace },
             spec: {
-              ...podSpec({
-                podType: 'setup-sync',
-                command: ['setupSync'],
-                env: [{ name: 'SYNC_URL', value: syncUrl }],
-              }),
-              restartPolicy: 'Never',
+              backoffLimit: 5,
+              template: {
+                spec: {
+                  ...podSpec({
+                    podType: 'setup-sync',
+                    command: ['setupSync'],
+                    env: [{ name: 'SYNC_URL', value: syncUrl }],
+                  }),
+                  restartPolicy: 'Never',
+                },
+              },
             },
           },
-        },
-      },
-      { parent: this, dependsOn: [migratorJob] },
-    );
+          { parent: this, dependsOn: [migratorJob] },
+        );
     // What the server processes wait on: the seeding Job when it runs (it
     // itself waits on the migrator), otherwise the migrator directly.
     const readyJob = setupSyncJob ?? migratorJob;
