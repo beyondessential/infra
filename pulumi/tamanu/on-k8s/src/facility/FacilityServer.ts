@@ -127,8 +127,10 @@ export class FacilityServer extends ComponentResource {
     // sync/api/tasks processes so they boot already configured.
     const syncUrl = provisioning.apply((p) => {
       const url = new URL(centralApiUrl);
-      url.username = 'admin@tamanu.io';
-      url.password = p.users['admin@tamanu.io'].password;
+      // Pre-encode: the URL setters leave '%' as-is, so a literal '%xx' in a
+      // password would be collapsed by the server's decodeURIComponent.
+      url.username = encodeURIComponent('admin@tamanu.io');
+      url.password = encodeURIComponent(p.users['admin@tamanu.io'].password);
       return url.toString();
     });
     const setupSyncJob = !hasSetupSync
