@@ -30,11 +30,15 @@ rustup target add \
 
 # --- cross-compilation tooling (opt-in) -------------------------------------
 if [[ "${RUST_BUILD_CROSS:-0}" == "1" ]]; then
-  log "ensuring cross (musl / zig) tooling"
-  apt-get install -y --no-install-recommends musl-tools python3-pip >/dev/null
+  log "ensuring cross-compile tooling (zig + targets)"
+  apt-get install -y --no-install-recommends python3-pip >/dev/null
+  # zig is the linker for every cross target (via `cargo zigbuild`), so no
+  # per-target C toolchain (mingw-w64, musl-gcc) is needed. `cargo check` links
+  # nothing, so adding the target alone is enough to check it.
   rustup target add \
     x86_64-unknown-linux-musl \
-    aarch64-unknown-linux-musl >/dev/null 2>&1 || true
+    aarch64-unknown-linux-musl \
+    x86_64-pc-windows-gnu >/dev/null 2>&1 || true
 
   # cargo-zigbuild installs into $CARGO_HOME/bin (persisted) — build once.
   command -v cargo-zigbuild >/dev/null 2>&1 || cargo install cargo-zigbuild --locked
