@@ -2,7 +2,9 @@ import * as k8s from '@pulumi/kubernetes';
 import { archAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import type { Architecture } from '../../common/k8s/affinities.ts';
+import { $core, region } from '../../common/k8s/coreRef.ts';
 import { namespace } from './namespace.ts';
+import { serviceAccount } from './serviceAccount.ts';
 import { BUILD_TAINT } from './pools.ts';
 import { architectures, archSeg, image, volumeSize, cpuRequest, memoryRequest } from './config.ts';
 
@@ -37,6 +39,8 @@ function builder(arch: Architecture) {
         template: {
           metadata: { labels },
           spec: {
+            // IRSA identity for uploading artifacts to the S3 bucket.
+            serviceAccountName: serviceAccount.metadata.name,
             tolerations: [
               CAN_RUN_ON_SPOT,
               {
@@ -76,6 +80,9 @@ function builder(arch: Architecture) {
                   // git CLI than cargo's built-in libgit2 fetcher.
                   { name: 'CARGO_NET_GIT_FETCH_WITH_CLI', value: 'true' },
                   { name: 'PATH', value: PATH },
+                  // Out-of-band artifact upload target (see cargo-bescloud).
+                  { name: 'BESCLOUD_S3_BUCKET', value: $core.rustBuildBucketName },
+                  { name: 'AWS_DEFAULT_REGION', value: region },
                 ],
                 resources: { requests: { cpu: cpuRequest, memory: memoryRequest } },
                 volumeMounts: [{ name: 'cache', mountPath: '/cache' }],

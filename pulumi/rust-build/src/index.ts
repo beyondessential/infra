@@ -5,9 +5,10 @@ await failIfIncorrectCluster();
 import './nodeClass.ts';
 import './pools.ts';
 
-// Namespace + user RBAC + slot leases + the per-arch warm builders.
+// Namespace + user RBAC + IRSA SA + slot leases + the per-arch warm builders.
 import './namespace.ts';
 import './rbac.ts';
+import './serviceAccount.ts';
 import './leases.ts';
 import './builders.ts';
 

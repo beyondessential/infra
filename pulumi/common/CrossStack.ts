@@ -44,6 +44,8 @@ export interface CrossStackK8sCoreOutput {
   opencostExportBucketName: Output<string>;
   nodeRoleName: Output<string>;
   clusterSecurityGroupId: Output<string>;
+  rustBuildBucketName: Output<string>;
+  rustBuildRoleArn: Output<string>;
   envoyGatewayEnabled: Output<boolean>;
   externalDnsZoneDomains: Output<string[]>;
   tailscaleProxyDefaultTags: Output<string[]>;
@@ -142,6 +144,8 @@ export class CrossStack {
       opencostExportBucketName: this.get('opencostExportBucketName'),
       nodeRoleName: this.get('nodeRoleName'),
       clusterSecurityGroupId: this.get('clusterSecurityGroupId'),
+      rustBuildBucketName: this.get('rustBuildBucketName'),
+      rustBuildRoleArn: this.get('rustBuildRoleArn'),
       envoyGatewayEnabled: this.get('envoyGatewayEnabled'),
       externalDnsZoneDomains: this.get('externalDnsZoneDomains'),
       tailscaleProxyDefaultTags: this.get('tailscaleProxyDefaultTags'),
