@@ -1,7 +1,7 @@
 import * as awsClassic from '@pulumi/aws';
 import { interpolate } from '@pulumi/pulumi';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
-import { clusterFullName, oidcProvider, tags } from '../../common/k8s/coreRef.ts';
+import { $core, oidcProvider, tags } from '../../common/k8s/coreRef.ts';
 import { AWS_S3_MULTIPART_ACTIONS } from '../../constants/external.ts';
 
 // This stack owns its artifact-transfer AWS resources so it stays self-contained
@@ -9,8 +9,10 @@ import { AWS_S3_MULTIPART_ACTIONS } from '../../constants/external.ts';
 // Tailscale kube access). The k8s exec channel drops the tail of large streams,
 // so builders upload artifacts to this transient bucket and the client pulls a
 // presigned URL directly. Access is scoped to the rust-build SA via IRSA.
+// Convention: bes-{accountname}-{bucketname}. The account name is the core stack
+// name (e.g. tamanu-internal), which k8s-core publishes as coreStack.
 export const bucket = new awsClassic.s3.BucketV2('rust-build-artifacts', {
-  bucket: `bes-k8s-${clusterFullName}-rust-build`,
+  bucket: interpolate`bes-${$core.coreStack}-rust-build`,
   tags: tags.apply((t) => ({ Purpose: 'k8s-rust-build-artifacts', ...t })),
 });
 
