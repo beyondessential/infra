@@ -4,6 +4,7 @@ failIfIncorrectAccount();
 
 import { cluster, oidcProvider } from './cluster.ts';
 export { clusterName as name, tags, version } from './cluster.ts';
+import { nodeRole } from './roles.ts';
 import { bucket as backupsBucketObj, role as backupsRole } from './backups.ts';
 import {
   role as opencostRole,
@@ -18,6 +19,13 @@ export const backupsServiceAccountArn = backupsRole.arn;
 export const oidcProviderArn = oidcProvider.arn;
 export const opencostRoleArn = opencostRole.arn;
 export { spotDataFeedBucketName, opencostExportBucketName };
+
+// Consumed by the out-of-tree `rust-build` stack (pulumi/rust-build/) to build
+// its own EC2NodeClass for dedicated Rust-build nodes: the node IAM role name
+// and the EKS cluster security group. Workload subnet IDs come via $network, so
+// only these two need exporting. See docs/plans/rust-remote-build.md.
+export const nodeRoleName = nodeRole.name;
+export const clusterSecurityGroupId = cluster.clusterSecurityGroupId;
 
 // Single source of truth for "is Envoy Gateway part of this cluster's stack?"
 // k8s-essentials reads this back to gate envoyGateway.ts; k8s-core uses it

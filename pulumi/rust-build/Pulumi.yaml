@@ -1,0 +1,6 @@
+name: rust-build
+description: On-cluster spot Rust build boxes — dedicated Karpenter pool + warm per-arch builder pods with a persistent cache volume
+runtime:
+  name: nodejs
+  options:
+    typescript: false
