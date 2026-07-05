@@ -27,17 +27,23 @@ export interface ReportingGrantsArgs {
   parent: ComponentResource;
 }
 
-export function reportingGrants(
-  name: string,
-  { parent }: ReportingGrantsArgs,
-): k8s.batch.v1.Job {
+// Per-up unique pulumi name so every `pulumi up` replaces the Job and the
+// grants reconcile again (same trick as ttl-wake) — Jobs are immutable and a
+// spec-stable Job never re-runs, which left a woken-from-hibernation env with
+// grantless roles crash-looping. The SQL is idempotent and runs in seconds, so
+// re-running each deploy costs nothing.
+const deployNonce = Math.floor(Date.now() / 1000);
+
+export function reportingGrants(name: string, { parent }: ReportingGrantsArgs): k8s.batch.v1.Job {
   return new k8s.batch.v1.Job(
-    `${name}-reporting-grants`,
+    `${name}-reporting-grants-${deployNonce}`,
     {
       metadata: {
         namespace,
       },
       spec: {
+        // clean up the finished Job so replaced ones don't accumulate
+        ttlSecondsAfterFinished: 600,
         // generous: the superuser secret can lag cluster creation
         backoffLimit: 8,
         template: {
