@@ -1,4 +1,9 @@
+import { failIfIncorrectAccount } from '../../common/coreRef.ts';
 import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
+
+// This stack creates AWS resources, so guard the creds point at the right
+// account. Needs a `core` config key (the core stack ref), like k8s-core.
+failIfIncorrectAccount();
 await failIfIncorrectCluster();
 
 // Cluster capacity (own NodeClass + build NodePools).
