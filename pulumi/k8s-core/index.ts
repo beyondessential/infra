@@ -27,12 +27,6 @@ export { spotDataFeedBucketName, opencostExportBucketName };
 export const nodeRoleName = nodeRole.name;
 export const clusterSecurityGroupId = cluster.clusterSecurityGroupId;
 
-// Out-of-band artifact transfer for rust-build (exec download is lossy for large
-// streams): a transient S3 bucket + an IRSA role scoped to the rust-build SA.
-import { rustBuildBucket, rustBuildRole } from './rustBuildArtifacts.ts';
-export const rustBuildBucketName = rustBuildBucket.bucket;
-export const rustBuildRoleArn = rustBuildRole.arn;
-
 // Single source of truth for "is Envoy Gateway part of this cluster's stack?"
 // k8s-essentials reads this back to gate envoyGateway.ts; k8s-core uses it
 // to gate cert-manager's Gateway API integration.
