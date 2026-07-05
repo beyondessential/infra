@@ -2,7 +2,7 @@ import * as k8s from '@pulumi/kubernetes';
 import { archAffinity, RUN_ON_SPOT } from '../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../common/k8s/tolerations.ts';
 import type { Architecture } from '../../common/k8s/affinities.ts';
-import { namespace, setupConfigMap } from './namespace.ts';
+import { namespace } from './namespace.ts';
 import { BUILD_TAINT } from './pools.ts';
 import { architectures, archSeg, image, volumeSize, cpuRequest, memoryRequest } from './config.ts';
 
@@ -78,13 +78,9 @@ function builder(arch: Architecture) {
                   { name: 'PATH', value: PATH },
                 ],
                 resources: { requests: { cpu: cpuRequest, memory: memoryRequest } },
-                volumeMounts: [
-                  { name: 'cache', mountPath: '/cache' },
-                  { name: 'setup', mountPath: '/opt/rust-build' },
-                ],
+                volumeMounts: [{ name: 'cache', mountPath: '/cache' }],
               },
             ],
-            volumes: [{ name: 'setup', configMap: { name: setupConfigMap.metadata.name } }],
           },
         },
         volumeClaimTemplates: [
