@@ -26,5 +26,6 @@ exec sudo podman run -it --rm \
   -v "/etc/tamanu/$version:/config" \
   -v /var/run/postgresql:/var/run/postgresql \
   --env-file /etc/tamanu/env \
+  --secret tamanu-config-key,mode=0400 \
   ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:$version \
   $*

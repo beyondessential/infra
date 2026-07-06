@@ -122,6 +122,7 @@
   ansible.builtin.shell:
     cmd: |
       set -euo pipefail
+      umask 077
       podman run --rm \
         --secret tamanu-config-key,mode=0400 \
         -v /etc/tamanu/{{ tamanu_version }}:/config:ro \
@@ -132,14 +133,6 @@
       mv /etc/tamanu/settings-psk.tmp /etc/tamanu/settings-psk
     creates: /etc/tamanu/settings-psk
     executable: /bin/bash
-
-- name: Set permissions of the tamanu settings PSK
-  become: true
-  ansible.builtin.file:
-    path: /etc/tamanu/settings-psk
-    mode: "0440"
-    owner: root
-    group: tamanu
 
 - name: Read the tamanu settings PSK
   become: true
