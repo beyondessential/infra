@@ -1,6 +1,6 @@
 import { interpolate } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import { cfg, clusterFullName } from '../common/k8s/coreRef.ts';
+import { cfg, clusterFullName, tailscaleProxyDefaultTags } from '../common/k8s/coreRef.ts';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT } from '../common/k8s/affinities.ts';
 import { TAILSCALE_VERSION } from './versions.ts';
@@ -22,10 +22,12 @@ if (tailscaleEnabled) {
       'tailscale: set either tailscaleClientSecret (legacy static OAuth) or tailscaleAudience (workload identity federation)',
     );
   }
-  const tailscaleProxyDefaultTags: string[] = cfg.getObject('tailscaleProxyDefaultTags') ?? [
-    'tag:k8s',
-    'tag:k8s-proxy',
-  ];
+  // Proxy tags are sourced from k8s-core (single source of truth, also read by
+  // on-k8s); fall back to the unqualified defaults if k8s-core hasn't published
+  // them yet.
+  const proxyDefaultTags = tailscaleProxyDefaultTags.length
+    ? tailscaleProxyDefaultTags
+    : ['tag:k8s', 'tag:k8s-proxy'];
   const tailscaleOperatorDefaultTags: string[] = cfg.getObject('tailscaleOperatorDefaultTags') ?? [
     'tag:k8s-operator',
   ];
@@ -45,7 +47,7 @@ if (tailscaleEnabled) {
     namespace: ns.metadata.name,
     values: {
       proxyConfig: {
-        defaultTags: tailscaleProxyDefaultTags.join(','),
+        defaultTags: proxyDefaultTags.join(','),
       },
       operatorConfig: {
         logging: 'debug',

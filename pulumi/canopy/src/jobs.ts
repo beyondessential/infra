@@ -5,6 +5,7 @@ import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
 import { canopyJobsSa } from './canopy-sa.ts';
 import { recoveryEnv } from './canopy-recovery.ts';
+import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
 import {
@@ -12,6 +13,7 @@ import {
   costLabels,
   slackerOpenUrl,
   slackerCloseUrl,
+  slackerSelfAlertUrl,
   normalizedStack,
 } from './config.ts';
 
@@ -130,7 +132,7 @@ new k8s.apps.v1.Deployment(
         spec: spec(
           'backups',
           ['backups'],
-          { env: recoveryEnv },
+          { env: [...recoveryEnv, ...sharedBackupsJobsEnv] },
           { serviceAccountName: canopyJobsSa },
         ),
       },
@@ -163,6 +165,7 @@ new k8s.apps.v1.Deployment(
             { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
             { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
             { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
+            { name: 'SLACK_WEBHOOK_SELF_ALERT_URL', value: slackerSelfAlertUrl },
           ],
         }),
       },

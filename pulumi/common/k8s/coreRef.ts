@@ -1,3 +1,4 @@
+import { all, type Input } from '@pulumi/pulumi';
 import { CrossStack } from '../CrossStack.ts';
 import { k8sConfig } from './client.ts';
 import { cfg } from '../cfg.ts';
@@ -11,6 +12,9 @@ export const $core = core.k8sCoreOutput();
 // follows.
 export const envoyGatewayEnabled = ((await core.getValue<boolean>('envoyGatewayEnabled')) ?? false);
 export const externalDnsZoneDomains = ((await core.getValue<string[]>('externalDnsZoneDomains')) ?? []);
+// Per-cluster Tailscale proxy tags, sourced from k8s-core. Empty until k8s-core
+// publishes the output; consumers fall back to the unqualified defaults.
+export const tailscaleProxyDefaultTags = ((await core.getValue<string[]>('tailscaleProxyDefaultTags')) ?? []);
 
 export const clusterName = $core.name;
 export const clusterFullName = core.name.split('/')[2];
@@ -25,6 +29,21 @@ export const region = core.region();
 
 const upperCore = $core.coreStack.apply((name) => new CrossStack(`bes/core/${name}`));
 export const $network = upperCore.apply((core) => core.network());
+
+// Guard that AWS credentials point at the cluster's account (the core stack
+// publishes `accountId`). Reuses the core reference above rather than importing
+// common/coreRef.ts, which would create a *second* StackReference to the same
+// core stack and clash. The current account is passed in (from awsAccount) so
+// this module stays usable by credential-less workload stacks.
+export function failIfIncorrectAccount(currentAccountId: Input<string>): void {
+  all([upperCore.apply((core) => core.get<string>('accountId')), currentAccountId]).apply(
+    ([expected, actual]) => {
+      if (expected !== actual) {
+        throw new Error(`Incorrect AWS account: expected ${expected} but got ${actual}`);
+      }
+    },
+  );
+}
 
 export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void> {
   const kubeServer = (() => {

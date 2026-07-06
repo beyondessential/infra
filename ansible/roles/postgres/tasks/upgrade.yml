@@ -4,3 +4,6 @@
 - name: Perform PostgreSQL upgrade
   ansible.builtin.include_tasks: upgrade-perform.yml
   when: postgresql_upgrade_needed and postgresql_upgrade_allowed and not postgresql_upgrade_detect_only
+- name: Assert pg_lsclusters resolves 'main' to the live cluster
+  ansible.builtin.include_tasks: assert-cluster-layout.yml
+  when: not postgresql_upgrade_detect_only

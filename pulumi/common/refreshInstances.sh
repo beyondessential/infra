@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 set -euxo pipefail
 
 if [[ ! -f new-instances.json ]]; then

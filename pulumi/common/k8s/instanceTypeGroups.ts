@@ -100,7 +100,8 @@ export function instancesForRegion(region: string): RegionInstance[] {
     burst_minutes: i.burst_minutes,
     vCPU: i.vCPU,
     memory: i.memory,
-  }));
+  }))
+  .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
 export function instancesSizedAtLeast(
@@ -110,7 +111,9 @@ export function instancesSizedAtLeast(
   memory: number,
 ): RegionInstance[] {
   const instances = instancesForRegion(region);
-  return instances.filter((i) => i.arch.includes(arch) && i.vCPU >= cpu && i.memory >= memory);
+  return instances
+    .filter((i) => i.arch.includes(arch) && i.vCPU >= cpu && i.memory >= memory)
+    .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
 export function instancesSizedExactly(
@@ -120,15 +123,21 @@ export function instancesSizedExactly(
   memory: number,
 ): RegionInstance[] {
   const instances = instancesForRegion(region);
-  return instances.filter((i) => i.arch.includes(arch) && i.vCPU === cpu && i.memory === memory);
+  return instances
+    .filter((i) => i.arch.includes(arch) && i.vCPU === cpu && i.memory === memory)
+    .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
 export function nonBurst(instances: RegionInstance[]): RegionInstance[] {
-  return instances.filter((i) => i.burst_minutes === null);
+  return instances
+    .filter((i) => i.burst_minutes === null)
+    .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
 export function onlyBurst(instances: RegionInstance[]): RegionInstance[] {
-  return instances.filter((i) => i.burst_minutes !== null);
+  return instances
+    .filter((i) => i.burst_minutes !== null)
+    .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
 export function sortByPrice(

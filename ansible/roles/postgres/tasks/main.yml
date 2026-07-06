@@ -24,6 +24,12 @@
 - name: Tune btrfs for PostgreSQL
   ansible.builtin.include_tasks: btrfs-tune.yml
   when: pg_data_fstype.stdout | trim == 'btrfs'
+- name: Apply btrfs quota for PostgreSQL
+  ansible.builtin.include_tasks: btrfs-quota.yml
+  when:
+    - pg_data_fstype.stdout | trim == 'btrfs'
+    - postgresql_btrfs_quota_percent is defined
+    - postgresql_btrfs_quota_percent | string | length > 0
 - name: Configure WAL
   ansible.builtin.include_tasks: wal.yml
 - name: Tune PostgreSQL

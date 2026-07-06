@@ -1,0 +1,45 @@
+---
+# Maintenance, snapshot expiry and cache cleaning used to be driven from the
+# central host by these timers against the local kopia repository. Canopy now
+# owns retention and maintenance, so retire them on every host. Only the kopia
+# binary and user stay (bestool drives kopia against a Canopy-provided
+# repository); the local repository connection is removed below.
+
+- name: Stop and disable self-managed kopia timers
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  failed_when: false
+  loop:
+    - kopia-maintenance.timer
+    - kopia-expiry.timer
+    - kopia-cache-clean.timer
+
+- name: Remove self-managed kopia units
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  loop:
+    - kopia-maintenance.timer
+    - kopia-maintenance.service
+    - kopia-expiry.timer
+    - kopia-expiry.service
+    - kopia-cache-clean.timer
+    - kopia-cache-clean.service
+  notify:
+    - Reload systemd
+
+# The host no longer connects to the old shared repository; bestool fetches the
+# target from Canopy per run. Remove the local connection config and cache,
+# leaving the kopia user and home intact.
+- name: Remove local kopia repository connection and cache
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/kopia/.config/kopia/repository.config
+    - /var/lib/kopia/.cache/kopia

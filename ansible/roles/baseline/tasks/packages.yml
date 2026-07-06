@@ -42,6 +42,8 @@
       - ca-certificates
       - curl
       - gnupg
+      - kopia # bestool/Canopy drive kopia for backups; package owns the kopia user/home
+      - needrestart # restart services when the underlying package updates
       - python3-psycopg2 # required for ansible postgres modules
       - software-properties-common
       - tzdata

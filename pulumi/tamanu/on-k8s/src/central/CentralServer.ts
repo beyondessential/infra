@@ -21,6 +21,7 @@ import {
   dbAzColocate,
   dbBackups,
   dbExpose,
+  dbExposeTags,
   dbStorage,
   normalizedStack,
   seedSnapshot,
@@ -28,6 +29,7 @@ import {
 } from '../config.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
+import { reportingGrants } from '../common/reportingGrants.ts';
 import { cloneSeedSnapshot } from './seedSnapshot.ts';
 
 export interface CentralServerArgs {
@@ -97,6 +99,9 @@ export class CentralServer extends ComponentResource {
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
     });
+
+    // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
+    reportingGrants('central', { parent: this });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
     const { job: provisionerJob, provisioning } = provisioner({
@@ -174,7 +179,7 @@ export class CentralServer extends ComponentResource {
             annotations: {
               // k8s-pg and tamanu are the same length so we don't need to retruncate the name
               'tailscale.com/hostname': `k8s-pg-${normalizedStack}`,
-              'tailscale.com/tags': 'tag:k8s-proxy,tag:server,tag:server-tamanu',
+              'tailscale.com/tags': dbExposeTags,
             },
           },
           spec: {

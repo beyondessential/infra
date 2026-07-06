@@ -42,8 +42,11 @@
     - role: podman
       tags: [base, podman]
 
+    # only a cleanup role now, delete when all hosts
+    # have moved on from the kopia apt repo
     - role: kopia
       tags: [base, kopia]
+
     - role: elastic-agent
       tags: [base, elastic]
 

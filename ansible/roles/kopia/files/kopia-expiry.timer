@@ -1,9 +1,0 @@
-[Unit]
-Description=Run kopia snapshot expiry daily
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target

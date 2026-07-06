@@ -1,0 +1,5 @@
+{
+  "name": "@bes/rust-build",
+  "type": "module",
+  "main": "src/index.ts"
+}

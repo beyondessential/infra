@@ -2,9 +2,13 @@
   canonicalHostName: 'https://{{ fqdn }}',
   sync: {
     enabled: true,
+    {% if legacySyncConfig %}
+    // Pre-2.60 images read the sync target from config; newer images are seeded
+    // into local system facts by the setup-sync Job instead.
     host: '{{ centralApiUrl }}',
     email: 'admin@tamanu.io',
     password: '{{ provisioning.users["admin@tamanu.io"].password }}',
+    {% endif %}
     syncApiConnection: {
       host: '{{ syncApiUrl }}',
       port: {{ syncApiPort }},

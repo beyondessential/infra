@@ -68,6 +68,52 @@
     # io_workers (PG18+): min(32, max(3, cpus/4)), only emit if > 3
     pg_tune_io_workers: "{{ [32, [3, (pg_tune_cpus | int) // 4] | max] | min }}"
 
+- name: Auto-derive temp_file_limit basis
+  when: not (postgresql_tune_temp_file_limit | string | length > 0)
+  block:
+    - name: Get data filesystem size
+      ansible.builtin.command: findmnt -nb -o SIZE -T /var/lib/postgresql
+      register: pg_tune_data_fs_size
+      changed_when: false
+
+    # When a btrfs quota caps the @postgres subvolume, that ceiling — not the
+    # raw filesystem size — is the disk postgres can actually fill. Read the
+    # subvolume's own qgroup (0/<subvolid>) referenced-limit; "none" or no
+    # quotas leaves stdout empty and we fall back to the filesystem size.
+    - name: Detect btrfs qgroup referenced-limit for the postgres subvolume
+      become: true
+      ansible.builtin.shell: |
+        set -o pipefail
+        id="$(btrfs inspect-internal rootid /var/lib/postgresql)" || exit 0
+        btrfs qgroup show -re --raw /var/lib/postgresql 2>/dev/null \
+          | awk -v q="0/$id" '$1 == q { print $4 }'
+      args:
+        executable: /bin/bash
+      register: pg_tune_btrfs_qgroup_limit
+      changed_when: false
+      failed_when: false
+      when: pg_data_fstype.stdout | trim == 'btrfs'
+
+    - name: Compute temp_file_limit basis bytes
+      ansible.builtin.set_fact:
+        pg_tune_temp_basis_bytes: >-
+          {{ [pg_tune_btrfs_qgroup_limit.stdout | default('') | trim | int,
+              pg_tune_data_fs_size.stdout | int] | min
+             if ((pg_tune_btrfs_qgroup_limit.stdout | default('') | trim) is match('^[1-9][0-9]*$'))
+             else (pg_tune_data_fs_size.stdout | int) }}
+
+- name: Derive temp_file_limit
+  ansible.builtin.set_fact:
+    # Explicit override wins; otherwise a percentage of the basis (btrfs quota
+    # ceiling where set, else the filesystem size), expressed in kB (postgres
+    # reads unit-less values as kB).
+    pg_tune_temp_file_limit: >-
+      {{
+        postgresql_tune_temp_file_limit
+        if (postgresql_tune_temp_file_limit | string | length > 0)
+        else (((((pg_tune_temp_basis_bytes | int) // 1024) * (postgresql_tune_temp_file_limit_percent | int)) // 100) | string) + 'kB'
+      }}
+
 - name: Tune max_connections
   become: true
   become_user: postgres
@@ -140,6 +186,15 @@
   community.postgresql.postgresql_alter_system:
     param: work_mem
     value: "{{ pg_tune_work_mem_kb }}kB"
+
+# Per-session cap; aborts a query that would otherwise spill enough temp files
+# to fill the disk. Reload-context, so no restart needed.
+- name: Tune temp_file_limit
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: temp_file_limit
+    value: "{{ pg_tune_temp_file_limit }}"
 
 - name: Tune huge_pages
   become: true

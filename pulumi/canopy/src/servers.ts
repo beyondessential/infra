@@ -19,6 +19,7 @@ import { API_GROUP as GATEWAY_API_GROUP } from '../../common/k8s/gateway/consts/
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
 import { labels } from './labels.ts';
+import { sharedBackupsServerEnv } from './canopy-backups-shared.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 import { canopyIssuerSa, canopyPrivateSa } from './canopy-sa.ts';
@@ -177,6 +178,13 @@ new k8s.apps.v1.Deployment(
           ['public-server'],
           {
             env: [
+              // Front-line API server: more concurrent DB work than the jobs,
+              // so a larger pool than the crate's default. Stays well under the
+              // cluster's max_connections across both replicas.
+              {
+                name: 'DB_MAX_OPEN_CONNECTIONS',
+                value: '10',
+              },
               {
                 name: 'STATUS_PAGE_URL',
                 value: `https://${normalizedStack}.${TAILNET_DOMAIN}/`,
@@ -189,6 +197,7 @@ new k8s.apps.v1.Deployment(
                 name: 'SERVER_VERSIONS_SECRET',
                 value: publicServerVersionsSecret,
               },
+              ...sharedBackupsServerEnv,
             ],
             // Wait up to 60 seconds for the server to start...
             startupProbe: {
@@ -327,9 +336,20 @@ new k8s.apps.v1.Deployment(
           ['private-server'],
           {
             env: [
+              // Front-line API server: more concurrent DB work than the jobs,
+              // so a larger pool than the crate's default. Stays well under the
+              // cluster's max_connections across both replicas.
+              {
+                name: 'DB_MAX_OPEN_CONNECTIONS',
+                value: '10',
+              },
               {
                 name: 'PUBLIC_URL',
                 value: `https://${domains[0]}`,
+              },
+              {
+                name: 'CANOPY_MCP_ALLOWED_HOSTS',
+                value: `${tailscaleHostname}.${TAILNET_DOMAIN}`,
               },
               {
                 name: 'CLIENT_IP_SOURCE',

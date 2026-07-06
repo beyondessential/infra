@@ -69,3 +69,28 @@
   community.postgresql.postgresql_alter_system:
     param: scram_iterations
     value: "50000"
+
+# bestool/Canopy backs up postgres as the superuser over the local socket (peer
+# auth, no password), issuing a CHECKPOINT for the snapshot path and falling
+# back to pg_basebackup over the replication protocol when a volume snapshot
+# isn't possible. The stock Debian pg_hba carries both lines; assert them so the
+# backup (and its fallback) work even on a trimmed pg_hba.
+- name: Ensure local peer auth for the postgres superuser
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    databases: all
+    users: postgres
+    method: peer
+  notify: Reload postgres
+
+- name: Ensure local replication peer auth (pg_basebackup fallback)
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    databases: replication
+    users: all
+    method: peer
+  notify: Reload postgres
