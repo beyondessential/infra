@@ -1,5 +1,6 @@
 import { ComponentResource, type ComponentResourceOptions, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import * as semver from 'semver';
 import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
 import { migrator } from '../common/migrator.ts';
@@ -20,6 +21,7 @@ import {
   normalizedStack,
   timezone,
 } from '../config.ts';
+import { imageTag } from '../image.ts';
 import { runTasks } from './tasks.ts';
 import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
@@ -63,10 +65,24 @@ export class FacilityServer extends ComponentResource {
       initSql: roles.initSql,
       barmanRoleArn: BARMAN_BACKUP_ROLE_ARN,
       barmanBackup: backupsEnabled
-        ? { bucket: BARMAN_BACKUP_BUCKET, deployName: normalizedStack, retentionDays: backupRetentionDays }
+        ? {
+            bucket: BARMAN_BACKUP_BUCKET,
+            deployName: normalizedStack,
+            retentionDays: backupRetentionDays,
+          }
         : undefined,
       inheritedMetadataLabels: costLabels,
     });
+
+    // setupSync ships in Tamanu 2.60; older release images (standing envs pinned
+    // to old tags, rc deploys of patch releases) lack the subcommand, so they
+    // keep the legacy config-based sync setup and skip the seeding Job entirely.
+    // The pulumi appVersion is only set by auto-deploys, so read the version off
+    // the image tag instead (releases are `v<version>`, previews `sha-<gitsha>`).
+    // A sha/branch tag carries no version, so assume the subcommand is present,
+    // as branch builds always include it.
+    const releaseVersion = semver.valid(imageTag);
+    const hasSetupSync = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
 
     const appConfig = provisioning.apply((provisioning) =>
       templatedConfig({
@@ -83,6 +99,7 @@ export class FacilityServer extends ComponentResource {
           deviceId,
           timezone,
           provisioning,
+          legacySyncConfig: !hasSetupSync,
           centralApiUrl,
           syncApiUrl: `http://facility-${name}-sync`,
           syncApiPort: 80,
@@ -108,12 +125,51 @@ export class FacilityServer extends ComponentResource {
       appConfig,
     });
 
+    // Seed the central host/credentials/facility into local system facts so the
+    // server is fact-configured without the setup wizard. The sync user is the
+    // provisioned admin. Runs after migrate (needs the facts table) and gates the
+    // sync/api/tasks processes so they boot already configured.
+    const syncUrl = provisioning.apply((p) => {
+      const url = new URL(centralApiUrl);
+      // Pre-encode: the URL setters leave '%' as-is, so a literal '%xx' in a
+      // password would be collapsed by the server's decodeURIComponent.
+      url.username = encodeURIComponent('admin@tamanu.io');
+      url.password = encodeURIComponent(p.users['admin@tamanu.io'].password);
+      return url.toString();
+    });
+    const setupSyncJob = !hasSetupSync
+      ? undefined
+      : new k8s.batch.v1.Job(
+          `facility-${name}-setup-sync`,
+          {
+            metadata: { namespace },
+            spec: {
+              backoffLimit: 5,
+              template: {
+                spec: {
+                  ...podSpec({
+                    podType: 'setup-sync',
+                    command: ['setupSync'],
+                    env: [{ name: 'SYNC_URL', value: syncUrl }],
+                  }),
+                  restartPolicy: 'Never',
+                },
+              },
+            },
+          },
+          { parent: this, dependsOn: [migratorJob] },
+        );
+    // What the server processes wait on: the seeding Job when it runs (it
+    // itself waits on the migrator), otherwise the migrator directly.
+    const readyJob = setupSyncJob ?? migratorJob;
+
     if (replicas.tasks > 0) {
       runTasks(name, {
         parent: this,
         deviceId,
         podSpec,
-        migratorJob,
+        // Gate on the sync-config seed (which itself waits on the migrator).
+        migratorJob: readyJob,
       });
     }
 
@@ -121,14 +177,14 @@ export class FacilityServer extends ComponentResource {
       parent: this,
       deviceId,
       podSpec,
-      dependsOn: [migratorJob],
+      dependsOn: [readyJob],
     });
 
     const api = runServer(name, 'api', {
       parent: this,
       deviceId,
       podSpec,
-      dependsOn: [migratorJob, sync.service],
+      dependsOn: [readyJob, sync.service],
       replicas: replicas.api,
     });
 
