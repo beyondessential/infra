@@ -111,3 +111,49 @@
       chmod 0440 /etc/tamanu/{{ tamanu_version }}/default.json5
     creates: /etc/tamanu/{{ tamanu_version }}/default.json5
     executable: /bin/bash
+
+# Per-server settings PSK that encrypts integration secrets held in the settings
+# table. Generated in the tamanu image (so the raw key never touches Ansible) and
+# written out already encrypted with the config key. Generated once and kept
+# stable across upgrades: anything encrypted under it becomes unreadable if it
+# changes, so it is never regenerated once /etc/tamanu/settings-psk exists.
+- name: Generate the tamanu settings PSK
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      podman run --rm \
+        --secret tamanu-config-key,mode=0400 \
+        -v /etc/tamanu/{{ tamanu_version }}:/config:ro \
+        {{ tamanu_image_server }} \
+        configSecret generate-settings-psk \
+        | grep -E '^S1:' | tail -n1 > /etc/tamanu/settings-psk.tmp
+      test -s /etc/tamanu/settings-psk.tmp
+      mv /etc/tamanu/settings-psk.tmp /etc/tamanu/settings-psk
+    creates: /etc/tamanu/settings-psk
+    executable: /bin/bash
+
+- name: Set permissions of the tamanu settings PSK
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu/settings-psk
+    mode: "0440"
+    owner: root
+    group: tamanu
+
+- name: Read the tamanu settings PSK
+  become: true
+  ansible.builtin.slurp:
+    src: /etc/tamanu/settings-psk
+  register: tamanu_settings_psk
+
+- name: Add the settings PSK to local config
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/tamanu/{{ tamanu_version }}/local.json5
+    insertafter: '^\s*keyFile:'
+    regexp: '^\s*settingsPsk:'
+    line: '    settingsPsk: "{{ tamanu_settings_psk.content | b64decode | trim }}",'
+    owner: root
+    group: tamanu
+    mode: "0440"
