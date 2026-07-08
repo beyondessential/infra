@@ -10,6 +10,7 @@ import { ingress } from '../common/ingress.ts';
 import { WebFrontend } from '../web/WebFrontend.ts';
 import {
   type ReplicaConfig,
+  appVersion,
   BARMAN_BACKUP_BUCKET,
   BARMAN_BACKUP_ROLE_ARN,
   backupRetentionDays,
@@ -75,13 +76,13 @@ export class FacilityServer extends ComponentResource {
     });
 
     // setupSync ships in Tamanu 2.60; older release images (standing envs pinned
-    // to old tags, rc deploys of patch releases) lack the subcommand, so they
+    // to old tags, auto-deploys of release branches) lack the subcommand, so they
     // keep the legacy config-based sync setup and skip the seeding Job entirely.
-    // The pulumi appVersion is only set by auto-deploys, so read the version off
-    // the image tag instead (releases are `v<version>`, previews `sha-<gitsha>`).
-    // A sha/branch tag carries no version, so assume the subcommand is present,
-    // as branch builds always include it.
-    const releaseVersion = semver.valid(imageTag);
+    // Auto-deploys always use `sha-<gitsha>` image tags but set appVersion from
+    // the branch's package.json, so prefer that; standing envs pin a `v<version>`
+    // tag with no appVersion, so fall back to the tag. A deploy with neither
+    // carries no version at all, so assume the subcommand is present.
+    const releaseVersion = semver.valid(appVersion ?? '') ?? semver.valid(imageTag);
     const hasSetupSync = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
 
     const appConfig = provisioning.apply((provisioning) =>
