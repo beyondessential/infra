@@ -1,9 +1,18 @@
+{# aardvark-dns (podman's in-network DNS) listens on the podman network gateway,
+   defined in roles/podman/defaults/main.yml as podman_network_subnets_v4[0].gateway.
+   That role runs in a separate play, so the var isn't in scope here; fall back to
+   the literal, which must stay in sync with the podman network gateway. #}
+{% set aardvark_dns = podman_network_subnets_v4[0].gateway | default('10.100.0.1') %}
 (upstream_frontend) {
   header_up Host "localhost"
   dynamic a {
     name frontend.tamanu.internal
     port 3000
     versions ipv4
+    # Resolve via podman's aardvark-dns directly, bypassing the host's
+    # systemd-resolved which is intermittently slow (seconds) for
+    # *.tamanu.internal lookups and stalls requests inside caddy.
+    resolvers {{ aardvark_dns }}
   }
 
   lb_policy least_conn
@@ -23,6 +32,10 @@
     name patientportal.tamanu.internal
     port 3000
     versions ipv4
+    # Resolve via podman's aardvark-dns directly, bypassing the host's
+    # systemd-resolved which is intermittently slow (seconds) for
+    # *.tamanu.internal lookups and stalls requests inside caddy.
+    resolvers {{ aardvark_dns }}
   }
 
   lb_policy least_conn
@@ -41,6 +54,10 @@
     name api.{{ tamanu_server_type }}.tamanu.internal
     port 3000
     versions ipv4
+    # Resolve via podman's aardvark-dns directly, bypassing the host's
+    # systemd-resolved which is intermittently slow (seconds) for
+    # *.tamanu.internal lookups and stalls requests inside caddy.
+    resolvers {{ aardvark_dns }}
   }
 
   lb_policy least_conn
