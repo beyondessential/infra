@@ -284,6 +284,9 @@ export const CONFIG_FROM_ENV = {
       },
     },
   },
+  // kept for pre-2.61 builds; post-2.61 reads TZ directly. Remove with the other
+  // legacy config keys once nothing older deploys from ops main.
+  countryTimeZone: 'TZ',
   localisation: {
     timeZone: 'TZ',
   },

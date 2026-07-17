@@ -1,5 +1,8 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
+  db: {
+    migrateOnStartup: false,
+  },
   sync: {
     enabled: true,
     {% if legacySyncConfig %}
@@ -21,6 +24,10 @@
   errors: {
     enabled: true,
   },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  countryTimeZone: '{{ timezone }}',
   localisation: {
     timeZone: '{{ timezone }}',
   },

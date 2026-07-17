@@ -1,5 +1,7 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
+  countryTimeZone: '{{ timezone }}',
+  primaryTimeZone: '{{ timezone }}',
   auth: {
     secret: '{{ 40 | randomstring }}',
     refreshToken: {
@@ -9,6 +11,12 @@
   },
   errors: {
     enabled: true,
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  db: {
+    migrateOnStartup: false,
   },
   sync: {
     lookupTable: {
@@ -74,6 +82,9 @@
   },
   updateUrls: {
     mobile: 'https://install.appcenter.ms/orgs/beyond-essential/apps/tamanu-mobile-only/distribution_groups/staging',
+  },
+  disk: {
+    diskPath: '/',
   },
   integrations: {
     fhir: {
