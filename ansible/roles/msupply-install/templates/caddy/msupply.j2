@@ -1,3 +1,13 @@
+{# The `dynamic a` block below sets `resolvers` to aardvark_dns so caddy resolves
+   *.msupply.internal via podman's aardvark-dns directly, bypassing the host's
+   systemd-resolved which is intermittently slow (seconds) for these lookups and
+   stalls requests inside caddy.
+
+   aardvark-dns (podman's in-network DNS) listens on the podman network gateway,
+   defined in roles/podman/defaults/main.yml as podman_network_subnets_v4[0].gateway.
+   That role runs in a separate play, so the var isn't in scope here; fall back to
+   the literal, which must stay in sync with the podman network gateway. #}
+{% set aardvark_dns = podman_network_subnets_v4[0].gateway | default('10.100.0.1') %}
 (msupply_server) {
   log {
     output stdout
@@ -10,6 +20,7 @@
       name api.msupply.internal
       port 8000
       versions ipv4
+      resolvers {{ aardvark_dns }}
     }
 
     transport http {
