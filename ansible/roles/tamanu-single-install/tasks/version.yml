@@ -86,6 +86,7 @@
       fi
       dd if=/dev/urandom bs=32 count=1 status=none | podman secret create tamanu-config-key -
       echo created
+    executable: /bin/bash
   register: tamanu_config_key
   changed_when: tamanu_config_key.stdout == "created"
 
