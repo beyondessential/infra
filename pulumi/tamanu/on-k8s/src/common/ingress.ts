@@ -96,12 +96,13 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
       { parent },
     );
 
-  route('frontend', '/', web);
-  route('api', '/api', api);
-  route('api-legacy', '/v1', api);
-  // Data imports run synchronously within a single request, so large files
-  // exceed Envoy's default 15s route timeout (k[envoy.timeouts]). Longest
-  // path prefix wins, so these take precedence over the /api and /v1 routes.
+  // Explicit timeouts replace Envoy's implicit 15s default (k[envoy.timeouts]):
+  // 60s for everything, except data imports which run synchronously within a
+  // single request and can take minutes on large files. Longest path prefix
+  // wins, so the import routes take precedence over /api and /v1.
+  route('frontend', '/', web, { request: '60s' });
+  route('api', '/api', api, { request: '60s' });
+  route('api-legacy', '/v1', api, { request: '60s' });
   route('api-import', '/api/admin/import', api, { request: '600s' });
   route('api-import-legacy', '/v1/admin/import', api, { request: '600s' });
 
