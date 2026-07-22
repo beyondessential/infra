@@ -5,6 +5,7 @@ import { GATEWAY_CLASS_ENVOY } from '../../../../constants/internal.ts';
 import { API_GROUP as GATEWAY_API_GROUP } from '../../../../common/k8s/gateway/consts/API.ts';
 import { Gateway } from '../../../../common/k8s/gateway/Gateway.ts';
 import { HTTPRoute } from '../../../../common/k8s/gateway/HTTPRoute.ts';
+import type { HTTPRouteTimeouts } from '../../../../common/k8s/gateway/interfaces/HTTPRouteTimeouts.ts';
 
 import { namespace } from '../namespace.ts';
 
@@ -51,6 +52,7 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
     routeName: string,
     path: string,
     backend: k8s.core.v1.Service,
+    timeouts?: HTTPRouteTimeouts,
   ): k8s.apiextensions.CustomResource =>
     HTTPRoute(
       `${name}-${routeName}`,
@@ -86,6 +88,7 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
                   port: 80,
                 },
               ],
+              ...(timeouts && { timeouts }),
             },
           ],
         },
@@ -96,6 +99,11 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
   route('frontend', '/', web);
   route('api', '/api', api);
   route('api-legacy', '/v1', api);
+  // Data imports run synchronously within a single request, so large files
+  // exceed Envoy's default 15s route timeout (k[envoy.timeouts]). Longest
+  // path prefix wins, so these take precedence over the /api and /v1 routes.
+  route('api-import', '/api/admin/import', api, { request: '600s' });
+  route('api-import-legacy', '/v1/admin/import', api, { request: '600s' });
 
   return gateway;
 }
