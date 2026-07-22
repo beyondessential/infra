@@ -14,6 +14,8 @@
   ansible.builtin.include_tasks: psql.yml
 - name: Configure PostgreSQL access
   ansible.builtin.include_tasks: access.yml
+- name: Configure bestool-alertd monitoring role
+  ansible.builtin.include_tasks: monitoring-user.yml
 - name: Detect filesystem type for PostgreSQL data directory
   become: true
   ansible.builtin.command: findmnt -n -o FSTYPE /var/lib/postgresql

@@ -1,6 +1,3 @@
 ---
 - name: Configure reporting users
   ansible.builtin.include_tasks: reporting-users.yml
-
-- name: Configure bestool-alertd monitoring user
-  ansible.builtin.include_tasks: monitoring-user.yml
