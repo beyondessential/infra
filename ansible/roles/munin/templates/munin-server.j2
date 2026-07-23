@@ -1,0 +1,9 @@
+# Munin's rendered HTML, served only over the tailnet. Caddy's automatic HTTPS
+# fetches the Tailscale cert for this .ts.net name from the local tailscaled API
+# (authorised by TS_PERMIT_CERT_UID=caddy in the caddy role), so no tls block is
+# needed. Tailnet-only exposure comes from ufw (only 80/443 are open publicly;
+# this port is reachable solely via the blanket allow-in on tailscale0).
+https://{{ tailscale_name }}.{{ tailnet }}.ts.net:{{ munin_tailscale_port }} {
+  root * /var/cache/munin/www
+  file_server browse
+}

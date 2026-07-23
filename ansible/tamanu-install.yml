@@ -39,6 +39,9 @@
       when: tailscale_name is defined
     - role: caddy
       tags: [base, caddy]
+    - role: munin
+      when: munin_enabled | default(true)
+      tags: [base, munin]
     - role: podman
       tags: [base, podman]
 

@@ -16,6 +16,8 @@
   ansible.builtin.include_tasks: access.yml
 - name: Configure bestool-alertd monitoring role
   ansible.builtin.include_tasks: monitoring-user.yml
+- name: Wire Munin's postgres plugins (when Munin is installed)
+  ansible.builtin.include_tasks: munin-plugins.yml
 - name: Detect filesystem type for PostgreSQL data directory
   become: true
   ansible.builtin.command: findmnt -n -o FSTYPE /var/lib/postgresql

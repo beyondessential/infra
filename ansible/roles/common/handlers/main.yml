@@ -69,6 +69,14 @@
     name: caddy
     state: reloaded
 
+# Shared here (not in the munin role) so the postgres role — which wires Munin's
+# postgres plugins but depends on `common`, not `munin` — can notify it too.
+- name: Restart munin-node
+  become: true
+  ansible.builtin.systemd:
+    name: munin-node
+    state: restarted
+
 - name: Flush systemd-resolved cache
   become: true
   ansible.builtin.command:

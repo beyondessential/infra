@@ -1,0 +1,42 @@
+---
+# Create /var/lib/munin (the RRD data home) before the package installs, so Munin
+# writes straight into it. On btrfs it is a nested subvolume-as-folder with
+# copy-on-write disabled: a normal-looking folder that is its own subvolume (so
+# it gets an independent snapshot boundary), and nodatacow because RRD's constant
+# small rewrites fragment badly under CoW. On other filesystems it is a plain dir.
+- name: Detect filesystem type backing /var/lib
+  become: true
+  ansible.builtin.command: findmnt -n -o FSTYPE --target /var/lib
+  register: munin_data_fstype
+  changed_when: false
+
+- name: Check whether the Munin data directory already exists
+  ansible.builtin.stat:
+    path: /var/lib/munin
+  register: munin_data_dir
+
+- name: Create /var/lib/munin as a btrfs subvolume
+  # Only when it does not exist yet, so re-runs are a no-op and we never touch a
+  # populated directory (chattr +C only takes effect on an empty subvolume).
+  when:
+    - munin_data_fstype.stdout | trim == 'btrfs'
+    - not munin_data_dir.stat.exists
+  become: true
+  block:
+    - name: Create the @munin subvolume in place
+      ansible.builtin.command:
+        cmd: btrfs subvolume create /var/lib/munin
+      changed_when: true
+
+    - name: Disable copy-on-write on the Munin subvolume
+      ansible.builtin.command:
+        cmd: chattr +C /var/lib/munin
+      changed_when: true
+
+- name: Create /var/lib/munin as a plain directory (non-btrfs)
+  when: munin_data_fstype.stdout | trim != 'btrfs'
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/munin
+    state: directory
+    mode: "0755"

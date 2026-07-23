@@ -1,0 +1,68 @@
+---
+# Wire Munin's postgres_* plugins to the existing read-only monitoring role, but
+# only where Munin is actually installed. This lives in the postgres role (not
+# munin) because this role owns alertd_db_role and its peer auth: the plugins run
+# as root over the socket and authenticate as that role via the same pg_ident
+# `alertd` map, so they need no new credentials.
+#
+# Detection-based on purpose. The postgres role runs before the munin role in the
+# play, so on a host's first converge munin-node is not yet installed and this is
+# a no-op; the plugins are wired on the next converge (system graphs appear
+# immediately, Postgres graphs one run later).
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Configure Munin postgres plugins
+  when: "'munin-node' in ansible_facts.packages"
+  block:
+    - name: Install the Perl PostgreSQL driver for Munin's plugins
+      become: true
+      ansible.builtin.apt:
+        name: libdbd-pg-perl
+        state: present
+
+    # Curated set of the postgres plugins shipped by munin-plugins-core; wildcard
+    # plugins (trailing `_`) are linked with the `ALL` suffix to graph across all
+    # databases. Extend with `munin-node-configure --suggest` output if more
+    # detail is wanted.
+    - name: Enable Munin postgres plugins
+      become: true
+      ansible.builtin.file:
+        src: "/usr/share/munin/plugins/{{ item.plugin }}"
+        dest: "/etc/munin/plugins/{{ item.link }}"
+        state: link
+      loop:
+        - { plugin: postgres_autovacuum, link: postgres_autovacuum }
+        - { plugin: postgres_bgwriter, link: postgres_bgwriter }
+        - { plugin: postgres_cache_, link: postgres_cache_ALL }
+        - { plugin: postgres_checkpoints, link: postgres_checkpoints }
+        - { plugin: postgres_connections_db, link: postgres_connections_db }
+        - { plugin: postgres_locks_, link: postgres_locks_ALL }
+        - { plugin: postgres_querylength_, link: postgres_querylength_ALL }
+        - { plugin: postgres_scans_, link: postgres_scans_ALL }
+        - { plugin: postgres_size_, link: postgres_size_ALL }
+        - { plugin: postgres_transactions_, link: postgres_transactions_ALL }
+        - { plugin: postgres_tuples_, link: postgres_tuples_ALL }
+        - { plugin: postgres_users, link: postgres_users }
+        - { plugin: postgres_xlog, link: postgres_xlog }
+      notify: Restart munin-node
+
+    # Run the plugins as root and connect over the socket as the monitoring role.
+    # Munin::Plugin::Pgsql calls DBI->connect with an empty user/password, so
+    # DBD::Pg falls back to these libpq PG* env vars; PGUSER=alertd_db_role is
+    # peer-mapped from root by the `alertd` pg_ident map (see monitoring-user.yml),
+    # so no password is needed. PGHOST is the socket dir; PGDATABASE is the
+    # always-present maintenance DB the wildcard plugins connect through.
+    - name: Point Munin postgres plugins at the monitoring role
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/munin/plugin-conf.d/postgres
+        mode: "0644"
+        content: |
+          [postgres_*]
+          user root
+          env.PGHOST /var/run/postgresql
+          env.PGUSER {{ alertd_db_role }}
+          env.PGDATABASE {{ alertd_cluster_db }}
+      notify: Restart munin-node
