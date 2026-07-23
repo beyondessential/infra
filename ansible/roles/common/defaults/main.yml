@@ -16,3 +16,9 @@ alertd_cluster_db: postgres
 # Database alertd's schema-aware checks connect to (TAMANU_DATABASE_URL). Empty
 # means the host has no such database and that URL is omitted.
 alertd_app_db: tamanu
+
+# Tailnet name, used to build `<host>.<tailnet>.ts.net` hostnames. Defined here
+# in `common` (not the tamanu roles) so roles running in the all-hosts play —
+# e.g. munin's Caddy vhost — can see it, not just the tamanu central/facility
+# plays.
+tailnet: tail53aef

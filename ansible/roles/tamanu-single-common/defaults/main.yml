@@ -23,5 +23,6 @@ tamanu_caddy_tls: true
 tamanu_caddy_extra_hostnames: []
 tamanu_caddy_extra_hostnames_redirect: true
 tamanu_extra_certs: false # if true, the host's /etc/ssl/certs/ca-certificates.crt will be added to node inside the container
-tailnet: tail53aef
+# tailnet is defined in the `common` role's defaults so it is also visible in the
+# all-hosts play (see roles/common/defaults/main.yml).
 tamanu_tailscale_tls: true
