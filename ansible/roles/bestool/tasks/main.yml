@@ -120,3 +120,6 @@
     state: started
     enabled: true
     daemon_reload: true
+
+- name: Wire the bestool-alertd Munin plugin (when packaged and Munin present)
+  ansible.builtin.include_tasks: munin-plugin.yml

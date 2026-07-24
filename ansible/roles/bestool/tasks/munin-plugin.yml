@@ -1,0 +1,26 @@
+---
+# bestool's deb ships its own Munin plugin at /usr/share/munin/plugins/
+# bestool_alertd (emitting Munin format directly, so nothing here parses it).
+# Enable it by symlinking into /etc/munin/plugins when both munin-node and the
+# packaged plugin are present. Both are guarded, so this is a harmless no-op
+# until a bestool version that ships the plugin is installed — then it
+# self-enables on the next converge. Mirrors the postgres/caddy plugin wiring.
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Check for the packaged bestool-alertd Munin plugin
+  ansible.builtin.stat:
+    path: /usr/share/munin/plugins/bestool_alertd
+  register: bestool_munin_plugin
+
+- name: Enable the bestool-alertd Munin plugin
+  when:
+    - "'munin-node' in ansible_facts.packages"
+    - bestool_munin_plugin.stat.exists
+  become: true
+  ansible.builtin.file:
+    src: /usr/share/munin/plugins/bestool_alertd
+    dest: /etc/munin/plugins/bestool_alertd
+    state: link
+  notify: Restart munin-node
