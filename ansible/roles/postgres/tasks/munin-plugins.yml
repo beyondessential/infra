@@ -32,11 +32,12 @@
         src: "/usr/share/munin/plugins/{{ item.plugin }}"
         dest: "/etc/munin/plugins/{{ item.link }}"
         state: link
+      # postgres_bgwriter and postgres_checkpoints are intentionally omitted: the
+      # packaged plugins query pre-PG17 pg_stat_bgwriter columns that PG17 moved
+      # to pg_stat_checkpointer / dropped, so they just error on our PG18 fleet.
       loop:
         - { plugin: postgres_autovacuum, link: postgres_autovacuum }
-        - { plugin: postgres_bgwriter, link: postgres_bgwriter }
         - { plugin: postgres_cache_, link: postgres_cache_ALL }
-        - { plugin: postgres_checkpoints, link: postgres_checkpoints }
         - { plugin: postgres_connections_db, link: postgres_connections_db }
         - { plugin: postgres_locks_, link: postgres_locks_ALL }
         - { plugin: postgres_querylength_, link: postgres_querylength_ALL }
