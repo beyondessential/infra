@@ -1,0 +1,17 @@
+---
+# Ship the basic Caddy Munin plugin, but only where munin-node is installed.
+# Detection-based and living in the role that owns the graphed thing, like the
+# postgres plugins. The plugin scrapes Caddy's local Prometheus admin endpoint
+# and emits a curated, low-cardinality subset in Munin format.
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Install the Caddy Munin plugin
+  when: "'munin-node' in ansible_facts.packages"
+  become: true
+  ansible.builtin.copy:
+    src: munin/caddy
+    dest: /etc/munin/plugins/caddy
+    mode: "0755"
+  notify: Restart munin-node

@@ -9,6 +9,8 @@
   ansible.builtin.include_tasks: tuning.yml
 - name: Configure caddy backup
   ansible.builtin.include_tasks: backup.yml
+- name: Wire the Caddy Munin plugin (when Munin is installed)
+  ansible.builtin.include_tasks: munin-plugin.yml
 - name: Configure tailscale integration
   ansible.builtin.include_tasks: tailscale.yml
   when: tailscale_configured is defined and tailscale_configured
