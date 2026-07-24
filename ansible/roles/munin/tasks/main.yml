@@ -10,11 +10,6 @@
       - munin-node # local node daemon + plugins
     state: present
 
-# data-dir.yml creates /var/lib/munin (as root) before this role installs the
-# package, so the package does not own the directory. The munin-cron cycle runs
-# as the `munin` user and must be able to write RRDs here, so hand it over now
-# that the package has created the user. Non-recursive: the top dir is the only
-# one we pre-created; munin-cron creates its own subdirs as the munin user.
 - name: Ensure the Munin data directory is owned by munin
   become: true
   ansible.builtin.file:
@@ -24,9 +19,6 @@
     group: munin
     mode: "0755"
 
-# The master reaches the node over TCP even for the local node; keep that
-# listener on loopback so nothing Munin-native is reachable off-box (the only
-# off-box surface is Caddy's file server on the tailnet).
 - name: Bind munin-node to loopback only
   become: true
   ansible.builtin.lineinfile:
@@ -42,11 +34,6 @@
     state: started
     enabled: true
 
-# Expose the rendered HTML over the tailnet via Caddy. Guarded on Caddy being
-# present on the host (not the run-scoped caddy_configured fact, so this still
-# deploys under `--tags munin` when the caddy role didn't run this pass) and on a
-# tailnet name existing — skipped on on-prem hosts without Tailscale, which still
-# collect and render locally but have no remote view.
 - name: Check whether Caddy is present
   ansible.builtin.stat:
     path: /etc/caddy/servers
