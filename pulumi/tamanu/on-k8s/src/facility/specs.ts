@@ -1,4 +1,4 @@
-import { type Output, output } from '@pulumi/pulumi';
+import { type Output, all, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
@@ -105,7 +105,11 @@ export function podSpecFactory({
           },
           {
             name: 'PROXY_TRUSTED',
-            value: $network.apply((n) => `loopback, ${n.v4Cidr}, ${n.v6Cidr}`),
+            value: $network.apply((n) =>
+              all([n.v4Cidr, n.v6Cidr]).apply(([v4, v6]) =>
+                ['loopback', v4, v6].filter(Boolean).join(', '),
+              ),
+            ),
           },
           {
             name: 'NODE_ENV',
