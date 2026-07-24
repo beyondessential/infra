@@ -4,6 +4,7 @@ import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
 import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
+import { $network } from '../../../../common/k8s/coreRef.ts';
 import type { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
 import { architecture, nodeEnv } from '../config.ts';
@@ -97,6 +98,14 @@ export function podSpecFactory({
           {
             name: 'TZ',
             value: timezone,
+          },
+          {
+            name: 'TAMANU_PRIMARY_TIMEZONE',
+            value: timezone,
+          },
+          {
+            name: 'PROXY_TRUSTED',
+            value: $network.apply((n) => `loopback, ${n.v4Cidr}, ${n.v6Cidr}`),
           },
           {
             name: 'NODE_ENV',

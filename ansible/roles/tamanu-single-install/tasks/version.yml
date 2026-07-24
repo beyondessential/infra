@@ -67,6 +67,7 @@
     content: |
       # this is controlled by Ansible and will be overwritten if you make changes
       TZ={{ timezone }}
+      PROXY_TRUSTED=loopback,linklocal,uniquelocal
       TAMANU_VERSION={{ tamanu_version }}
       TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
       TAMANU_FRONTEND_VERSION={{ tamanu_frontend_version }}
