@@ -1,5 +1,6 @@
 import * as awsNative from '@pulumi/aws';
-if ((await awsNative.getCallerIdentity()).accountId !== '295280690919') {
+import { AWS_PRIMARY_ACCOUNT_ID } from '../../constants/internal.ts';
+if ((await awsNative.getCallerIdentity()).accountId !== AWS_PRIMARY_ACCOUNT_ID) {
   throw new Error('This is not the correct _BES Primary account ID');
 }
 

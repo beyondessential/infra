@@ -1,0 +1,6 @@
+name: security-monitoring
+description: Organization-wide GuardDuty enablement and finding delivery to Slack
+runtime:
+  name: nodejs
+  options:
+    typescript: false
