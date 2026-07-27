@@ -1,7 +1,8 @@
-import { ComponentResource, interpolate, output, type Input, type Output } from '@pulumi/pulumi';
+import { all, ComponentResource, interpolate, type Input, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { k8sWaitFor } from './waitFor.ts';
+import { derivePostgresParameters } from './postgresTuning.ts';
 import { CAN_RUN_ON_SPOT } from './tolerations.ts';
 import { RUN_ON_SPOT } from './affinities.ts';
 import { postgresUrlSecret } from './postgresUrl.ts';
@@ -41,11 +42,12 @@ export interface PostgresArgs {
   // traffic off the cross-AZ meter at the cost of AZ-failure tolerance; for
   // environments that don't need to survive an AZ loss.
   colocateAz?: boolean;
-  // Override the postmaster max_connections (default: CNPG's built-in 100).
-  // Raising it needs matching per-backend memory headroom, so bump
-  // memoryRequest alongside. Changing it triggers a rolling restart.
+  // Override the postmaster max_connections. Raising it divides work_mem
+  // across more backends, so bump memoryRequest alongside. Changing it
+  // triggers a rolling restart.
   maxConnections?: Input<number>;
-  // Memory request for the postgres container (default 750Mi).
+  // Memory request for the postgres container, and the basis every
+  // memory-derived postgres parameter is computed from.
   memoryRequest?: Input<string>;
   // Expose CNPG's :9187 metrics to the (annotation-based, operator-less)
   // Prometheus via a dedicated metrics-only Service. Annotating the cluster
@@ -87,7 +89,7 @@ export function runPostgres({
   barmanBackup,
   inheritedMetadataLabels,
   colocateAz = false,
-  maxConnections,
+  maxConnections = 100,
   memoryRequest = '750Mi',
   scrapeMetrics = false,
 }: PostgresArgs): PostgresReady {
@@ -139,40 +141,17 @@ export function runPostgres({
           },
         },
         postgresql: {
-          parameters: {
-            ...(maxConnections !== undefined
-              ? { max_connections: output(maxConnections).apply((n) => `${n}`) }
-              : {}),
-
-            // should be about 25% of requested memory
-            shared_buffers: '200MB',
-
-            // and this about 75%; it's a planner hint, not an allocation
-            effective_cache_size: '560MB',
-
-            // halves-ish WAL volume on full-page-write-heavy churn, which
-            // shrinks replication traffic, pg_wal I/O, and backup sizes
-            wal_compression: 'lz4',
-
-            // gp3 is SSD-class: seeks are nearly as cheap as sequential reads,
-            // and it has queue depth to exploit
-            random_page_cost: '1.1',
-            effective_io_concurrency: '200',
-
-            // JIT causes CPU spikes and slow planning on simple OLTP queries
-            jit: 'off',
-
-            // Cap the WAL a replication slot may retain so a stranded or
-            // long-lagging standby can't fill the primary's disk (slots have
-            // no bound by default). If a replica falls further behind than
-            // this, CNPG re-clones it. ~30% of the volume, floored at 1GB;
-            // assumes storage is expressed in Gi.
-            max_slot_wal_keep_size: output(storage).apply((s) => {
-              const gib = parseInt(s, 10);
-              const cap = Number.isFinite(gib) ? Math.max(1, Math.floor(gib * 0.3)) : 1;
-              return `${cap}GB`;
-            }),
-          },
+          // Derived from the memory request above and the volume size, so a
+          // cluster given more resources gets parameters to match.
+          // k[postgres.tuning.basis]
+          parameters: all([memoryRequest, storage, maxConnections]).apply(
+            ([memory, volume, connections]) =>
+              derivePostgresParameters({
+                memory,
+                storage: volume,
+                maxConnections: connections,
+              }),
+          ),
         },
         managed: {
           roles,
