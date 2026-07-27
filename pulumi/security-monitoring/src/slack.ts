@@ -36,6 +36,10 @@ new aws.chatbot.SlackChannelConfiguration(
     slackTeamId,
     slackChannelId,
     iamRoleArn: role.arn,
+    // Channel guardrails cap what channel members can run as chat commands. Left
+    // unset, AWS applies AdministratorAccess. This channel only needs to receive
+    // notifications, so cap it at the same read-only scope as the role above.
+    guardrailPolicyArns: ['arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess'],
     snsTopicArns: findingTopicArns,
     loggingLevel: 'INFO',
     tags,
