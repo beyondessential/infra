@@ -22,9 +22,25 @@ if [ "$version" = "current" ]; then
   version=$(grep TAMANU_VERSION= /etc/tamanu/env | cut -d\= -f2)
 fi
 
+if ! sudo podman secret exists tamanu-config-key; then
+  cat >&2 <<'ERR'
+Missing podman secret tamanu-config-key.
+
+crypto.keyFile points at /run/secrets/tamanu-config-key, mounted from that secret, so
+from v2.60 anything reading or writing a stored secret fails without it. That includes
+"migrate", which runs the automated upgrade steps. Create it with:
+
+    dd if=/dev/urandom bs=32 count=1 status=none | sudo podman secret create tamanu-config-key -
+
+A new key cannot decrypt values encrypted under a previous one.
+ERR
+  exit 1
+fi
+
 exec sudo podman run -it --rm \
   -v "/etc/tamanu/$version:/config" \
   -v /var/run/postgresql:/var/run/postgresql \
   --env-file /etc/tamanu/env \
+  --secret tamanu-config-key,mode=0400 \
   ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:$version \
   $*
