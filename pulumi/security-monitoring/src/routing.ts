@@ -32,7 +32,8 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
   );
 
   const notifierRole = new aws.iam.Role(`guardduty-slack-notifier-${region}`, {
-    namePrefix: `guardduty-slack-notifier-${region}-`,
+    // IAM is global so the region has to be in the name, and namePrefix caps at 38.
+    namePrefix: `guardduty-notifier-${region}-`,
     description: `Role for the GuardDuty Slack notifier in ${region}`,
     assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: 'lambda.amazonaws.com' }),
     tags,

@@ -13,10 +13,13 @@ const ORGANISATION_FEATURES: Record<string, 'ALL' | 'NONE'> = {
   RDS_LOGIN_EVENTS: 'ALL',
   S3_DATA_EVENTS: 'ALL',
   EBS_MALWARE_PROTECTION: 'NONE',
-  AI_PROTECTION: 'NONE',
   RUNTIME_MONITORING: 'NONE',
   EKS_RUNTIME_MONITORING: 'NONE',
 };
+
+// AI_PROTECTION is reported by the API but is not yet in the provider's accepted set of
+// feature names, so it stays unmanaged. It is currently NONE everywhere, which is the
+// value this stack would have set anyway.
 
 // Destroying this stack must never dismantle organisation-wide threat detection. These
 // resources are all retained on delete: `pulumi destroy` drops them from state and
