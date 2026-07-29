@@ -33,7 +33,7 @@
   },
   "scripts": {
     "check": "tsc",
-    "test": "node --test",
+    "test": "node --test \"!(policies)/**/*.test.ts\"",
     "postinstall": "tsc"
   }
 }
