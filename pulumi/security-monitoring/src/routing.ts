@@ -214,8 +214,11 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
       comparisonOperator: 'GreaterThanThreshold',
       threshold: 0,
       treatMissingData: 'notBreaching',
+      // No okActions: with treatMissingData notBreaching the alarm goes straight to OK
+      // about a minute after creation, which would publish a notification saying
+      // nothing. That notification carries List-Unsubscribe headers, and one-click
+      // unsubscribe in a mail client silently kills the only out-of-band alert path.
       alarmActions: [deliveryFailures.arn],
-      okActions: [deliveryFailures.arn],
       tags,
     },
     { provider },
