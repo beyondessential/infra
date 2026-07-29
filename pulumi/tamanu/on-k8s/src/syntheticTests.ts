@@ -1,14 +1,14 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
 import { imageTag } from './image.ts';
-import { architecture, costLabels, domains, facilityNames } from './config.ts';
+import { architecture, costLabels, domains, facilityList } from './config.ts';
 import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.ts';
 
 const image = `ghcr.io/beyondessential/tamanu-synthetic-tests:${imageTag}`;
 
 const centralTarget = `https://${domains.central}`;
-const facilityTargets = facilityNames.map((name) => `https://${domains[name]}`).join(',');
+const facilityTargets = facilityList.map(({ host }) => `https://${domains[host]}`).join(',');
 
 new k8s.apps.v1.Deployment('synthetic-tests', {
   metadata: {

@@ -5,8 +5,9 @@ import { WebFrontend } from './web/WebFrontend.ts';
 import {
   appVersion,
   domains,
-  facilityNames,
+  facilityList,
   patientPortalReplicas,
+  redirects,
   replicas,
   seedFromPreviousMinor,
   seedSnapshot,
@@ -14,6 +15,7 @@ import {
 } from './config.ts';
 import { findSnapshotSource } from './central/seedSnapshot.ts';
 import { ingress } from './common/ingress.ts';
+import { redirectSites } from './common/redirect.ts';
 import { namespace } from './namespace.ts';
 import { setupTtlHibernation } from './schedule.ts';
 await failIfIncorrectCluster();
@@ -34,12 +36,12 @@ const central = new CentralServer('central', {
   seedSource,
 });
 
-for (const [i, name] of facilityNames.entries()) {
+for (const [i, { id, host }] of facilityList.entries()) {
   new FacilityServer(`${i + 1}`, {
-    fqdn: domains[name],
+    fqdn: domains[host],
     centralApiUrl: `https://${domains.central}`,
-    facilityId: name,
-    deviceId: name,
+    facilityId: id,
+    deviceId: id,
     replicas: replicas.facility,
     provisioning: central.provisioning,
   });
@@ -58,6 +60,8 @@ ingress({
   web: patientPortal.service,
   parent: patientPortal,
 });
+
+redirectSites(redirects);
 
 if (syntheticTests) {
   await import('./syntheticTests.ts');

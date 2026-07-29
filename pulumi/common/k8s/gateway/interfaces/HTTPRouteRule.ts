@@ -165,7 +165,7 @@ export interface HTTPRouteRule {
    * _Support for `weight`: Core_
    *
    */
-  backendRefs: Input<Array<Input<HTTPBackendRef>>>;
+  backendRefs?: Input<Array<Input<HTTPBackendRef>>>;
 
   /**
    * Timeouts defines the timeouts that can be configured for an HTTP request.

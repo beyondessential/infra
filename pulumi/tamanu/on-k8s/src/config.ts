@@ -124,20 +124,60 @@ function getServerReplicas(server: 'central' | 'facility') {
 }
 
 export const facilities = cfg.getNumber('facilities') ?? 2;
-let facilityNames: string[] = cfg.getObject('facilityNames') ?? [];
-const named = facilityNames.length;
-if (named > facilities) {
+
+/**
+ * A facility's Tamanu identity and where it is served.
+ *
+ * `id` is the facility id in the central database, and doubles as the facility
+ * server's device id. `host` is the subdomain label it answers on. They are
+ * usually the same, but keeping them separate lets a facility be renamed in the
+ * database without moving its URL, or moved without being renamed.
+ */
+export interface Facility {
+  id: string;
+  host: string;
+}
+
+/** A `facilityNames` entry: a bare name, or an id with an explicit host label. */
+type FacilityEntry = string | { id: string; host?: string };
+
+const facilityEntries: FacilityEntry[] = cfg.getObject('facilityNames') ?? [];
+if (facilityEntries.length > facilities) {
   throw new Error('Cannot have more facilityNames than facilities');
-} else if (named < facilities) {
-  facilityNames = facilityNames.concat(
-    Array.from({ length: facilities - named }, (_, i) => `facility-${named + i + 1}`),
-  );
 }
-facilityNames = facilityNames.map((name) => name.toLowerCase());
-if (facilityNames.length != new Set(facilityNames).size) {
-  throw new Error('Facility names must be unique');
+
+export const facilityList: Facility[] = [
+  ...facilityEntries,
+  ...Array.from(
+    { length: facilities - facilityEntries.length },
+    (_, i) => `facility-${facilityEntries.length + i + 1}`,
+  ),
+].map((entry) => {
+  // A bare name is lowercased for both: deployments predating the split have
+  // lowercase facility ids in their databases, and lowercasing is what put them
+  // there.
+  if (typeof entry === 'string') {
+    return { id: entry.toLowerCase(), host: entry.toLowerCase() };
+  }
+
+  if (!entry.id) {
+    throw new Error('Facility entries must have an id');
+  }
+
+  // Case survives in the id — facility ids are arbitrary strings and some
+  // deployments capitalise them — but a hostname label cannot carry it.
+  return { id: entry.id, host: (entry.host ?? entry.id).toLowerCase() };
+});
+
+for (const key of ['id', 'host'] as const) {
+  const values = facilityList.map((facility) => facility[key]);
+  if (values.length !== new Set(values).size) {
+    throw new Error(`Facility ${key}s must be unique`);
+  }
 }
-export { facilityNames };
+
+/** Facility ids alone, as the provisioning template expects them. */
+export const facilityIds: string[] = facilityList.map(({ id }) => id);
 
 export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
   central: getServerReplicas('central'),
@@ -146,9 +186,16 @@ export const replicas: { central: ReplicaConfig; facility: ReplicaConfig } = {
 
 export const domains = {
   central: `central.${domainBase}`,
-  ...Object.fromEntries(facilityNames.map((name) => [name, `${name}.${domainBase}`])),
+  ...Object.fromEntries(facilityList.map(({ host }) => [host, `${host}.${domainBase}`])),
   patientPortal: `portal.${domainBase}`,
 };
+
+/**
+ * Hostnames this deployment serves only to redirect away from, mapping the
+ * retired hostname to the URL that replaced it. Set when a rename moves a URL
+ * and existing bookmarks need to keep working.
+ */
+export const redirects: Record<string, string> = cfg.getObject('redirects') ?? {};
 
 export const patientPortalReplicas = cfg.getNumber('patientPortalReplicas') ?? 2;
 
