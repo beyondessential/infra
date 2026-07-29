@@ -6,7 +6,8 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "declaration": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "esModuleInterop": true
   },
-  "files": ["index.ts"]
+  "include": ["index.ts", "rules/**/*.ts"]
 }

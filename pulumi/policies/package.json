@@ -1,9 +1,10 @@
 {
-  "name": "bes-k8s-policies",
+  "name": "bes-guardrails-policies",
   "version": "0.1.0",
   "main": "bin/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node --test \"bin/**/*.test.js\""
   },
   "dependencies": {
     "@pulumi/kubernetes": "^4.29.0",
