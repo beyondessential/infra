@@ -24,6 +24,7 @@ import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
 import { canopyIssuerSa, canopyPrivateSa } from './canopy-sa.ts';
 import { recoveryKeysEnv } from './canopy-recovery.ts';
+import { redirectSvc } from './redirect.ts';
 
 const publicSvc = new k8s.core.v1.Service(
   'public-server',
@@ -187,7 +188,7 @@ new k8s.apps.v1.Deployment(
               },
               {
                 name: 'STATUS_PAGE_URL',
-                value: `https://${normalizedStack}.${TAILNET_DOMAIN}/`,
+                value: `https://${tailscaleHostname}.${TAILNET_DOMAIN}/`,
               },
               {
                 name: 'CLIENT_IP_SOURCE',
@@ -245,6 +246,8 @@ const privateSvc = new k8s.core.v1.Service('private-server', {
   },
 });
 
+// The historical tailnet name. It no longer serves the private server: it
+// answers with a permanent redirect to the canopy name, ahead of going away.
 new k8s.networking.v1.Ingress('tailscale-server', {
   metadata: {
     namespace,
@@ -266,7 +269,7 @@ new k8s.networking.v1.Ingress('tailscale-server', {
               pathType: 'Prefix',
               backend: {
                 service: {
-                  name: privateSvc.metadata.name,
+                  name: redirectSvc.metadata.name,
                   port: {
                     name: 'http',
                   },
