@@ -14,7 +14,7 @@ ansible-setup = "ansible_setup:setup"
 
 [dependency-groups]
 dev = [
-    "ansible-lint>=26.4.0",
+    "ansible-lint~=26.6",
 ]
 
 [build-system]

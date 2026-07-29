@@ -101,7 +101,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ansible-lint", specifier = ">=26.4.0" }]
+dev = [{ name = "ansible-lint", specifier = "~=26.6" }]
 
 [[package]]
 name = "attrs"
