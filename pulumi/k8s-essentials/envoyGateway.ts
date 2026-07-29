@@ -3,8 +3,14 @@ import { EG_API_GROUP } from '../common/k8s/gateway/consts/API.ts';
 import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT, purposeAffinity } from '../common/k8s/affinities.ts';
 import { clusterName } from '../common/k8s/coreRef.ts';
-import { ENVOY_GATEWAY_VERSION } from './versions.ts';
+import { ENVOY_GATEWAY_VERSION, GATEWAY_API_VERSION } from './versions.ts';
 import { GATEWAY_CLASS_ENVOY } from '../constants/internal.ts';
+import { failIfGatewayApiTooOld } from './gatewayApiVersion.ts';
+
+// Helm never upgrades a chart's crds/, so the Gateway API CRDs do not move when
+// the controller does. Check before deploying rather than discovering it as a
+// release that times out while the new controller crash-loops on a missing kind.
+await failIfGatewayApiTooOld(GATEWAY_API_VERSION, ENVOY_GATEWAY_VERSION);
 
 // ── Namespace ─────────────────────────────────────────────────────────────────
 

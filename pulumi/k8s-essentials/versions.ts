@@ -5,6 +5,21 @@
 // needs to request an unverified client certificate, does not exist before it.
 export const ENVOY_GATEWAY_VERSION = 'v1.8.3';
 
+// Gateway API CRD bundle the above needs, from the experimental channel (a
+// superset of standard, adding TCPRoute, UDPRoute, BackendTLSPolicy, ListenerSet).
+//
+// This coupling is load-bearing and Helm will not maintain it: CRDs shipped in a
+// chart's crds/ directory are installed once and never touched by an upgrade. So
+// bumping ENVOY_GATEWAY_VERSION alone leaves the CRDs behind, and the new
+// controller crash-loops on whatever kind it gained — 1.8 watches ListenerSet,
+// which arrived in Gateway API 1.5. envoyGateway.ts checks the installed bundle
+// against this and refuses to deploy a controller the cluster cannot run.
+//
+// Upgrade the CRDs before raising either version:
+//   kubectl apply --server-side --force-conflicts -f \
+//     https://github.com/kubernetes-sigs/gateway-api/releases/download/vX.Y.Z/experimental-install.yaml
+export const GATEWAY_API_VERSION = 'v1.5.1';
+
 // The HNC project is essentially dead and this is the last version
 // We do depend on it for operational security, but eventually should probably migrate
 // away by physically separating the Kubernetes clusters, ie have one cluster entirely
