@@ -5,7 +5,6 @@
 
 # uv
 .venv/
-uv.lock
 __pycache__/
 *.pyc
 *.Zone.Identifier
