@@ -26,15 +26,22 @@ const accountEmail = (accountId: string) =>
 // Mirrors what is already enabled organisation-wide, so applying this stack does not
 // change which features member accounts are billed for. EKS_AUDIT_LOGS in particular
 // dominates the bill and should only move as a deliberate decision.
-const ORGANISATION_FEATURES: Record<string, 'ALL' | 'NONE'> = {
-  EKS_AUDIT_LOGS: 'ALL',
-  LAMBDA_NETWORK_LOGS: 'ALL',
-  RDS_LOGIN_EVENTS: 'ALL',
-  S3_DATA_EVENTS: 'ALL',
-  EBS_MALWARE_PROTECTION: 'NONE',
-  RUNTIME_MONITORING: 'NONE',
-  EKS_RUNTIME_MONITORING: 'NONE',
-};
+// The runtime-monitoring features carry nested toggles that GuardDuty always reports.
+// They have to be declared, or every refresh sees them as drift and — since the field
+// forces replacement — proposes replacing the feature on every run.
+const ORGANISATION_FEATURES: Record<string, { autoEnable: 'ALL' | 'NONE'; additional?: string[] }> =
+  {
+    EKS_AUDIT_LOGS: { autoEnable: 'ALL' },
+    LAMBDA_NETWORK_LOGS: { autoEnable: 'ALL' },
+    RDS_LOGIN_EVENTS: { autoEnable: 'ALL' },
+    S3_DATA_EVENTS: { autoEnable: 'ALL' },
+    EBS_MALWARE_PROTECTION: { autoEnable: 'NONE' },
+    RUNTIME_MONITORING: {
+      autoEnable: 'NONE',
+      additional: ['ECS_FARGATE_AGENT_MANAGEMENT', 'EC2_AGENT_MANAGEMENT', 'EKS_ADDON_MANAGEMENT'],
+    },
+    EKS_RUNTIME_MONITORING: { autoEnable: 'NONE', additional: ['EKS_ADDON_MANAGEMENT'] },
+  };
 
 // AI_PROTECTION is reported by the API but is not yet in the provider's accepted set of
 // feature names, so it stays unmanaged. It is currently NONE everywhere, which is the
@@ -104,17 +111,29 @@ for (const region of findingRegions) {
         // is only for accounts outside it.
         invite: false,
       },
-      { provider, retainOnDelete, dependsOn: [organizationConfiguration] },
+      {
+        provider,
+        retainOnDelete,
+        dependsOn: [organizationConfiguration],
+        // Both are create-time inputs GuardDuty does not report back comparably, and
+        // email forces replacement — without this, every refresh proposes replacing
+        // all six members, which would disassociate and re-add them.
+        ignoreChanges: ['email', 'invite'],
+      },
     );
   }
 
-  for (const [name, autoEnable] of Object.entries(ORGANISATION_FEATURES)) {
+  for (const [name, { autoEnable, additional }] of Object.entries(ORGANISATION_FEATURES)) {
     new aws.guardduty.OrganizationConfigurationFeature(
       `org-feature-${region}-${name.toLowerCase().replaceAll('_', '-')}`,
       {
         detectorId: detector.id,
         name,
         autoEnable,
+        additionalConfigurations: additional?.map((additionalName) => ({
+          name: additionalName,
+          autoEnable,
+        })),
       },
       { provider, retainOnDelete, dependsOn: [organizationConfiguration] },
     );
