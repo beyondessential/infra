@@ -1,4 +1,4 @@
-import { interpolate, jsonStringify } from '@pulumi/pulumi';
+import { asset, interpolate, jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import {
   deliveryFailureEmail,
@@ -7,40 +7,106 @@ import {
   slackWebhookUrl,
   tags,
 } from './config.ts';
+import { NOTIFIER_CODE } from './notifierCode.ts';
 import { regionProviders } from './providers.ts';
+
+const NOTIFIER_NAME = 'guardduty-slack-notifier';
 
 // A GuardDuty delegated administrator receives member-account findings on its own
 // default event bus in each region, so one rule per region covers the organisation.
-// Delivery is outbound-only: EventBridge posts to a Slack workflow trigger. Nothing
-// grants Slack any path back into AWS.
+// Delivery is outbound only: the notifier POSTs to a Slack workflow trigger. Nothing
+// grants Slack a path back into AWS.
 export const deliveryFailureTopicArns = findingRegions.map((region) => {
   const provider = regionProviders[region];
 
-  // API destinations require an authorization type even when the endpoint authenticates
-  // by URL alone, as Slack workflow triggers do. Slack ignores the extra header.
-  const connection = new aws.cloudwatch.EventConnection(
-    `slack-webhook-${region}`,
+  // Events that exhaust their retries land here rather than vanishing. A security
+  // notification path must not fail quietly.
+  const deadLetters = new aws.sqs.Queue(
+    `guardduty-findings-dlq-${region}`,
     {
-      authorizationType: 'API_KEY',
-      authParameters: {
-        apiKey: {
-          key: 'X-Unused-Authorization',
-          value: 'unused',
-        },
-      },
-      description: 'Slack workflow trigger for GuardDuty findings (URL is the credential)',
+      name: 'guardduty-findings-dlq',
+      messageRetentionSeconds: 14 * 24 * 60 * 60,
+      tags,
     },
     { provider },
   );
 
-  const destination = new aws.cloudwatch.EventApiDestination(
-    `slack-findings-${region}`,
+  const notifierRole = new aws.iam.Role(`guardduty-slack-notifier-${region}`, {
+    namePrefix: `guardduty-slack-notifier-${region}-`,
+    description: `Role for the GuardDuty Slack notifier in ${region}`,
+    assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: 'lambda.amazonaws.com' }),
+    tags,
+  });
+
+  new aws.iam.RolePolicy(`guardduty-slack-notifier-${region}`, {
+    namePrefix: 'notify-slack-',
+    role: notifierRole.id,
+    policy: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'organizations:DescribeAccount',
+          Resource: '*',
+        },
+        {
+          Effect: 'Allow',
+          Action: 'sqs:SendMessage',
+          Resource: deadLetters.arn,
+        },
+        {
+          Effect: 'Allow',
+          Action: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+          Resource: 'arn:aws:logs:*:*:*',
+        },
+      ],
+    }),
+  });
+
+  // Declared so logs expire; Lambda would otherwise create this with no expiry.
+  new aws.cloudwatch.LogGroup(
+    `guardduty-slack-notifier-${region}`,
     {
-      connectionArn: connection.arn,
-      invocationEndpoint: slackWebhookUrl,
-      httpMethod: 'POST',
-      invocationRateLimitPerSecond: 10,
-      description: 'Posts GuardDuty findings to the security Slack channel',
+      name: `/aws/lambda/${NOTIFIER_NAME}`,
+      retentionInDays: 30,
+      tags,
+    },
+    { provider },
+  );
+
+  const notifier = new aws.lambda.Function(
+    `guardduty-slack-notifier-${region}`,
+    {
+      name: NOTIFIER_NAME,
+      description: 'Enriches GuardDuty findings with the account name and posts to Slack',
+      runtime: 'python3.12',
+      handler: 'index.handler',
+      timeout: 30,
+      memorySize: 256,
+      role: notifierRole.arn,
+      code: new asset.AssetArchive({ 'index.py': new asset.StringAsset(NOTIFIER_CODE) }),
+      environment: {
+        variables: {
+          SLACK_WEBHOOK_URL: slackWebhookUrl,
+        },
+      },
+      tags,
+    },
+    { provider },
+  );
+
+  // EventBridge invokes asynchronously, so execution failures are retried by Lambda
+  // and then dead-lettered here.
+  new aws.lambda.FunctionEventInvokeConfig(
+    `guardduty-slack-notifier-${region}`,
+    {
+      functionName: notifier.name,
+      maximumRetryAttempts: 2,
+      destinationConfig: {
+        onFailure: {
+          destination: deadLetters.arn,
+        },
+      },
     },
     { provider },
   );
@@ -62,45 +128,13 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
     { provider },
   );
 
-  const invokeRole = new aws.iam.Role(`eventbridge-slack-${region}`, {
-    namePrefix: `eventbridge-slack-${region}-`,
-    description: `Lets EventBridge in ${region} invoke the Slack API destination`,
-    assumeRolePolicy: jsonStringify({
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Effect: 'Allow',
-          Principal: { Service: 'events.amazonaws.com' },
-          Action: 'sts:AssumeRole',
-        },
-      ],
-    }),
-    tags,
-  });
-
-  new aws.iam.RolePolicy(`eventbridge-slack-${region}`, {
-    namePrefix: 'invoke-api-destination-',
-    role: invokeRole.id,
-    policy: jsonStringify({
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Effect: 'Allow',
-          Action: 'events:InvokeApiDestination',
-          Resource: destination.arn,
-        },
-      ],
-    }),
-  });
-
-  // Without a dead-letter queue, an event that exhausts its retries is dropped with no
-  // trace. A security notification path must not fail quietly.
-  const deadLetters = new aws.sqs.Queue(
-    `guardduty-findings-dlq-${region}`,
+  new aws.lambda.Permission(
+    `guardduty-slack-notifier-${region}`,
     {
-      name: 'guardduty-findings-dlq',
-      messageRetentionSeconds: 14 * 24 * 60 * 60,
-      tags,
+      action: 'lambda:InvokeFunction',
+      function: notifier.name,
+      principal: 'events.amazonaws.com',
+      sourceArn: rule.arn,
     },
     { provider },
   );
@@ -129,37 +163,16 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
   );
 
   new aws.cloudwatch.EventTarget(
-    `guardduty-findings-slack-${region}`,
+    `guardduty-findings-notifier-${region}`,
     {
       rule: rule.name,
-      arn: destination.arn,
-      roleArn: invokeRole.arn,
+      arn: notifier.arn,
       retryPolicy: {
         maximumEventAgeInSeconds: 3600,
         maximumRetryAttempts: 10,
       },
       deadLetterConfig: {
         arn: deadLetters.arn,
-      },
-      // Slack workflow triggers take a flat JSON object whose keys must match the
-      // variables declared on the workflow.
-      inputTransformer: {
-        inputPaths: {
-          account: '$.detail.accountId',
-          findingId: '$.detail.id',
-          findingRegion: '$.region',
-          findingType: '$.detail.type',
-          description: '$.detail.description',
-          severity: '$.detail.severity',
-        },
-        inputTemplate: `{
-  "severity": "<severity>",
-  "findingType": "<findingType>",
-  "account": "<account>",
-  "region": "<findingRegion>",
-  "description": "<description>",
-  "url": "https://console.aws.amazon.com/guardduty/home?region=<findingRegion>#/findings?search=id%3D<findingId>"
-}`,
       },
     },
     { provider },
@@ -202,6 +215,26 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
       treatMissingData: 'notBreaching',
       alarmActions: [deliveryFailures.arn],
       okActions: [deliveryFailures.arn],
+      tags,
+    },
+    { provider },
+  );
+
+  new aws.cloudwatch.MetricAlarm(
+    `guardduty-slack-notifier-errors-${region}`,
+    {
+      name: 'guardduty-slack-notifier-errors',
+      alarmDescription: `The GuardDuty Slack notifier in ${region} is erroring`,
+      namespace: 'AWS/Lambda',
+      metricName: 'Errors',
+      dimensions: { FunctionName: NOTIFIER_NAME },
+      statistic: 'Sum',
+      period: 300,
+      evaluationPeriods: 1,
+      comparisonOperator: 'GreaterThanThreshold',
+      threshold: 0,
+      treatMissingData: 'notBreaching',
+      alarmActions: [deliveryFailures.arn],
       tags,
     },
     { provider },
