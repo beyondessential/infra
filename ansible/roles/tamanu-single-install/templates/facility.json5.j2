@@ -16,7 +16,7 @@
     },
   },
   auth: {
-    secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'tamanuauth') }}",
+    secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'tamanuauth') }}",
     useHardcodedPermissions: false,
   },
   survey: {

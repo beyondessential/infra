@@ -72,7 +72,7 @@
       TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
       TAMANU_FRONTEND_VERSION={{ tamanu_frontend_version }}
       TAMANU_FRONTEND_VERSION_DOMAIN={{ tamanu_frontend_version | replace('.', '-') }}
-      DATABASE_URL=postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed = ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql
+      DATABASE_URL=postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql
 
 # Per-server AES key for local_system_secrets encryption, kept as a podman secret.
 # Piped from /dev/urandom straight into podman so it never touches Ansible; never
