@@ -1,7 +1,9 @@
 // https://gateway.envoyproxy.io/docs/install/install-helm/
 // helm chart version (OCI: oci://docker.io/envoyproxy/gateway-helm)
 // NOTE: for OCI charts the version tag includes the 'v' prefix
-export const ENVOY_GATEWAY_VERSION = 'v1.7.1';
+// 1.8 is the floor: ClientTrafficPolicy's clientValidation.mode, which canopy
+// needs to request an unverified client certificate, does not exist before it.
+export const ENVOY_GATEWAY_VERSION = 'v1.8.3';
 
 // The HNC project is essentially dead and this is the last version
 // We do depend on it for operational security, but eventually should probably migrate
