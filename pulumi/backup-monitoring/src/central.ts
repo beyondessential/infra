@@ -5,7 +5,7 @@ import { nativeTags } from '../../common/tags.ts';
 import { AWS_ORG_ID } from '../../constants/internal.ts';
 import { monitoringEmail, tags } from './config.ts';
 
-const centralEventBus = new aws.cloudwatch.EventBus('backup-failures', {
+export const centralEventBus = new aws.cloudwatch.EventBus('backup-failures', {
   name: 'backup-failures',
   tags,
 });
@@ -31,7 +31,7 @@ new aws.cloudwatch.EventBusPolicy('backup-failures-org-policy', {
   }),
 });
 
-const snsTopic = new awsNative.sns.Topic('backup-failure-notifications', {
+export const snsTopic = new awsNative.sns.Topic('backup-failure-notifications', {
   topicName: 'backup-failure-notifications',
   displayName: 'AWS Backup Failure Notifications',
   tags: nativeTags(tags),
@@ -61,7 +61,7 @@ new aws.sns.TopicPolicy('backup-failure-topic-policy', {
   }),
 });
 
-const centralEventRule = new aws.cloudwatch.EventRule(
+export const centralEventRule = new aws.cloudwatch.EventRule(
   'central-backup-failure-rule',
   {
     name: 'central-backup-failure-notifications',
