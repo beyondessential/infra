@@ -18,6 +18,17 @@ const ORGANISATION_FEATURES: Record<string, 'ALL' | 'NONE'> = {
   EKS_RUNTIME_MONITORING: 'NONE',
 };
 
+// Destroying this stack must never dismantle organisation-wide threat detection. These
+// resources are all retained on delete: `pulumi destroy` drops them from state and
+// leaves AWS untouched, so tearing down the delivery path cannot take detection with
+// it. Without this, deleting OrganizationAdminAccount disassociates every member
+// account, and deleting a Detector destroys that region's finding history.
+//
+// The consequence to know about: because delete is never called, a change that forces
+// replacement (in practice only moving the delegated administrator to a different
+// account) would abandon the old resource rather than clean it up. Do that by hand.
+const retainOnDelete = true;
+
 export const detectorIds: Record<string, Output<string>> = {};
 
 for (const region of findingRegions) {
@@ -29,7 +40,11 @@ for (const region of findingRegions) {
     {
       adminAccountId: AWS_PRIMARY_ACCOUNT_ID,
     },
-    { provider, import: existingDetectorId ? AWS_PRIMARY_ACCOUNT_ID : undefined },
+    {
+      provider,
+      retainOnDelete,
+      import: existingDetectorId ? AWS_PRIMARY_ACCOUNT_ID : undefined,
+    },
   );
 
   // No tags: the live ap-southeast-2 detector has none, and import requires inputs to
@@ -40,7 +55,7 @@ for (const region of findingRegions) {
       enable: true,
       findingPublishingFrequency,
     },
-    { provider, import: existingDetectorId },
+    { provider, retainOnDelete, import: existingDetectorId },
   );
 
   const organizationConfiguration = new aws.guardduty.OrganizationConfiguration(
@@ -49,7 +64,7 @@ for (const region of findingRegions) {
       detectorId: detector.id,
       autoEnableOrganizationMembers: 'ALL',
     },
-    { provider, import: existingDetectorId, dependsOn: [adminAccount] },
+    { provider, retainOnDelete, import: existingDetectorId, dependsOn: [adminAccount] },
   );
 
   for (const [name, autoEnable] of Object.entries(ORGANISATION_FEATURES)) {
@@ -60,7 +75,7 @@ for (const region of findingRegions) {
         name,
         autoEnable,
       },
-      { provider, dependsOn: [organizationConfiguration] },
+      { provider, retainOnDelete, dependsOn: [organizationConfiguration] },
     );
   }
 
