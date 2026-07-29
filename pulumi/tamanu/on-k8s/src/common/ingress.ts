@@ -96,7 +96,7 @@ export function ingress({ name, host, api, web, parent }: IngressArgs) {
       { parent },
     );
 
-  // Explicit timeouts replace Envoy's implicit 15s default (k[envoy.timeouts]):
+  // Explicit timeouts replace Envoy's implicit 15s default (k[envoy.timeouts+2]):
   // 60s for everything, except data imports which run synchronously within a
   // single request and can take minutes on large files. Longest path prefix
   // wins, so the import routes take precedence over /api and /v1.
