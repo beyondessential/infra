@@ -1,8 +1,27 @@
 import { PolicyPack, validateResourceOfType } from '@pulumi/policy';
 import * as k8s from '@pulumi/kubernetes';
 
+// urn:pulumi:<stack>::<project>::<type>::<name>
+const projectFromUrn = (urn: string): string | undefined => urn.split('::')[1];
+
+const GUARDDUTY_OWNER_PROJECT = 'security-monitoring';
+
 new PolicyPack('bes-k8s', {
   policies: [
+    {
+      name: 'guardduty-single-owner',
+      description: `Only the ${GUARDDUTY_OWNER_PROJECT} project may declare GuardDuty resources. The delegated administrator, detector and organization configuration are singletons per region, and Pulumi has no cross-stack ownership check: a second stack importing them shares them silently, then disassociates every member account when it is destroyed.`,
+      enforcementLevel: 'mandatory',
+      validateResource: (args, reportViolation) => {
+        if (!args.type.startsWith('aws:guardduty/')) return;
+        const project = projectFromUrn(args.urn);
+        if (project !== GUARDDUTY_OWNER_PROJECT) {
+          reportViolation(
+            `${args.type} is declared in project '${project ?? 'unknown'}'. GuardDuty resources belong only to '${GUARDDUTY_OWNER_PROJECT}'.`,
+          );
+        }
+      },
+    },
     {
       name: 'deployment-pvc-needs-recreate',
       description:
