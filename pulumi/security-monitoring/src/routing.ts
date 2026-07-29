@@ -1,5 +1,7 @@
 import { asset, interpolate, jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
+import * as awsNative from '@pulumi/aws-native';
+import { accountId } from '../../common/awsAccount.ts';
 import {
   deliveryFailureEmail,
   findingRegions,
@@ -8,15 +10,54 @@ import {
   tags,
 } from './config.ts';
 import { NOTIFIER_CODE } from './notifierCode.ts';
-import { regionProviders } from './providers.ts';
+import { nativeProvider, regionProviders } from './providers.ts';
 
 const NOTIFIER_NAME = 'guardduty-slack-notifier';
+
+// One topic for every region. CloudWatch alarm actions may target a topic in another
+// region as long as its policy allows the publish, so a single subscription — and a
+// single manual confirmation — covers the whole stack. Reports that findings are not
+// reaching Slack, so it is deliberately email rather than Slack.
+const deliveryFailures = new aws.sns.Topic('guardduty-alert-delivery-failures', {
+  name: 'guardduty-alert-delivery-failures',
+  displayName: 'GuardDuty Slack delivery failures',
+  tags,
+});
+
+new aws.sns.TopicPolicy('guardduty-alert-delivery-failures', {
+  arn: deliveryFailures.arn,
+  policy: jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'AllowCloudWatchAlarmsInThisAccount',
+        Effect: 'Allow',
+        Principal: { Service: 'cloudwatch.amazonaws.com' },
+        Action: 'SNS:Publish',
+        Resource: deliveryFailures.arn,
+        Condition: { StringEquals: { 'aws:SourceAccount': accountId } },
+      },
+    ],
+  }),
+});
+
+new awsNative.sns.Subscription(
+  'guardduty-alert-delivery-failures-email',
+  {
+    topicArn: deliveryFailures.arn,
+    protocol: 'email',
+    endpoint: deliveryFailureEmail,
+  },
+  { provider: nativeProvider },
+);
+
+export const deliveryFailureTopicArn = deliveryFailures.arn;
 
 // A GuardDuty delegated administrator receives member-account findings on its own
 // default event bus in each region, so one rule per region covers the organisation.
 // Delivery is outbound only: the notifier POSTs to a Slack workflow trigger. Nothing
 // grants Slack a path back into AWS.
-export const deliveryFailureTopicArns = findingRegions.map((region) => {
+for (const region of findingRegions) {
   const provider = regionProviders[region];
 
   // Events that exhaust their retries land here rather than vanishing. A security
@@ -179,27 +220,6 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
     { provider },
   );
 
-  // Alarm actions must live in the alarm's own region, hence a topic per region.
-  const deliveryFailures = new aws.sns.Topic(
-    `guardduty-delivery-failures-${region}`,
-    {
-      name: 'guardduty-delivery-failures',
-      displayName: 'GuardDuty Slack delivery failures',
-      tags,
-    },
-    { provider },
-  );
-
-  new aws.sns.TopicSubscription(
-    `guardduty-delivery-failures-${region}`,
-    {
-      topic: deliveryFailures.arn,
-      protocol: 'email',
-      endpoint: deliveryFailureEmail,
-    },
-    { provider },
-  );
-
   new aws.cloudwatch.MetricAlarm(
     `guardduty-findings-dlq-${region}`,
     {
@@ -243,6 +263,4 @@ export const deliveryFailureTopicArns = findingRegions.map((region) => {
     },
     { provider },
   );
-
-  return deliveryFailures.arn;
-});
+}

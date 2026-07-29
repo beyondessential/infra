@@ -7,6 +7,6 @@ if ((await aws.getCallerIdentity()).accountId !== AWS_PRIMARY_ACCOUNT_ID) {
 
 // Dynamic so the account guard above runs before any resource is declared.
 const { detectorIds } = await import('./guardduty.ts');
-const { deliveryFailureTopicArns } = await import('./routing.ts');
+const { deliveryFailureTopicArn } = await import('./routing.ts');
 
-export { detectorIds, deliveryFailureTopicArns };
+export { detectorIds, deliveryFailureTopicArn };

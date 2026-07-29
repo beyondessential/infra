@@ -34,9 +34,9 @@ export const regionAccounts = config.getObject<Record<string, string[]>>('region
 };
 
 // Governs how quickly updates to an *existing* finding are republished; new findings
-// always reach EventBridge within about five minutes. Adopting a region requires this
-// to match what that region already has, hence the conservative default.
-export const findingPublishingFrequency = config.get('findingPublishingFrequency') ?? 'SIX_HOURS';
+// always reach EventBridge within about five minutes regardless.
+export const findingPublishingFrequency =
+  config.get('findingPublishingFrequency') ?? 'FIFTEEN_MINUTES';
 
 // GuardDuty severities: low 1-3.9, medium 4-6.9, high 7-8.9, critical 9-10.
 export const severityThreshold = config.getNumber('severityThreshold') ?? 7;
