@@ -101,8 +101,20 @@ def post(payload):
         method='POST',
     )
     # Failures raise, so the invocation is retried and then dead-lettered.
-    with urllib.request.urlopen(request, timeout=10):
-        pass
+    with urllib.request.urlopen(request, timeout=10) as response:
+        status = response.status
+        body = response.read(2000).decode('utf-8', 'replace')
+
+    # Slack answers 200 with {"ok": false, "error": ...} when it rejects a trigger
+    # payload, so the HTTP status alone does not mean the message was posted. Logged
+    # either way: without this the only symptom is silence.
+    print(f'slack responded {status}: {body}')
+    try:
+        result = json.loads(body)
+    except ValueError:
+        result = None
+    if isinstance(result, dict) and not result.get('ok', True):
+        raise RuntimeError(f'Slack rejected the payload: {body}')
 
 
 def handler(event, context):
