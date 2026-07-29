@@ -1,4 +1,12 @@
-import { all, getStack, Config, type Input, interpolate, type Output } from '@pulumi/pulumi';
+import {
+  all,
+  getStack,
+  Config,
+  type Input,
+  interpolate,
+  output,
+  type Output,
+} from '@pulumi/pulumi';
 import { billingTags as makeBillingTags } from '../../../common/billing.ts';
 import { cfg, zone } from '../../../common/coreRef.ts';
 import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
@@ -210,3 +218,56 @@ export const central: Server = {
 };
 
 export const instances: Server[] = [...(central ? [central] : []), ...facilities];
+
+/**
+ * When set, this deployment is gone: no instances, firewall, backups or
+ * ACME-DNS users are created. Its hostnames are served with permanent redirects
+ * instead, derived from the same `facilities`/`central` config that defined them
+ * so that none can be missed or mistyped.
+ *
+ * Set `retiredTargetBase` to the base domain that replaced this one. Hostnames
+ * keep their subdomain label unless `retiredHostMap` remaps it, which is needed
+ * where the replacement names its servers differently.
+ */
+export const retired = cfg.getBoolean('retired') ?? false;
+const retiredTargetBase = cfg.get('retiredTargetBase');
+const retiredHostMap: { [label: string]: string } = cfg.getObject('retiredHostMap') ?? {};
+
+/**
+ * Hostnames this stack redirects away from while still running, for a deployment
+ * that has been renamed rather than retired. Maps hostname to target URL, both
+ * written out in full.
+ */
+export const extraRedirects: { [host: string]: string } = cfg.getObject('extraRedirects') ?? {};
+
+export interface RedirectEntry {
+  host: Output<string>;
+  target: Output<string>;
+}
+
+/** Subdomain labels this deployment serves, in the order they were configured. */
+const servedLabels: string[] = [
+  ...instances.map((server) => server.subdomain),
+  ...(patientPortalDomain && instances.some((server) => server.name === 'Central')
+    ? [patientPortalDomainName]
+    : []),
+];
+
+export const redirects: RedirectEntry[] = [
+  ...(retired
+    ? servedLabels.map((label) => {
+        if (!retiredTargetBase) {
+          throw new Error('A retired deployment needs a retiredTargetBase');
+        }
+
+        return {
+          host: interpolate`${label}.${domainBase}`,
+          target: interpolate`https://${retiredHostMap[label] ?? label}.${retiredTargetBase}`,
+        };
+      })
+    : []),
+  ...Object.entries(extraRedirects).map(([host, target]) => ({
+    host: output(host),
+    target: output(target),
+  })),
+];
