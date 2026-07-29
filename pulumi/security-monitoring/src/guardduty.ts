@@ -1,8 +1,27 @@
 import type { Output } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { AWS_PRIMARY_ACCOUNT_ID } from '../../constants/internal.ts';
-import { existingDetectorIds, findingPublishingFrequency, findingRegions } from './config.ts';
+import {
+  existingDetectorIds,
+  findingPublishingFrequency,
+  findingRegions,
+  regionAccounts,
+} from './config.ts';
 import { regionProviders } from './providers.ts';
+
+// guardduty.Member requires each account's email, which only Organizations knows.
+const accountEmails = aws.organizations
+  .getOrganizationOutput()
+  .accounts.apply((accounts) => Object.fromEntries(accounts.map(({ id, email }) => [id, email])));
+
+const accountEmail = (accountId: string) =>
+  accountEmails.apply((emails) => {
+    const email = emails[accountId];
+    if (!email) {
+      throw new Error(`security-monitoring: ${accountId} is not an account in this organisation`);
+    }
+    return email;
+  });
 
 // Mirrors what is already enabled organisation-wide, so applying this stack does not
 // change which features member accounts are billed for. EKS_AUDIT_LOGS in particular
@@ -61,14 +80,33 @@ for (const region of findingRegions) {
     { provider, retainOnDelete, import: existingDetectorId },
   );
 
+  // A restricted region must not auto-enable the whole organisation; its members are
+  // named explicitly below instead.
+  const onlyAccounts = regionAccounts[region];
+
   const organizationConfiguration = new aws.guardduty.OrganizationConfiguration(
     `org-config-${region}`,
     {
       detectorId: detector.id,
-      autoEnableOrganizationMembers: 'ALL',
+      autoEnableOrganizationMembers: onlyAccounts ? 'NONE' : 'ALL',
     },
     { provider, retainOnDelete, import: existingDetectorId, dependsOn: [adminAccount] },
   );
+
+  for (const memberAccountId of onlyAccounts ?? []) {
+    new aws.guardduty.Member(
+      `member-${region}-${memberAccountId}`,
+      {
+        detectorId: detector.id,
+        accountId: memberAccountId,
+        email: accountEmail(memberAccountId),
+        // Accounts already in the organisation are associated directly; an invitation
+        // is only for accounts outside it.
+        invite: false,
+      },
+      { provider, retainOnDelete, dependsOn: [organizationConfiguration] },
+    );
+  }
 
   for (const [name, autoEnable] of Object.entries(ORGANISATION_FEATURES)) {
     new aws.guardduty.OrganizationConfigurationFeature(
