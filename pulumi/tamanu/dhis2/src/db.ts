@@ -10,7 +10,6 @@ export const dbReady = runPostgres({
   replicas: 2,
   storage: dbStorage,
   timezone: 'Etc/UTC',
-  backupSchedule: false,
   postgis: true,
   inheritedMetadataLabels: costLabels,
   initSql: `

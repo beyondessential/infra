@@ -22,7 +22,6 @@ export interface PostgresArgs {
   replicas: Input<number>;
   storage: Input<string>;
   timezone: Input<string>;
-  backupSchedule?: Input<string | boolean>;
   majorVersion?: Input<number>;
   postgis?: boolean;
   roles?: Input<Input<ManagedRole>[]>;
@@ -79,7 +78,6 @@ export function runPostgres({
   replicas,
   storage,
   timezone,
-  backupSchedule,
   majorVersion = DEFAULT_POSTGRES_VERSION,
   postgis = false,
   roles = [],
@@ -229,43 +227,20 @@ export function runPostgres({
               ],
             }
           : {}),
-        backup: {
-          ...(backupSchedule ? { volumeSnapshot: { className: 'ebs' } } : {}),
-        },
         // logLevel: 'trace',
       },
     },
     { parent },
   );
 
-  if (backupSchedule) {
-    if (backupSchedule === true) backupSchedule = '0 0 0 * * 1'; // weekly
-    // TODO: retention policy for snapshots when that lands
-    // https://github.com/cloudnative-pg/cloudnative-pg/issues/6009
-    new k8s.apiextensions.CustomResource(
-      `${name}-backup`,
-      {
-        apiVersion: 'postgresql.cnpg.io/v1',
-        kind: 'ScheduledBackup',
-        metadata: {
-          name: `${name}-backup`,
-          namespace,
-          labels: {
-            'app.kubernetes.io/name': name,
-            'app.kubernetes.io/component': 'database',
-          },
-        },
-        spec: {
-          schedule: backupSchedule,
-          method: 'volumeSnapshot',
-          backupOwnerReference: 'self',
-          cluster: { name: `${name}-db` },
-        },
-      },
-      { parent, ignoreChanges: ['spec.schedule'] },
-    );
-  }
-
+  // Backups are Barman only. Scheduled volume snapshots used to be an option
+  // here and are not, because CNPG has no retention for them
+  // (cloudnative-pg#6009) — so every cluster using them accumulated snapshots
+  // indefinitely, as meta-db did from March 2025 — and because they recover only
+  // to the snapshot instant, where Barman archives WAL continuously.
+  //
+  // Snapshots remain how a cluster is *seeded*: see seedSnapshotName above,
+  // which restores from one at bootstrap. That path is unrelated to this.
   if (barmanBackup) {
     const objectStore = new k8s.apiextensions.CustomResource(
       `${name}-db-object-store`,

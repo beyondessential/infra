@@ -18,11 +18,6 @@ export const dbReady = runPostgres({
   replicas: 2,
   storage: dbStorage,
   timezone: 'Etc/UTC',
-  // Volume snapshots stay until Barman has a verified backup behind it, then
-  // this goes: it recovers only to the weekly snapshot instant, and CNPG has no
-  // retention for it, which is why this cluster accumulated snapshots from March
-  // 2025 onwards.
-  backupSchedule: true,
   // WAL archiving plus nightly base backups to S3, which retention actually
   // applies to and which recover to a point in time rather than to Monday.
   barmanBackup: {

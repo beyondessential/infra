@@ -22,7 +22,7 @@ export const rulesetRepo = cfg.get('rulesetRepo');
 export const rulesetRepoToken = cfg.getSecret('rulesetRepoToken');
 
 export const replicas = cfg.getNumber('replicas') ?? 2;
-export const dbReplicas = cfg.getNumber('dbReplicas') ?? 1;
+export const dbReplicas = cfg.getNumber('dbReplicas') ?? 2;
 export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
 
 /** How long Barman keeps base backups and the WAL behind them. */

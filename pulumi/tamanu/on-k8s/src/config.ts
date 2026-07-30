@@ -49,7 +49,6 @@ export const dbExposeTags = [
   'tag:server-tamanu',
   ...(_isDemoCluster ? ['tag:server-tamanu-demo'] : []),
 ].join(',');
-export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
 // Pin each db cluster's instances to one AZ (cross-AZ replication is billed).
 // This package currently deploys demo/branch environments, where losing an AZ
 // is acceptable; set to false for any production-grade stack.
