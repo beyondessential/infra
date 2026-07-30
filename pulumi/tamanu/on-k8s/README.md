@@ -14,12 +14,14 @@ You also need a Kubernetes/kubectl connection config to the cluster (see below).
 
 - `domainBase` - The "domain base" can be overridden entirely with this config.
 - `dbStorage` - How much storage to give Postgres. Must be `<number>Gi`, defaults to `5Gi`.
-- `dbBackups` - Experimental, do not use.
+- `backupsEnabled` - Whether to back the databases up to S3 with Barman, defaults to false.
+- `backupRetentionDays` - How long those backups are kept, defaults to 3.
 - `facilities` - Number of facilities to deploy, defaults to 2.
-- `facilityNames` - Array of subdomain names of facilities. If there are less than the count `facilities`, then the unnamed ones are filled as `facility-N`.
+- `facilityNames` - Array of facilities. Each entry is either a name, used as both the Tamanu facility id and its subdomain, or an object `{id, host}` to give a facility an id that differs from the subdomain it is served on. If there are fewer entries than the count `facilities`, the rest are filled as `facility-N`.
+- `redirects` - Map of hostname to URL, for hostnames this deployment should serve only to redirect away from. Used when a rename moves a URL and existing links need to keep working.
 - `timezone` - Timezone, defaults to `Pacific/Auckland`.
 - `ipAllowList` - Experimental, do not use.
-- `architecture` - Defaults to `amd64`, use `arm64`.
+- `architecture` - Defaults to `arm64`.
 - `configTemplate` - Advanced usage, defaults to `basic`.
 - `schedule` - When the deployment should be running. One of:
   - `business-hours` (default) — Mon-Fri 08:30-18:45 in **either** Pacific/Auckland
@@ -36,23 +38,7 @@ You also need a Kubernetes/kubectl connection config to the cluster (see below).
 
 [py-kube-downscaler]: https://github.com/caas-team/py-kube-downscaler
 
-```
-export const domainBase =
-  cfg.get('domainBase') ?? truncateDomainIfNeeded(normalizedStack, 'internal.tamanu.io');
-
-export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
-export const dbBackups: string | boolean = cfg.getObject('dbBackups') ?? false;
-export const facilities = cfg.getNumber('facilities') ?? 2;
-export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
-export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
-
-export const architecture: Architecture = cfg.get('architecture') ?? 'amd64';
-if (!['amd64', 'arm64'].includes(architecture)) {
-  throw new Error(`Invalid architecture: ${architecture}`);
-}
-
-export const configTemplate = cfg.get('configTemplate') ?? DEFAULT_CONFIG_TEMPLATE;
-```
+`src/config.ts` is where these are read, and is the authority on defaults.
 
 ## Connect to Kubernetes via Tailscale
 
