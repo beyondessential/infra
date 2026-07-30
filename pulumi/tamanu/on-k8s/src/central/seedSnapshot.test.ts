@@ -14,15 +14,7 @@ const CANDIDATES = ['2.61.0', '2.59.0', '2.54.0'].map(candidate);
 
 const pick = (appVersion: string | null, previousMinor: boolean, candidates = CANDIDATES) => {
   const target = appVersion ? semver.parse(appVersion) : null;
-  return pickCandidate({
-    candidates,
-    target,
-    previousMinor,
-    matchesTarget: (version) =>
-      target !== null &&
-      semver.major(version) === target.major &&
-      semver.minor(version) === target.minor,
-  })?.version;
+  return pickCandidate({ candidates, target, previousMinor })?.version;
 };
 
 test('a release deploy takes the newest snapshot from before its own minor', () => {

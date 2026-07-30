@@ -182,10 +182,16 @@ export async function findSnapshotSource({
   }
 
   const target = appVersion && semver.valid(appVersion) ? semver.parse(appVersion) : null;
-  const matchesTarget = (v: string) =>
-    target !== null && semver.major(v) === target.major && semver.minor(v) === target.minor;
 
-  const chosen = pickCandidate({ candidates, target, previousMinor, matchesTarget });
+  if (previousMinor && !target) {
+    // Without a resolvable version there is no "previous" to aim for, and the newest
+    // snapshot may be the deploy's own — the exact no-op this mode exists to avoid.
+    log.warn(
+      `appVersion ${JSON.stringify(appVersion)} is not valid semver; taking the newest snapshot rather than the previous minor's`,
+    );
+  }
+
+  const chosen = pickCandidate({ candidates, target, previousMinor });
 
   if (!chosen) {
     // Falling back to the deploy's own version would restore data its migrations have
@@ -196,9 +202,9 @@ export async function findSnapshotSource({
     return undefined;
   }
 
-  if (previousMinor) {
+  if (previousMinor && target) {
     log.info(`Selected seed snapshot ${chosen.name} (v${chosen.version}) to migrate forward from`);
-  } else if (target && !matchesTarget(chosen.version)) {
+  } else if (target && !matchesVersion(chosen.version, target)) {
     log.warn(
       `No seed snapshot found matching v${target.major}.${target.minor}.x; falling back to newest (${chosen.version})`,
     );
@@ -233,17 +239,18 @@ export interface Candidate {
   boundContent: string;
 }
 
+const matchesVersion = (version: string, target: semver.SemVer) =>
+  semver.major(version) === target.major && semver.minor(version) === target.minor;
+
 // `candidates` is sorted newest-first, so the first match in each branch is the best one.
 export function pickCandidate({
   candidates,
   target,
   previousMinor,
-  matchesTarget,
 }: {
   candidates: Candidate[];
   target: semver.SemVer | null;
   previousMinor: boolean;
-  matchesTarget: (version: string) => boolean;
 }): Candidate | undefined {
   if (previousMinor && target) {
     return candidates.find(
@@ -253,5 +260,5 @@ export function pickCandidate({
     );
   }
 
-  return (target && candidates.find((s) => matchesTarget(s.version))) || candidates[0];
+  return (target && candidates.find((s) => matchesVersion(s.version, target))) || candidates[0];
 }
