@@ -25,6 +25,9 @@ export const replicas = cfg.getNumber('replicas') ?? 2;
 export const dbReplicas = cfg.getNumber('dbReplicas') ?? 1;
 export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
 
+/** How long Barman keeps base backups and the WAL behind them. */
+export const backupRetentionDays = cfg.getNumber('backupRetentionDays') ?? 30;
+
 export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';
 if (!['amd64', 'arm64'].includes(architecture)) {
   throw new Error(`Invalid architecture: ${architecture}`);

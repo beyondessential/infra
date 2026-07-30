@@ -1,6 +1,13 @@
 import * as k8s from '@pulumi/kubernetes';
-import { costLabels, dbExpose, dbStorage, normalizedStack } from './config.ts';
+import {
+  backupRetentionDays,
+  costLabels,
+  dbExpose,
+  dbStorage,
+  normalizedStack,
+} from './config.ts';
 import { runPostgres } from '../../common/k8s/postgres.ts';
+import { backups } from '../../common/k8s/coreRef.ts';
 
 import { namespace } from './namespace.ts';
 import './ca.ts';
@@ -11,7 +18,18 @@ export const dbReady = runPostgres({
   replicas: 2,
   storage: dbStorage,
   timezone: 'Etc/UTC',
+  // Volume snapshots stay until Barman has a verified backup behind it, then
+  // this goes: it recovers only to the weekly snapshot instant, and CNPG has no
+  // retention for it, which is why this cluster accumulated snapshots from March
+  // 2025 onwards.
   backupSchedule: true,
+  // WAL archiving plus nightly base backups to S3, which retention actually
+  // applies to and which recover to a point in time rather than to Monday.
+  barmanBackup: {
+    bucket: backups.bucket,
+    deployName: normalizedStack,
+    retentionDays: backupRetentionDays,
+  },
   inheritedMetadataLabels: costLabels,
   maxConnections: 200,
   // Sized against the working set rather than the pod's floor: the database is

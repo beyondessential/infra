@@ -74,6 +74,15 @@ export const maxRequestBody = '50Mi';
 export const requestTimeout = '60s';
 
 export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
+
+/**
+ * How long Barman keeps base backups and the WAL behind them.
+ *
+ * Longer than the demo clusters' week: this is the control plane's own database,
+ * and the window has to cover a problem noticed late rather than a bad deploy
+ * noticed immediately.
+ */
+export const backupRetentionDays = cfg.getNumber('backupRetentionDays') ?? 30;
 export const replicas = cfg.getNumber('replicas') ?? 2;
 
 export const architecture: Architecture = cfg.get('architecture') ?? 'arm64';
