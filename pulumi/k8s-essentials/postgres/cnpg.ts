@@ -59,21 +59,18 @@ new k8s.helm.v3.Chart('barman-cloud-plugin', {
     repo: 'https://cloudnative-pg.github.io/charts',
   },
   namespace: namespace.metadata.name,
-  // The plugin was first installed with `kubectl apply`, which leaves
-  // kubectl-client-side-apply owning the fields it set — .spec.selector on the
-  // Service, .spec.issuerRef.name on the Certificates. Server-side apply will not
-  // take a field from another manager unless forced, so adopting these into
-  // Pulumi fails on a conflict per resource. This chart is Pulumi's to own, so
-  // let it win, which also re-adopts anything applied by hand later.
-  transformations: [
-    (obj: { metadata?: { annotations?: { [key: string]: string } } }) => {
-      obj.metadata ??= {};
-      obj.metadata.annotations = {
-        ...obj.metadata.annotations,
-        'pulumi.com/patchForce': 'true',
-      };
-    },
-  ],
+  // NOTE: do not add pulumi.com/patchForce here to silence the server-side apply
+  // conflicts this chart reports. The conflicts are a symptom: the plugin is
+  // installed twice in cnpg-system. A hand-applied copy from 2026-05-19 runs as
+  // the `barman-cloud` Deployment and is the one CNPG actually talks to, while
+  // this chart's `barman-cloud-plugin-plugin-barman-cloud` Deployment has never
+  // passed its readiness probe since it appeared on 2026-06-19.
+  //
+  // Forcing the conflict hands the `barman-cloud` Service's .spec.selector to
+  // this chart, which repoints it from the working Deployment at the broken one
+  // and leaves the Service with no ready endpoints — taking barman backups down
+  // cluster-wide. Leave the conflicts erroring until the duplicate install is
+  // resolved: a noisy up is better than a silent outage.
   values: {
     affinity: {
       nodeAffinity: {
