@@ -59,18 +59,27 @@ new k8s.helm.v3.Chart('barman-cloud-plugin', {
     repo: 'https://cloudnative-pg.github.io/charts',
   },
   namespace: namespace.metadata.name,
-  // NOTE: do not add pulumi.com/patchForce here to silence the server-side apply
-  // conflicts this chart reports. The conflicts are a symptom: the plugin is
-  // installed twice in cnpg-system. A hand-applied copy from 2026-05-19 runs as
-  // the `barman-cloud` Deployment and is the one CNPG actually talks to, while
-  // this chart's `barman-cloud-plugin-plugin-barman-cloud` Deployment has never
-  // passed its readiness probe since it appeared on 2026-06-19.
+  // The `barman-cloud` Service and the plugin's Certificates were once applied
+  // by hand — a kustomize install of the same plugin that predated this chart —
+  // so another field manager owns fields this chart also sets, and server-side
+  // apply will not take them over unless forced.
   //
-  // Forcing the conflict hands the `barman-cloud` Service's .spec.selector to
-  // this chart, which repoints it from the working Deployment at the broken one
-  // and leaves the Service with no ready endpoints — taking barman backups down
-  // cluster-wide. Leave the conflicts erroring until the duplicate install is
-  // resolved: a noisy up is better than a silent outage.
+  // Force it, but only because that install is gone. While both existed, forcing
+  // handed the Service's .spec.selector to this chart and pointed it at a pod
+  // that could never be ready: two copies of the plugin both ran with
+  // --leader-elect, the hand-applied one held the lease, and this chart's pod
+  // sat as a standby that never opened :9090. Removing the duplicate is what
+  // fixed it. If these conflicts ever come back, look for a second install
+  // before reaching for this annotation again.
+  transformations: [
+    (obj: { metadata?: { annotations?: { [key: string]: string } } }) => {
+      obj.metadata ??= {};
+      obj.metadata.annotations = {
+        ...obj.metadata.annotations,
+        'pulumi.com/patchForce': 'true',
+      };
+    },
+  ],
   values: {
     affinity: {
       nodeAffinity: {
