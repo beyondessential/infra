@@ -24,12 +24,18 @@ const SNAPSHOT_NAME = 'seed-snapshot';
 export interface CloneSeedSnapshotArgs {
   parent: ComponentResource;
   namespace: Input<string>;
-  // Optional app version (e.g. "2.53.1") used to prefer a seed with matching
-  // major.minor. Falls back to the newest available snapshot.
-  appVersion?: string;
+  source: SnapshotSource;
 }
 
-interface SnapshotSource {
+export interface FindSnapshotSourceArgs {
+  // App version (e.g. "2.53.1") the deploy is running.
+  appVersion?: string;
+  // Select the newest snapshot from *before* appVersion's minor rather than a matching
+  // one, so the deploy restores older data and its migrations actually run.
+  previousMinor?: boolean;
+}
+
+export interface SnapshotSource {
   name: string;
   version: string;
   driver: string;
@@ -47,9 +53,9 @@ interface SnapshotSource {
 export function cloneSeedSnapshot({
   parent,
   namespace,
-  appVersion,
+  source: resolvedSource,
 }: CloneSeedSnapshotArgs): Output<string> {
-  const source: Output<SnapshotSource> = output(findSnapshotSource(appVersion));
+  const source: Output<SnapshotSource> = output(resolvedSource);
 
   // VolumeSnapshotContent is cluster-scoped, so include the deploy namespace
   // in the name to keep it unique across concurrent tamanu deploys. We name
@@ -135,7 +141,13 @@ export function cloneSeedSnapshot({
   return all([ready, snapshot.metadata.name]).apply(([, name]) => name as string);
 }
 
-async function findSnapshotSource(appVersion?: string): Promise<SnapshotSource> {
+// Resolve which seed snapshot a deploy should restore from, or undefined to provision an
+// empty database instead. Callers must await this before constructing resources, since
+// Pulumi cannot decide whether to create a resource from an asynchronous lookup.
+export async function findSnapshotSource({
+  appVersion,
+  previousMinor = false,
+}: FindSnapshotSourceArgs): Promise<SnapshotSource | undefined> {
   const api = k8sConfig().makeApiClient(CustomObjectsApi);
 
   const list = (await api.listNamespacedCustomObject({
@@ -163,18 +175,36 @@ async function findSnapshotSource(appVersion?: string): Promise<SnapshotSource> 
     .sort((a, b) => semver.rcompare(a.version, b.version));
 
   if (candidates.length === 0) {
-    throw new Error(
-      `No ready seed snapshots (with valid semver ${VERSION_ANNOTATION} annotation) found in ${SEED_NAMESPACE}`,
+    log.warn(
+      `No ready seed snapshots (with valid semver ${VERSION_ANNOTATION} annotation) in ${SEED_NAMESPACE}; provisioning an empty database instead`,
     );
+    return undefined;
   }
 
   const target = appVersion && semver.valid(appVersion) ? semver.parse(appVersion) : null;
-  const matchesTarget = (v: string) =>
-    target !== null && semver.major(v) === target.major && semver.minor(v) === target.minor;
 
-  const chosen = (target && candidates.find((s) => matchesTarget(s.version))) || candidates[0];
+  if (previousMinor && !target) {
+    // Without a resolvable version there is no "previous" to aim for, and the newest
+    // snapshot may be the deploy's own — the exact no-op this mode exists to avoid.
+    log.warn(
+      `appVersion ${JSON.stringify(appVersion)} is not valid semver; taking the newest snapshot rather than the previous minor's`,
+    );
+  }
 
-  if (target && !matchesTarget(chosen.version)) {
+  const chosen = pickCandidate({ candidates, target, previousMinor });
+
+  if (!chosen) {
+    // Falling back to the deploy's own version would restore data its migrations have
+    // already been applied to, which is the opposite of what previousMinor is asking for.
+    log.warn(
+      `No seed snapshot predates v${appVersion}; provisioning an empty database instead, so migrations still run from scratch`,
+    );
+    return undefined;
+  }
+
+  if (previousMinor && target) {
+    log.info(`Selected seed snapshot ${chosen.name} (v${chosen.version}) to migrate forward from`);
+  } else if (target && !matchesVersion(chosen.version, target)) {
     log.warn(
       `No seed snapshot found matching v${target.major}.${target.minor}.x; falling back to newest (${chosen.version})`,
     );
@@ -201,4 +231,34 @@ async function findSnapshotSource(appVersion?: string): Promise<SnapshotSource> 
   }
 
   return { name: chosen.name, version: chosen.version, driver, handle };
+}
+
+export interface Candidate {
+  name: string;
+  version: string;
+  boundContent: string;
+}
+
+const matchesVersion = (version: string, target: semver.SemVer) =>
+  semver.major(version) === target.major && semver.minor(version) === target.minor;
+
+// `candidates` is sorted newest-first, so the first match in each branch is the best one.
+export function pickCandidate({
+  candidates,
+  target,
+  previousMinor,
+}: {
+  candidates: Candidate[];
+  target: semver.SemVer | null;
+  previousMinor: boolean;
+}): Candidate | undefined {
+  if (previousMinor && target) {
+    return candidates.find(
+      (s) =>
+        semver.major(s.version) < target.major ||
+        (semver.major(s.version) === target.major && semver.minor(s.version) < target.minor),
+    );
+  }
+
+  return (target && candidates.find((s) => matchesVersion(s.version, target))) || candidates[0];
 }
