@@ -33,7 +33,13 @@ export function postgresCronJob(
     dbUser = 'app',
     architecture = 'arm64',
     labels = {},
-    backoffLimit = 3,
+    // These pods prefer spot and run a single short statement, so a bad spot
+    // window can burn several attempts in a row without the statement ever
+    // reaching the database. Retries cost 10m CPU against work that is
+    // idempotent by construction, so buy enough of them to ride one out: four
+    // attempts was not enough on 2026-05-31, which took out both of canopy's
+    // partition jobs for the night.
+    backoffLimit = 10,
     postgresVersion = DEFAULT_POSTGRES_VERSION,
     resources = {
       requests: {
