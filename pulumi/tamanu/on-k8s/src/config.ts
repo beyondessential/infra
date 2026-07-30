@@ -185,6 +185,12 @@ export const seedSnapshot: boolean =
     : false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
+// Release-branch deploys get configTemplate 'rc' (see parseDeployConfig in tamanu's
+// ghaCdHelpers). Those exist to rehearse the release, so they seed from the previous
+// minor's snapshot and migrate forward, rather than from their own version's snapshot,
+// which already has the release's migrations applied.
+export const seedFromPreviousMinor: boolean = configTemplate === 'rc';
+
 // 0 (default) means no TTL — deployment stays up forever. Any positive value
 // sets a per-deploy lifetime in hours, re-anchored to the moment of every
 // `pulumi up`. After the TTL elapses without a fresh `pulumi up`, the

@@ -12,7 +12,6 @@ import { WebFrontend } from '../web/WebFrontend.ts';
 import { ingress } from '../common/ingress.ts';
 import {
   type ReplicaConfig,
-  appVersion,
   BARMAN_BACKUP_BUCKET,
   BARMAN_BACKUP_ROLE_ARN,
   backupRetentionDays,
@@ -24,17 +23,17 @@ import {
   dbExposeTags,
   dbStorage,
   normalizedStack,
-  seedSnapshot,
   timezone,
 } from '../config.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
 import { reportingGrants } from '../common/reportingGrants.ts';
-import { cloneSeedSnapshot } from './seedSnapshot.ts';
+import { cloneSeedSnapshot, type SnapshotSource } from './seedSnapshot.ts';
 
 export interface CentralServerArgs {
   fqdn: string;
   replicas: ReplicaConfig;
+  seedSource?: SnapshotSource;
 }
 
 export class CentralServer extends ComponentResource {
@@ -45,7 +44,7 @@ export class CentralServer extends ComponentResource {
 
   constructor(
     name: string,
-    { fqdn, replicas }: CentralServerArgs,
+    { fqdn, replicas, seedSource }: CentralServerArgs,
     opts: ComponentResourceOptions = {},
   ) {
     super('bes:tamanu:CentralServer', name, {}, opts);
@@ -56,8 +55,8 @@ export class CentralServer extends ComponentResource {
       server: 'central',
     });
 
-    const seedSnapshotName = seedSnapshot
-      ? cloneSeedSnapshot({ parent: this, namespace, appVersion })
+    const seedSnapshotName = seedSource
+      ? cloneSeedSnapshot({ parent: this, namespace, source: seedSource })
       : undefined;
 
     const dbReady = runPostgres({
