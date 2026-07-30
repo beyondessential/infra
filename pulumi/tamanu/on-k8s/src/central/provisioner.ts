@@ -100,6 +100,9 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
     {
       parent,
       dependsOn: [migratorJob],
+      // Delete the superseded Job before creating its replacement; see the
+      // note in common/migrator.ts for why deferring it strands Jobs.
+      deleteBeforeReplace: true,
       // to force re-run if it fails in a previous up
       // disabled: causes a re-run on every up, which is annoying and
       // wasteful. TODO: figure out how to do a re-run only if on a

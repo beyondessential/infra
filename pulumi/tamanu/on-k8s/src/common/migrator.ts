@@ -32,6 +32,13 @@ export function migrator(
     {
       parent,
       dependsOn: [appConfig],
+      // Jobs are immutable, so every image bump replaces this one. Without
+      // this, Pulumi creates the replacement first and defers deleting the old
+      // Job to the end of the update; an update that fails part-way (an
+      // exhausted backoffLimit here does exactly that) never reaches the
+      // delete, stranding the old Job in both state and the cluster, one per
+      // bump. Deleting first means a failed update strands nothing.
+      deleteBeforeReplace: true,
       // to force re-run if it fails in a previous up
       // disabled: causes a re-run on every up, which is annoying and
       // wasteful. TODO: figure out how to do a re-run only if on a

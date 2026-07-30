@@ -158,7 +158,13 @@ export class FacilityServer extends ComponentResource {
               },
             },
           },
-          { parent: this, dependsOn: [migratorJob] },
+          {
+            parent: this,
+            dependsOn: [migratorJob],
+            // Delete the superseded Job before creating its replacement; see
+            // the note in common/migrator.ts for why deferring it strands Jobs.
+            deleteBeforeReplace: true,
+          },
         );
     // What the server processes wait on: the seeding Job when it runs (it
     // itself waits on the migrator), otherwise the migrator directly.
