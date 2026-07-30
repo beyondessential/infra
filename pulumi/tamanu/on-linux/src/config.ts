@@ -253,18 +253,22 @@ const servedLabels: string[] = [
     : []),
 ];
 
+// Retiring a deployment takes two applies, and `retiredTargetBase` is what
+// separates them. The redirect records carry the same names as the records the
+// servers had, and Pulumi deletes resources dropped from a program only after
+// everything else, so asking for both at once means creating an alias over a
+// record that still exists — which Route53 refuses.
+//
+// So: set `retired` alone first, which takes the servers and their records away.
+// Then add `retiredTargetBase`, which puts the redirects at those names. A
+// deployment being retired with nothing to redirect to simply never gets the
+// second step.
 export const redirects: RedirectEntry[] = [
-  ...(retired
-    ? servedLabels.map((label) => {
-        if (!retiredTargetBase) {
-          throw new Error('A retired deployment needs a retiredTargetBase');
-        }
-
-        return {
-          host: interpolate`${label}.${domainBase}`,
-          target: interpolate`https://${retiredHostMap[label] ?? label}.${retiredTargetBase}`,
-        };
-      })
+  ...(retired && retiredTargetBase
+    ? servedLabels.map((label) => ({
+        host: interpolate`${label}.${domainBase}`,
+        target: interpolate`https://${retiredHostMap[label] ?? label}.${retiredTargetBase}`,
+      }))
     : []),
   ...Object.entries(extraRedirects).map(([host, target]) => ({
     host: output(host),
