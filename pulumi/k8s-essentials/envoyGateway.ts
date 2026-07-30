@@ -19,6 +19,65 @@ export const ns = new k8s.core.v1.Namespace('envoy-gateway-system', {
   metadata: { name: 'envoy-gateway-system' },
 });
 
+// ── CRDs ──────────────────────────────────────────────────────────────────────
+//
+// Upstream ships the CRDs in the main chart's crds/ directory, which Helm
+// installs once on first install and never touches again. Every controller
+// upgrade then runs against whatever CRD bundle the cluster was built with, and
+// fails on whichever kind or field the new version expects: 1.8 crash-looped on
+// a missing ListenerSet, then rejected ClientTrafficPolicy's clientValidation
+// .mode as "not declared in schema". Both surfaced far from their cause.
+//
+// So the CRDs get their own chart, where they are templates rather than crds/
+// and therefore do upgrade. This is a helm.v4.Chart rather than a Release
+// because Pulumi applies each resource itself, which lets patchForce adopt the
+// CRDs already on these clusters; a Release would refuse them for want of Helm
+// ownership metadata.
+export const crds = new k8s.helm.v4.Chart(
+  'gateway-crds',
+  {
+    chart: 'oci://docker.io/envoyproxy/gateway-crds-helm',
+    version: ENVOY_GATEWAY_VERSION,
+    namespace: ns.metadata.name,
+    values: {
+      crds: {
+        // Superset of standard: adds TCPRoute, UDPRoute, BackendTLSPolicy,
+        // ListenerSet.
+        gatewayAPI: { enabled: true, channel: 'experimental' },
+        // EnvoyProxy, ClientTrafficPolicy, BackendTrafficPolicy,
+        // EnvoyPatchPolicy, SecurityPolicy, …
+        envoyGateway: { enabled: true },
+      },
+    },
+  },
+  {
+    transforms: [
+      (args) => ({
+        props: {
+          ...args.props,
+          metadata: {
+            ...args.props.metadata,
+            annotations: {
+              ...args.props.metadata?.annotations,
+              // These CRDs predate this chart on every existing cluster, applied
+              // by the main chart's crds/ or by hand, so another field manager
+              // owns fields this one sets.
+              'pulumi.com/patchForce': 'true',
+            },
+          },
+        },
+        opts: {
+          ...args.opts,
+          // Deleting a CRD deletes every custom resource of that kind. Tearing
+          // down this stack must not be able to take every Gateway, HTTPRoute
+          // and policy on the cluster with it.
+          retainOnDelete: true,
+        },
+      }),
+    ],
+  },
+);
+
 // ── Helm release ──────────────────────────────────────────────────────────────
 //
 // Envoy Gateway is distributed as an OCI helm chart.
@@ -26,14 +85,11 @@ export const ns = new k8s.core.v1.Namespace('envoy-gateway-system', {
 //   Docs:   https://gateway.envoyproxy.io/docs/install/install-helm/
 //   Values: https://github.com/envoyproxy/gateway/tree/main/charts/gateway-helm
 //
-// skipCrds is intentionally FALSE so this release installs:
-//   • Gateway API CRDs — experimental channel (superset of standard; adds
-//     TCPRoute, UDPRoute, BackendTLSPolicy, etc.)
-//   • Envoy Gateway CRDs — EnvoyProxy, ClientTrafficPolicy,
-//     BackendTrafficPolicy, EnvoyPatchPolicy, SecurityPolicy, …
+// skipCrds is TRUE: the CRDs are the `gateway-crds` chart above, so that they
+// upgrade with the version rather than being frozen at first install.
 //
-// Because of this, index.ts skips the standalone gatewayApi.ts kustomize
-// install when envoyGatewayEnabled=true to avoid CRD ownership conflicts.
+// index.ts also skips the standalone gatewayApi.ts kustomize install when
+// envoyGatewayEnabled=true, to avoid a third manager for the same CRDs.
 // See: https://gateway.envoyproxy.io/docs/install/install-helm/#installing-crds-separately
 
 export const release = new k8s.helm.v3.Release(
@@ -42,7 +98,7 @@ export const release = new k8s.helm.v3.Release(
     chart: 'oci://docker.io/envoyproxy/gateway-helm',
     version: ENVOY_GATEWAY_VERSION,
     namespace: ns.metadata.name,
-    skipCrds: false,
+    skipCrds: true,
     values: {
       // ── Controller deployment ─────────────────────────────────────────────
       deployment: {
@@ -108,7 +164,9 @@ export const release = new k8s.helm.v3.Release(
       },
     },
   },
-  { deleteBeforeReplace: true },
+  // The controller reconciles the kinds these CRDs define, and refuses to start
+  // if one is missing, so they go in first.
+  { deleteBeforeReplace: true, dependsOn: [crds] },
 );
 
 export const envoyProxy = new k8s.apiextensions.CustomResource(
