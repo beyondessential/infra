@@ -59,6 +59,21 @@ new k8s.helm.v3.Chart('barman-cloud-plugin', {
     repo: 'https://cloudnative-pg.github.io/charts',
   },
   namespace: namespace.metadata.name,
+  // The plugin was first installed with `kubectl apply`, which leaves
+  // kubectl-client-side-apply owning the fields it set — .spec.selector on the
+  // Service, .spec.issuerRef.name on the Certificates. Server-side apply will not
+  // take a field from another manager unless forced, so adopting these into
+  // Pulumi fails on a conflict per resource. This chart is Pulumi's to own, so
+  // let it win, which also re-adopts anything applied by hand later.
+  transformations: [
+    (obj: { metadata?: { annotations?: { [key: string]: string } } }) => {
+      obj.metadata ??= {};
+      obj.metadata.annotations = {
+        ...obj.metadata.annotations,
+        'pulumi.com/patchForce': 'true',
+      };
+    },
+  ],
   values: {
     affinity: {
       nodeAffinity: {
