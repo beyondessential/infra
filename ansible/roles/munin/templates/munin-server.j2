@@ -1,9 +1,5 @@
 https://{{ tailscale_name }}.{{ tailnet }}.ts.net:{{ munin_tailscale_port }} {
-  # Bind :4950 directly rather than via a socket-activation fd: caddy has
-  # CAP_NET_BIND_SERVICE and this is a high port, so it can open the listener
-  # itself. h1/h2 only — no UDP listener is opened, so no h3. UFW confines :4950
-  # to the tailnet (only 80/443 are public).
-  bind [::] {
+  bind :: {
     protocols h1 h2
   }
   root * /var/cache/munin/www
