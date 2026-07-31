@@ -9,19 +9,19 @@ export const AWS_TUPAIA_ACCOUNT_ID = '843218180240';
 /// https://github.com/beyondessential/linux-images
 // ubuntu-26.04-bes-cloud-amd64-2026.06.29
 export const AMI_UBUNTU_AMD64 = {
-  'ap-south-1': '	ami-06e826da58661b3ae',
-  'ap-southeast-2': 'ami-0b3ddf371efbeb8b7',
-  'ap-southeast-6': 'ami-0552a1045925d7b9b',
-  'eu-central-2': 'ami-08ee1feb91417ef49',
-  'us-east-1': 'ami-0764a4c2117ffc7b8',
+  'ap-south-1': 'ami-007264e074a554321',
+  'ap-southeast-2': 'ami-0dcc5ab3f999f08c3',
+  'ap-southeast-6': 'ami-00144bd996bacce85',
+  'eu-central-2': 'ami-0314ebaf9cb64bc3b',
+  'us-east-1': 'ami-0d65140366d2566bb',
 };
 // ubuntu-26.04-bes-cloud-arm64-2026.06.29
 export const AMI_UBUNTU_ARM64 = {
-  'ap-south-1': 'ami-07b63770360acde34',
-  'ap-southeast-2': 'ami-0e21eded54b1fd411',
-  'ap-southeast-6': 'ami-0506f190c24955967',
-  'eu-central-2': 'ami-0227bdf715fe9c69b',
-  'us-east-1': 'ami-098e0521b45df5c76',
+  'ap-south-1': 'ami-067d6a49c7dda3e62',
+  'ap-southeast-2': 'ami-0278794ea21341263',
+  'ap-southeast-6': 'ami-03c121a868502851e',
+  'eu-central-2': 'ami-089725ab241c76a0d',
+  'us-east-1': 'ami-099dca3f8b93ae423',
 };
 
 export const AWS_TAMANU_INTERNAL_CERTBOT_POLICY = 'arn:aws:iam::143295493206:policy/CertbotRenewal';
