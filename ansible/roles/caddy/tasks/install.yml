@@ -131,3 +131,19 @@
   notify:
     - Reload systemd
     - Restart caddy
+
+# systemd recreates this on every start, which matters because /var/log is a
+# separate volume on split-data-logs hosts: a task-created directory would not
+# survive the volume being remounted or replaced.
+- name: Install caddy logs directory drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/logs.conf
+    mode: "0644"
+    content: |
+      [Service]
+      LogsDirectory=caddy
+      LogsDirectoryMode=0750
+  notify:
+    - Reload systemd
+    - Restart caddy

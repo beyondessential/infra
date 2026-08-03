@@ -6,8 +6,14 @@
    Lives in snippets/ because caddy resolves snippet definitions strictly in
    parse order, and the packaged Caddyfile imports snippets/ before servers/. #}
 (tamanu_common) {
+  # one file for both vhosts: every entry carries request.host, and caddy drops
+  # access entries from the default logger once they have an output of their own,
+  # leaving the journal to caddy's runtime events
   log {
-    output stdout
+    output file /var/log/caddy/access.log {
+      roll_size 100MiB
+      roll_keep 10
+    }
   }
 
   # excludes upgrade requests: forcing Connection on a 101 breaks the websocket handshake
