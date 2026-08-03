@@ -3,6 +3,14 @@
     output stdout
   }
 
+  # excludes upgrade requests: forcing Connection on a 101 breaks the websocket handshake
+  @http11 {
+    protocol http/1.1
+    header !Upgrade
+  }
+  header @http11 >Connection "keep-alive"
+  header @http11 >Keep-Alive "timeout=90"
+
   @root_only path /
   header @root_only Cache-Control no-cache
 
