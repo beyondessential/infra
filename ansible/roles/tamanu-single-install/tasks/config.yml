@@ -23,6 +23,14 @@
     mode: "0644"
   notify: Reload caddy
 
+- name: Add common server snippet
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/snippets/tamanu-common
+    src: caddy/common.j2
+    mode: "0644"
+  notify: Reload caddy
+
 - name: Add tamanu server
   become: true
   ansible.builtin.template:

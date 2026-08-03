@@ -1,0 +1,63 @@
+{# Shared by the tamanu and patient-portal vhosts. Both front the same central
+   API upstream, so everything from logging through the /api reverse proxy is
+   identical between them; each server file adds only its own frontend proxy
+   and the bits that genuinely differ.
+
+   Lives in snippets/ because caddy resolves snippet definitions strictly in
+   parse order, and the packaged Caddyfile imports snippets/ before servers/. #}
+(tamanu_common) {
+  log {
+    output stdout
+  }
+
+  # excludes upgrade requests: forcing Connection on a 101 breaks the websocket handshake
+  @http11 {
+    protocol http/1.1
+    header !Upgrade
+  }
+  header @http11 >Connection "keep-alive"
+  header @http11 >Keep-Alive "timeout=90"
+
+  @root_only path /
+  header @root_only Cache-Control no-cache
+
+  handle_errors {
+    @custom_err file /resources/errors/{err.status_code}.html
+    handle @custom_err {
+      rewrite * {file_match.relative}
+      file_server
+    }
+  }
+
+  encode zstd gzip
+
+  @api {
+    path /v1/*
+    path /api/*
+  }
+
+  rate_limit @api {
+    log_key
+    zone per_ip {
+      key {remote_host}
+      events 1000
+      window 1s
+    }
+  }
+
+  route /api/login {
+    rate_limit {
+      log_key
+      zone auth_per_ip {
+        key {remote_host}
+        events 10
+        window 1s
+      }
+    }
+  }
+
+  header @api Cache-Control no-store
+  reverse_proxy @api {
+    import upstream_api
+  }
+}

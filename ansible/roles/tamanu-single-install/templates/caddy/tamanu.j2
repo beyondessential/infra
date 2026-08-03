@@ -1,28 +1,12 @@
 (server) {
-  log {
-    output stdout
-  }
+  import tamanu_common
 
-  # excludes upgrade requests: forcing Connection on a 101 breaks the websocket handshake
-  @http11 {
-    protocol http/1.1
-    header !Upgrade
-  }
-  header @http11 >Connection "keep-alive"
-  header @http11 >Keep-Alive "timeout=90"
+  # stays out of tamanu_common: the glob resolves against this file's own
+  # directory, and from snippets/ it would match the packaged (waf) definition
+  # file, which caddy refuses to parse inside a site block
+  import waf*
 
-
-  @root_only path /
-  header @root_only Cache-Control no-cache
   header /manifest.json Cache-Control no-cache
-
-  handle_errors {
-    @custom_err file /resources/errors/{err.status_code}.html
-    handle @custom_err {
-      rewrite * {file_match.relative}
-      file_server
-    }
-  }
 
   {% if tamanu_version is defined and tamanu_version.startswith('v') and (tamanu_version | regex_replace('^v', '')) is version_compare('2.48.0', '<') %}
   @socket_io_paths {
@@ -35,39 +19,7 @@
   }
   {% endif %}
 
-  encode zstd gzip
-  import waf*
   redir /v1/login /api/login 308
-
-  @api {
-    path /v1/*
-    path /api/*
-  }
-
-  rate_limit @api {
-    log_key
-    zone per_ip {
-      key {remote_host}
-      events 1000
-      window 1s
-    }
-  }
-
-  route /api/login {
-    rate_limit {
-      log_key
-      zone auth_per_ip {
-        key {remote_host}
-        events 10
-        window 1s
-      }
-    }
-  }
-
-  header @api Cache-Control no-store
-  reverse_proxy @api {
-    import upstream_api
-  }
 
   reverse_proxy /env.js {
     header_down Cache-Control "public, max-age=604800, immutable"
