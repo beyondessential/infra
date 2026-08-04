@@ -23,6 +23,7 @@ import {
 } from '../config.ts';
 import { imageTag } from '../image.ts';
 import { runTasks } from './tasks.ts';
+import { runFhirWorker } from './fhir.ts';
 import type { Provisioning } from '../central/provisioner.ts';
 import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
@@ -82,6 +83,9 @@ export class FacilityServer extends ComponentResource {
     // carries no version at all, so assume the subcommand is present.
     const releaseVersion = semver.valid(appVersion ?? '') ?? semver.valid(imageTag);
     const hasSetupSync = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
+    // startFhirWorker isn't runnable on the facility image before 2.60; older
+    // pinned/standing-env tags would otherwise crash-loop (see TAN-2532 revert).
+    const hasFacilityFhir = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
 
     const appConfig = provisioning.apply((provisioning) =>
       templatedConfig({
@@ -176,6 +180,30 @@ export class FacilityServer extends ComponentResource {
         // Gate on the sync-config seed (which itself waits on the migrator).
         migratorJob: readyJob,
       });
+
+      if (hasFacilityFhir) {
+        runFhirWorker({
+          parent: this,
+          name: 'refresh',
+          deviceId,
+          podSpec,
+          migratorJob: readyJob,
+          topics: [
+            'fhir.refresh.allFromUpstream',
+            'fhir.refresh.entireResource',
+            'fhir.refresh.fromUpstream',
+          ],
+        });
+
+        runFhirWorker({
+          parent: this,
+          name: 'resolver',
+          deviceId,
+          podSpec,
+          migratorJob: readyJob,
+          topics: ['fhir.resolver'],
+        });
+      }
     }
 
     const sync = runServer(name, 'sync', {
