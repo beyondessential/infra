@@ -23,3 +23,22 @@ new k8s.rbac.v1.RoleBinding('tamanu-seed-deploy', {
     },
   ],
 });
+
+// tamanu-deploy grants no pods access; the seed watch reads pod state via `view`.
+new k8s.rbac.v1.RoleBinding('tamanu-seed-deploy-view', {
+  metadata: {
+    name: 'tamanu-deploy-view',
+    namespace,
+  },
+  roleRef: {
+    apiGroup: 'rbac.authorization.k8s.io',
+    kind: 'ClusterRole',
+    name: 'view',
+  },
+  subjects: [
+    {
+      kind: 'Group',
+      name: 'tailscale:tamanu-deploy',
+    },
+  ],
+});
