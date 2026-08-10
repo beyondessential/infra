@@ -10,3 +10,4 @@ Before=slices.target
 [Slice]
 CPUWeight=200
 IOWeight=200
+MemoryMin=512M

@@ -23,7 +23,9 @@
     content: |
       [Service]
       Slice=critical.slice
-      OOMScoreAdjust=-500
+      OOMPolicy=continue
+      Restart=on-failure
+      RestartSec=30s
   notify:
     - Reload systemd
     - Restart postgres
