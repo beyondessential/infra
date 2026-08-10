@@ -55,6 +55,12 @@ storage size from `pgsnap.bes.au/size` (default `20Gi`), CPU from
 (default `1Gi`). The cluster is ephemeral and owned by the operator's
 workflow for this Job.
 
+s[create.cluster.postgres-major]
+The ephemeral cluster runs the same PostgreSQL major version as the
+clusters its snapshots are restored into. A snapshot is a physical data
+directory, so PostgreSQL refuses to start on one written by a different
+major version.
+
 s[create.cluster.ready]
 The operator waits for the CNPG Cluster's read-write service endpoint to
 have at least one ready address before proceeding.

@@ -10,7 +10,7 @@ pub struct JobOwner<'a> {
     pub uid: &'a str,
 }
 
-// s[create.cluster]
+// s[create.cluster] s[create.cluster.postgres-major]
 pub async fn create_cluster(
     client: &Client,
     namespace: &str,
@@ -40,11 +40,13 @@ pub async fn create_cluster(
             "ownerReferences": [job_owner_ref(owner)],
         },
         "spec": {
+            // Must track DEFAULT_POSTGRES_VERSION in pulumi/constants/internal.ts:
+            // snapshots are physical data directories restored into those clusters.
             "imageCatalogRef": {
                 "apiGroup": "postgresql.cnpg.io",
                 "kind": "ClusterImageCatalog",
                 "name": "postgresql",
-                "major": 17,
+                "major": 18,
             },
             "instances": 1,
             "primaryUpdateStrategy": "unsupervised",
