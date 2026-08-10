@@ -10,9 +10,4 @@ Before=slices.target
 [Slice]
 CPUWeight=200
 IOWeight=200
-# Memory is the only resource that has taken a facility node down (TAM-7048).
-# MemoryMin is a reclaim-protection floor: the kernel won't reclaim pages from
-# this slice (postgres, tamanu API, caddy) below this figure under pressure,
-# so a munin/cron spike sheds its own cache first. Conservative fleet-wide
-# floor; size up on hosts with more RAM.
 MemoryMin=512M
