@@ -23,16 +23,9 @@
     content: |
       [Service]
       Slice=critical.slice
-      # A backend OOM-kill is survivable: Postgres reaps children, reinitialises,
-      # and runs crash recovery on its own. OOMPolicy=stop (systemd's default)
-      # tears the whole unit down ~0.8s into that recovery and, with Restart=no,
-      # leaves it down. continue + on-failure lets Postgres self-heal. See TAM-7048.
       OOMPolicy=continue
       Restart=on-failure
       RestartSec=30s
-      # OOMScoreAdjust intentionally omitted: postgresql-common resets each backend
-      # to 0 and the postmaster to -900 after pg_ctlcluster execs, overriding any
-      # value set here. Setting -500 reads as protection that never takes effect.
   notify:
     - Reload systemd
     - Restart postgres
