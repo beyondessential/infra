@@ -2,10 +2,9 @@ import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
 import { interpolate } from '@pulumi/pulumi';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
-import { addAddon, clusterName, oidcProvider, tags } from '../cluster.ts';
+import { addAddon, cluster, clusterName, oidcProvider, tags } from '../cluster.ts';
 import { provider } from '../kubeconfig.ts';
 import { $network } from '../../common/coreRef.ts';
-import { withNetwork } from '../../common/securityGroupRules.ts';
 import { withBootstrap } from '../nodes/groups.ts';
 
 const NFS_PORT = 2049;
@@ -37,13 +36,21 @@ const filesystem = new awsClassic.efs.FileSystem('efs-shared', {
   },
 });
 
-// k[volumes.shared-network-confinement]
+// k[volumes.shared-network-confinement+2]
 const securityGroup = new awsClassic.ec2.SecurityGroup(
   'efs-shared',
   {
     vpcId: $network.vpc,
     description: interpolate`Shared filesystem (cluster: ${clusterName})`,
-    ingress: [withNetwork($network).openVpcPort('NFS', NFS_PORT)],
+    ingress: [
+      {
+        description: 'NFS from cluster nodes',
+        fromPort: NFS_PORT,
+        toPort: NFS_PORT,
+        protocol: 'tcp',
+        securityGroups: [cluster.clusterSecurityGroupId],
+      },
+    ],
     tags: {
       Purpose: 'k8s-shared-storage',
       ...tags,
