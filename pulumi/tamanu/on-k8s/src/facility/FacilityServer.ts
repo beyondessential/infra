@@ -20,6 +20,7 @@ import {
   dbAzColocate,
   dbStorage,
   normalizedStack,
+  sharedBlobStorage,
   timezone,
 } from '../config.ts';
 import { imageTag } from '../image.ts';
@@ -118,7 +119,9 @@ export class FacilityServer extends ComponentResource {
       dbReady,
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
-      blobStore: blobStoreVolume(`facility-${name}`, { parent: this, server: 'facility' }),
+      blobStore: sharedBlobStorage
+        ? blobStoreVolume(`facility-${name}`, { parent: this, server: 'facility' })
+        : undefined,
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)

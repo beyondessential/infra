@@ -63,16 +63,16 @@
           gigabytesForUploadingDocuments: 0.1,
         },
       },
-      blobStorage: {
-        root: '{{ blobStoreRoot | default("/blobs") }}',
-      },
+      {% if blobStoreRoot %}blobStorage: {
+        root: '{{ blobStoreRoot }}',
+      },{% endif %}
     },
     facilities: {
       {% for name in facilityNames %}
       '{{ name }}': {
-        blobStorage: {
-          root: '{{ blobStoreRoot | default("/blobs") }}',
-        },
+        {% if blobStoreRoot %}blobStorage: {
+          root: '{{ blobStoreRoot }}',
+        },{% endif %}
         survey: {
           defaultCodes: {
             location: 'WaitingArea',

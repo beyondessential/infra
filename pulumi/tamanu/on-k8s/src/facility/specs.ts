@@ -34,7 +34,7 @@ export interface PodSpecFactoryArgs {
   dbReady: PostgresReady;
   rawSecret: k8s.core.v1.Secret;
   reportingSecret: k8s.core.v1.Secret;
-  blobStore: BlobStoreVolume;
+  blobStore?: BlobStoreVolume;
 }
 
 export function podSpecFactory({
@@ -71,7 +71,7 @@ export function podSpecFactory({
         },
       },
     },
-    volumes: [
+    volumes: compact([
       {
         name: 'config-volume',
         configMap: {
@@ -79,9 +79,9 @@ export function podSpecFactory({
         },
       },
       cryptoVolume,
-      blobStore.volume,
+      blobStore?.volume,
       ...volumes,
-    ],
+    ]),
     containers: [
       {
         name: podType,
@@ -94,7 +94,7 @@ export function podSpecFactory({
             mountPath: '/config',
           },
           cryptoVolumeMount,
-          ...blobStore.volumeMounts,
+          ...(blobStore?.volumeMounts ?? []),
           ...vms,
         ]),
         env: compact([

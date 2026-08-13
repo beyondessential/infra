@@ -23,6 +23,7 @@ import {
   dbExposeTags,
   dbStorage,
   normalizedStack,
+  sharedBlobStorage,
   timezone,
 } from '../config.ts';
 import { namespace } from '../namespace.ts';
@@ -96,7 +97,9 @@ export class CentralServer extends ComponentResource {
       dbReady,
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
-      blobStore: blobStoreVolume('central', { parent: this, server: 'central' }),
+      blobStore: sharedBlobStorage
+        ? blobStoreVolume('central', { parent: this, server: 'central' })
+        : undefined,
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)

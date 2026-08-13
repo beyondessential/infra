@@ -38,6 +38,10 @@ export const domainBase =
   truncateDomainIfNeeded(_domainStack, _clusterBaseDomain);
 
 export const dbStorage = cfg.get('dbStorage') ?? '5Gi';
+// Puts the blob store on a shared volume rather than each pod's own disk.
+// Needs the cluster's k8s-core to have the efs storage class, so it stays
+// opt-in until every cluster hosting a deploy has it.
+export const sharedBlobStorage = cfg.getBoolean('sharedBlobStorage') ?? false;
 export const dbExpose = cfg.getBoolean('dbExpose') ?? true;
 // Tags for the Tailscale proxy device fronting the central DB. The proxy tag is
 // cluster-specific (each cluster's operator OAuth client only owns its own), so
