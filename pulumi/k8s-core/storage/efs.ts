@@ -1,6 +1,6 @@
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { interpolate, jsonStringify } from '@pulumi/pulumi';
+import { interpolate } from '@pulumi/pulumi';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { addAddon, cluster, clusterName, oidcProvider, tags } from '../cluster.ts';
 import { provider } from '../kubeconfig.ts';
@@ -16,19 +16,16 @@ const efsRole = eksServiceAccount('eks-efs-csi', {
   managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy'],
 });
 
-// k[volumes.shared-reclaim]
-// Releasing a claim has to take its bytes with it. Every access point owns a
-// directory no other claim can be given, so deleting the directory with the
-// access point cannot reach content that is still claimed.
+// The driver can delete an access point's directory along with the access point,
+// which is what would reclaim a released claim's bytes. It stays off until the
+// filesystem policy below it lands: the driver deletes whatever root a departing
+// access point names, and a root of `/` is the whole filesystem.
 const addonEfs = addAddon(
   'aws-efs-csi-driver',
   {
     purpose: 'system',
     serviceAccountRoleArn: efsRole.arn,
     resolveConflicts: 'PRESERVE',
-    configurationValues: jsonStringify({
-      controller: { deleteAccessPointRootDir: true },
-    }),
   },
   { dependsOn: withBootstrap() },
 );
