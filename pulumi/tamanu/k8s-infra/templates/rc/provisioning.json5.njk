@@ -97,17 +97,11 @@
         freeSpaceRequired: {
           gigabytesForUploadingDocuments: 0.1,
         }
-      },
-      {% if blobStoreRoot %}blobStorage: {
-        root: '{{ blobStoreRoot }}',
-      },{% endif %}
+      }
     },
     facilities: {
       {% for n in range(1, 10) %}
       'facility-{{ n }}': {
-        {% if blobStoreRoot %}blobStorage: {
-          root: '{{ blobStoreRoot }}',
-        },{% endif %}
         survey: {
           defaultCodes: {
             location: {% if n == 1 %}

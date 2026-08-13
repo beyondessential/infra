@@ -1,6 +1,6 @@
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { interpolate } from '@pulumi/pulumi';
+import { interpolate, jsonStringify } from '@pulumi/pulumi';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { addAddon, cluster, clusterName, oidcProvider, tags } from '../cluster.ts';
 import { provider } from '../kubeconfig.ts';
@@ -16,12 +16,19 @@ const efsRole = eksServiceAccount('eks-efs-csi', {
   managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy'],
 });
 
+// k[volumes.shared-reclaim]
+// Releasing a claim has to take its bytes with it. Every access point owns a
+// directory no other claim can be given, so deleting the directory with the
+// access point cannot reach content that is still claimed.
 const addonEfs = addAddon(
   'aws-efs-csi-driver',
   {
     purpose: 'system',
     serviceAccountRoleArn: efsRole.arn,
     resolveConflicts: 'PRESERVE',
+    configurationValues: jsonStringify({
+      controller: { deleteAccessPointRootDir: true },
+    }),
   },
   { dependsOn: withBootstrap() },
 );
@@ -29,7 +36,16 @@ const addonEfs = addAddon(
 // k[volumes.shared-encryption]
 const filesystem = new awsClassic.efs.FileSystem('efs-shared', {
   encrypted: true,
+  // Elastic bills throughput per request, which suits a store that is idle
+  // between uploads rather than serving a steady rate.
   throughputMode: 'elastic',
+  // Blobs are written once and read seldom. A read pulls its file back to
+  // standard, so this mostly prices down content nothing reads any more.
+  lifecyclePolicies: [
+    { transitionToIa: 'AFTER_30_DAYS' },
+    { transitionToPrimaryStorageClass: 'AFTER_1_ACCESS' },
+    { transitionToArchive: 'AFTER_90_DAYS' },
+  ],
   tags: {
     Purpose: 'k8s-shared-storage',
     ...tags,
@@ -91,6 +107,9 @@ new k8s.storage.v1.StorageClass(
       fileSystemId: filesystem.id,
       directoryPerms: '700',
       subPathPattern: '/${.PVC.namespace}/${.PVC.name}',
+      // A rebuilt deployment reuses its namespace and claim names, so without
+      // this it would adopt the directory its predecessor left behind.
+      ensureUniqueDirectory: 'true',
     },
     volumeBindingMode: 'Immediate',
   },

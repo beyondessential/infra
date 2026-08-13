@@ -2,10 +2,9 @@ import { ComponentResource, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import JSON5 from 'json5';
 import { templatedConfig } from '../common/templatedConfig.ts';
-import { BLOB_STORE_ROOT } from '../common/blobStore.ts';
 import { namespace } from '../namespace.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
-import { facilityIds, sharedBlobStorage, timezone } from '../config.ts';
+import { facilityIds, timezone } from '../config.ts';
 
 export interface MigratorArgs {
   parent: ComponentResource;
@@ -46,7 +45,6 @@ export function provisioner({ parent, podSpec, migratorJob }: MigratorArgs): {
       // The in-cluster template iterates this as facility ids, using each as
       // both the key and the facility code, so it takes ids and not host labels.
       facilityNames: facilityIds,
-      blobStoreRoot: sharedBlobStorage ? BLOB_STORE_ROOT : undefined,
     },
   });
 

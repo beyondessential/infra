@@ -94,7 +94,7 @@ export function podSpecFactory({
               mountPath: '/config',
             },
             cryptoVolumeMount,
-            ...(blobStore?.volumeMounts ?? []),
+            blobStore?.volumeMount,
             ...vms,
           ]),
           env: compact([

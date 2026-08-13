@@ -5,10 +5,9 @@ import { namespace } from '../namespace.ts';
 const VOLUME_NAME = 'blob-store';
 const STORAGE_CLASS = 'efs';
 
-// Must match the blobStorage.root setting the provisioning templates seed.
-export const BLOB_STORE_ROOT = '/blobs';
-
-// Where the default relative blobStorage.root lands: the image's workdir.
+// blobStorage.root is a database-backed setting that defaults to a path relative
+// to the server's working directory, which is its package directory in the image.
+// Mounting there means a deployment needs no setting to land on shared storage.
 const DEFAULT_ROOT = {
   central: '/app/packages/central-server/data/blobs',
   facility: '/app/packages/facility-server/data/blobs',
@@ -16,7 +15,7 @@ const DEFAULT_ROOT = {
 
 export interface BlobStoreVolume {
   volume: k8s.types.input.core.v1.Volume;
-  volumeMounts: k8s.types.input.core.v1.VolumeMount[];
+  volumeMount: k8s.types.input.core.v1.VolumeMount;
 }
 
 export interface BlobStoreVolumeArgs {
@@ -49,11 +48,6 @@ export function blobStoreVolume(
       name: VOLUME_NAME,
       persistentVolumeClaim: { claimName: claim.metadata.name },
     },
-    volumeMounts: [
-      { name: VOLUME_NAME, mountPath: BLOB_STORE_ROOT },
-      // A facility server boots before its settings sync down, so until then it
-      // uses the default root.
-      { name: VOLUME_NAME, mountPath: DEFAULT_ROOT[server] },
-    ],
+    volumeMount: { name: VOLUME_NAME, mountPath: DEFAULT_ROOT[server] },
   };
 }
