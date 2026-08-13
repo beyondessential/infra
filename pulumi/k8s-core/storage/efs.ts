@@ -77,7 +77,7 @@ $network.workloadSubnetIds.apply((subnetIds) =>
   ),
 );
 
-// k[volumes.shared-multi-node+2] k[volumes.shared-isolation]
+// k[volumes.shared-multi-node+3] k[volumes.shared-isolation+2]
 new k8s.storage.v1.StorageClass(
   'efs',
   {
