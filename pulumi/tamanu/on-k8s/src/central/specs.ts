@@ -8,6 +8,7 @@ import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
 import type { PodSpecArgs, PodSpecFactory } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
+import type { BlobStoreVolume } from '../common/blobStore.ts';
 import { image, imageTag } from '../image.ts';
 import { architecture, nodeEnv } from '../config.ts';
 import { sa } from '../serviceAccount.ts';
@@ -32,6 +33,7 @@ export interface PodSpecFactoryArgs {
   dbReady: PostgresReady;
   rawSecret: k8s.core.v1.Secret;
   reportingSecret: k8s.core.v1.Secret;
+  blobStore: BlobStoreVolume;
 }
 
 export function podSpecFactory({
@@ -40,6 +42,7 @@ export function podSpecFactory({
   dbReady,
   rawSecret,
   reportingSecret,
+  blobStore,
 }: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
@@ -76,6 +79,7 @@ export function podSpecFactory({
           },
         },
         cryptoVolume,
+        blobStore.volume,
         ...volumes,
       ],
       containers: [
@@ -90,6 +94,7 @@ export function podSpecFactory({
               mountPath: '/config',
             },
             cryptoVolumeMount,
+            ...blobStore.volumeMounts,
             ...vms,
           ]),
           env: compact([

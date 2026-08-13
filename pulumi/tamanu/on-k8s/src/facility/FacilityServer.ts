@@ -3,6 +3,7 @@ import * as k8s from '@pulumi/kubernetes';
 import * as semver from 'semver';
 import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
+import { blobStoreVolume } from '../common/blobStore.ts';
 import { migrator } from '../common/migrator.ts';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
 import { runServer } from './server.ts';
@@ -117,6 +118,7 @@ export class FacilityServer extends ComponentResource {
       dbReady,
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
+      blobStore: blobStoreVolume(`facility-${name}`, { parent: this, server: 'facility' }),
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)

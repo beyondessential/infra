@@ -7,6 +7,7 @@ import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
 import { $network } from '../../../../common/k8s/coreRef.ts';
 import type { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
+import type { BlobStoreVolume } from '../common/blobStore.ts';
 import { architecture, nodeEnv } from '../config.ts';
 import { image, imageTag } from '../image.ts';
 import { compact } from 'lodash-es';
@@ -33,6 +34,7 @@ export interface PodSpecFactoryArgs {
   dbReady: PostgresReady;
   rawSecret: k8s.core.v1.Secret;
   reportingSecret: k8s.core.v1.Secret;
+  blobStore: BlobStoreVolume;
 }
 
 export function podSpecFactory({
@@ -42,6 +44,7 @@ export function podSpecFactory({
   dbReady,
   rawSecret,
   reportingSecret,
+  blobStore,
 }: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
@@ -76,6 +79,7 @@ export function podSpecFactory({
         },
       },
       cryptoVolume,
+      blobStore.volume,
       ...volumes,
     ],
     containers: [
@@ -90,6 +94,7 @@ export function podSpecFactory({
             mountPath: '/config',
           },
           cryptoVolumeMount,
+          ...blobStore.volumeMounts,
           ...vms,
         ]),
         env: compact([

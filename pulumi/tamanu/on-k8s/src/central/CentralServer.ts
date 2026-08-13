@@ -3,6 +3,7 @@ import * as k8s from '@pulumi/kubernetes';
 import { migrator } from '../common/migrator.ts';
 import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
+import { blobStoreVolume } from '../common/blobStore.ts';
 import { CONFIG_FROM_ENV, podSpecFactory } from './specs.ts';
 import { type Provisioning, provisioner } from './provisioner.ts';
 import { runTasks } from './tasks.ts';
@@ -95,6 +96,7 @@ export class CentralServer extends ComponentResource {
       dbReady,
       rawSecret: roles.raw,
       reportingSecret: roles.reporting,
+      blobStore: blobStoreVolume('central', { parent: this, server: 'central' }),
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)

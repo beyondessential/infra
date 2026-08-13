@@ -51,6 +51,7 @@ import './nodes/groups.ts';
 import './nodes/monitor.ts';
 
 import './storage/ebs.ts';
+import './storage/efs.ts';
 import './storage/s3.ts';
 
 if (cfg.getBoolean('enableAwsLb') ?? true) {
