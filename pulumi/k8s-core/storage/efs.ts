@@ -49,13 +49,13 @@ const filesystem = new awsClassic.efs.FileSystem('efs-shared', {
   // Elastic bills throughput per request, which suits a store that is idle
   // between uploads rather than serving a steady rate.
   throughputMode: 'elastic',
-  // Only genuinely cold content moves, and a read brings it back, so a store
-  // still in use stays on standard throughout. Archive is left off: it is
-  // cheaper again, but its first read is slow enough to be noticed by whoever
-  // opens an old attachment on a demo.
+  // Blobs are written once and read seldom. No transition back to standard on
+  // access: the integrity scrub re-reads the whole store every few days to verify
+  // hashes, which would bounce all of it back continuously and leave the tiering
+  // doing nothing.
   lifecyclePolicies: [
-    { transitionToIa: 'AFTER_90_DAYS' },
-    { transitionToPrimaryStorageClass: 'AFTER_1_ACCESS' },
+    { transitionToIa: 'AFTER_1_DAY' },
+    { transitionToArchive: 'AFTER_7_DAYS' },
   ],
   tags: {
     Purpose: 'k8s-shared-storage',
