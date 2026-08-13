@@ -51,8 +51,11 @@ import './nodes/groups.ts';
 import './nodes/monitor.ts';
 
 import './storage/ebs.ts';
-import './storage/efs.ts';
 import './storage/s3.ts';
+
+if (cfg.getBoolean('enableEfsStorage') ?? false) {
+  await import('./storage/efs.ts');
+}
 
 if (cfg.getBoolean('enableAwsLb') ?? true) {
   await import('./loadbalancer/ingress.ts');
