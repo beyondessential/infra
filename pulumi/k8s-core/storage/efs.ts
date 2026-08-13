@@ -22,6 +22,8 @@ const efsRole = eksServiceAccount('eks-efs-csi', {
 // Per-cluster and off by default because the driver deletes whatever root a
 // departing access point names, and an access point rooted at `/` would take the
 // whole filesystem: only worth carrying where the content is disposable.
+// The addon ignores a key it does not recognise rather than rejecting it, so
+// confirm the controller came up with `--delete-access-point-root-dir=true`.
 const reclaimOnRelease = cfg.getBoolean('enableEfsReclaim') ?? false;
 
 const addonEfs = addAddon(
