@@ -1,10 +1,10 @@
 import * as awsClassic from '@pulumi/aws';
 import * as k8s from '@pulumi/kubernetes';
-import { interpolate } from '@pulumi/pulumi';
+import { interpolate, jsonStringify } from '@pulumi/pulumi';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { addAddon, cluster, clusterName, oidcProvider, tags } from '../cluster.ts';
 import { provider } from '../kubeconfig.ts';
-import { $network } from '../../common/coreRef.ts';
+import { $network, cfg } from '../../common/coreRef.ts';
 import { withBootstrap } from '../nodes/groups.ts';
 
 const NFS_PORT = 2049;
@@ -16,16 +16,27 @@ const efsRole = eksServiceAccount('eks-efs-csi', {
   managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy'],
 });
 
-// The driver can delete an access point's directory along with the access point,
-// which is what would reclaim a released claim's bytes. It stays off until the
-// filesystem policy below it lands: the driver deletes whatever root a departing
-// access point names, and a root of `/` is the whole filesystem.
+// k[volumes.shared-reclaim]
+// Deletes a released claim's content along with its access point, so a cluster
+// of short-lived deployments does not accumulate directories nothing can reach.
+// Per-cluster and off by default because the driver deletes whatever root a
+// departing access point names, and an access point rooted at `/` would take the
+// whole filesystem: only worth carrying where the content is disposable.
+const reclaimOnRelease = cfg.getBoolean('enableEfsReclaim') ?? false;
+
 const addonEfs = addAddon(
   'aws-efs-csi-driver',
   {
     purpose: 'system',
     serviceAccountRoleArn: efsRole.arn,
     resolveConflicts: 'PRESERVE',
+    ...(reclaimOnRelease
+      ? {
+          configurationValues: jsonStringify({
+            controller: { deleteAccessPointRootDir: true },
+          }),
+        }
+      : {}),
   },
   { dependsOn: withBootstrap() },
 );
@@ -36,12 +47,13 @@ const filesystem = new awsClassic.efs.FileSystem('efs-shared', {
   // Elastic bills throughput per request, which suits a store that is idle
   // between uploads rather than serving a steady rate.
   throughputMode: 'elastic',
-  // Blobs are written once and read seldom. A read pulls its file back to
-  // standard, so this mostly prices down content nothing reads any more.
+  // Only genuinely cold content moves, and a read brings it back, so a store
+  // still in use stays on standard throughout. Archive is left off: it is
+  // cheaper again, but its first read is slow enough to be noticed by whoever
+  // opens an old attachment on a demo.
   lifecyclePolicies: [
-    { transitionToIa: 'AFTER_30_DAYS' },
+    { transitionToIa: 'AFTER_90_DAYS' },
     { transitionToPrimaryStorageClass: 'AFTER_1_ACCESS' },
-    { transitionToArchive: 'AFTER_90_DAYS' },
   ],
   tags: {
     Purpose: 'k8s-shared-storage',
