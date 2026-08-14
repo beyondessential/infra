@@ -88,15 +88,17 @@ export function podSpecFactory({
         image: image('facility'),
         imagePullPolicy: 'IfNotPresent',
         args: command,
-        volumeMounts: output(volumeMounts).apply((vms) => [
-          {
-            name: 'config-volume',
-            mountPath: '/config',
-          },
-          cryptoVolumeMount,
-          blobStore?.volumeMount,
-          ...vms,
-        ]),
+        volumeMounts: output(volumeMounts).apply((vms) =>
+          compact([
+            {
+              name: 'config-volume',
+              mountPath: '/config',
+            },
+            cryptoVolumeMount,
+            blobStore?.volumeMount,
+            ...vms,
+          ]),
+        ),
         env: compact([
           ...env,
           ...cryptoEnv,
