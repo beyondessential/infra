@@ -52,6 +52,12 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
       resources: ['secrets', 'configmaps', 'services', 'serviceaccounts'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
+    // k[volumes.claim-by-deployer]
+    {
+      apiGroups: [''],
+      resources: ['persistentvolumeclaims'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
     {
       apiGroups: [''],
       resources: ['endpoints'],
