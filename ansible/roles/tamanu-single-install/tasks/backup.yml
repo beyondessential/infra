@@ -59,3 +59,14 @@
     mode: "0644"
   notify:
     - Reload bestool-alertd
+
+- name: Install tamanu-secrets backup definition
+  become: true
+  ansible.builtin.copy:
+    src: tamanu-secrets.toml
+    dest: /etc/bestool/backups/tamanu-secrets.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload bestool-alertd
