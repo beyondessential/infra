@@ -33,58 +33,6 @@ export const migrator = new k8s.batch.v1.Job('migrator', {
 });
 
 new k8s.apps.v1.Deployment(
-  'ownstatus',
-  {
-    metadata: {
-      labels: labels('ownstatus'),
-      namespace,
-    },
-    spec: {
-      replicas: 1,
-      strategy: {
-        type: 'Recreate',
-      },
-      selector: {
-        matchLabels: labels('ownstatus'),
-      },
-      template: {
-        metadata: {
-          labels: { ...labels('ownstatus'), ...costLabels },
-        },
-        spec: spec('ownstatus', ['ownstatus']),
-      },
-    },
-  },
-  { dependsOn: [migrator] },
-);
-
-new k8s.apps.v1.Deployment(
-  'pingtask',
-  {
-    metadata: {
-      labels: labels('pingtask'),
-      namespace,
-    },
-    spec: {
-      replicas: 1,
-      strategy: {
-        type: 'Recreate',
-      },
-      selector: {
-        matchLabels: labels('pingtask'),
-      },
-      template: {
-        metadata: {
-          labels: { ...labels('pingtask'), ...costLabels },
-        },
-        spec: spec('pingtask', ['pingtask']),
-      },
-    },
-  },
-  { dependsOn: [migrator] },
-);
-
-new k8s.apps.v1.Deployment(
   'monitor',
   {
     metadata: {
