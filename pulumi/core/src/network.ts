@@ -18,6 +18,7 @@ import {
 // them at the provider level keeps core from treating them as drift and
 // stripping them on every `pulumi up`.
 const networkAws = new awsClassic.Provider('core-network-aws', {
+  region,
   ignoreTags: {
     keyPrefixes: ['karpenter.sh/', 'karpenter.k8s.aws/'],
   },
