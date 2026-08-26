@@ -14,6 +14,8 @@ import {
   slackerOpenUrl,
   slackerCloseUrl,
   slackerSelfAlertUrl,
+  slackerMaintenanceDeclaredUrl,
+  slackerMaintenanceEndedUrl,
   normalizedStack,
 } from './config.ts';
 
@@ -114,6 +116,22 @@ new k8s.apps.v1.Deployment(
             { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
             { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
             { name: 'SLACK_WEBHOOK_SELF_ALERT_URL', value: slackerSelfAlertUrl },
+            ...(slackerMaintenanceDeclaredUrl
+              ? [
+                  {
+                    name: 'SLACK_WEBHOOK_MAINTENANCE_DECLARED_URL',
+                    value: slackerMaintenanceDeclaredUrl,
+                  },
+                ]
+              : []),
+            ...(slackerMaintenanceEndedUrl
+              ? [
+                  {
+                    name: 'SLACK_WEBHOOK_MAINTENANCE_ENDED_URL',
+                    value: slackerMaintenanceEndedUrl,
+                  },
+                ]
+              : []),
           ],
         }),
       },
