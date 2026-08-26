@@ -96,9 +96,7 @@ export const publicServerVersionsSecret = cfg.requireSecret('publicServerVersion
 export const slackerOpenUrl = cfg.require('slackerOpenUrl');
 export const slackerCloseUrl = cfg.require('slackerCloseUrl');
 export const slackerSelfAlertUrl = cfg.require('slackerSelfAlertUrl');
-// Optional, unlike the incident hooks above: canopy records and suspends on
-// maintenance windows whether or not it can announce them, so a stack with no
-// workflow built yet still deploys.
+// Optional: canopy suspends on windows whether or not it can announce them.
 export const slackerMaintenanceDeclaredUrl = cfg.get('slackerMaintenanceDeclaredUrl');
 export const slackerMaintenanceEndedUrl = cfg.get('slackerMaintenanceEndedUrl');
 
