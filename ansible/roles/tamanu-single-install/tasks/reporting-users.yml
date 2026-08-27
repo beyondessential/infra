@@ -52,3 +52,8 @@
     method: scram-sha-256
     address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
   notify: Reload postgres
+
+# Tamanu authenticates as these roles at startup, so the pg_hba entries have to be
+# live before a later play starts it, not at the end-of-play handler flush.
+- name: Apply the reporting pg_hba entries
+  ansible.builtin.meta: flush_handlers
