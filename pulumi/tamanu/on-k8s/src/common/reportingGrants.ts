@@ -10,10 +10,13 @@ import { DEFAULT_POSTGRES_VERSION } from '../../../../constants/internal.ts';
 // server on startup. Reconcile the grants as superuser on each deploy; a no-op
 // when the roles are absent (fresh cluster: app creates them itself) or already
 // granted.
+// CREATEROLE is reconciled here too: `app` can't be a CNPG managed role (see
+// reportingRoles.ts), and initSql only runs at first bootstrap.
 // Named dollar-quoting: kubelet command expansion collapses an anonymous $$ to $.
 const GRANTS_SQL = `
 DO $do$
 BEGIN
+  ALTER ROLE app WITH CREATEROLE;
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_reporting') THEN
     GRANT tamanu_reporting TO app WITH ADMIN OPTION;
   END IF;
