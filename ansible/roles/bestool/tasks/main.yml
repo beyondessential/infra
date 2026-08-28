@@ -131,12 +131,16 @@
   when: bestool_ships_alertd_unit
   loop: "{{ [alertd_cluster_database_url, alertd_app_database_url] | select | list }}"
   become: true
+  environment:
+    TAMANU_DATABASE_URL: "{{ item }}"
   ansible.builtin.command:
     argv:
-      - psql
-      - "{{ item }}"
-      - -Atc
-      - select 1
+      - bestool
+      - tamanu
+      - doctor
+      - --check
+      - db_connect
+      - --no-daemon
   changed_when: false
 
 - name: Wire the bestool-alertd Munin plugin (when packaged and Munin present)
