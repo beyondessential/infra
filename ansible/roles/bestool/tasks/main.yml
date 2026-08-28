@@ -121,9 +121,8 @@
     enabled: true
     daemon_reload: true
 
-# The drop-in and the database roles it names are owned by different ansible
-# roles, so a tag-scoped run can leave alertd pointed at auth that no longer
-# works. Connect the way the daemon does before calling the play done.
+# The drop-in and the database roles it names come from different ansible roles,
+# so a tag-scoped run can leave them out of step.
 - name: Apply the alertd database configuration
   ansible.builtin.meta: flush_handlers
 
