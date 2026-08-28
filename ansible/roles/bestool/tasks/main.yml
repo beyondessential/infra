@@ -121,5 +121,23 @@
     enabled: true
     daemon_reload: true
 
+# The drop-in and the database roles it names are owned by different ansible
+# roles, so a tag-scoped run can leave alertd pointed at auth that no longer
+# works. Connect the way the daemon does before calling the play done.
+- name: Apply the alertd database configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Check alertd can reach the databases it monitors
+  when: bestool_ships_alertd_unit
+  loop: "{{ [alertd_cluster_database_url, alertd_app_database_url] | select | list }}"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - psql
+      - "{{ item }}"
+      - -Atc
+      - select 1
+  changed_when: false
+
 - name: Wire the bestool-alertd Munin plugin (when packaged and Munin present)
   ansible.builtin.include_tasks: munin-plugin.yml
