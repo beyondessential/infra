@@ -17,6 +17,7 @@ name: canopy
 short_description: Deployment inventory from canopy
 description:
   - Reads one deployment's hosts and the variables that configure them from canopy.
+  - A deployment is a canopy group at one rank, so a group holding more than one rank needs O(rank) as well.
   - Hosts are grouped by kind (C(central), C(facility), C(standalone)) and by product (C(tamanu), C(senaite), C(canopy)).
   - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
   - A successful fetch is cached. If canopy cannot be reached the cache is used and a warning is printed; if canopy
@@ -32,6 +33,9 @@ options:
   group_id:
     description: Identifier of the canopy server group. Give this or O(group).
     type: str
+  rank:
+    description: Rank of the deployment within the group, such as C(production) or C(demo).
+    type: str
   url:
     description: Base URL of canopy's operator interface.
     type: str
@@ -46,7 +50,8 @@ options:
 EXAMPLES = r"""
 # inventory/canopy/kamaka-prod.yml
 plugin: canopy
-group: kamaka-prod
+group: kamaka
+rank: production
 """
 
 display = Display()
@@ -77,7 +82,10 @@ class InventoryModule(BaseInventoryPlugin):
             fatal(f"{path}: give exactly one of group or group_id")
 
         args = {"group": group} if group else {"server_group_id": group_id}
-        data = self._fetch(args, group or group_id)
+        rank = self.get_option("rank")
+        if rank:
+            args["rank"] = rank
+        data = self._fetch(args, f"{group or group_id}-{rank}" if rank else group or group_id)
 
         for key, value in data["vars"].items():
             if VALID_VAR_NAME.match(key):
