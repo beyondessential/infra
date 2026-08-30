@@ -121,5 +121,26 @@
     enabled: true
     daemon_reload: true
 
+# The drop-in and the database roles it names come from different ansible roles,
+# so a tag-scoped run can leave them out of step.
+- name: Apply the alertd database configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Check alertd can reach the databases it monitors
+  when: bestool_ships_alertd_unit
+  loop: "{{ [alertd_cluster_database_url, alertd_app_database_url] | select | list }}"
+  become: true
+  environment:
+    TAMANU_DATABASE_URL: "{{ item }}"
+  ansible.builtin.command:
+    argv:
+      - bestool
+      - tamanu
+      - doctor
+      - --check
+      - db_connect
+      - --no-daemon
+  changed_when: false
+
 - name: Wire the bestool-alertd Munin plugin (when packaged and Munin present)
   ansible.builtin.include_tasks: munin-plugin.yml
