@@ -49,7 +49,8 @@ options:
 """
 
 EXAMPLES = r"""
-# inventory/canopy/kamaka-prod.yml
+# inventory/canopy/kamaka-prod.yml, with `inventory_plugins = ./inventory_plugins`
+# in the ansible.cfg the run picks up, and ansible run from the ansible/ directory.
 plugin: canopy
 group: kamaka
 rank: production
