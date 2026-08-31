@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -59,6 +60,13 @@ display = Display()
 VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # urllib turns a redirected POST into a bodiless GET, which canopy
+        # answers with a 405 that reads as a refusal.
+        fatal(f"{req.full_url} redirects to {newurl}; point CANOPY_URL at canopy itself")
+
+
 def fatal(message):
     # Ansible downgrades an AnsibleError here to a warning over an empty inventory.
     raise SystemExit(f"canopy inventory: {message}")
@@ -89,11 +97,15 @@ class InventoryModule(BaseInventoryPlugin):
         if rank:
             args["rank"] = rank
 
-        key = f"{group or group_id}-{rank}" if rank else group or group_id
+        # The readable half of the name can collide (a group named kamaka at
+        # rank production, against a group named kamaka-production), so the
+        # digest of the request is what actually distinguishes the file.
+        label = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(group or group_id))
+        digest = hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest()[:12]
         cache_file = Path(
             os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache",
             "canopy-inventory",
-            f"{re.sub(r'[^a-zA-Z0-9_.-]', '_', str(key))}.json",
+            f"{label}-{digest}.json",
         )
         data, fresh = self._fetch(args, cache_file)
 
@@ -137,8 +149,9 @@ class InventoryModule(BaseInventoryPlugin):
             data=json.dumps(args).encode(),
             headers={"content-type": "application/json"},
         )
+        opener = urllib.request.build_opener(NoRedirect)
         try:
-            with urllib.request.urlopen(request, timeout=self.get_option("timeout")) as response:
+            with opener.open(request, timeout=self.get_option("timeout")) as response:
                 return json.load(response), True
         except urllib.error.HTTPError as err:
             if 400 <= err.code < 500:
