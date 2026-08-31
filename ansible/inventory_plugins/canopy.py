@@ -21,8 +21,12 @@ description:
   - A deployment is a canopy group at one rank, so a group holding more than one rank needs O(rank) as well.
   - Hosts are grouped by kind (C(central), C(facility), C(standalone)) and by product (C(tamanu), C(senaite), C(canopy)).
   - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
-  - A successful fetch is cached. If canopy cannot be reached the cache is used and a warning is printed; if canopy
-    refuses the request the run stops, since a refusal is an answer and the cache would talk over it.
+  - Reading an inventory requires canopy administrator access, since it carries the deployment's secret variables.
+  - A successful fetch is cached minus every secret value, the cache being a file on the operator's disk. A run
+    falling back to it warns which variables are unset, so a play needing one fails on it rather than acting on a
+    stale value.
+  - If canopy cannot be reached the cache is used and a warning is printed; if canopy refuses the request the run
+    stops, since a refusal is an answer and the cache would talk over it.
 options:
   plugin:
     description: Marks this file as a canopy inventory source.
@@ -59,6 +63,27 @@ rank: production
 display = Display()
 
 VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def without_secret_values(data):
+    """The payload with every secret value dropped, the names left in place.
+
+    The cache is a plaintext file on the operator's disk, and a secret variable
+    is served for the run that asked for it.
+    """
+
+    def plain(vars_, names):
+        return {key: value for key, value in vars_.items() if key not in names}
+
+    kept = dict(data)
+    kept["vars"] = plain(data["vars"], set(data.get("secret_vars") or []))
+    kept["hosts"] = []
+    for host in data["hosts"]:
+        names = set(host.get("secret_vars") or [])
+        kept["hosts"].append(
+            dict(host, vars=plain(host["vars"], names), own_vars=plain(host.get("own_vars", {}), names))
+        )
+    return kept
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -109,6 +134,8 @@ class InventoryModule(BaseInventoryPlugin):
             f"{label}-{digest}.json",
         )
         data, fresh = self._fetch(args, cache_file)
+        if not fresh:
+            self._warn_withheld(data)
 
         for key, value in data["vars"].items():
             if VALID_VAR_NAME.match(key):
@@ -133,9 +160,9 @@ class InventoryModule(BaseInventoryPlugin):
                     inventory.set_variable(name, key, value)
 
         # Only a payload ansible has made an inventory out of is worth keeping
-        # for the offline path.
+        # for the offline path, and only the half of it that may be written down.
         if fresh:
-            self._store(cache_file, data)
+            self._store(cache_file, without_secret_values(data))
 
     def _fetch(self, args, cache_file):
         if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
@@ -160,6 +187,17 @@ class InventoryModule(BaseInventoryPlugin):
             return self._cached(cache_file, f"canopy answered {err.code} {err.reason}"), False
         except (urllib.error.URLError, TimeoutError, OSError) as err:
             return self._cached(cache_file, str(err)), False
+
+    @staticmethod
+    def _warn_withheld(data):
+        withheld = set(data.get("secret_vars") or [])
+        for host in data["hosts"]:
+            withheld.update(host.get("secret_vars") or [])
+        if withheld:
+            display.warning(
+                "canopy inventory: the cache holds no secret value, so "
+                f"{', '.join(sorted(withheld))} are unset; a play needing one fails on it"
+            )
 
     def _cached(self, cache_file, why):
         if not cache_file.exists():

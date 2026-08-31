@@ -23,7 +23,8 @@ INVENTORY = {
     "group_id": "11111111-0000-4000-8000-000000000001",
     "group": "kamaka",
     "rank": "production",
-    "vars": {"timezone": "Pacific/Auckland", "billing.deployment": "kamaka"},
+    "vars": {"timezone": "Pacific/Auckland", "billing.deployment": "kamaka", "salt": "pepper"},
+    "secret_vars": ["salt"],
     "hosts": [
         {
             "id": "33333333-0000-4000-8000-000000000001",
@@ -36,8 +37,15 @@ INVENTORY = {
                 "ansible_user": "ubuntu",
                 "elastic_agent_enabled": True,
                 "billing.deployment": "kamaka",
+                "salt": "pepper",
+                "tls_dns_access_key": "vinegar",
             },
-            "own_vars": {"ansible_user": "ubuntu", "elastic_agent_enabled": True},
+            "own_vars": {
+                "ansible_user": "ubuntu",
+                "elastic_agent_enabled": True,
+                "tls_dns_access_key": "vinegar",
+            },
+            "secret_vars": ["salt", "tls_dns_access_key"],
         },
         {
             "id": "33333333-0000-4000-8000-000000000002",
@@ -45,8 +53,9 @@ INVENTORY = {
             "product": "tamanu",
             "kind": "facility",
             "address": "facility.kamaka.example",
-            "vars": {"timezone": "Pacific/Auckland"},
+            "vars": {"timezone": "Pacific/Auckland", "salt": "pepper"},
             "own_vars": {},
+            "secret_vars": ["salt"],
         },
     ],
 }
@@ -235,6 +244,45 @@ class WhenCanopyCannotBeReached(PluginTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("nothing cached", result.stderr)
         self.assertEqual(canopy.requests, [], "offline must not reach canopy")
+
+
+class SecretVariables(PluginTestCase):
+    def prime_cache(self, source):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(source, canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cached = list(self.cache.glob("canopy-inventory/*.json"))
+        self.assertEqual(len(cached), 1)
+        return cached[0]
+
+    def test_a_secret_value_reaches_the_run(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
+        self.assertEqual(plain(hostvars["kamaka-prod-central"]["salt"]), "pepper")
+        self.assertEqual(plain(hostvars["kamaka-prod-central"]["tls_dns_access_key"]), "vinegar")
+        self.assertEqual(plain(hostvars["kamaka-prod-facility"]["salt"]), "pepper")
+
+    def test_the_cache_holds_no_secret_value(self):
+        cached = self.prime_cache(self.source(group="kamaka")).read_text()
+        self.assertNotIn("pepper", cached)
+        self.assertNotIn("vinegar", cached)
+        # The names stay, so a run off the cache can say what is missing.
+        self.assertIn("salt", json.loads(cached)["secret_vars"])
+        self.assertIn("Pacific/Auckland", cached)
+
+    def test_a_cached_run_leaves_a_secret_unset_and_says_so(self):
+        source = self.source(group="kamaka")
+        self.prime_cache(source)
+        with StubCanopy(status=502, body="nope", content_type="text/plain") as canopy:
+            result = self.run_inventory(source, canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("salt", result.stderr)
+        self.assertIn("tls_dns_access_key", result.stderr)
+        hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
+        self.assertNotIn("salt", hostvars["kamaka-prod-central"])
+        self.assertEqual(plain(hostvars["kamaka-prod-central"]["ansible_user"]), "ubuntu")
 
 
 class ConfiguringTheSource(PluginTestCase):
