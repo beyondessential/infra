@@ -24,6 +24,7 @@
 - name: Add new tamanu app config
   when: copy_current.failed
   become: true
+  diff: false
   ansible.builtin.template:
     dest: /etc/tamanu/{{ tamanu_version }}/production.json5
     src: "{{ tamanu_server_type }}.json5.j2"
@@ -57,22 +58,15 @@
 
 - name: Add version file
   become: true
-  ansible.builtin.copy:
+  diff: false
+  ansible.builtin.template:
+    src: env.j2
     dest: /etc/tamanu/env
     # 0640: carries the core DB password in DATABASE_URL, so not world-readable;
     # group read-only (not writable) since only Ansible writes this file.
     mode: "0640"
     owner: tamanu
     group: tamanu
-    content: |
-      # this is controlled by Ansible and will be overwritten if you make changes
-      TZ={{ timezone }}
-      PROXY_TRUSTED=loopback,linklocal,uniquelocal
-      TAMANU_VERSION={{ tamanu_version }}
-      TAMANU_VERSION_DOMAIN={{ tamanu_version | replace('.', '-') }}
-      TAMANU_FRONTEND_VERSION={{ tamanu_frontend_version }}
-      TAMANU_FRONTEND_VERSION_DOMAIN={{ tamanu_frontend_version | replace('.', '-') }}
-      DATABASE_URL=postgresql://{{ tamanu_db_user }}:{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}@/{{ tamanu_db_name }}?host=/var/run/postgresql
 
 # Per-server AES key for local_system_secrets encryption, kept as a podman secret.
 # Piped from /dev/urandom straight into podman so it never touches Ansible; never
