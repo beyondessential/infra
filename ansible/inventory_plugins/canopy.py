@@ -60,9 +60,7 @@ VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 def fatal(message):
-    # An AnsibleError raised from an inventory plugin is downgraded to a warning
-    # and leaves the run with an empty inventory, which reads as a play that
-    # matched no hosts rather than as canopy declining to serve one.
+    # Ansible downgrades an AnsibleError here to a warning over an empty inventory.
     raise SystemExit(f"canopy inventory: {message}")
 
 
@@ -75,24 +73,40 @@ class InventoryModule(BaseInventoryPlugin):
     def parse(self, inventory, loader, path, cache=True):
         super().parse(inventory, loader, path, cache)
         self._read_config_data(path)
+        try:
+            self._populate(inventory)
+        except Exception as err:
+            fatal(f"{path}: {type(err).__name__}: {err}")
 
+    def _populate(self, inventory):
         group = self.get_option("group")
         group_id = self.get_option("group_id")
         if bool(group) == bool(group_id):
-            fatal(f"{path}: give exactly one of group or group_id")
+            fatal("give exactly one of group or group_id")
 
         args = {"group": group} if group else {"server_group_id": group_id}
         rank = self.get_option("rank")
         if rank:
             args["rank"] = rank
-        data = self._fetch(args, f"{group or group_id}-{rank}" if rank else group or group_id)
+
+        key = f"{group or group_id}-{rank}" if rank else group or group_id
+        cache_file = Path(
+            os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache",
+            "canopy-inventory",
+            f"{re.sub(r'[^a-zA-Z0-9_.-]', '_', str(key))}.json",
+        )
+        data, fresh = self._fetch(args, cache_file)
 
         for key, value in data["vars"].items():
             if VALID_VAR_NAME.match(key):
                 inventory.set_variable("all", key, value)
 
+        seen = set()
         for host in data["hosts"]:
             name = host["name"]
+            if name in seen:
+                fatal(f"canopy serves two servers named {name!r}; one would stand in for both")
+            seen.add(name)
             inventory.add_host(name)
             for group_name in (host["kind"], host["product"]):
                 inventory.add_group(group_name)
@@ -105,15 +119,14 @@ class InventoryModule(BaseInventoryPlugin):
                 if VALID_VAR_NAME.match(key):
                     inventory.set_variable(name, key, value)
 
-    def _fetch(self, args, key):
-        cache_file = Path(
-            os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"),
-            "canopy-inventory",
-            f"{re.sub(r'[^a-zA-Z0-9_.-]', '_', str(key))}.json",
-        )
+        # Only a payload ansible has made an inventory out of is worth keeping
+        # for the offline path.
+        if fresh:
+            self._store(cache_file, data)
 
+    def _fetch(self, args, cache_file):
         if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
-            return self._cached(cache_file, "offline")
+            return self._cached(cache_file, "offline"), False
 
         url = self.get_option("url")
         if not url:
@@ -126,15 +139,13 @@ class InventoryModule(BaseInventoryPlugin):
         )
         try:
             with urllib.request.urlopen(request, timeout=self.get_option("timeout")) as response:
-                data = json.load(response)
+                return json.load(response), True
         except urllib.error.HTTPError as err:
-            fatal(f"canopy refused this inventory: {self._refusal(err)}")
+            if 400 <= err.code < 500:
+                fatal(f"canopy refused this inventory: {self._refusal(err)}")
+            return self._cached(cache_file, f"canopy answered {err.code} {err.reason}"), False
         except (urllib.error.URLError, TimeoutError, OSError) as err:
-            return self._cached(cache_file, str(err))
-
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(json.dumps(data))
-        return data
+            return self._cached(cache_file, str(err)), False
 
     def _cached(self, cache_file, why):
         if not cache_file.exists():
@@ -143,9 +154,20 @@ class InventoryModule(BaseInventoryPlugin):
         return json.loads(cache_file.read_text())
 
     @staticmethod
+    def _store(cache_file, data):
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.parent.chmod(0o700)
+        staged = cache_file.with_suffix(".staged")
+        staged.write_text(json.dumps(data))
+        staged.chmod(0o600)
+        staged.replace(cache_file)
+
+    @staticmethod
     def _refusal(err):
         try:
             problem = json.load(err)
-            return problem.get("detail") or problem.get("title") or err.reason
         except (json.JSONDecodeError, UnicodeDecodeError):
-            return f"{err.code} {err.reason}"
+            problem = None
+        if isinstance(problem, dict):
+            return problem.get("detail") or problem.get("title") or err.reason
+        return f"{err.code} {err.reason}"
