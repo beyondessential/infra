@@ -182,5 +182,6 @@ class InventoryModule(BaseInventoryPlugin):
         except (json.JSONDecodeError, UnicodeDecodeError):
             problem = None
         if isinstance(problem, dict):
-            return problem.get("detail") or problem.get("title") or err.reason
+            # title is canopy's sentence; detail is its error type's debug form.
+            return problem.get("title") or problem.get("detail") or err.reason
         return f"{err.code} {err.reason}"
