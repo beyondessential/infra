@@ -21,10 +21,9 @@ description:
   - A deployment is a canopy group at one rank, so a group holding more than one rank needs O(rank) as well.
   - Hosts are grouped by kind (C(central), C(facility), C(standalone)) and by product (C(tamanu), C(senaite), C(canopy)).
   - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
-  - Reading an inventory requires canopy administrator access, since it carries the deployment's secret variables.
-  - A successful fetch is cached minus every secret value, the cache being a file on the operator's disk. A run
-    falling back to it warns which variables are unset, so a play needing one fails on it rather than acting on a
-    stale value.
+  - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
+  - A successful fetch is cached, minus every secret value. A run falling back to that cache warns which variables
+    are unset, so a play needing one fails on it rather than acting on a stale value.
   - If canopy cannot be reached the cache is used and a warning is printed; if canopy refuses the request the run
     stops, since a refusal is an answer and the cache would talk over it.
 options:
@@ -66,24 +65,30 @@ VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 def without_secret_values(data):
-    """The payload with every secret value dropped, the names left in place.
+    """The payload with every secret value dropped and the names left in place.
 
-    The cache is a plaintext file on the operator's disk, and a secret variable
-    is served for the run that asked for it.
+    Canopy serves a secret value to the run that asked for it; the cache is a
+    plaintext file that outlives the run.
     """
 
     def plain(vars_, names):
         return {key: value for key, value in vars_.items() if key not in names}
 
-    kept = dict(data)
-    kept["vars"] = plain(data["vars"], set(data.get("secret_vars") or []))
-    kept["hosts"] = []
+    hosts = []
     for host in data["hosts"]:
         names = set(host.get("secret_vars") or [])
-        kept["hosts"].append(
-            dict(host, vars=plain(host["vars"], names), own_vars=plain(host.get("own_vars", {}), names))
+        hosts.append(
+            dict(
+                host,
+                vars=plain(host["vars"], names),
+                own_vars=plain(host.get("own_vars", {}), names),
+            )
         )
-    return kept
+    return dict(
+        data,
+        vars=plain(data["vars"], set(data.get("secret_vars") or [])),
+        hosts=hosts,
+    )
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
