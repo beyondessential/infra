@@ -80,7 +80,6 @@
 
 # A restore of this host's database refuses until a key snapshot exists to pair
 # with, so take one as the def lands. In-process: the daemon has yet to reload.
-# Best-effort: canopy being unreachable is no reason to fail an upgrade.
 - name: Take the first key backup
   become: true
   ansible.builtin.command: /usr/bin/bestool canopy backup --type tamanu-secrets --no-daemon
