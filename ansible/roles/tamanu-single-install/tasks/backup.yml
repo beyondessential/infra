@@ -68,5 +68,14 @@
     owner: root
     group: root
     mode: "0644"
+  register: tamanu_secrets_def
   notify:
     - Reload bestool-alertd
+
+# A restore of this host's database refuses until a key snapshot exists to pair
+# with, so take one as the def lands. In-process: the daemon has yet to reload.
+- name: Take the first key backup
+  become: true
+  ansible.builtin.command: /usr/bin/bestool canopy backup --type tamanu-secrets --no-daemon
+  changed_when: true
+  when: tamanu_secrets_def is changed
