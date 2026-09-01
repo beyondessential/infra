@@ -80,10 +80,21 @@
 
 # A restore of this host's database refuses until a key snapshot exists to pair
 # with, so take one as the def lands. In-process: the daemon has yet to reload.
+# Best-effort: canopy being unreachable is no reason to fail an upgrade.
 - name: Take the first key backup
   become: true
   ansible.builtin.command: /usr/bin/bestool canopy backup --type tamanu-secrets --no-daemon
-  changed_when: true
+  register: tamanu_secrets_backup
+  changed_when: tamanu_secrets_backup.rc == 0
+  failed_when: false
   when:
     - tamanu_secrets_def is changed
     - tamanu_postgres_def.stat.exists
+
+- name: Warn when the host has no key snapshot yet
+  ansible.builtin.debug:
+    msg: >-
+      The first key backup did not run, so a restore of this host's database
+      will refuse until one succeeds:
+      bestool canopy backup --type tamanu-secrets
+  when: tamanu_secrets_backup.rc | default(0) != 0
