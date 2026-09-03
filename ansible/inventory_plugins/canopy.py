@@ -28,6 +28,8 @@ description:
     are unset, so a play needing one fails on it rather than acting on a stale value.
   - If canopy cannot be reached the cache is used and a warning is printed; if canopy refuses the request the run
     stops, since a refusal is an answer and the cache would talk over it.
+  - An C(upgrade) of a production deployment is refused unless the group has an open upgrade plan, and
+    never runs from the cache, since that plan is what canopy is being asked.
 options:
   plugin:
     description: Marks this file as a canopy inventory source.
@@ -48,6 +50,16 @@ options:
     type: str
     env:
       - name: CANOPY_RANK
+  intent:
+    description:
+      - What the run is doing to the deployment. Canopy refuses an C(upgrade) of a
+        production deployment unless the group has an open upgrade plan, and an
+        upgrade never runs from the cache, since that plan is what canopy is being asked.
+    type: str
+    choices: [configure, upgrade]
+    default: configure
+    env:
+      - name: CANOPY_INTENT
   url:
     description: Base URL of canopy's operator interface.
     type: str
@@ -139,6 +151,8 @@ class InventoryModule(BaseInventoryPlugin):
         rank = self.get_option("rank")
         if rank:
             args["rank"] = rank
+        if self.get_option("intent") == "upgrade":
+            args["intent"] = "upgrade"
 
         # The readable half of the name can collide (a group named kamaka at
         # rank production, against a group named kamaka-production), so the
@@ -183,7 +197,7 @@ class InventoryModule(BaseInventoryPlugin):
 
     def _fetch(self, args, cache_file):
         if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
-            return self._cached(cache_file, "offline"), False
+            return self._fallback(args, cache_file, "offline"), False
 
         url = self.get_option("url")
         if not url:
@@ -201,9 +215,15 @@ class InventoryModule(BaseInventoryPlugin):
         except urllib.error.HTTPError as err:
             if 400 <= err.code < 500:
                 fatal(f"canopy refused this inventory: {self._refusal(err)}")
-            return self._cached(cache_file, f"canopy answered {err.code} {err.reason}"), False
+            return self._fallback(args, cache_file, f"canopy answered {err.code} {err.reason}"), False
         except (urllib.error.URLError, TimeoutError, OSError) as err:
-            return self._cached(cache_file, str(err)), False
+            return self._fallback(args, cache_file, str(err)), False
+
+    def _fallback(self, args, cache_file, why):
+        # The cache cannot carry canopy's say-so on an upgrade of production.
+        if args.get("intent") == "upgrade":
+            fatal(f"{why}; an upgrade needs canopy's answer and never runs from the cache")
+        return self._cached(cache_file, why)
 
     @staticmethod
     def _warn_withheld(data):
