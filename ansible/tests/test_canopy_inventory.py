@@ -132,7 +132,7 @@ class PluginTestCase(unittest.TestCase):
             XDG_CACHE_HOME=str(self.cache),
             CANOPY_URL=url,
         )
-        for name in ("CANOPY_INVENTORY_OFFLINE", "CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK"):
+        for name in ("CANOPY_INVENTORY_OFFLINE", "CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK", "CANOPY_INTENT"):
             env.pop(name, None)
         env.update(run_env)
         if offline:
@@ -320,6 +320,14 @@ class ConfiguringTheSource(PluginTestCase):
 
 
 class DeclaringIntent(PluginTestCase):
+    def test_the_run_declares_its_intent(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(
+                self.source(), canopy.url, CANOPY_GROUP="kamaka", CANOPY_INTENT="upgrade"
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(canopy.requests, [{"group": "kamaka", "intent": "upgrade"}])
+
     def test_an_upgrade_declares_its_intent(self):
         with StubCanopy() as canopy:
             result = self.run_inventory(self.source(group="kamaka", intent="upgrade"), canopy.url)
