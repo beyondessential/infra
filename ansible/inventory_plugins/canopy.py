@@ -19,6 +19,8 @@ short_description: Deployment inventory from canopy
 description:
   - Reads one deployment's hosts and the variables that configure them from canopy.
   - A deployment is a canopy group at one rank, so a group holding more than one rank needs O(rank) as well.
+  - The run names the deployment through C(CANOPY_GROUP) or C(CANOPY_GROUP_ID) and C(CANOPY_RANK), so one
+    committed source file serves every deployment and the repo lists none of them.
   - Hosts are grouped by kind (C(central), C(facility), C(standalone)) and by product (C(tamanu), C(senaite), C(canopy)).
   - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
   - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
@@ -34,12 +36,18 @@ options:
   group:
     description: Name of the canopy server group holding the deployment. Give this or O(group_id).
     type: str
+    env:
+      - name: CANOPY_GROUP
   group_id:
     description: Identifier of the canopy server group. Give this or O(group).
     type: str
+    env:
+      - name: CANOPY_GROUP_ID
   rank:
     description: Rank of the deployment within the group, such as C(production) or C(demo).
     type: str
+    env:
+      - name: CANOPY_RANK
   url:
     description: Base URL of canopy's operator interface.
     type: str
@@ -52,8 +60,12 @@ options:
 """
 
 EXAMPLES = r"""
-# inventory/canopy/kamaka-prod.yml, with `inventory_plugins = ./inventory_plugins`
-# in the ansible.cfg the run picks up, and ansible run from the ansible/ directory.
+# inventory/canopy.yml, with `inventory_plugins = ./inventory_plugins` in the
+# ansible.cfg the run picks up, and ansible run from the ansible/ directory:
+#   CANOPY_GROUP=kamaka CANOPY_RANK=production ansible-playbook -i inventory/canopy.yml tamanu-upgrade.yml
+plugin: canopy
+
+# A source file may name the deployment itself, kept outside the repo.
 plugin: canopy
 group: kamaka
 rank: production
@@ -121,7 +133,7 @@ class InventoryModule(BaseInventoryPlugin):
         group = self.get_option("group")
         group_id = self.get_option("group_id")
         if bool(group) == bool(group_id):
-            fatal("give exactly one of group or group_id")
+            fatal("give exactly one of group or group_id, in the source file or as CANOPY_GROUP or CANOPY_GROUP_ID")
 
         args = {"group": group} if group else {"server_group_id": group_id}
         rank = self.get_option("rank")

@@ -124,7 +124,7 @@ class PluginTestCase(unittest.TestCase):
         path.write_text("plugin: canopy\n" + "".join(f"{k}: {v}\n" for k, v in keys.items()))
         return path
 
-    def run_inventory(self, source, url, offline=False, args=("--list",)):
+    def run_inventory(self, source, url, offline=False, args=("--list",), **run_env):
         env = dict(
             os.environ,
             ANSIBLE_CONFIG=str(self.config),
@@ -132,7 +132,9 @@ class PluginTestCase(unittest.TestCase):
             XDG_CACHE_HOME=str(self.cache),
             CANOPY_URL=url,
         )
-        env.pop("CANOPY_INVENTORY_OFFLINE", None)
+        for name in ("CANOPY_INVENTORY_OFFLINE", "CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK"):
+            env.pop(name, None)
+        env.update(run_env)
         if offline:
             env["CANOPY_INVENTORY_OFFLINE"] = "1"
         return subprocess.run(
@@ -165,6 +167,23 @@ class ServingAnInventory(PluginTestCase):
         # Ansible cannot address a dotted name as a variable, so it is left out
         # rather than served as something unusable.
         self.assertNotIn("billing.deployment", central)
+
+    def test_the_run_names_the_deployment(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(
+                self.source(), canopy.url, CANOPY_GROUP="kamaka", CANOPY_RANK="production"
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(canopy.requests, [{"group": "kamaka", "rank": "production"}])
+        self.assertEqual(data["central"]["hosts"], ["kamaka-prod-central"])
+
+    def test_a_source_naming_no_deployment_stops_the_run(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("give exactly one of group or group_id", result.stderr)
+        self.assertEqual(canopy.requests, [])
 
     def test_a_servers_own_ansible_host_wins_over_the_address(self):
         body = json.loads(json.dumps(INVENTORY))
