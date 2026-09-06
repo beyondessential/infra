@@ -132,7 +132,7 @@ class PluginTestCase(unittest.TestCase):
             XDG_CACHE_HOME=str(self.cache),
             CANOPY_URL=url,
         )
-        for name in ("CANOPY_INVENTORY_OFFLINE", "CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK"):
+        for name in ("CANOPY_INVENTORY_OFFLINE", "CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK", "CANOPY_INTENT"):
             env.pop(name, None)
         env.update(run_env)
         if offline:
@@ -317,6 +317,48 @@ class ConfiguringTheSource(PluginTestCase):
             result = self.run_inventory(source, canopy.url)
         self.assertEqual(result.returncode, 1)
         self.assertIn("exactly one of group or group_id", result.stderr)
+
+
+class DeclaringIntent(PluginTestCase):
+    def test_the_run_declares_its_intent(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(
+                self.source(), canopy.url, CANOPY_GROUP="kamaka", CANOPY_INTENT="upgrade"
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(canopy.requests, [{"group": "kamaka", "intent": "upgrade"}])
+
+    def test_an_upgrade_declares_its_intent(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(group="kamaka", intent="upgrade"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(canopy.requests, [{"group": "kamaka", "intent": "upgrade"}])
+
+    def test_configuring_declares_nothing(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(group="kamaka", intent="configure"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(canopy.requests, [{"group": "kamaka"}])
+
+    def test_an_unplanned_upgrade_is_refused(self):
+        problem = json.dumps(
+            {"title": 'conflict: server group "kamaka" has no upgrade plan; record one before upgrading production'}
+        )
+        with StubCanopy(status=409, body=problem) as canopy:
+            result = self.run_inventory(self.source(group="kamaka", intent="upgrade"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no upgrade plan", result.stderr)
+
+    def test_an_upgrade_never_runs_from_the_cache(self):
+        source = self.source(group="kamaka", intent="upgrade")
+        with StubCanopy() as canopy:
+            result = self.run_inventory(source, canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(list(self.cache.glob("canopy-inventory/*.json"))), 1)
+        with StubCanopy(status=502, body="<html>bad gateway</html>", content_type="text/html") as canopy:
+            result = self.run_inventory(source, canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("never runs from the cache", result.stderr)
 
 
 if __name__ == "__main__":
