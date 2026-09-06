@@ -11,11 +11,9 @@
 
 - name: Configure AWS credentials for ACME DNS
   become: true
-  ansible.builtin.copy:
-    content: |
-      [default]
-      aws_access_key_id = {{ tamanu_caddy_tls_dns_iam.access_key_id }}
-      aws_secret_access_key = {{ tamanu_caddy_tls_dns_iam.secret_access_key }}
+  diff: false
+  ansible.builtin.template:
+    src: aws-credentials.j2
     dest: /var/lib/caddy/.aws/credentials
     owner: caddy
     group: caddy
