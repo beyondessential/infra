@@ -115,6 +115,13 @@ def without_secret_values(data):
     )
 
 
+def ansible_groups(app_type):
+    """The product an application is, and the role it plays: `tamanu-facility`
+    is a facility of tamanu, and a type naming no role is a standalone."""
+    product, _, role = app_type.partition("-")
+    return product, role or "standalone"
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         # urllib turns a redirected POST into a bodiless GET, which canopy
@@ -179,7 +186,7 @@ class InventoryModule(BaseInventoryPlugin):
                 fatal(f"canopy serves two servers named {name!r}; one would stand in for both")
             seen.add(name)
             inventory.add_host(name)
-            for group_name in (host["kind"], host["product"]):
+            for group_name in ansible_groups(host["type"]):
                 inventory.add_group(group_name)
                 inventory.add_child(group_name, name)
             if host["address"]:

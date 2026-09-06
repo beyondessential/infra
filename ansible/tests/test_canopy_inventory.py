@@ -29,8 +29,7 @@ INVENTORY = {
         {
             "id": "33333333-0000-4000-8000-000000000001",
             "name": "kamaka-prod-central",
-            "product": "tamanu",
-            "kind": "central",
+            "type": "tamanu-central",
             "address": "kamaka-prod-central",
             "vars": {
                 "timezone": "Pacific/Auckland",
@@ -50,8 +49,7 @@ INVENTORY = {
         {
             "id": "33333333-0000-4000-8000-000000000002",
             "name": "kamaka-prod-facility",
-            "product": "tamanu",
-            "kind": "facility",
+            "type": "tamanu-facility",
             "address": "facility.kamaka.example",
             "vars": {"timezone": "Pacific/Auckland", "salt": "pepper"},
             "own_vars": {},
