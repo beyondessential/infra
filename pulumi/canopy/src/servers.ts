@@ -237,6 +237,13 @@ new k8s.apps.v1.Deployment(
                 name: 'DB_MAX_OPEN_CONNECTIONS',
                 value: '10',
               },
+              // Artifact URLs and the RSS feed's link/guid are fetched later by
+              // someone else, so the origin must be canonical rather than the
+              // caller's own Host.
+              {
+                name: 'PUBLIC_URL',
+                value: `https://${domains[0]}`,
+              },
               {
                 name: 'STATUS_PAGE_URL',
                 value: `https://${tailscaleHostname}.${TAILNET_DOMAIN}/`,
