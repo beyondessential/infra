@@ -9,6 +9,14 @@
         that: tamanu_version is defined
         msg: "tamanu_version is not defined. Please set it in the inventory file."
 
+    - name: Check the inventory was read as an upgrade
+      tags: [pre, go]
+      ansible.builtin.assert:
+        that: canopy_intent | default('upgrade') == 'upgrade'
+        msg: >-
+          This inventory was read as a {{ canopy_intent }}, so canopy never
+          checked for an upgrade plan. Re-run with CANOPY_INTENT=upgrade.
+
     # - name: Check tamanu-run works and the version exists before doing anything
     #   tags: [pre, go]
     #   ansible.builtin.command: tamanu-run {{ tamanu_version }} help

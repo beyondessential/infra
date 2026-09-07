@@ -35,6 +35,7 @@ INVENTORY = {
                 "timezone": "Pacific/Auckland",
                 "ansible_user": "ubuntu",
                 "elastic_agent_enabled": True,
+                "managed_by_ansible": True,
                 "billing.deployment": "kamaka",
                 "salt": "pepper",
                 "tls_dns_access_key": "vinegar",
@@ -51,7 +52,7 @@ INVENTORY = {
             "name": "kamaka-prod-facility",
             "type": "tamanu-facility",
             "address": "facility.kamaka.example",
-            "vars": {"timezone": "Pacific/Auckland", "salt": "pepper"},
+            "vars": {"timezone": "Pacific/Auckland", "salt": "pepper", "managed_by_ansible": True},
             "own_vars": {},
             "secret_vars": ["salt"],
         },
@@ -233,6 +234,36 @@ class NamingAHost(PluginTestCase):
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("holds no address", result.stderr)
+
+
+class ChoosingWhatToConfigure(PluginTestCase):
+    def test_a_member_canopy_holds_but_ansible_does_not_manage_is_left_out(self):
+        body = json.loads(json.dumps(INVENTORY))
+        del body["hosts"][1]["vars"]["managed_by_ansible"]
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["central"]["hosts"], ["kamaka-prod-central"])
+        self.assertNotIn("facility", data)
+        self.assertIn("kamaka-prod-facility", result.stderr)
+
+    def test_an_environment_managing_nothing_stops_the_run(self):
+        body = json.loads(json.dumps(INVENTORY))
+        for host in body["hosts"]:
+            del host["vars"]["managed_by_ansible"]
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("managed_by_ansible", result.stderr)
+
+    def test_the_intent_reaches_the_play(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url, CANOPY_INTENT="upgrade")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
+        self.assertEqual(plain(hostvars["kamaka-prod-central"]["canopy_intent"]), "upgrade")
+        self.assertEqual(canopy.requests[0]["intent"], "upgrade")
 
 
 class Refusing(PluginTestCase):

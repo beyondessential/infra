@@ -25,6 +25,9 @@ description:
   - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
   - A host is named for that address, since canopy's own name for an application is a label an operator wrote
     and carries spaces. Two applications on one machine share an address, so those fall back to the label.
+  - Only members carrying C(managed_by_ansible) are served. Canopy holds every application in an environment,
+    including the ones this repo does not configure, so membership is opt-in rather than everything canopy knows.
+  - C(canopy_intent) carries the intent the inventory was read with, so a play can refuse to run under the wrong one.
   - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
   - A successful fetch is cached, minus every secret value. A run falling back to that cache warns which variables
     are unset, so a play needing one fails on it rather than acting on a stale value.
@@ -118,6 +121,7 @@ def without_secret_values(data):
 
 
 TAILNET_SUFFIX = ".ts.net"
+MANAGED_VAR = "managed_by_ansible"
 
 
 def slug(text):
@@ -207,9 +211,26 @@ class InventoryModule(BaseInventoryPlugin):
         for key, value in data["vars"].items():
             if VALID_VAR_NAME.match(key):
                 inventory.set_variable("all", key, value)
+        inventory.set_variable("all", "canopy_intent", self.get_option("intent"))
+
+        # Canopy holds every application in the environment, this repo
+        # configures a subset, and a play that reached the rest would act on
+        # machines nothing here has ever touched.
+        managed = [host for host in data["hosts"] if host["vars"].get(MANAGED_VAR)]
+        if not managed:
+            fatal(
+                f"none of canopy's {len(data['hosts'])} members carry {MANAGED_VAR}; "
+                f"set it on the applications this repo configures"
+            )
+        withheld = [host["name"] for host in data["hosts"] if not host["vars"].get(MANAGED_VAR)]
+        if withheld:
+            display.warning(
+                f"canopy inventory: {len(withheld)} of canopy's members carry no {MANAGED_VAR} "
+                f"and are left out: {', '.join(sorted(withheld))}"
+            )
 
         seen = set()
-        for host, name in zip(data["hosts"], host_names(data["hosts"])):
+        for host, name in zip(managed, host_names(managed)):
             if name in seen:
                 fatal(f"canopy serves two servers named {name!r}; one would stand in for both")
             seen.add(name)
