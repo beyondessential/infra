@@ -23,6 +23,8 @@ description:
     committed source file serves every deployment and the repo lists none of them.
   - Hosts are grouped by kind (C(central), C(facility), C(standalone)) and by product (C(tamanu), C(senaite), C(canopy)).
   - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
+  - A host is named for that address, since canopy's own name for an application is a label an operator wrote
+    and carries spaces. Two applications on one machine share an address, so those fall back to the label.
   - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
   - A successful fetch is cached, minus every secret value. A run falling back to that cache warns which variables
     are unset, so a play needing one fails on it rather than acting on a stale value.
@@ -115,6 +117,33 @@ def without_secret_values(data):
     )
 
 
+TAILNET_SUFFIX = ".ts.net"
+
+
+def slug(text):
+    return re.sub(r"[^A-Za-z0-9_.-]+", "-", text).strip("-")
+
+
+def host_names(hosts):
+    """What each member is addressed as in the inventory.
+
+    The address is what a play connects to and, in its tailnet form, the name
+    the deployment already goes by. Canopy's name is a label for an operator
+    to read, so it is the fallback rather than the first choice.
+    """
+    addressed = [
+        (host["address"].split(".")[0] if host["address"].endswith(TAILNET_SUFFIX) else host["address"])
+        if host["address"]
+        else ""
+        for host in hosts
+    ]
+    shared = {name for name in addressed if addressed.count(name) > 1}
+    return [
+        name if name and name not in shared else (slug(host["name"]) or host["id"])
+        for host, name in zip(hosts, addressed)
+    ]
+
+
 def ansible_groups(app_type):
     """The product an application is, and the role it plays: `tamanu-facility`
     is a facility of tamanu, and a type naming no role is a standalone."""
@@ -180,8 +209,7 @@ class InventoryModule(BaseInventoryPlugin):
                 inventory.set_variable("all", key, value)
 
         seen = set()
-        for host in data["hosts"]:
-            name = host["name"]
+        for host, name in zip(data["hosts"], host_names(data["hosts"])):
             if name in seen:
                 fatal(f"canopy serves two servers named {name!r}; one would stand in for both")
             seen.add(name)
@@ -191,6 +219,11 @@ class InventoryModule(BaseInventoryPlugin):
                 inventory.add_child(group_name, name)
             if host["address"]:
                 inventory.set_variable(name, "ansible_host", host["address"])
+            elif "ansible_host" not in host["vars"]:
+                display.warning(
+                    f"canopy inventory: canopy holds no address for {name}, and it sets no "
+                    "ansible_host, so the play will try to resolve that name"
+                )
             for key, value in host["vars"].items():
                 # Canopy tags include dotted keys such as billing.product, which
                 # are not addressable as Ansible variables.

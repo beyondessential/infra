@@ -152,10 +152,10 @@ class ServingAnInventory(PluginTestCase):
         data = json.loads(result.stdout)
         self.assertEqual(canopy.requests, [{"group": "kamaka", "rank": "production"}])
         self.assertEqual(data["central"]["hosts"], ["kamaka-prod-central"])
-        self.assertEqual(data["facility"]["hosts"], ["kamaka-prod-facility"])
+        self.assertEqual(data["facility"]["hosts"], ["facility.kamaka.example"])
         self.assertEqual(
             sorted(data["tamanu"]["hosts"]),
-            ["kamaka-prod-central", "kamaka-prod-facility"],
+            ["facility.kamaka.example", "kamaka-prod-central"],
         )
 
         central = data["_meta"]["hostvars"]["kamaka-prod-central"]
@@ -193,6 +193,48 @@ class ServingAnInventory(PluginTestCase):
         self.assertEqual(plain(hostvars["kamaka-prod-central"]["ansible_host"]), "10.0.0.9")
 
 
+class NamingAHost(PluginTestCase):
+    def test_a_host_is_named_for_its_tailnet_address(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["name"] = "Prod Central (Kamaka)"
+        body["hosts"][0]["address"] = "kamaka-prod-central.tailnet.ts.net"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["central"]["hosts"], ["kamaka-prod-central"])
+        central = data["_meta"]["hostvars"]["kamaka-prod-central"]
+        self.assertEqual(plain(central["ansible_host"]), "kamaka-prod-central.tailnet.ts.net")
+
+    def test_two_applications_on_one_machine_fall_back_to_their_labels(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][1]["address"] = body["hosts"][0]["address"]
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["central"]["hosts"], ["kamaka-prod-central"])
+        self.assertEqual(data["facility"]["hosts"], ["kamaka-prod-facility"])
+
+    def test_a_host_with_no_address_says_so(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][1]["address"] = None
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["facility"]["hosts"], ["kamaka-prod-facility"])
+        self.assertIn("holds no address for kamaka-prod-facility", result.stderr)
+
+    def test_a_host_with_no_address_but_an_ansible_host_is_left_alone(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][1]["address"] = None
+        body["hosts"][1]["vars"]["ansible_host"] = "10.0.0.9"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("holds no address", result.stderr)
+
+
 class Refusing(PluginTestCase):
     def test_a_refusal_stops_the_run(self):
         problem = json.dumps({"title": 'not found: no server group named "nope"'})
@@ -211,6 +253,7 @@ class Refusing(PluginTestCase):
     def test_two_servers_of_one_name_stop_the_run(self):
         body = json.loads(json.dumps(INVENTORY))
         body["hosts"][1]["name"] = body["hosts"][0]["name"]
+        body["hosts"][1]["address"] = body["hosts"][0]["address"]
         with StubCanopy(body=json.dumps(body)) as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
         self.assertEqual(result.returncode, 1)
@@ -279,7 +322,7 @@ class SecretVariables(PluginTestCase):
         hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
         self.assertEqual(plain(hostvars["kamaka-prod-central"]["salt"]), "pepper")
         self.assertEqual(plain(hostvars["kamaka-prod-central"]["tls_dns_access_key"]), "vinegar")
-        self.assertEqual(plain(hostvars["kamaka-prod-facility"]["salt"]), "pepper")
+        self.assertEqual(plain(hostvars["facility.kamaka.example"]["salt"]), "pepper")
 
     def test_the_cache_holds_no_secret_value(self):
         cached = self.prime_cache(self.source(group="kamaka")).read_text()
