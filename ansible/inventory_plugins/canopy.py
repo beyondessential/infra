@@ -405,11 +405,13 @@ class InventoryModule(BaseInventoryPlugin):
 
     @staticmethod
     def _store(cache_file, data):
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         cache_file.parent.chmod(0o700)
         staged = cache_file.with_suffix(".staged")
-        staged.write_text(json.dumps(data))
-        staged.chmod(0o600)
+        staged.unlink(missing_ok=True)
+        fd = os.open(staged, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as out:
+            json.dump(data, out)
         staged.replace(cache_file)
 
     @staticmethod
