@@ -94,10 +94,13 @@ class CallbackModule(CallbackBase):
                     return
 
     def _release(self):
-        if not self._lease:
-            return
         self._stop.set()
+        if self._keeper:
+            # An extend already in flight would otherwise land after the release.
+            self._keeper.join(TIMEOUT + 1)
         lease = self._lease
+        if not lease:
+            return
         self._lease = None
         os.environ.pop(LEASE_ENV, None)
         try:
