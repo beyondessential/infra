@@ -65,22 +65,30 @@ class CallbackModule(CallbackBase):
             self._lease = json.loads(held)
         except json.JSONDecodeError:
             return
-        self._keeper = threading.Thread(target=self._keep, daemon=True)
+        self._keeper = threading.Thread(target=self._keep, args=(self._lease,), daemon=True)
         self._keeper.start()
 
     def v2_playbook_on_stats(self, stats):
         self._release()
 
-    def _keep(self):
+    def _keep(self, lease):
         while not self._stop.wait(EXTEND_EVERY):
             try:
-                _post(self._lease["url"], "extend_lease", {"lease_id": self._lease["lease_id"]})
+                _post(lease["url"], "extend_lease", {"lease_id": lease["lease_id"]})
             except (urllib.error.URLError, OSError) as err:
+                # A refusal is canopy's answer and the lease is gone; a silence
+                # is one lost attempt, and the next tick is still well inside.
+                refused = isinstance(err, urllib.error.HTTPError) and err.code < 500
                 self._display.warning(
-                    f"canopy lease: could not extend {self._lease['lease_id']} ({err}); "
-                    "another operator may be able to take the environment before this run ends"
+                    f"canopy lease: could not extend {lease['lease_id']} ({err}); "
+                    + (
+                        "another operator may be able to take the environment before this run ends"
+                        if refused
+                        else f"trying again in {EXTEND_EVERY // 60} minutes"
+                    )
                 )
-                return
+                if refused:
+                    return
 
     def _release(self):
         if not self._lease:
