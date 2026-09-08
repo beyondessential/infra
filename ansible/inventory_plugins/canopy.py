@@ -21,11 +21,16 @@ description:
   - A deployment is a canopy group at one rank, so a group holding more than one rank needs O(rank) as well.
   - The run names the deployment through C(CANOPY_GROUP) or C(CANOPY_GROUP_ID) and C(CANOPY_RANK), so one
     committed source file serves every deployment and the repo lists none of them.
-  - Hosts are grouped by kind (C(central), C(facility), C(standalone)) and by product (C(tamanu), C(senaite), C(canopy)).
-  - Each host is reached at its bound device's tailnet name, or at its recorded host where no device is bound.
-  - A host is named for that address, since canopy's own name for an application is a label an operator wrote
-    and carries spaces. Two applications on one machine share an address, so those fall back to the label.
-  - Only members carrying C(managed_by_ansible) are served. Canopy holds every application in an environment,
+  - A host is a machine. Each is grouped by the products running on it (C(tamanu), C(senaite), C(canopy)) and
+    by the roles those play (C(central), C(facility), C(standalone)), so a box carrying two is in four groups.
+  - Each host is reached at its bound device's tailnet name, or at the recorded host of an application on it
+    where no device is bound. An C(ansible_host) variable on the machine overrides both.
+  - A host is named for that address, since canopy's own name for a machine is a label an operator wrote
+    and carries spaces.
+  - Reading the inventory takes canopy's run lease on the environment, which is served to one operator at a
+    time, so two runs never act on one environment at once. The lease is given back when the play ends and
+    extended while it is still going; a run that dies leaves one that expires on its own.
+  - Only machines carrying C(managed_by_ansible) are served. Canopy holds every machine in an environment,
     including the ones this repo does not configure, so membership is opt-in rather than everything canopy knows.
   - C(canopy_intent) carries the intent the inventory was read with, so a play can refuse to run under the wrong one.
   - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
@@ -92,6 +97,11 @@ display = Display()
 
 VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
+# Where the lease this run holds is handed to the callback that gives it back.
+# Both plugins live in the one ansible process, so the environment is the whole
+# channel; a run with no callback loaded leaves a lease that expires on its own.
+LEASE_ENV = "CANOPY_INVENTORY_LEASE"
+
 
 def without_secret_values(data):
     """The payload with every secret value dropped and the names left in place.
@@ -134,6 +144,9 @@ def host_names(hosts):
     The address is what a play connects to and, in its tailnet form, the name
     the deployment already goes by. Canopy's name is a label for an operator
     to read, so it is the fallback rather than the first choice.
+
+    Canopy refuses an environment whose machines share an address, so the
+    collision below is a belt-and-braces against one reaching us anyway.
     """
     addressed = [
         (host["address"].split(".")[0] if host["address"].endswith(TAILNET_SUFFIX) else host["address"])
@@ -148,11 +161,16 @@ def host_names(hosts):
     ]
 
 
-def ansible_groups(app_type):
-    """The product an application is, and the role it plays: `tamanu-facility`
-    is a facility of tamanu, and a type naming no role is a standalone."""
-    product, _, role = app_type.partition("-")
-    return product, role or "standalone"
+def ansible_groups(host):
+    """The products a machine runs and the roles they play: a box carrying
+    `tamanu-facility` is in `tamanu` and in `facility`, and one carrying a
+    central beside it is in `central` too. A type naming no role is a
+    standalone."""
+    names = []
+    for application in host.get("applications") or []:
+        product, _, role = application["type"].partition("-")
+        names += [product, role or "standalone"]
+    return list(dict.fromkeys(names))
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -165,6 +183,10 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def fatal(message):
     # Ansible downgrades an AnsibleError here to a warning over an empty inventory.
     raise SystemExit(f"canopy inventory: {message}")
+
+
+class Unreachable(Exception):
+    """Canopy did not answer, which is not an answer, so the cache stands in."""
 
 
 class InventoryModule(BaseInventoryPlugin):
@@ -235,7 +257,7 @@ class InventoryModule(BaseInventoryPlugin):
                 fatal(f"canopy serves two servers named {name!r}; one would stand in for both")
             seen.add(name)
             inventory.add_host(name)
-            for group_name in ansible_groups(host["type"]):
+            for group_name in ansible_groups(host):
                 inventory.add_group(group_name)
                 inventory.add_child(group_name, name)
             if host["address"]:
@@ -263,22 +285,59 @@ class InventoryModule(BaseInventoryPlugin):
         url = self.get_option("url")
         if not url:
             fatal("set CANOPY_URL, or url in the source file")
+        base = url.rstrip("/")
 
+        try:
+            lease = self._post(f"{base}/api/inventory/take_lease", args)
+        except Unreachable as why:
+            return self._fallback(args, cache_file, str(why)), False
+
+        try:
+            data = self._post(f"{base}/api/inventory/for_group", {"lease_id": lease["id"]})
+        except Unreachable as why:
+            # Holding an environment we could not read shuts it for nobody.
+            self._give_back(base, lease["id"])
+            return self._fallback(args, cache_file, str(why)), False
+        except BaseException:
+            self._give_back(base, lease["id"])
+            raise
+
+        # The play holds the environment until it ends, which the callback is
+        # what notices. Nothing reads this back where no callback is loaded, so
+        # an `ansible-inventory` run leaves a lease to expire on its own.
+        os.environ[LEASE_ENV] = json.dumps({"url": base, "lease_id": lease["id"]})
+        return data, True
+
+    def _post(self, url, payload):
+        """Ask canopy, and tell a refusal from a silence: a refusal is an
+        answer to respect, a silence is what the cache is for."""
         request = urllib.request.Request(
-            f"{url.rstrip('/')}/api/inventory/for_group",
-            data=json.dumps(args).encode(),
+            url,
+            data=json.dumps(payload).encode(),
             headers={"content-type": "application/json"},
         )
         opener = urllib.request.build_opener(NoRedirect)
         try:
             with opener.open(request, timeout=self.get_option("timeout")) as response:
-                return json.load(response), True
+                body = response.read()
+                return json.loads(body) if body else None
         except urllib.error.HTTPError as err:
             if 400 <= err.code < 500:
                 fatal(f"canopy refused this inventory: {self._refusal(err)}")
-            return self._fallback(args, cache_file, f"canopy answered {err.code} {err.reason}"), False
+            raise Unreachable(f"canopy answered {err.code} {err.reason}") from None
         except (urllib.error.URLError, TimeoutError, OSError) as err:
-            return self._fallback(args, cache_file, str(err)), False
+            raise Unreachable(str(err)) from None
+
+    def _give_back(self, base, lease_id):
+        """Best effort: a lease we cannot release expires on its own, and
+        failing the run over it would replace one problem with a worse one."""
+        try:
+            self._post(f"{base}/api/inventory/release_lease", {"lease_id": lease_id})
+        except (Unreachable, SystemExit, urllib.error.URLError, OSError):
+            display.warning(
+                f"canopy inventory: could not release the run lease {lease_id}; "
+                "it holds the environment until it expires"
+            )
 
     def _fallback(self, args, cache_file, why):
         # The cache cannot carry canopy's say-so on an upgrade of production.

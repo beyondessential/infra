@@ -18,25 +18,32 @@ from pathlib import Path
 
 ANSIBLE = Path(__file__).resolve().parent.parent
 PLUGINS = ANSIBLE / "inventory_plugins"
+CALLBACKS = ANSIBLE / "callback_plugins"
 
 INVENTORY = {
     "group_id": "11111111-0000-4000-8000-000000000001",
     "group": "kamaka",
     "rank": "production",
-    "vars": {"timezone": "Pacific/Auckland", "billing.deployment": "kamaka", "salt": "pepper"},
+    "vars": {"timezone": "Pacific/Auckland", "billing.product": "tamanu", "salt": "pepper"},
     "secret_vars": ["salt"],
     "hosts": [
         {
-            "id": "33333333-0000-4000-8000-000000000001",
+            "id": "22222222-0000-4000-8000-000000000001",
             "name": "kamaka-prod-central",
-            "type": "tamanu-central",
             "address": "kamaka-prod-central",
+            "applications": [
+                {
+                    "id": "33333333-0000-4000-8000-000000000001",
+                    "name": "kamaka-prod-central",
+                    "type": "tamanu-central",
+                }
+            ],
             "vars": {
                 "timezone": "Pacific/Auckland",
                 "ansible_user": "ubuntu",
                 "elastic_agent_enabled": True,
                 "managed_by_ansible": True,
-                "billing.deployment": "kamaka",
+                "billing.product": "tamanu",
                 "salt": "pepper",
                 "tls_dns_access_key": "vinegar",
             },
@@ -48,15 +55,30 @@ INVENTORY = {
             "secret_vars": ["salt", "tls_dns_access_key"],
         },
         {
-            "id": "33333333-0000-4000-8000-000000000002",
+            "id": "22222222-0000-4000-8000-000000000002",
             "name": "kamaka-prod-facility",
-            "type": "tamanu-facility",
             "address": "facility.kamaka.example",
+            "applications": [
+                {
+                    "id": "33333333-0000-4000-8000-000000000002",
+                    "name": "kamaka-prod-facility",
+                    "type": "tamanu-facility",
+                }
+            ],
             "vars": {"timezone": "Pacific/Auckland", "salt": "pepper", "managed_by_ansible": True},
             "own_vars": {},
             "secret_vars": ["salt"],
         },
     ],
+}
+
+LEASE = {
+    "id": "44444444-0000-4000-8000-000000000001",
+    "server_group_id": INVENTORY["group_id"],
+    "rank": "production",
+    "intent": "configure",
+    "held_by": "alice@example.com",
+    "expires_at": "2026-09-08T00:30:00Z",
 }
 
 
@@ -69,27 +91,53 @@ def plain(value):
 
 
 class StubCanopy:
-    """A canopy that answers however the test needs it to."""
+    """A canopy that answers however the test needs it to.
 
-    def __init__(self, status=200, body=None, content_type="application/json", location=None):
+    Reading an inventory is three calls now, so an override names the one it
+    applies to and the rest answer normally. `calls` is the sequence of paths,
+    which is how a test says the lease was taken and given back.
+    """
+
+    def __init__(self, status=200, body=None, content_type="application/json", location=None, on="for_group"):
         self.status = status
-        self.body = json.dumps(INVENTORY) if body is None else body
+        self.body = body
         self.content_type = content_type
         self.location = location
+        self.on = on
         self.requests = []
+        self.calls = []
+
+    def answer(self, path):
+        """The status, content type and body for one call."""
+        if path == self.on and (self.status != 200 or self.body is not None):
+            return self.status, self.content_type, ("" if self.body is None else self.body)
+        default = {
+            "take_lease": json.dumps(LEASE),
+            "for_group": json.dumps(INVENTORY),
+            "extend_lease": json.dumps(LEASE),
+            "release_lease": "",
+        }.get(path)
+        if default is None:
+            return 404, "application/json", json.dumps({"title": f"no such path {path}"})
+        return 200, "application/json", default
 
     def __enter__(self):
         stub = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
+                path = self.path.rsplit("/", 1)[-1]
                 length = int(self.headers.get("content-length", 0))
-                stub.requests.append(json.loads(self.rfile.read(length) or "{}"))
-                payload = stub.body.encode()
-                self.send_response(stub.status)
+                sent = json.loads(self.rfile.read(length) or "{}")
+                stub.calls.append(path)
+                if path == "take_lease":
+                    stub.requests.append(sent)
+                status, content_type, body = stub.answer(path)
+                payload = body.encode()
+                self.send_response(status)
                 if stub.location:
                     self.send_header("location", stub.location)
-                self.send_header("content-type", stub.content_type)
+                self.send_header("content-type", content_type)
                 self.send_header("content-length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
@@ -128,16 +176,59 @@ class PluginTestCase(unittest.TestCase):
             os.environ,
             ANSIBLE_CONFIG=str(self.config),
             ANSIBLE_INVENTORY_PLUGINS=str(PLUGINS),
+            ANSIBLE_CALLBACK_PLUGINS=str(CALLBACKS),
             XDG_CACHE_HOME=str(self.cache),
             CANOPY_URL=url,
         )
-        for name in ("CANOPY_INVENTORY_OFFLINE", "CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK", "CANOPY_INTENT"):
+        for name in (
+            "CANOPY_INVENTORY_OFFLINE",
+            "CANOPY_GROUP",
+            "CANOPY_GROUP_ID",
+            "CANOPY_RANK",
+            "CANOPY_INTENT",
+            "CANOPY_INVENTORY_LEASE",
+        ):
             env.pop(name, None)
         env.update(run_env)
         if offline:
             env["CANOPY_INVENTORY_OFFLINE"] = "1"
         return subprocess.run(
             ["ansible-inventory", "-i", str(source), *args],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=self.workdir.name,
+        )
+
+    def run_playbook(self, source, url, **run_env):
+        """A play, so the callback that gives the lease back actually fires.
+
+        The hosts are reached over the local connection: what is under test is
+        the lease around a play, not whether ansible can ssh anywhere.
+        """
+        if shutil.which("ansible-playbook") is None:
+            self.skipTest("ansible-playbook is not on PATH")
+        play = Path(self.workdir.name, "play.yml")
+        play.write_text(
+            "- hosts: all\n"
+            "  gather_facts: false\n"
+            "  connection: local\n"
+            "  tasks:\n"
+            "    - debug: msg=held\n"
+        )
+        env = dict(
+            os.environ,
+            ANSIBLE_CONFIG=str(self.config),
+            ANSIBLE_INVENTORY_PLUGINS=str(PLUGINS),
+            ANSIBLE_CALLBACK_PLUGINS=str(CALLBACKS),
+            XDG_CACHE_HOME=str(self.cache),
+            CANOPY_URL=url,
+        )
+        for name in ("CANOPY_GROUP", "CANOPY_GROUP_ID", "CANOPY_RANK", "CANOPY_INVENTORY_LEASE"):
+            env.pop(name, None)
+        env.update(run_env)
+        return subprocess.run(
+            ["ansible-playbook", "-i", str(source), str(play)],
             capture_output=True,
             text=True,
             env=env,
@@ -165,7 +256,7 @@ class ServingAnInventory(PluginTestCase):
         self.assertIs(central["elastic_agent_enabled"], True)
         # Ansible cannot address a dotted name as a variable, so it is left out
         # rather than served as something unusable.
-        self.assertNotIn("billing.deployment", central)
+        self.assertNotIn("billing.product", central)
 
     def test_the_run_names_the_deployment(self):
         with StubCanopy() as canopy:
@@ -435,3 +526,97 @@ class DeclaringIntent(PluginTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HoldingTheEnvironment(PluginTestCase):
+    """Canopy serves the inventory to the holder of the environment's run
+    lease, so reading one is a take, a read, and a give back."""
+
+    def test_the_read_is_taken_under_a_lease(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(group="kamaka", rank="production"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(canopy.calls, ["take_lease", "for_group"])
+        self.assertEqual(canopy.requests, [{"group": "kamaka", "rank": "production"}])
+
+    def test_the_lease_carries_the_intent(self):
+        with StubCanopy() as canopy:
+            self.run_inventory(self.source(group="kamaka", intent="upgrade"), canopy.url)
+        self.assertEqual(canopy.requests, [{"group": "kamaka", "intent": "upgrade"}])
+
+    def test_a_refused_lease_stops_the_run_without_reading(self):
+        refusal = {"title": 'conflict: that environment\'s run lease is held by bob@example.com until 00:30 UTC'}
+        with StubCanopy(status=409, body=json.dumps(refusal), on="take_lease") as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("held by bob@example.com", result.stderr)
+        self.assertEqual(canopy.calls, ["take_lease"])
+
+    def test_a_refused_read_gives_the_lease_back_before_stopping(self):
+        refusal = {"title": 'upstream: secret variable "salt" has no value in the secret store'}
+        with StubCanopy(status=502, body=json.dumps(refusal), on="for_group") as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        # 502 is canopy failing to answer rather than declining, so it falls
+        # back; either way the environment is not left held.
+        self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
+
+    def test_a_refusal_from_the_read_gives_the_lease_back(self):
+        refusal = {"title": "conflict: machines \"a\" and \"b\" are both reached at \"x\""}
+        with StubCanopy(status=409, body=json.dumps(refusal), on="for_group") as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("both reached at", result.stderr)
+        self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
+
+    def test_an_offline_run_takes_no_lease(self):
+        with StubCanopy() as canopy:
+            self.run_inventory(self.source(group="kamaka"), canopy.url)
+            before = list(canopy.calls)
+            self.run_inventory(self.source(group="kamaka"), canopy.url, offline=True)
+            self.assertEqual(canopy.calls, before)
+
+    def test_a_play_holds_the_lease_and_gives_it_back_at_the_end(self):
+        with StubCanopy() as canopy:
+            result = self.run_playbook(self.source(group="kamaka", rank="production"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
+
+    def test_a_listing_leaves_a_lease_to_expire(self):
+        # Nothing sees an `ansible-inventory` run end, so the lease is not given
+        # back and canopy's expiry is what clears it.
+        with StubCanopy() as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("release_lease", canopy.calls)
+
+
+class GroupingAMachine(PluginTestCase):
+    def test_a_machine_is_grouped_by_the_applications_on_it(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["applications"].append(
+            {
+                "id": "33333333-0000-4000-8000-000000000003",
+                "name": "kamaka-prod-lims",
+                "type": "senaite",
+            }
+        )
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        # A box carrying a tamanu central and a senaite is in all four.
+        for name in ("tamanu", "central", "senaite", "standalone"):
+            self.assertIn("kamaka-prod-central", data[name]["hosts"], name)
+
+    def test_a_machine_carrying_nothing_is_in_no_product_group(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][1]["applications"] = []
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertNotIn("facility", data)
+        # It is still a host a play acts on, carrying its variables.
+        self.assertIn("facility.kamaka.example", data["_meta"]["hostvars"])
+        self.assertIn("facility.kamaka.example", data["all"]["children"] + data.get("ungrouped", {}).get("hosts", []))
