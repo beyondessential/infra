@@ -118,9 +118,10 @@ def without_secret_values(data):
     def plain(vars_, names):
         return {key: value for key, value in vars_.items() if key not in names}
 
+    wide = set(data.get("secret_vars") or [])
     hosts = []
     for host in data["hosts"]:
-        names = set(host.get("secret_vars") or [])
+        names = wide | set(host.get("secret_vars") or [])
         hosts.append(
             dict(
                 host,
@@ -130,7 +131,7 @@ def without_secret_values(data):
         )
     return dict(
         data,
-        vars=plain(data["vars"], set(data.get("secret_vars") or [])),
+        vars=plain(data["vars"], wide),
         hosts=hosts,
     )
 
