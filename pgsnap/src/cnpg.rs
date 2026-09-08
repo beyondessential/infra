@@ -36,7 +36,7 @@ pub async fn create_cluster(
         return Ok(());
     }
 
-    let cluster = serde_json::from_value(json!({
+    let mut manifest = json!({
         "apiVersion": "postgresql.cnpg.io/v1",
         "kind": "Cluster",
         "metadata": {
@@ -76,24 +76,28 @@ pub async fn create_cluster(
             // is whatever the source cluster generated. CNPG reconciles the superuser
             // password after bootstrap, which is why that is the credential handed out.
             "enableSuperuserAccess": spec.from_snapshot.is_some(),
-            "bootstrap": match spec.from_snapshot {
-                Some(snapshot_name) => json!({
-                    "recovery": {
-                        "volumeSnapshots": {
-                            // CNPG validates this as a core/v1 TypedLocalObjectReference,
-                            // which wants apiGroup and kind as strings.
-                            "storage": {
-                                "apiGroup": "snapshot.storage.k8s.io",
-                                "kind": "VolumeSnapshot",
-                                "name": snapshot_name,
-                            },
-                        },
-                    },
-                }),
-                None => json!({}),
-            },
         },
-    }))?;
+    });
+
+    // CNPG initialises an empty database when bootstrap is absent, which an empty object
+    // is not: it has to stay off the manifest entirely.
+    if let Some(snapshot_name) = spec.from_snapshot {
+        manifest["spec"]["bootstrap"] = json!({
+            "recovery": {
+                "volumeSnapshots": {
+                    // CNPG validates this as a core/v1 TypedLocalObjectReference, which
+                    // wants apiGroup and kind as strings.
+                    "storage": {
+                        "apiGroup": "snapshot.storage.k8s.io",
+                        "kind": "VolumeSnapshot",
+                        "name": snapshot_name,
+                    },
+                },
+            },
+        });
+    }
+
+    let cluster = serde_json::from_value(manifest)?;
 
     api.create(&PostParams::default(), &cluster).await?;
     info!(cluster_name, "created CNPG Cluster");
