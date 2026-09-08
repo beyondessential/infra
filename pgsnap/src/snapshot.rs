@@ -120,6 +120,12 @@ pub async fn list_managed_snapshots(
     Ok(list.items)
 }
 
+pub struct ReadySnapshot {
+    pub name: String,
+    pub version: Version,
+    pub created_at: Option<String>,
+}
+
 // s[annotation.from-snapshot]
 // Resolve which existing snapshot a Job bootstraps its database from.
 pub async fn resolve_source(
@@ -129,12 +135,17 @@ pub async fn resolve_source(
     for_version: Option<&Version>,
 ) -> anyhow::Result<String> {
     if requested != util::FROM_SNAPSHOT_PREVIOUS {
-        let named = list_ready(client, namespace)
-            .await?
-            .into_iter()
-            .find(|(name, version)| name == requested || version.to_string() == requested);
+        let ready = list_ready(client, namespace).await?;
+        // A name identifies one snapshot; a for-version can identify several, so the
+        // newest of those wins.
+        let named = ready.iter().find(|snap| snap.name == requested).or_else(|| {
+            ready
+                .iter()
+                .filter(|snap| snap.version.to_string() == requested)
+                .max_by(|a, b| newest_first(a, b))
+        });
         return named
-            .map(|(name, _)| name)
+            .map(|snap| snap.name.clone())
             .ok_or_else(|| anyhow::anyhow!("no ready snapshot matching {requested}"));
     }
 
@@ -154,16 +165,23 @@ pub async fn resolve_source(
 // Newest snapshot from a minor below `target`, so migrations run against data they have
 // not already been applied to. A snapshot of the same minor is skipped even at a lower
 // patch, because a release branch's own snapshot already carries its migrations.
-pub fn pick_previous(candidates: &[(String, Version)], target: &Version) -> Option<String> {
+pub fn pick_previous(candidates: &[ReadySnapshot], target: &Version) -> Option<String> {
     candidates
         .iter()
-        .filter(|(_, v)| (v.major, v.minor) < (target.major, target.minor))
-        .max_by(|(_, a), (_, b)| a.cmp(b))
-        .map(|(name, _)| name.clone())
+        .filter(|snap| (snap.version.major, snap.version.minor) < (target.major, target.minor))
+        .max_by(|a, b| newest_first(a, b))
+        .map(|snap| snap.name.clone())
+}
+
+fn newest_first(a: &ReadySnapshot, b: &ReadySnapshot) -> std::cmp::Ordering {
+    a.version
+        .cmp(&b.version)
+        .then_with(|| a.created_at.cmp(&b.created_at))
+        .then_with(|| a.name.cmp(&b.name))
 }
 
 // Managed snapshots that are ready to restore from, with their parsed for-version.
-async fn list_ready(client: &Client, namespace: &str) -> anyhow::Result<Vec<(String, Version)>> {
+async fn list_ready(client: &Client, namespace: &str) -> anyhow::Result<Vec<ReadySnapshot>> {
     Ok(list_managed_snapshots(client, namespace)
         .await?
         .into_iter()
@@ -176,13 +194,12 @@ async fn list_ready(client: &Client, namespace: &str) -> anyhow::Result<Vec<(Str
         })
         .filter_map(|snap| {
             let name = snap.metadata.name.clone()?;
-            let version = snap
-                .metadata
-                .annotations
-                .as_ref()?
+            let annotations = snap.metadata.annotations.as_ref()?;
+            let version = annotations
                 .get(util::ANNOTATION_FOR_VERSION)
                 .and_then(|v| Version::parse(v).ok())?;
-            Some((name, version))
+            let created_at = annotations.get(util::ANNOTATION_CREATED_AT).cloned();
+            Some(ReadySnapshot { name, version, created_at })
         })
         .collect())
 }
@@ -201,10 +218,18 @@ pub fn volume_snapshot_resource() -> kube::discovery::ApiResource {
 mod tests {
     use super::*;
 
-    fn candidates() -> Vec<(String, Version)> {
+    fn snap(name: &str, version: &str, created_at: Option<&str>) -> ReadySnapshot {
+        ReadySnapshot {
+            name: name.to_string(),
+            version: Version::parse(version).unwrap(),
+            created_at: created_at.map(str::to_string),
+        }
+    }
+
+    fn candidates() -> Vec<ReadySnapshot> {
         [("s-2-62-0", "2.62.0"), ("s-2-63-0", "2.63.0"), ("s-2-63-4", "2.63.4")]
             .into_iter()
-            .map(|(n, v)| (n.to_string(), Version::parse(v).unwrap()))
+            .map(|(n, v)| snap(n, v, None))
             .collect()
     }
 
@@ -218,6 +243,16 @@ mod tests {
     fn skips_the_target_own_minor() {
         let target = Version::parse("2.63.9").unwrap();
         assert_eq!(pick_previous(&candidates(), &target).as_deref(), Some("s-2-62-0"));
+    }
+
+    #[test]
+    fn breaks_a_version_tie_on_created_at() {
+        let candidates = vec![
+            snap("s-2-63-4-first", "2.63.4", Some("2026-08-01T00:00:00Z")),
+            snap("s-2-63-4-rerun", "2.63.4", Some("2026-09-01T00:00:00Z")),
+        ];
+        let target = Version::parse("2.64.0").unwrap();
+        assert_eq!(pick_previous(&candidates, &target).as_deref(), Some("s-2-63-4-rerun"));
     }
 
     #[test]
