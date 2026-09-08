@@ -524,10 +524,6 @@ class DeclaringIntent(PluginTestCase):
         self.assertIn("never runs from the cache", result.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class HoldingTheEnvironment(PluginTestCase):
     """Canopy serves the inventory to the holder of the environment's run
     lease, so reading one is a take, a read, and a give back."""
@@ -620,3 +616,7 @@ class GroupingAMachine(PluginTestCase):
         # It is still a host a play acts on, carrying its variables.
         self.assertIn("facility.kamaka.example", data["_meta"]["hostvars"])
         self.assertIn("facility.kamaka.example", data["all"]["children"] + data.get("ungrouped", {}).get("hosts", []))
+
+
+if __name__ == "__main__":
+    unittest.main()
