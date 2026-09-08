@@ -102,7 +102,7 @@ class CallbackModule(CallbackBase):
         os.environ.pop(LEASE_ENV, None)
         try:
             _post(lease["url"], "release_lease", {"lease_id": lease["lease_id"]})
-        except (urllib.error.URLError, OSError) as err:
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as err:
             self._display.warning(
                 f"canopy lease: could not release {lease['lease_id']} ({err}); "
                 "it holds the environment until it expires"
