@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import threading
@@ -75,7 +76,7 @@ class CallbackModule(CallbackBase):
         while not self._stop.wait(EXTEND_EVERY):
             try:
                 _post(lease["url"], "extend_lease", {"lease_id": lease["lease_id"]})
-            except (urllib.error.URLError, OSError) as err:
+            except (urllib.error.URLError, OSError, http.client.HTTPException) as err:
                 # A refusal is canopy's answer and the lease is gone; a silence
                 # is one lost attempt, and the next tick is still well inside.
                 refused = isinstance(err, urllib.error.HTTPError) and err.code < 500

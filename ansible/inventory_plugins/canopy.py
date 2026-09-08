@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -341,7 +342,7 @@ class InventoryModule(BaseInventoryPlugin):
             if 400 <= err.code < 500:
                 fatal(f"canopy refused this inventory: {self._refusal(err)}")
             raise Unreachable(f"canopy answered {err.code} {err.reason}") from None
-        except (urllib.error.URLError, TimeoutError, OSError) as err:
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as err:
             raise Unreachable(str(err)) from None
 
     @staticmethod
