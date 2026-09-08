@@ -237,14 +237,14 @@ class InventoryModule(BaseInventoryPlugin):
 
         try:
             self._build(inventory, data)
+            # Only a payload ansible has made an inventory out of is worth
+            # keeping for the offline path, and only the half of it that may be
+            # written down.
+            if fresh:
+                self._store(cache_file, without_secret_values(data))
         except BaseException:
             self._give_back_held()
             raise
-
-        # Only a payload ansible has made an inventory out of is worth keeping
-        # for the offline path, and only the half of it that may be written down.
-        if fresh:
-            self._store(cache_file, without_secret_values(data))
 
     def _build(self, inventory, data):
         for key, value in data["vars"].items():
