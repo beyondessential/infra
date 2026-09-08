@@ -11,6 +11,7 @@ import urllib.request
 from pathlib import Path
 
 from ansible.plugins.inventory import BaseInventoryPlugin
+from ansible.plugins.loader import callback_loader
 from ansible.utils.display import Display
 
 DOCUMENTATION = r"""
@@ -29,7 +30,8 @@ description:
     and carries spaces.
   - Reading the inventory takes canopy's run lease on the environment, which is served to one operator at a
     time, so two runs never act on one environment at once. The lease is given back when the play ends and
-    extended while it is still going; a run that dies leaves one that expires on its own.
+    extended while it is still going, both by the C(canopy_lease) callback, which the run refuses to start
+    without; a run that dies leaves a lease that expires on its own.
   - Only machines carrying C(managed_by_ansible) are served. Canopy holds every machine in an environment,
     including the ones this repo does not configure, so membership is opt-in rather than everything canopy knows.
   - C(canopy_intent) carries the intent the inventory was read with, so a play can refuse to run under the wrong one.
@@ -99,8 +101,11 @@ VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 # Where the lease this run holds is handed to the callback that gives it back.
 # Both plugins live in the one ansible process, so the environment is the whole
-# channel; a run with no callback loaded leaves a lease that expires on its own.
+# channel.
 LEASE_ENV = "CANOPY_INVENTORY_LEASE"
+
+# The callback that extends the lease while the play runs and gives it back.
+KEEPER = "canopy_lease"
 
 
 def without_secret_values(data):
@@ -230,6 +235,18 @@ class InventoryModule(BaseInventoryPlugin):
         if not fresh:
             self._warn_withheld(data)
 
+        try:
+            self._build(inventory, data)
+        except BaseException:
+            self._give_back_held()
+            raise
+
+        # Only a payload ansible has made an inventory out of is worth keeping
+        # for the offline path, and only the half of it that may be written down.
+        if fresh:
+            self._store(cache_file, without_secret_values(data))
+
+    def _build(self, inventory, data):
         for key, value in data["vars"].items():
             if VALID_VAR_NAME.match(key):
                 inventory.set_variable("all", key, value)
@@ -273,14 +290,11 @@ class InventoryModule(BaseInventoryPlugin):
                 if VALID_VAR_NAME.match(key):
                     inventory.set_variable(name, key, value)
 
-        # Only a payload ansible has made an inventory out of is worth keeping
-        # for the offline path, and only the half of it that may be written down.
-        if fresh:
-            self._store(cache_file, without_secret_values(data))
-
     def _fetch(self, args, cache_file):
         if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
             return self._fallback(args, cache_file, "offline"), False
+
+        self._require_keeper()
 
         url = self.get_option("url")
         if not url:
@@ -327,6 +341,24 @@ class InventoryModule(BaseInventoryPlugin):
             raise Unreachable(f"canopy answered {err.code} {err.reason}") from None
         except (urllib.error.URLError, TimeoutError, OSError) as err:
             raise Unreachable(str(err)) from None
+
+    @staticmethod
+    def _require_keeper():
+        """The lease is taken here and given back by the callback, so a run
+        that cannot load it holds the environment until the lease expires."""
+        if callback_loader.find_plugin(KEEPER) is None:
+            fatal(
+                f"the {KEEPER} callback is not loaded, so nothing would give the run lease back: "
+                "set `callback_plugins = ./callback_plugins` in the ansible.cfg the run picks up"
+            )
+
+    def _give_back_held(self):
+        """Give back the lease of a run that never starts: the callback only
+        sees a play that did."""
+        held = os.environ.pop(LEASE_ENV, None)
+        if held:
+            lease = json.loads(held)
+            self._give_back(lease["url"], lease["lease_id"])
 
     def _give_back(self, base, lease_id):
         """Best effort: a lease we cannot release expires on its own, and

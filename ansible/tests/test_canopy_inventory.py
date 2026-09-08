@@ -578,6 +578,24 @@ class HoldingTheEnvironment(PluginTestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
 
+    def test_a_payload_that_makes_no_inventory_gives_the_lease_back(self):
+        body = json.loads(json.dumps(INVENTORY))
+        for host in body["hosts"]:
+            del host["vars"]["managed_by_ansible"]
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
+
+    def test_a_run_that_cannot_give_the_lease_back_takes_none(self):
+        with StubCanopy() as canopy:
+            result = self.run_inventory(
+                self.source(group="kamaka"), canopy.url, ANSIBLE_CALLBACK_PLUGINS=""
+            )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("canopy_lease", result.stderr)
+        self.assertEqual(canopy.calls, [])
+
     def test_a_listing_leaves_a_lease_to_expire(self):
         # Nothing sees an `ansible-inventory` run end, so the lease is not given
         # back and canopy's expiry is what clears it.
