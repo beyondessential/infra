@@ -10,14 +10,19 @@ pub struct JobOwner<'a> {
     pub uid: &'a str,
 }
 
-// s[create.cluster] s[create.cluster.postgres-major]
+pub struct ClusterSpec<'a> {
+    pub storage_size: &'a str,
+    pub cpu: &'a str,
+    pub memory: &'a str,
+    pub from_snapshot: Option<&'a str>,
+}
+
+// s[create.cluster] s[create.cluster.postgres-major] s[create.cluster.from-snapshot]
 pub async fn create_cluster(
     client: &Client,
     namespace: &str,
     cluster_name: &str,
-    storage_size: &str,
-    cpu: &str,
-    memory: &str,
+    spec: &ClusterSpec<'_>,
     owner: &JobOwner<'_>,
 ) -> anyhow::Result<()> {
     let api: Api<kube::api::DynamicObject> = Api::namespaced_with(
@@ -50,10 +55,10 @@ pub async fn create_cluster(
             },
             "instances": 1,
             "primaryUpdateStrategy": "unsupervised",
-            "storage": { "size": storage_size },
+            "storage": { "size": spec.storage_size },
             "resources": {
-                "requests": { "memory": memory, "cpu": cpu },
-                "limits": { "memory": memory, "cpu": cpu },
+                "requests": { "memory": spec.memory, "cpu": spec.cpu },
+                "limits": { "memory": spec.memory, "cpu": spec.cpu },
             },
             "postgresql": {
                 "parameters": {
@@ -66,6 +71,26 @@ pub async fn create_cluster(
             },
             "affinity": {
                 "nodeSelector": { "bes.node.purpose": "workload" },
+            },
+            // A restored data directory brings its own roles, so the app user's password
+            // is whatever the source cluster generated. CNPG reconciles the superuser
+            // password after bootstrap, which is why that is the credential handed out.
+            "enableSuperuserAccess": spec.from_snapshot.is_some(),
+            "bootstrap": match spec.from_snapshot {
+                Some(snapshot_name) => json!({
+                    "recovery": {
+                        "volumeSnapshots": {
+                            // CNPG validates this as a core/v1 TypedLocalObjectReference,
+                            // which wants apiGroup and kind as strings.
+                            "storage": {
+                                "apiGroup": "snapshot.storage.k8s.io",
+                                "kind": "VolumeSnapshot",
+                                "name": snapshot_name,
+                            },
+                        },
+                    },
+                }),
+                None => json!({}),
             },
         },
     }))?;
@@ -98,12 +123,13 @@ pub async fn is_cluster_ready(
     }
 }
 
-// s[create.secret]
+// s[create.secret] s[create.cluster.from-snapshot]
 pub async fn create_connection_secret(
     client: &Client,
     namespace: &str,
     job_name: &str,
     cluster_name: &str,
+    restored: bool,
     owner: &JobOwner<'_>,
 ) -> anyhow::Result<()> {
     let secret_api: Api<Secret> = Api::namespaced(client.clone(), namespace);
@@ -113,11 +139,17 @@ pub async fn create_connection_secret(
         return Ok(());
     }
 
-    let cnpg_secret_name = format!("{cluster_name}-app");
+    let (db_user, secret_suffix) = if restored {
+        ("postgres", "superuser")
+    } else {
+        ("app", "app")
+    };
+
+    let cnpg_secret_name = format!("{cluster_name}-{secret_suffix}");
     let cnpg_secret = secret_api
         .get(&cnpg_secret_name)
         .await
-        .map_err(|e| anyhow::anyhow!("CNPG app secret {cnpg_secret_name} not found: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("CNPG secret {cnpg_secret_name} not found: {e}"))?;
 
     let data = cnpg_secret.data.unwrap_or_default();
     let password = data
@@ -139,7 +171,7 @@ pub async fn create_connection_secret(
             "DB_HOST": db_host,
             "DB_PORT": "5432",
             "DB_NAME": "app",
-            "DB_USERNAME": "app",
+            "DB_USERNAME": db_user,
             "DB_PASSWORD": password,
         },
     }))?;

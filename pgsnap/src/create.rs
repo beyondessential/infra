@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use k8s_openapi::api::batch::v1::Job;
 use kube::{Api, Client, ResourceExt, api::PatchParams};
+use semver::Version;
 use kube::runtime::controller::Action;
 use serde_json::json;
 use tracing::{info, warn};
@@ -95,18 +96,48 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
         .cloned()
         .unwrap_or_else(|| util::cluster_name_for_job(&name));
 
+    let from_snapshot = annotations.get(util::ANNOTATION_FROM_SNAPSHOT).cloned();
+
+    // s[annotation.snapshot]
+    let wants_snapshot = annotations
+        .get(util::ANNOTATION_SNAPSHOT)
+        .map(|s| s != "false")
+        .unwrap_or(true);
+
     match phase {
         Phase::New => {
             info!(job = %name, "starting pgsnap workflow");
+
+            // s[annotation.from-snapshot]
+            let source = match &from_snapshot {
+                Some(requested) => {
+                    let for_version = annotations
+                        .get(util::ANNOTATION_FOR_VERSION)
+                        .and_then(|v| Version::parse(v).ok());
+                    let resolved = snapshot::resolve_source(
+                        &ctx.client,
+                        &ctx.namespace,
+                        requested,
+                        for_version.as_ref(),
+                    )
+                    .await?;
+                    info!(job = %name, requested = %requested, snapshot = %resolved, "restoring from snapshot");
+                    Some(resolved)
+                }
+                None => None,
+            };
 
             // s[create.cluster]
             cnpg::create_cluster(
                 &ctx.client,
                 &ctx.namespace,
                 &cluster_name,
-                storage_size,
-                cpu,
-                memory,
+                &cnpg::ClusterSpec {
+                    storage_size,
+                    cpu,
+                    memory,
+                    from_snapshot: source.as_deref(),
+                },
                 &cnpg::JobOwner { name: &name, uid: &job_uid },
             )
             .await?;
@@ -134,6 +165,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                 &ctx.namespace,
                 &name,
                 &cluster_name,
+                from_snapshot.is_some(),
                 &cnpg::JobOwner { name: &name, uid: &job_uid },
             )
             .await?;
@@ -156,6 +188,19 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
             let failed = status.and_then(|s| s.failed).unwrap_or(0) > 0;
 
             if succeeded {
+                // s[create.snapshot.suppressed]
+                if !wants_snapshot {
+                    info!(job = %name, "job succeeded, no snapshot asked for, cleaning up");
+                    cnpg::delete_cluster(&ctx.client, &ctx.namespace, &cluster_name).await?;
+
+                    set_annotations(&ctx.client, &ctx.namespace, &name, &[
+                        (util::ANNOTATION_PHASE, Phase::Complete.as_str()),
+                    ])
+                    .await?;
+
+                    return Ok(Action::await_change());
+                }
+
                 info!(job = %name, "job succeeded, creating snapshot");
 
                 let snapshot_name = util::snapshot_name_for_job(&name);

@@ -12,6 +12,8 @@ pub const ANNOTATION_CLUSTER_NAME: &str = "pgsnap.bes.au/cluster-name";
 pub const ANNOTATION_SNAPSHOT_NAME: &str = "pgsnap.bes.au/snapshot-name";
 pub const ANNOTATION_CREATED_AT: &str = "pgsnap.bes.au/created-at";
 pub const ANNOTATION_FOR_VERSION: &str = "pgsnap.bes.au/for-version";
+pub const ANNOTATION_FROM_SNAPSHOT: &str = "pgsnap.bes.au/from-snapshot";
+pub const ANNOTATION_SNAPSHOT: &str = "pgsnap.bes.au/snapshot";
 
 pub const LABEL_CREATE: &str = "pgsnap.bes.au/create";
 pub const LABEL_MANAGED: &str = "pgsnap.bes.au/managed";
@@ -20,6 +22,9 @@ pub const DEFAULT_STORAGE_SIZE: &str = "20Gi";
 pub const DEFAULT_CPU: &str = "250m";
 pub const DEFAULT_MEMORY: &str = "1Gi";
 pub const SNAPSHOT_CLASS: &str = "ebs-retain";
+
+// s[annotation.from-snapshot]
+pub const FROM_SNAPSHOT_PREVIOUS: &str = "previous";
 
 // s[annotation.passthrough]
 pub const EXCLUDED_ANNOTATIONS: &[&str] = &[
@@ -30,6 +35,8 @@ pub const EXCLUDED_ANNOTATIONS: &[&str] = &[
     ANNOTATION_PHASE,
     ANNOTATION_CLUSTER_NAME,
     ANNOTATION_SNAPSHOT_NAME,
+    ANNOTATION_FROM_SNAPSHOT,
+    ANNOTATION_SNAPSHOT,
 ];
 
 pub fn operator_namespace() -> Result<String> {

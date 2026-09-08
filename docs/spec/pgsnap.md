@@ -32,6 +32,19 @@ The annotation `pgsnap.bes.au/memory` specifies the memory request and
 limit for the ephemeral CNPG cluster's PostgreSQL container. Defaults to
 `1Gi` if absent.
 
+s[annotation.from-snapshot]
+The annotation `pgsnap.bes.au/from-snapshot` names an existing snapshot the
+Job's database is restored from instead of starting empty, either as a
+snapshot name, an exact `for-version`, or `previous`. `previous` means the
+newest snapshot whose `for-version` is below the Job's own minor, so the
+Job's migrations meet data they have not been applied to. A Job whose
+requested source cannot be resolved fails without a database.
+
+s[annotation.snapshot]
+The annotation `pgsnap.bes.au/snapshot: "false"` runs the Job and cleans up
+after it without producing a VolumeSnapshot. A Job that only reads or
+migrates a restored database wants no artefact of its own.
+
 s[annotation.passthrough]
 All `pgsnap.bes.au/*` annotations on the Job except `/create`, `/size`,
 `/cpu`, and `/memory` are copied to the resulting VolumeSnapshot.
@@ -65,6 +78,13 @@ s[create.cluster.ready]
 The operator waits for the CNPG Cluster's read-write service endpoint to
 have at least one ready address before proceeding.
 
+s[create.cluster.from-snapshot]
+Where the Job asks for `pgsnap.bes.au/from-snapshot`, the ephemeral Cluster
+is bootstrapped from that snapshot rather than initialised empty. The
+restored database carries its own roles, so the connection details the
+operator hands the Job are the Cluster's superuser rather than a freshly
+minted application user.
+
 s[create.secret]
 The operator creates a Secret named `pgsnap-<job-name>` containing the
 database connection details: `DB_HOST`, `DB_PORT`, `DB_NAME`,
@@ -83,6 +103,10 @@ or failed).
 s[create.snapshot]
 After the Job succeeds, the operator creates a VolumeSnapshot of the CNPG
 Cluster's PVC using the `ebs-retain` VolumeSnapshotClass.
+
+s[create.snapshot.suppressed]
+Where the Job sets `pgsnap.bes.au/snapshot` to `false`, no VolumeSnapshot is
+created and the operator proceeds straight to cleanup once the Job finishes.
 
 s[create.snapshot.labels]
 The VolumeSnapshot is labelled with `pgsnap.bes.au/managed: "true"` so the

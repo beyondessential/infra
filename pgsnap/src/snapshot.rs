@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use kube::{Api, Client, api::PostParams};
+use semver::Version;
 use serde_json::json;
 use tracing::info;
 
@@ -119,6 +120,73 @@ pub async fn list_managed_snapshots(
     Ok(list.items)
 }
 
+// s[annotation.from-snapshot]
+// Resolve which existing snapshot a Job bootstraps its database from.
+pub async fn resolve_source(
+    client: &Client,
+    namespace: &str,
+    requested: &str,
+    for_version: Option<&Version>,
+) -> anyhow::Result<String> {
+    if requested != util::FROM_SNAPSHOT_PREVIOUS {
+        let named = list_ready(client, namespace)
+            .await?
+            .into_iter()
+            .find(|(name, version)| name == requested || version.to_string() == requested);
+        return named
+            .map(|(name, _)| name)
+            .ok_or_else(|| anyhow::anyhow!("no ready snapshot matching {requested}"));
+    }
+
+    let target = for_version.ok_or_else(|| {
+        anyhow::anyhow!(
+            "{PREVIOUS} needs a valid semver {FOR_VERSION} to be previous to",
+            PREVIOUS = util::FROM_SNAPSHOT_PREVIOUS,
+            FOR_VERSION = util::ANNOTATION_FOR_VERSION,
+        )
+    })?;
+
+    let candidates = list_ready(client, namespace).await?;
+    pick_previous(&candidates, target)
+        .ok_or_else(|| anyhow::anyhow!("no ready snapshot predates v{target}"))
+}
+
+// Newest snapshot from a minor below `target`, so migrations run against data they have
+// not already been applied to. A snapshot of the same minor is skipped even at a lower
+// patch, because a release branch's own snapshot already carries its migrations.
+pub fn pick_previous(candidates: &[(String, Version)], target: &Version) -> Option<String> {
+    candidates
+        .iter()
+        .filter(|(_, v)| (v.major, v.minor) < (target.major, target.minor))
+        .max_by(|(_, a), (_, b)| a.cmp(b))
+        .map(|(name, _)| name.clone())
+}
+
+// Managed snapshots that are ready to restore from, with their parsed for-version.
+async fn list_ready(client: &Client, namespace: &str) -> anyhow::Result<Vec<(String, Version)>> {
+    Ok(list_managed_snapshots(client, namespace)
+        .await?
+        .into_iter()
+        .filter(|snap| {
+            snap.data
+                .get("status")
+                .and_then(|s| s.get("readyToUse"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+        })
+        .filter_map(|snap| {
+            let name = snap.metadata.name.clone()?;
+            let version = snap
+                .metadata
+                .annotations
+                .as_ref()?
+                .get(util::ANNOTATION_FOR_VERSION)
+                .and_then(|v| Version::parse(v).ok())?;
+            Some((name, version))
+        })
+        .collect())
+}
+
 pub fn volume_snapshot_resource() -> kube::discovery::ApiResource {
     kube::discovery::ApiResource {
         group: "snapshot.storage.k8s.io".into(),
@@ -126,5 +194,35 @@ pub fn volume_snapshot_resource() -> kube::discovery::ApiResource {
         api_version: "snapshot.storage.k8s.io/v1".into(),
         kind: "VolumeSnapshot".into(),
         plural: "volumesnapshots".into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn candidates() -> Vec<(String, Version)> {
+        [("s-2-62-0", "2.62.0"), ("s-2-63-0", "2.63.0"), ("s-2-63-4", "2.63.4")]
+            .into_iter()
+            .map(|(n, v)| (n.to_string(), Version::parse(v).unwrap()))
+            .collect()
+    }
+
+    #[test]
+    fn picks_the_newest_earlier_minor() {
+        let target = Version::parse("2.64.0").unwrap();
+        assert_eq!(pick_previous(&candidates(), &target).as_deref(), Some("s-2-63-4"));
+    }
+
+    #[test]
+    fn skips_the_target_own_minor() {
+        let target = Version::parse("2.63.9").unwrap();
+        assert_eq!(pick_previous(&candidates(), &target).as_deref(), Some("s-2-62-0"));
+    }
+
+    #[test]
+    fn none_when_nothing_predates_the_target() {
+        let target = Version::parse("2.62.0").unwrap();
+        assert_eq!(pick_previous(&candidates(), &target), None);
     }
 }
