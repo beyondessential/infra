@@ -30,6 +30,7 @@ import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
 import { reportingGrants } from '../common/reportingGrants.ts';
 import { cloneSeedSnapshot, type SnapshotSource } from './seedSnapshot.ts';
+import { seedTopUp } from './seedTopUp.ts';
 
 export interface CentralServerArgs {
   fqdn: string;
@@ -112,6 +113,10 @@ export class CentralServer extends ComponentResource {
       migratorJob,
     });
     this.provisioning = provisioning;
+
+    if (seedSource) {
+      seedTopUp({ parent: this, podSpec, provisionerJob });
+    }
 
     runTasks({
       parent: this,
