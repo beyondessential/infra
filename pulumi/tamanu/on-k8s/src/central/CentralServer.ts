@@ -23,6 +23,7 @@ import {
   dbExposeTags,
   dbStorage,
   normalizedStack,
+  seedSnapshot,
   sharedBlobStorage,
   timezone,
 } from '../config.ts';
@@ -114,7 +115,7 @@ export class CentralServer extends ComponentResource {
     });
     this.provisioning = provisioning;
 
-    if (seedSource) {
+    if (seedSnapshot) {
       seedTopUp({ parent: this, podSpec, provisionerJob });
     }
 
