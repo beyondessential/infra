@@ -123,14 +123,17 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                     .await
                     {
                         Ok(resolved) => resolved,
-                        // A source that does not exist will not appear on a retry, and the
-                        // Job stays suspended, so waiters have only the phase to read.
+                        // A source that does not exist will not appear on a retry. The Job
+                        // never ran, so neither activeDeadlineSeconds nor
+                        // ttlSecondsAfterFinished will ever reap it: delete it here, and a
+                        // waiter reads either the phase or the Job going missing.
                         Err(err) => {
                             warn!(job = %name, requested = %requested, error = %err, "cannot resolve source snapshot");
                             set_annotations(&ctx.client, &ctx.namespace, &name, &[
                                 (util::ANNOTATION_PHASE, Phase::Failed.as_str()),
                             ])
                             .await?;
+                            delete_job(&ctx.client, &ctx.namespace, &name).await?;
                             return Ok(Action::await_change());
                         }
                     };
@@ -316,6 +319,13 @@ async fn set_annotations(
         &kube::api::Patch::Merge(&patch),
     )
     .await?;
+    Ok(())
+}
+
+async fn delete_job(client: &Client, namespace: &str, job_name: &str) -> Result<(), kube::Error> {
+    let jobs: Api<Job> = Api::namespaced(client.clone(), namespace);
+    jobs.delete(job_name, &Default::default()).await?;
+    warn!(job_name, "deleted job");
     Ok(())
 }
 

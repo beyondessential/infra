@@ -40,7 +40,8 @@ newest snapshot whose `for-version` is below the Job's own minor, so the
 Job's migrations meet data they have not been applied to. Where several
 snapshots carry the requested `for-version`, the most recently created one
 is chosen. A Job whose requested source cannot be resolved never runs: the
-operator marks it failed and creates no database for it.
+operator marks it failed, creates no database for it, and deletes it, since a
+Job that never starts is reaped by neither its own deadline nor its TTL.
 
 s[annotation.snapshot]
 The annotation `pgsnap.bes.au/snapshot: "false"` runs the Job and cleans up
