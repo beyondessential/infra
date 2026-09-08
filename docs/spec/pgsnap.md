@@ -37,8 +37,10 @@ The annotation `pgsnap.bes.au/from-snapshot` names an existing snapshot the
 Job's database is restored from instead of starting empty, either as a
 snapshot name, an exact `for-version`, or `previous`. `previous` means the
 newest snapshot whose `for-version` is below the Job's own minor, so the
-Job's migrations meet data they have not been applied to. A Job whose
-requested source cannot be resolved fails without a database.
+Job's migrations meet data they have not been applied to. Where several
+snapshots carry the requested `for-version`, the most recently created one
+is chosen. A Job whose requested source cannot be resolved never runs: the
+operator marks it failed and creates no database for it.
 
 s[annotation.snapshot]
 The annotation `pgsnap.bes.au/snapshot: "false"` runs the Job and cleans up

@@ -114,13 +114,27 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                     let for_version = annotations
                         .get(util::ANNOTATION_FOR_VERSION)
                         .and_then(|v| Version::parse(v).ok());
-                    let resolved = snapshot::resolve_source(
+                    let resolved = match snapshot::resolve_source(
                         &ctx.client,
                         &ctx.namespace,
                         requested,
                         for_version.as_ref(),
                     )
-                    .await?;
+                    .await
+                    {
+                        Ok(resolved) => resolved,
+                        // A source that does not exist will not appear on a retry, and the
+                        // Job stays suspended, so waiters have only the phase to read.
+                        Err(err) => {
+                            warn!(job = %name, requested = %requested, error = %err, "cannot resolve source snapshot");
+                            set_annotations(&ctx.client, &ctx.namespace, &name, &[
+                                (util::ANNOTATION_PHASE, Phase::Failed.as_str()),
+                            ])
+                            .await?;
+                            return Ok(Action::await_change());
+                        }
+                    };
+
                     info!(job = %name, requested = %requested, snapshot = %resolved, "restoring from snapshot");
                     Some(resolved)
                 }
