@@ -100,6 +100,9 @@ display = Display()
 
 VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
+# ssh reads a leading dash as an option, so an address is a name or an IP and nothing else.
+VALID_ADDRESS = re.compile(r"^[A-Za-z0-9:][A-Za-z0-9.:_-]*$")
+
 # Where the lease this run holds is handed to the callback that gives it back.
 # Both plugins live in the one ansible process, so the environment is the whole
 # channel.
@@ -280,6 +283,9 @@ class InventoryModule(BaseInventoryPlugin):
             for group_name in ansible_groups(host):
                 inventory.add_group(group_name)
                 inventory.add_child(group_name, name)
+            for address in (host["address"], host["vars"].get("ansible_host")):
+                if address and not VALID_ADDRESS.match(str(address)):
+                    fatal(f"canopy gives {name} the address {address!r}, which is not a name or an IP")
             if host["address"]:
                 inventory.set_variable(name, "ansible_host", host["address"])
             elif "ansible_host" not in host["vars"]:

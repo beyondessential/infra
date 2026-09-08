@@ -396,6 +396,22 @@ class Refusing(PluginTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("two servers named", result.stderr)
 
+    def test_an_address_ssh_would_read_as_an_option_stops_the_run(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["address"] = "-oProxyCommand=echo"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("is not a name or an IP", result.stderr)
+
+    def test_an_ansible_host_ssh_would_read_as_an_option_stops_the_run(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["vars"]["ansible_host"] = "-oProxyCommand=echo"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("is not a name or an IP", result.stderr)
+
     def test_a_redirect_names_the_url_rather_than_canopy(self):
         with StubCanopy(status=302, location="/api/inventory/for_group/") as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
