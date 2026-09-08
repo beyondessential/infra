@@ -89,6 +89,8 @@ class CallbackModule(CallbackBase):
                     )
                 )
                 if refused:
+                    # Canopy has already said the lease is not ours to give back.
+                    self._lease = None
                     return
 
     def _release(self):
