@@ -107,6 +107,14 @@ class StubCanopy:
         self.requests = []
         self.calls = []
 
+    def fail(self, status, body, content_type="application/json", on="for_group"):
+        """Answer that call with a failure from here on, on the same port: a
+        cache is keyed to the canopy that filled it."""
+        self.status = status
+        self.body = body
+        self.content_type = content_type
+        self.on = on
+
     def answer(self, path):
         """The status, content type and body for one call."""
         if path == self.on and (self.status != 200 or self.body is not None):
@@ -165,6 +173,13 @@ class PluginTestCase(unittest.TestCase):
         self.config = Path(self.workdir.name, "empty.cfg")
         self.config.write_text("[defaults]\n")
         self.addCleanup(self.workdir.cleanup)
+
+    def prime_cache(self, source, canopy):
+        result = self.run_inventory(source, canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cached = list(self.cache.glob("canopy-inventory/*.json"))
+        self.assertEqual(len(cached), 1)
+        return cached[0]
 
     def source(self, **keys):
         path = Path(self.workdir.name, "source.yml")
@@ -390,18 +405,11 @@ class Refusing(PluginTestCase):
 
 
 class WhenCanopyCannotBeReached(PluginTestCase):
-    def prime_cache(self, source):
-        with StubCanopy() as canopy:
-            result = self.run_inventory(source, canopy.url)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        cached = list(self.cache.glob("canopy-inventory/*.json"))
-        self.assertEqual(len(cached), 1)
-        return cached[0]
-
     def test_a_server_error_falls_back_to_the_cache(self):
         source = self.source(group="kamaka")
-        self.prime_cache(source)
-        with StubCanopy(status=502, body="<html>bad gateway</html>", content_type="text/html") as canopy:
+        with StubCanopy() as canopy:
+            self.prime_cache(source, canopy)
+            canopy.fail(502, "<html>bad gateway</html>", "text/html")
             result = self.run_inventory(source, canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("may be out of date", result.stderr)
@@ -409,16 +417,28 @@ class WhenCanopyCannotBeReached(PluginTestCase):
 
     def test_a_bad_payload_does_not_overwrite_a_good_cache(self):
         source = self.source(group="kamaka")
-        cached = self.prime_cache(source)
-        good = cached.read_bytes()
-        with StubCanopy(body=json.dumps({"group": "kamaka", "hosts": []})) as canopy:
+        with StubCanopy() as canopy:
+            cached = self.prime_cache(source, canopy)
+            good = cached.read_bytes()
+            canopy.fail(200, json.dumps({"group": "kamaka", "hosts": []}))
             result = self.run_inventory(source, canopy.url)
         self.assertEqual(result.returncode, 1)
         self.assertEqual(cached.read_bytes(), good)
 
     def test_the_cache_is_private_to_its_owner(self):
-        cached = self.prime_cache(self.source(group="kamaka"))
+        with StubCanopy() as canopy:
+            cached = self.prime_cache(self.source(group="kamaka"), canopy)
         self.assertEqual(cached.stat().st_mode & 0o777, 0o600)
+
+    def test_another_canopy_does_not_read_this_ones_cache(self):
+        source = self.source(group="kamaka")
+        with StubCanopy() as canopy:
+            self.prime_cache(source, canopy)
+        with StubCanopy() as other:
+            other.fail(502, "nope", "text/plain")
+            result = self.run_inventory(source, other.url)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("nothing cached", result.stderr)
 
     def test_offline_with_nothing_cached_stops_the_run(self):
         with StubCanopy() as canopy:
@@ -429,14 +449,6 @@ class WhenCanopyCannotBeReached(PluginTestCase):
 
 
 class SecretVariables(PluginTestCase):
-    def prime_cache(self, source):
-        with StubCanopy() as canopy:
-            result = self.run_inventory(source, canopy.url)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        cached = list(self.cache.glob("canopy-inventory/*.json"))
-        self.assertEqual(len(cached), 1)
-        return cached[0]
-
     def test_a_secret_value_reaches_the_run(self):
         with StubCanopy() as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
@@ -447,7 +459,8 @@ class SecretVariables(PluginTestCase):
         self.assertEqual(plain(hostvars["facility.kamaka.example"]["salt"]), "pepper")
 
     def test_the_cache_holds_no_secret_value(self):
-        cached = self.prime_cache(self.source(group="kamaka")).read_text()
+        with StubCanopy() as canopy:
+            cached = self.prime_cache(self.source(group="kamaka"), canopy).read_text()
         self.assertNotIn("pepper", cached)
         self.assertNotIn("vinegar", cached)
         # The names stay, so a run off the cache can say what is missing.
@@ -456,8 +469,9 @@ class SecretVariables(PluginTestCase):
 
     def test_a_cached_run_leaves_a_secret_unset_and_says_so(self):
         source = self.source(group="kamaka")
-        self.prime_cache(source)
-        with StubCanopy(status=502, body="nope", content_type="text/plain") as canopy:
+        with StubCanopy() as canopy:
+            self.prime_cache(source, canopy)
+            canopy.fail(502, "nope", "text/plain")
             result = self.run_inventory(source, canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("salt", result.stderr)

@@ -225,7 +225,8 @@ class InventoryModule(BaseInventoryPlugin):
         # rank production, against a group named kamaka-production), so the
         # digest of the request is what actually distinguishes the file.
         label = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(group or group_id))
-        digest = hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest()[:12]
+        keyed = dict(args, url=(self.get_option("url") or "").rstrip("/"))
+        digest = hashlib.sha256(json.dumps(keyed, sort_keys=True).encode()).hexdigest()[:12]
         cache_file = Path(
             os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache",
             "canopy-inventory",
