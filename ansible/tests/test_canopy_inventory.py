@@ -632,6 +632,17 @@ class HoldingTheEnvironment(PluginTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
 
+    def test_an_odd_answer_to_the_release_leaves_the_real_error_standing(self):
+        blocked = Path(self.workdir.name, "not-a-directory")
+        blocked.write_text("")
+        with StubCanopy(body="<html>done</html>", content_type="text/html", on="release_lease") as canopy:
+            result = self.run_inventory(
+                self.source(group="kamaka"), canopy.url, XDG_CACHE_HOME=str(blocked)
+            )
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
+        self.assertIn("NotADirectoryError", result.stderr)
+
     def test_a_run_that_cannot_give_the_lease_back_takes_none(self):
         with StubCanopy() as canopy:
             result = self.run_inventory(

@@ -376,7 +376,7 @@ class InventoryModule(BaseInventoryPlugin):
         failing the run over it would replace one problem with a worse one."""
         try:
             self._post(f"{base}/api/inventory/release_lease", {"lease_id": lease_id})
-        except (Unreachable, SystemExit, urllib.error.URLError, OSError):
+        except (Unreachable, SystemExit, ValueError, urllib.error.URLError, OSError):
             display.warning(
                 f"canopy inventory: could not release the run lease {lease_id}; "
                 "it holds the environment until it expires"
