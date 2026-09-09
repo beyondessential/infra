@@ -111,6 +111,7 @@
 
     - name: Enroll Elastic agent
       become: true
+      no_log: true
       ansible.builtin.command:
         cmd: >
           elastic-agent enroll

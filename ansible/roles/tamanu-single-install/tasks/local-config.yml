@@ -4,6 +4,7 @@
 # ansible) ignores mode bits when rewriting.
 - name: Add tamanu local config
   become: true
+  diff: false
   ansible.builtin.template:
     dest: /etc/tamanu/{{ tamanu_version }}/local.json5
     src: local.json5.j2

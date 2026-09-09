@@ -11,6 +11,13 @@
           or pass it with -e. TAMANU_VERSION is read from the server's
           /etc/tamanu/env and is not changed by this playbook.
 
+    - name: Check the inventory was read as an upgrade
+      ansible.builtin.assert:
+        that: canopy_intent is defined and canopy_intent == 'upgrade'
+        msg: >-
+          canopy_intent is {{ canopy_intent | default('unset') }}, so canopy never
+          checked for an upgrade plan. Read the inventory with CANOPY_INTENT=upgrade.
+
 - name: Central frontend upgrade
   hosts: central
   roles:
