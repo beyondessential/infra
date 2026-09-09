@@ -456,6 +456,11 @@ class WhenCanopyCannotBeReached(PluginTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("nothing cached", result.stderr)
 
+    def test_an_offline_run_still_names_the_canopy(self):
+        result = self.run_inventory(self.source(group="kamaka"), "", offline=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("set CANOPY_URL", result.stderr)
+
     def test_offline_with_nothing_cached_stops_the_run(self):
         with StubCanopy() as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url, offline=True)

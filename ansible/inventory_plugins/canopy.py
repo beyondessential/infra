@@ -300,15 +300,17 @@ class InventoryModule(BaseInventoryPlugin):
                     inventory.set_variable(name, key, value)
 
     def _fetch(self, args, cache_file):
-        if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
-            return self._fallback(args, cache_file, "offline"), False
-
-        self._require_keeper()
-
+        # The cache is keyed to the canopy that filled it, so an offline run
+        # still has to say which one it is reading.
         url = self.get_option("url")
         if not url:
             fatal("set CANOPY_URL, or url in the source file")
         base = url.rstrip("/")
+
+        if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
+            return self._fallback(args, cache_file, "offline"), False
+
+        self._require_keeper()
 
         try:
             lease = self._post(f"{base}/api/inventory/take_lease", args)
