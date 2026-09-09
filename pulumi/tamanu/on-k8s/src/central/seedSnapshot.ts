@@ -62,7 +62,12 @@ export function cloneSeedSnapshot({
   // it explicitly (rather than reading `content.metadata.name` back off the
   // resource) because `apiextensions.CustomResource` doesn't populate
   // `.metadata` on the JS instance when the args omit it.
-  const contentName = interpolate`${SNAPSHOT_NAME}-${namespace}`;
+  //
+  // The handle is part of the name so that pointing at a different source snapshot renames
+  // the content, which replaces the VolumeSnapshot below and so releases the old content
+  // before it is deleted. A stable name leaves the snapshot bound to a content Kubernetes
+  // is trying to delete, and its bound-protection finaliser refuses for good.
+  const contentName = interpolate`${SNAPSHOT_NAME}-${namespace}-${source.handle}`;
 
   // Immutable fields (driver, snapshotHandle) require replace rather than
   // patch whenever the source snapshot changes. deleteBeforeReplace ensures
@@ -88,7 +93,6 @@ export function cloneSeedSnapshot({
     {
       parent,
       replaceOnChanges: ['spec.driver', 'spec.source.snapshotHandle'],
-      deleteBeforeReplace: true,
     },
   );
 
