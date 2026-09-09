@@ -354,6 +354,16 @@ class ChoosingWhatToConfigure(PluginTestCase):
         self.assertNotIn("facility", data)
         self.assertIn("kamaka-prod-facility", result.stderr)
 
+    def test_a_member_whose_flag_reads_false_is_left_out(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][1]["vars"]["managed_by_ansible"] = "false"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["central"]["hosts"], ["kamaka-prod-central"])
+        self.assertNotIn("facility", data)
+
     def test_an_environment_managing_nothing_stops_the_run(self):
         body = json.loads(json.dumps(INVENTORY))
         for host in body["hosts"]:

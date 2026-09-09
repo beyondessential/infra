@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.plugins.inventory import BaseInventoryPlugin
 from ansible.plugins.loader import callback_loader
 from ansible.utils.display import Display
@@ -144,6 +145,10 @@ TAILNET_SUFFIX = ".ts.net"
 MANAGED_VAR = "managed_by_ansible"
 
 
+def is_managed(host):
+    return boolean(host["vars"].get(MANAGED_VAR), strict=False)
+
+
 def slug(text):
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", text).strip("-")
 
@@ -261,13 +266,13 @@ class InventoryModule(BaseInventoryPlugin):
         # Canopy holds every application in the environment, this repo
         # configures a subset, and a play that reached the rest would act on
         # machines nothing here has ever touched.
-        managed = [host for host in data["hosts"] if host["vars"].get(MANAGED_VAR)]
+        managed = [host for host in data["hosts"] if is_managed(host)]
         if not managed:
             fatal(
                 f"none of canopy's {len(data['hosts'])} members carry {MANAGED_VAR}; "
                 f"set it on the applications this repo configures"
             )
-        withheld = [host["name"] for host in data["hosts"] if not host["vars"].get(MANAGED_VAR)]
+        withheld = [host["name"] for host in data["hosts"] if not is_managed(host)]
         if withheld:
             display.warning(
                 f"canopy inventory: {len(withheld)} of canopy's members carry no {MANAGED_VAR} "
