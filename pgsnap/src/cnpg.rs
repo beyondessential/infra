@@ -159,7 +159,8 @@ pub async fn create_connection_secret(
     let password = data
         .get("password")
         .map(|v| String::from_utf8_lossy(&v.0).into_owned())
-        .unwrap_or_default();
+        .filter(|password| !password.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("CNPG secret {cnpg_secret_name} has no password yet"))?;
 
     let db_host = format!("{cluster_name}-rw.{namespace}.svc.cluster.local");
 
