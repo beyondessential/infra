@@ -8,6 +8,7 @@ import {
   output,
 } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import { createHash } from 'node:crypto';
 import { CustomObjectsApi } from '@kubernetes/client-node';
 import * as semver from 'semver';
 import { k8sConfig } from '../../../../common/k8s/client.ts';
@@ -63,15 +64,22 @@ export function cloneSeedSnapshot({
   // resource) because `apiextensions.CustomResource` doesn't populate
   // `.metadata` on the JS instance when the args omit it.
   //
-  // The handle is part of the name so that pointing at a different source snapshot renames
-  // the content, which replaces the VolumeSnapshot below and so releases the old content
-  // before it is deleted. A stable name leaves the snapshot bound to a content Kubernetes
-  // is trying to delete, and its bound-protection finaliser refuses for good.
-  const contentName = interpolate`${SNAPSHOT_NAME}-${namespace}-${source.handle}`;
+  // The name carries a digest of everything that forces a replacement, so pointing at a
+  // different source renames the content, which replaces the VolumeSnapshot below and
+  // releases the old content before it is deleted. A stable name leaves the snapshot bound
+  // to a content Kubernetes is trying to delete, and its bound-protection finaliser refuses
+  // for good. A digest rather than the handle itself because a CSI handle is driver-defined
+  // and need not be a legal object name.
+  const sourceDigest = all([source.driver, source.handle]).apply(([driver, handle]) =>
+    createHash('sha256').update(`${driver}\u0000${handle}`).digest('hex').slice(0, 10),
+  );
+  const contentName = interpolate`${SNAPSHOT_NAME}-${namespace}-${sourceDigest}`;
 
-  // Immutable fields (driver, snapshotHandle) require replace rather than
-  // patch whenever the source snapshot changes. deleteBeforeReplace ensures
-  // we never collide on the cluster-scoped content name during replacement.
+  // Immutable fields (driver, snapshotHandle) require replace rather than patch whenever the
+  // source snapshot changes. The replacement must be create-before-delete, so do not add
+  // deleteBeforeReplace here: deleting the old content while the old VolumeSnapshot still
+  // binds it is what the bound-protection finaliser refuses. The digest in the name is what
+  // keeps the two from colliding.
   const content = new k8s.apiextensions.CustomResource(
     'seed-snapshot-content',
     {
