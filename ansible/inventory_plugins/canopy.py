@@ -150,7 +150,7 @@ def without_secret_values(data):
             dict(
                 host,
                 vars=plain(host["vars"], names),
-                own_vars=plain(host.get("own_vars", {}), names),
+                own_vars=plain(host.get("own_vars") or {}, names),
             )
         )
     return dict(

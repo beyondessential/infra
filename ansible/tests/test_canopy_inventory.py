@@ -571,6 +571,14 @@ class SecretVariables(PluginTestCase):
             for application in host["applications"]:
                 self.assertEqual(set(application), {"id", "name", "type"})
 
+    def test_a_member_canopy_sends_no_own_vars_for_is_still_cached(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["own_vars"] = None
+        source = self.source(group="kamaka")
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            cached = json.loads(self.prime_cache(source, canopy).read_text())
+        self.assertEqual(cached["hosts"][0]["own_vars"], {})
+
     def test_a_cached_run_leaves_a_secret_unset_and_says_so(self):
         source = self.source(group="kamaka")
         with StubCanopy() as canopy:
