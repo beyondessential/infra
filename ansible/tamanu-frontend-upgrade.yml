@@ -13,10 +13,10 @@
 
     - name: Check the inventory was read as an upgrade
       ansible.builtin.assert:
-        that: canopy_intent | default('upgrade') == 'upgrade'
+        that: canopy_intent is defined and canopy_intent == 'upgrade'
         msg: >-
-          This inventory was read as a {{ canopy_intent }}, so canopy never
-          checked for an upgrade plan. Re-run with CANOPY_INTENT=upgrade.
+          canopy_intent is {{ canopy_intent | default('unset') }}, so canopy never
+          checked for an upgrade plan. Read the inventory with CANOPY_INTENT=upgrade.
 
 - name: Central frontend upgrade
   hosts: central
