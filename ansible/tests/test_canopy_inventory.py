@@ -558,6 +558,19 @@ class SecretVariables(PluginTestCase):
         self.assertIn("salt", json.loads(cached)["secret_vars"])
         self.assertIn("Pacific/Auckland", cached)
 
+    def test_the_cache_carries_no_key_the_redactor_has_not_seen(self):
+        """A key the redactor has never seen may carry a value, so canopy's
+        payload growing one fails here rather than landing on disk."""
+        with StubCanopy() as canopy:
+            cached = json.loads(self.prime_cache(self.source(group="kamaka"), canopy).read_text())
+        self.assertEqual(set(cached), {"group_id", "group", "rank", "vars", "secret_vars", "hosts"})
+        for host in cached["hosts"]:
+            self.assertEqual(
+                set(host), {"id", "name", "address", "applications", "vars", "own_vars", "secret_vars"}
+            )
+            for application in host["applications"]:
+                self.assertEqual(set(application), {"id", "name", "type"})
+
     def test_a_cached_run_leaves_a_secret_unset_and_says_so(self):
         source = self.source(group="kamaka")
         with StubCanopy() as canopy:
