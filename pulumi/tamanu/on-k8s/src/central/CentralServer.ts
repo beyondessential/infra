@@ -22,6 +22,7 @@ import {
   dbExpose,
   dbExposeTags,
   dbStorage,
+  nodeEnv,
   normalizedStack,
   seedSnapshot,
   sharedBlobStorage,
@@ -116,6 +117,15 @@ export class CentralServer extends ComponentResource {
     this.provisioning = provisioning;
 
     if (seedSnapshot) {
+      // The top-up hands the app the override that lets it write fake data, so the config
+      // flag is the only thing standing between a real deployment and generated patients.
+      // Refuse rather than skip: a stack that means to seed and has not said it is not
+      // production should say so, not quietly get no data.
+      if (nodeEnv === 'production') {
+        throw new Error(
+          'seedSnapshot writes fake clinical data, so it needs a stack whose nodeEnv is not production',
+        );
+      }
       seedTopUp({ parent: this, podSpec, provisionerJob });
     }
 
