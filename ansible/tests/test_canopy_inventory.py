@@ -422,6 +422,11 @@ class Refusing(PluginTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("is not a name or an IP", result.stderr)
 
+    def test_reading_canopy_in_the_clear_stops_the_run(self):
+        result = self.run_inventory(self.source(group="kamaka"), "http://canopy.example")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("is not https", result.stderr)
+
     def test_a_redirect_names_the_url_rather_than_canopy(self):
         with StubCanopy(status=302, location="/api/inventory/for_group/") as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)

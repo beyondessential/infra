@@ -8,6 +8,7 @@ import json
 import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -75,7 +76,7 @@ options:
     env:
       - name: CANOPY_INTENT
   url:
-    description: Base URL of canopy's operator interface.
+    description: Base URL of canopy's operator interface. C(https), unless canopy is on this machine.
     type: str
     env:
       - name: CANOPY_URL
@@ -111,6 +112,8 @@ LEASE_ENV = "CANOPY_INVENTORY_LEASE"
 
 # The callback that extends the lease while the play runs and gives it back.
 KEEPER = "canopy_lease"
+
+LOOPBACK = ("localhost", "127.0.0.1", "::1")
 
 
 def without_secret_values(data):
@@ -314,6 +317,10 @@ class InventoryModule(BaseInventoryPlugin):
 
         if os.environ.get("CANOPY_INVENTORY_OFFLINE"):
             return self._fallback(args, cache_file, "offline"), False
+
+        parsed = urllib.parse.urlsplit(base)
+        if parsed.scheme != "https" and parsed.hostname not in LOOPBACK:
+            fatal(f"{base} is not https, and canopy's answer carries the deployment's secret variables")
 
         self._require_keeper()
 
