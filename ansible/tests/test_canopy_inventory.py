@@ -382,6 +382,61 @@ class ChoosingWhatToConfigure(PluginTestCase):
         self.assertEqual(canopy.requests[0]["intent"], "upgrade")
 
 
+class WhatCanopyMaySet(PluginTestCase):
+    def test_a_connection_variable_is_left_out_of_a_host(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["vars"]["ansible_ssh_common_args"] = "-o ProxyCommand=echo"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
+        self.assertNotIn("ansible_ssh_common_args", hostvars["kamaka-prod-central"])
+        self.assertIn("ansible_ssh_common_args is not canopy's to set", result.stderr)
+
+    def test_a_connection_variable_is_left_out_of_the_environment(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["vars"]["ansible_ssh_executable"] = "/tmp/ssh"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
+        self.assertNotIn("ansible_ssh_executable", hostvars["kamaka-prod-central"])
+
+    def test_the_variables_a_machine_is_reached_at_still_get_through(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["vars"]["ansible_port"] = 2222
+        body["hosts"][0]["vars"]["ansible_python_interpreter"] = "/usr/bin/python3"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        central = json.loads(result.stdout)["_meta"]["hostvars"]["kamaka-prod-central"]
+        self.assertEqual(plain(central["ansible_port"]), 2222)
+        self.assertEqual(plain(central["ansible_user"]), "ubuntu")
+        self.assertEqual(plain(central["ansible_python_interpreter"]), "/usr/bin/python3")
+
+    def test_a_tag_cannot_answer_the_intent_gate(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["vars"]["canopy_intent"] = "upgrade"
+        body["vars"]["canopy_intent"] = "upgrade"
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        central = json.loads(result.stdout)["_meta"]["hostvars"]["kamaka-prod-central"]
+        self.assertEqual(plain(central["canopy_intent"]), "configure")
+
+    def test_the_cache_is_read_back_under_the_same_rule(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["hosts"][0]["vars"]["ansible_ssh_common_args"] = "-o ProxyCommand=echo"
+        source = self.source(group="kamaka")
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            self.prime_cache(source, canopy)
+            canopy.fail(502, "nope", "text/plain")
+            result = self.run_inventory(source, canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hostvars = json.loads(result.stdout)["_meta"]["hostvars"]
+        self.assertNotIn("ansible_ssh_common_args", hostvars["kamaka-prod-central"])
+
+
 class Refusing(PluginTestCase):
     def test_a_refusal_stops_the_run(self):
         problem = json.dumps({"title": 'not found: no server group named "nope"'})

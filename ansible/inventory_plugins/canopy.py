@@ -38,6 +38,9 @@ description:
   - Only machines carrying C(managed_by_ansible) are served. Canopy holds every machine in an environment,
     including the ones this repo does not configure, so membership is opt-in rather than everything canopy knows.
   - C(canopy_intent) carries the intent the inventory was read with, so a play can refuse to run under the wrong one.
+  - Of ansible's own variables canopy may set only C(ansible_host), C(ansible_user), C(ansible_port) and
+    C(ansible_python_interpreter). The rest, and C(canopy_intent), are left out with a warning, since they decide
+    how the controller connects and what it runs.
   - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
   - A successful fetch is cached, minus every secret value. A run falling back to that cache warns which variables
     are unset, so a play needing one fails on it rather than acting on a stale value.
@@ -114,6 +117,19 @@ LEASE_ENV = "CANOPY_INVENTORY_LEASE"
 KEEPER = "canopy_lease"
 
 LOOPBACK = ("localhost", "127.0.0.1", "::1")
+
+# Enough of ansible's namespace to say where a machine is and who to be there, nothing that says what to run.
+ALLOWED_ANSIBLE_VARS = frozenset({"ansible_host", "ansible_user", "ansible_port", "ansible_python_interpreter"})
+
+# The plugin sets canopy_intent at group scope, where a host-level tag would beat it.
+RESERVED_VARS = frozenset({"canopy_intent"})
+
+
+def canopy_may_set(key, where):
+    if key in RESERVED_VARS or (key.startswith("ansible_") and key not in ALLOWED_ANSIBLE_VARS):
+        display.warning(f"canopy inventory: {key} is not canopy's to set, so it is left out of {where}")
+        return False
+    return True
 
 
 def without_secret_values(data):
@@ -262,7 +278,7 @@ class InventoryModule(BaseInventoryPlugin):
 
     def _build(self, inventory, data):
         for key, value in data["vars"].items():
-            if VALID_VAR_NAME.match(key):
+            if VALID_VAR_NAME.match(key) and canopy_may_set(key, "the environment"):
                 inventory.set_variable("all", key, value)
         inventory.set_variable("all", "canopy_intent", self.get_option("intent"))
 
@@ -304,7 +320,7 @@ class InventoryModule(BaseInventoryPlugin):
             for key, value in host["vars"].items():
                 # Canopy tags include dotted keys such as billing.product, which
                 # are not addressable as Ansible variables.
-                if VALID_VAR_NAME.match(key):
+                if VALID_VAR_NAME.match(key) and canopy_may_set(key, name):
                     inventory.set_variable(name, key, value)
 
     def _fetch(self, args, cache_file):
