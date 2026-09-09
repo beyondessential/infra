@@ -38,9 +38,9 @@ description:
   - Only machines carrying C(managed_by_ansible) are served. Canopy holds every machine in an environment,
     including the ones this repo does not configure, so membership is opt-in rather than everything canopy knows.
   - C(canopy_intent) carries the intent the inventory was read with, so a play can refuse to run under the wrong one.
-  - Of ansible's own variables canopy may set only C(ansible_host), C(ansible_user), C(ansible_port) and
-    C(ansible_python_interpreter). The rest, and C(canopy_intent), are left out with a warning, since they decide
-    how the controller connects and what it runs.
+  - Of ansible's own variables canopy may set only C(ansible_host), C(ansible_user), C(ansible_port),
+    C(ansible_python_interpreter) and C(ansible_timeout). The rest, and C(canopy_intent), are left out with a
+    warning, since they decide how the controller connects and what it runs.
   - Reading an inventory needs canopy administrator access, since it carries the deployment's secret variables.
   - A successful fetch is cached, minus every secret value. A run falling back to that cache warns which variables
     are unset, so a play needing one fails on it rather than acting on a stale value.
@@ -119,7 +119,9 @@ KEEPER = "canopy_lease"
 LOOPBACK = ("localhost", "127.0.0.1", "::1")
 
 # Enough of ansible's namespace to say where a machine is and who to be there, nothing that says what to run.
-ALLOWED_ANSIBLE_VARS = frozenset({"ansible_host", "ansible_user", "ansible_port", "ansible_python_interpreter"})
+ALLOWED_ANSIBLE_VARS = frozenset(
+    {"ansible_host", "ansible_user", "ansible_port", "ansible_python_interpreter", "ansible_timeout"}
+)
 
 # The plugin sets canopy_intent at group scope, where a host-level tag would beat it.
 RESERVED_VARS = frozenset({"canopy_intent"})

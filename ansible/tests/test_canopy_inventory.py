@@ -406,6 +406,7 @@ class WhatCanopyMaySet(PluginTestCase):
         body = json.loads(json.dumps(INVENTORY))
         body["hosts"][0]["vars"]["ansible_port"] = 2222
         body["hosts"][0]["vars"]["ansible_python_interpreter"] = "/usr/bin/python3"
+        body["hosts"][0]["vars"]["ansible_timeout"] = 120
         with StubCanopy(body=json.dumps(body)) as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -413,6 +414,7 @@ class WhatCanopyMaySet(PluginTestCase):
         self.assertEqual(plain(central["ansible_port"]), 2222)
         self.assertEqual(plain(central["ansible_user"]), "ubuntu")
         self.assertEqual(plain(central["ansible_python_interpreter"]), "/usr/bin/python3")
+        self.assertEqual(plain(central["ansible_timeout"]), 120)
 
     def test_a_tag_cannot_answer_the_intent_gate(self):
         body = json.loads(json.dumps(INVENTORY))
