@@ -61,6 +61,10 @@ export function runServer(
       },
       spec: {
         replicas,
+        // A facility server refuses to serve until it can log in to central, and Kubernetes'
+        // crashloop backoff reaches minutes, so it can still be restarting well after central
+        // is up. The default 600s is not enough for a deploy that restores a seed first.
+        progressDeadlineSeconds: 1800,
         strategy: {
           type: type === 'api' ? 'RollingUpdate' : 'Recreate',
         },
