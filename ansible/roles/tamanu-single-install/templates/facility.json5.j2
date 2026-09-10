@@ -5,8 +5,10 @@
   canonicalUrl: "https://{{ public_hostname }}",
   sync: {
     host: "{{ tamanu_central_canonical_url }}",
+{% if tamanu_sync_email is defined and tamanu_sync_password is defined %}
     email: "{{ tamanu_sync_email }}",
     password: "{{ tamanu_sync_password }}",
+{% endif %}
     dynamicLimiter: {
       initialLimit: 10000,
       minLimit: 1000,
