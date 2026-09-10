@@ -45,7 +45,6 @@ export class CentralServer extends ComponentResource {
   readonly ingress: k8s.apiextensions.CustomResource;
   readonly provisioning: Output<Provisioning>;
   readonly api: k8s.core.v1.Service;
-  readonly apiDeployment: k8s.apps.v1.Deployment;
 
   constructor(
     name: string,
@@ -171,7 +170,6 @@ export class CentralServer extends ComponentResource {
     });
 
     this.api = api.service;
-    this.apiDeployment = api.deployment;
 
     const web = new WebFrontend(
       'central',

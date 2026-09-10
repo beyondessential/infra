@@ -37,20 +37,14 @@ const central = new CentralServer('central', {
 });
 
 for (const [i, { id, host }] of facilityList.entries()) {
-  new FacilityServer(
-    `${i + 1}`,
-    {
-      fqdn: domains[host],
-      centralApiUrl: `https://${domains.central}`,
-      facilityId: id,
-      deviceId: id,
-      replicas: replicas.facility,
-      provisioning: central.provisioning,
-    },
-    // A facility server logs in to central before it will serve, so it cannot become ready
-    // until central-api is up.
-    { dependsOn: central.apiDeployment },
-  );
+  new FacilityServer(`${i + 1}`, {
+    fqdn: domains[host],
+    centralApiUrl: `https://${domains.central}`,
+    facilityId: id,
+    deviceId: id,
+    replicas: replicas.facility,
+    provisioning: central.provisioning,
+  });
 }
 
 const patientPortal = new WebFrontend('patient-portal', {
