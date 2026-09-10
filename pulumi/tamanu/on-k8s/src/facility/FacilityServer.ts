@@ -125,7 +125,7 @@ export class FacilityServer extends ComponentResource {
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
-    reportingGrants(`facility-${name}`, { parent: this });
+    reportingGrants(`facility-${name}`, { parent: this, dbReady });
 
     const migratorJob = migrator(`facility-${name}`, {
       parent: this,

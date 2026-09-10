@@ -107,7 +107,7 @@ export class CentralServer extends ComponentResource {
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
-    reportingGrants('central', { parent: this });
+    reportingGrants('central', { parent: this, dbReady });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
     const { job: provisionerJob, provisioning } = provisioner({
