@@ -161,7 +161,7 @@ function wakeJob(
   // ttlSecondsAfterFinished cleans up the underlying k8s Job a few minutes
   // after success so old Jobs don't accumulate if pulumi state lags.
   new k8s.batch.v1.Job(`ttl-wake-${expiresAtUnix}`, {
-    metadata: { namespace },
+    metadata: { namespace, annotations: { 'pulumi.com/timeoutSeconds': '600' } },
     spec: {
       ttlSecondsAfterFinished: 600,
       backoffLimit: 2,

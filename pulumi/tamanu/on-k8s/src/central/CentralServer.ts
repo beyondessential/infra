@@ -22,7 +22,9 @@ import {
   dbExpose,
   dbExposeTags,
   dbStorage,
+  nodeEnv,
   normalizedStack,
+  seedSnapshot,
   sharedBlobStorage,
   timezone,
 } from '../config.ts';
@@ -30,6 +32,7 @@ import { namespace } from '../namespace.ts';
 import { reportingRoles } from '../common/reportingRoles.ts';
 import { reportingGrants } from '../common/reportingGrants.ts';
 import { cloneSeedSnapshot, type SnapshotSource } from './seedSnapshot.ts';
+import { seedTopUp } from './seedTopUp.ts';
 
 export interface CentralServerArgs {
   fqdn: string;
@@ -42,6 +45,7 @@ export class CentralServer extends ComponentResource {
   readonly ingress: k8s.apiextensions.CustomResource;
   readonly provisioning: Output<Provisioning>;
   readonly api: k8s.core.v1.Service;
+  readonly apiDeployment: k8s.apps.v1.Deployment;
 
   constructor(
     name: string,
@@ -103,7 +107,7 @@ export class CentralServer extends ComponentResource {
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
-    reportingGrants('central', { parent: this });
+    reportingGrants('central', { parent: this, dbReady });
 
     const migratorJob = migrator('central', { parent: this, podSpec, appConfig });
     const { job: provisionerJob, provisioning } = provisioner({
@@ -112,6 +116,19 @@ export class CentralServer extends ComponentResource {
       migratorJob,
     });
     this.provisioning = provisioning;
+
+    if (seedSnapshot) {
+      // The top-up hands the app the override that lets it write fake data, so the config
+      // flag is the only thing standing between a real deployment and generated patients.
+      // Refuse rather than skip: a stack that means to seed and has not said it is not
+      // production should say so, not quietly get no data.
+      if (nodeEnv === 'production') {
+        throw new Error(
+          'seedSnapshot writes fake clinical data, so it needs a stack whose nodeEnv is not production',
+        );
+      }
+      seedTopUp({ parent: this, podSpec, provisionerJob });
+    }
 
     runTasks({
       parent: this,
@@ -154,6 +171,7 @@ export class CentralServer extends ComponentResource {
     });
 
     this.api = api.service;
+    this.apiDeployment = api.deployment;
 
     const web = new WebFrontend(
       'central',
