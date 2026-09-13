@@ -27,8 +27,8 @@ export function seedTopUp({ parent, podSpec, provisionerJob }: SeedTopUpArgs): k
             ...podSpec({
               podType: 'seed-top-up',
               command: ['generate', 'seed', '--rounds', String(ROUNDS)],
-              // The command refuses to write fake data under the NODE_ENV every deploy
-              // sets, since the same image runs on hospital servers.
+              // The command refuses to write fake data without this, since the same image
+              // runs on hospital servers.
               env: [{ name: 'TAMANU_ALLOW_FAKE_DATA', value: 'true' }],
             }),
             restartPolicy: 'Never',
