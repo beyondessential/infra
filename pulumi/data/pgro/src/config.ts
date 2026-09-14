@@ -15,9 +15,9 @@ export const canopyBaseUrl = cfg.get('canopyBaseUrl');
 
 // Optional mTLS fallback identity: the operator's own device private key
 // (P-256 EC, PEM) — nothing else. bestool-canopy self-signs a short-lived
-// cert from it per request; its public key IS the canopy device, which a
-// canopy admin promotes to backup-restore. Only used if the tailnet probe
-// fails.
+// cert from it when the client is built, valid six days; its public key IS the
+// canopy device, which a canopy admin promotes to backup-restore. Only used if
+// the tailnet probe fails.
 export const canopyDeviceKey = cfg.getSecret('canopyDeviceKey');
 
 // Override for canopy-provisioned pgdata PVCs (operator default is 20Gi).

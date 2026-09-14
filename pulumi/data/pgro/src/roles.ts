@@ -79,6 +79,13 @@ const clusterRole = new k8s.rbac.v1.ClusterRole(
         resources: ['namespaces'],
         verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
       },
+      // Pod logs (the tail of a failed migration Job, where the version under
+      // test records no structured error of its own)
+      {
+        apiGroups: [''],
+        resources: ['pods/log'],
+        verbs: ['get'],
+      },
       // Pod port-forward (overlay FDW reconciliation)
       {
         apiGroups: [''],
