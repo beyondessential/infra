@@ -3,6 +3,7 @@ import { TAILNET_DOMAIN } from '../../constants/internal.ts';
 import { postgresCronJob } from '../../common/k8s/postgresCron.ts';
 import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
+import { artifactStoreEnv } from './canopy-artifacts.ts';
 import { canopyJobsSa } from './canopy-sa.ts';
 import { recoveryEnv } from './canopy-recovery.ts';
 import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
@@ -82,7 +83,8 @@ new k8s.apps.v1.Deployment(
         spec: spec(
           'backups',
           ['backups'],
-          { env: [...recoveryEnv, ...sharedBackupsJobsEnv] },
+          // The sweep drops artifact bytes no registration reaches any more.
+          { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv] },
           { serviceAccountName: canopyJobsSa },
         ),
       },

@@ -79,9 +79,15 @@ new awsClassic.s3.BucketPublicAccessBlock('canopy-artifacts-public-access-block'
 
 const ARTIFACT_PREFIX = 'artifacts/';
 
-// private-server registers and deregisters; public-server only serves. Scoped to
-// the prefix so the bucket can carry something else later without widening these.
-function artifactPolicy(name: string, actions: string[]): awsNative.iam.ManagedPolicy {
+// private-server registers and deregisters, public-server only serves, and the
+// sweep in canopy-jobs lists to find objects no artifact references any more.
+// Scoped to the prefix so the bucket can carry something else later without
+// widening these.
+//
+// `s3:ListBucket` is a bucket-level action and is denied outright against an
+// object ARN, so it takes a statement of its own. Conditioning it on the prefix
+// keeps a lister from enumerating anything else the bucket ever holds.
+function artifactPolicy(name: string, objectActions: string[], list = false) {
   return new awsNative.iam.ManagedPolicy(
     name,
     {
@@ -90,11 +96,21 @@ function artifactPolicy(name: string, actions: string[]): awsNative.iam.ManagedP
         Statement: [
           {
             Effect: 'Allow',
-            Action: actions,
+            Action: objectActions,
             Resource: artifactBucket.bucketName.apply(
               (bucket) => `arn:aws:s3:::${bucket}/${ARTIFACT_PREFIX}*`,
             ),
           },
+          ...(list
+            ? [
+                {
+                  Effect: 'Allow',
+                  Action: ['s3:ListBucket'],
+                  Resource: artifactBucket.bucketName.apply((bucket) => `arn:aws:s3:::${bucket}`),
+                  Condition: { StringLike: { 's3:prefix': [`${ARTIFACT_PREFIX}*`] } },
+                },
+              ]
+            : []),
         ],
       }),
     },
@@ -117,7 +133,12 @@ const jobsRole = eksServiceAccount('canopy-jobs', {
   serviceAccountName: CANOPY_SA_JOBS,
   oidcProviderArn,
   namespace,
-  managedPolicyArns: [assumeRolePolicy('canopy-jobs-assume').policyArn],
+  managedPolicyArns: [
+    assumeRolePolicy('canopy-jobs-assume').policyArn,
+    // The sweep lists the prefix and drops what no artifact references. It never
+    // reads an artifact, so it is given no GetObject.
+    artifactPolicy('canopy-jobs-artifacts', ['s3:DeleteObject'], true).policyArn,
+  ],
 });
 
 // private-server: the backup setup wizard probes the target bucket by assuming
