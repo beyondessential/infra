@@ -3,6 +3,7 @@ import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 
 import { region } from '../common/awsAccount.ts';
+import { nativeTags } from '../common/tags.ts';
 import { failIfIncorrectAccount, cfg } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
@@ -54,6 +55,7 @@ function assumeRolePolicy(name: string): awsNative.iam.ManagedPolicy {
 const artifactBucket = new awsNative.s3.Bucket(
   'canopy-artifacts',
   {
+    tags: nativeTags({ Purpose: 'canopy-artifacts' }),
     bucketEncryption: {
       serverSideEncryptionConfiguration: [
         { serverSideEncryptionByDefault: { sseAlgorithm: 'AES256' } },
