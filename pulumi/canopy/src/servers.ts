@@ -25,6 +25,7 @@ import { API_GROUP as GATEWAY_API_GROUP } from '../../common/k8s/gateway/consts/
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
 import { labels } from './labels.ts';
+import { artifactStoreEnv } from './canopy-artifacts.ts';
 import { sharedBackupsServerEnv } from './canopy-backups-shared.ts';
 import { migrator } from './jobs.ts';
 import { spec } from './spec.ts';
@@ -257,6 +258,9 @@ new k8s.apps.v1.Deployment(
                 value: publicServerVersionsSecret,
               },
               ...sharedBackupsServerEnv,
+              // Serves the bytes of a group-scoped artifact to the group it is
+              // offered to. Must be the same bucket private-server registers into.
+              ...artifactStoreEnv,
             ],
             // Wait up to 60 seconds for the server to start...
             startupProbe: {
@@ -434,6 +438,9 @@ new k8s.apps.v1.Deployment(
               },
               // For issuing the DR vault verification-ceremony age challenges.
               ...recoveryKeysEnv,
+              // Holds the bytes an operator uploads for a group, and drops them
+              // again when the artifact is deregistered.
+              ...artifactStoreEnv,
             ],
             // Wait up to 60 seconds for the server to start...
             startupProbe: {
