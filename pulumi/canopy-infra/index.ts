@@ -38,14 +38,19 @@ function assumeRolePolicy(name: string): awsNative.iam.ManagedPolicy {
 }
 
 // Canopy holds the bytes of a group-scoped artifact itself, under the artifact's
-// id. No caller addresses the store: the group boundary is enforced on the read,
-// which resolves the artifact against the caller's scope before asking for its
-// bytes, so the bucket is closed and Canopy serves from it.
+// id. Closed to the public: Canopy checks who is asking and serves them from its
+// own endpoint, so nothing reaches the bucket directly.
 //
 // Deliberately not a backup repo and not the recovery vault. An artifact carries
 // an artifact's retention, access and cost basis rather than a backup's, and the
 // vault is versioned and object-locked, which is wrong for an object replaced on
 // every rebuild.
+//
+// No expiry rule here, and do not add one: an artifact's bytes live as long as
+// its registration, a group can sit on one version for a year without a rebuild,
+// and expiring by age would delete bytes a registration still names and answer
+// every device with a 404. Canopy sweeps what no artifact reaches instead, which
+// is what canopy-jobs' ListBucket below is for.
 const artifactBucket = new awsNative.s3.Bucket(
   'canopy-artifacts',
   {
