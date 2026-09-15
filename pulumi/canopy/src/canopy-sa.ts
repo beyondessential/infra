@@ -44,8 +44,14 @@ if (infraRef) {
     'update',
     'patch',
   ]);
-  // The setup wizard creates the passphrase Secret, so private-server also gets create.
-  serviceAccount(CANOPY_SA_PRIVATE, infra.get<string>('canopyPrivateRoleArn'), ['get', 'create']);
+  // private-server creates the wizard's passphrase Secret, deletes it when a backup
+  // config is decommissioned, and patches inventory-variable Secrets key by key.
+  serviceAccount(CANOPY_SA_PRIVATE, infra.get<string>('canopyPrivateRoleArn'), [
+    'get',
+    'create',
+    'patch',
+    'delete',
+  ]);
 }
 
 export const canopyIssuerSa = infraRef ? CANOPY_SA_ISSUER : undefined;
