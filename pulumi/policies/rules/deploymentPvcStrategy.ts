@@ -3,11 +3,16 @@ import * as k8s from '@pulumi/kubernetes';
 
 const READ_WRITE_ONCE = 'ReadWriteOnce';
 
+// Policy inputs arrive wrapped in proxies, and the species lookup map/filter do
+// trips their invariant, so array fields must be walked by index.
 function claimNamesMountedBy(deployment: any): string[] {
   const volumes = deployment.spec?.template?.spec?.volumes ?? [];
-  return volumes
-    .map((volume: any) => volume?.persistentVolumeClaim?.claimName)
-    .filter((name: unknown): name is string => typeof name === 'string');
+  const names: string[] = [];
+  for (let i = 0; i < volumes.length; i++) {
+    const claimName = volumes[i]?.persistentVolumeClaim?.claimName;
+    if (typeof claimName === 'string') names.push(claimName);
+  }
+  return names;
 }
 
 // Claims declared in this stack that more than one node can mount at once, and
@@ -18,7 +23,11 @@ function sharedClaimNames(resources: PolicyResource[]): Set<string> {
     const claim = resource.asType(k8s.core.v1.PersistentVolumeClaim) as any;
     const name = claim?.metadata?.name;
     const accessModes: string[] = claim?.spec?.accessModes ?? [];
-    if (typeof name === 'string' && accessModes.length > 0 && !accessModes.includes(READ_WRITE_ONCE)) {
+    if (
+      typeof name === 'string' &&
+      accessModes.length > 0 &&
+      !accessModes.includes(READ_WRITE_ONCE)
+    ) {
       shared.add(name);
     }
   }

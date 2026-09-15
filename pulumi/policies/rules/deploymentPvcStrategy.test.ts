@@ -92,3 +92,19 @@ test('only the ReadWriteOnce claims are named when a deployment mounts both', ()
 test('a deployment mounting no claim is ignored', () => {
   deepEqual(violationsFor([deployment([], 'RollingUpdate')]), []);
 });
+
+// Mirrors the wrapper @pulumi/policy puts around resource inputs: every object a
+// property access returns is itself wrapped, which is what array methods trip on.
+const proxied = (value: any): any =>
+  value instanceof Object ? new Proxy(value, { get: (o, p) => proxied((o as any)[p]) }) : value;
+
+const throughProxy = (r: any): any => ({ ...r, asType: (cls: any) => proxied(r.asType(cls)) });
+
+test('claims are read through the proxy policy inputs arrive wrapped in', () => {
+  const violations = violationsFor([
+    throughProxy(claim('data', ['ReadWriteOnce'])),
+    throughProxy(deployment(['data'], 'RollingUpdate')),
+  ]);
+  equal(violations.length, 1);
+  match(violations[0], /\[data\]/);
+});
