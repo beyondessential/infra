@@ -7,6 +7,7 @@ import { nativeTags } from '../common/tags.ts';
 import { failIfIncorrectAccount, cfg } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
+import { AWS_S3_DELETE_ACTIONS, AWS_S3_READ_ACTIONS } from '../constants/external.ts';
 import {
   CANOPY_SA_ISSUER,
   CANOPY_SA_JOBS,
@@ -51,7 +52,7 @@ function assumeRolePolicy(name: string): awsNative.iam.ManagedPolicy {
 // its registration, a group can sit on one version for a year without a rebuild,
 // and expiring by age would delete bytes a registration still names and answer
 // every device with a 404. Canopy sweeps what no artifact reaches instead, which
-// is what canopy-jobs' ListBucket below is for.
+// is what canopy-jobs' listing access below is for.
 const artifactBucket = new awsNative.s3.Bucket(
   'canopy-artifacts',
   {
@@ -86,15 +87,10 @@ new awsClassic.s3.BucketPublicAccessBlock('canopy-artifacts-public-access-block'
 
 const ARTIFACT_PREFIX = 'artifacts/';
 
-// private-server registers and deregisters, public-server only serves, and the
-// sweep in canopy-jobs lists to find objects no artifact references any more.
-// Scoped to the prefix so the bucket can carry something else later without
-// widening these.
-//
-// `s3:ListBucket` is a bucket-level action and is denied outright against an
-// object ARN, so it takes a statement of its own. Conditioning it on the prefix
-// keeps a lister from enumerating anything else the bucket ever holds.
-function artifactPolicy(name: string, objectActions: string[], list = false) {
+// Bucket and object ARNs together: the action lists mix bucket-level entries
+// (ListBucket, GetBucketLocation, ListBucketMultipartUploads) with object-level
+// ones, and each is denied against the ARN it does not belong to.
+function artifactPolicy(name: string, actions: string[]) {
   return new awsNative.iam.ManagedPolicy(
     name,
     {
@@ -103,21 +99,12 @@ function artifactPolicy(name: string, objectActions: string[], list = false) {
         Statement: [
           {
             Effect: 'Allow',
-            Action: objectActions,
-            Resource: artifactBucket.bucketName.apply(
-              (bucket) => `arn:aws:s3:::${bucket}/${ARTIFACT_PREFIX}*`,
-            ),
+            Action: actions,
+            Resource: artifactBucket.bucketName.apply((bucket) => [
+              `arn:aws:s3:::${bucket}`,
+              `arn:aws:s3:::${bucket}/*`,
+            ]),
           },
-          ...(list
-            ? [
-                {
-                  Effect: 'Allow',
-                  Action: ['s3:ListBucket'],
-                  Resource: artifactBucket.bucketName.apply((bucket) => `arn:aws:s3:::${bucket}`),
-                  Condition: { StringLike: { 's3:prefix': [`${ARTIFACT_PREFIX}*`] } },
-                },
-              ]
-            : []),
         ],
       }),
     },
@@ -132,7 +119,7 @@ const issuerRole = eksServiceAccount('canopy-issuer', {
   managedPolicyArns: [
     assumeRolePolicy('canopy-issuer-assume').policyArn,
     // public-server only serves held artifacts; it never registers one.
-    artifactPolicy('canopy-issuer-artifacts', ['s3:GetObject']).policyArn,
+    artifactPolicy('canopy-issuer-artifacts', AWS_S3_READ_ACTIONS).policyArn,
   ],
 });
 
@@ -142,9 +129,8 @@ const jobsRole = eksServiceAccount('canopy-jobs', {
   namespace,
   managedPolicyArns: [
     assumeRolePolicy('canopy-jobs-assume').policyArn,
-    // The sweep lists the prefix and drops what no artifact references. It never
-    // reads an artifact, so it is given no GetObject.
-    artifactPolicy('canopy-jobs-artifacts', ['s3:DeleteObject'], true).policyArn,
+    // The sweep lists the bucket and drops what no artifact references.
+    artifactPolicy('canopy-jobs-artifacts', AWS_S3_DELETE_ACTIONS).policyArn,
   ],
 });
 
@@ -158,8 +144,7 @@ const privateRole = eksServiceAccount('canopy-private', {
   namespace,
   managedPolicyArns: [
     assumeRolePolicy('canopy-private-assume').policyArn,
-    artifactPolicy('canopy-private-artifacts', ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'])
-      .policyArn,
+    artifactPolicy('canopy-private-artifacts', AWS_S3_DELETE_ACTIONS).policyArn,
   ],
 });
 
