@@ -1,9 +1,13 @@
 import { getStack, jsonStringify } from '@pulumi/pulumi';
+import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 
+import { region } from '../common/awsAccount.ts';
+import { nativeTags } from '../common/tags.ts';
 import { failIfIncorrectAccount, cfg } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
+import { AWS_S3_DELETE_ACTIONS, AWS_S3_READ_ACTIONS } from '../constants/external.ts';
 import {
   CANOPY_SA_ISSUER,
   CANOPY_SA_JOBS,
@@ -35,18 +39,99 @@ function assumeRolePolicy(name: string): awsNative.iam.ManagedPolicy {
   );
 }
 
+// Canopy holds the bytes of a group-scoped artifact itself, under the artifact's
+// id. Closed to the public: Canopy checks who is asking and serves them from its
+// own endpoint, so nothing reaches the bucket directly.
+//
+// Deliberately not a backup repo and not the recovery vault. An artifact carries
+// an artifact's retention, access and cost basis rather than a backup's, and the
+// vault is versioned and object-locked, which is wrong for an object replaced on
+// every rebuild.
+//
+// No expiry rule here, and do not add one: an artifact's bytes live as long as
+// its registration, a group can sit on one version for a year without a rebuild,
+// and expiring by age would delete bytes a registration still names and answer
+// every device with a 404. Canopy sweeps what no artifact reaches instead, which
+// is what canopy-jobs' listing access below is for.
+const artifactBucket = new awsNative.s3.Bucket(
+  'canopy-artifacts',
+  {
+    tags: nativeTags({ Purpose: 'canopy-artifacts' }),
+    bucketEncryption: {
+      serverSideEncryptionConfiguration: [
+        { serverSideEncryptionByDefault: { sseAlgorithm: 'AES256' } },
+      ],
+    },
+    // An artifact is stored whole in one call, so an incomplete upload is a
+    // failure rather than something to resume.
+    lifecycleConfiguration: {
+      rules: [
+        {
+          id: 'abort-incomplete-uploads',
+          status: 'Enabled',
+          abortIncompleteMultipartUpload: { daysAfterInitiation: 1 },
+        },
+      ],
+    },
+  },
+  { protect: true },
+);
+
+new awsClassic.s3.BucketPublicAccessBlock('canopy-artifacts-public-access-block', {
+  bucket: artifactBucket.bucketName,
+  blockPublicAcls: true,
+  blockPublicPolicy: true,
+  ignorePublicAcls: true,
+  restrictPublicBuckets: true,
+});
+
+const ARTIFACT_PREFIX = 'artifacts/';
+
+// Bucket and object ARNs together: the action lists mix bucket-level entries
+// (ListBucket, GetBucketLocation, ListBucketMultipartUploads) with object-level
+// ones, and each is denied against the ARN it does not belong to.
+function artifactPolicy(name: string, actions: string[]) {
+  return new awsNative.iam.ManagedPolicy(
+    name,
+    {
+      policyDocument: jsonStringify({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: actions,
+            Resource: artifactBucket.bucketName.apply((bucket) => [
+              `arn:aws:s3:::${bucket}`,
+              `arn:aws:s3:::${bucket}/*`,
+            ]),
+          },
+        ],
+      }),
+    },
+    { ignoreChanges: ['users', 'roles', 'groups'] },
+  );
+}
+
 const issuerRole = eksServiceAccount('canopy-issuer', {
   serviceAccountName: CANOPY_SA_ISSUER,
   oidcProviderArn,
   namespace,
-  managedPolicyArns: [assumeRolePolicy('canopy-issuer-assume').policyArn],
+  managedPolicyArns: [
+    assumeRolePolicy('canopy-issuer-assume').policyArn,
+    // public-server only serves held artifacts; it never registers one.
+    artifactPolicy('canopy-issuer-artifacts', AWS_S3_READ_ACTIONS).policyArn,
+  ],
 });
 
 const jobsRole = eksServiceAccount('canopy-jobs', {
   serviceAccountName: CANOPY_SA_JOBS,
   oidcProviderArn,
   namespace,
-  managedPolicyArns: [assumeRolePolicy('canopy-jobs-assume').policyArn],
+  managedPolicyArns: [
+    assumeRolePolicy('canopy-jobs-assume').policyArn,
+    // The sweep lists the bucket and drops what no artifact references.
+    artifactPolicy('canopy-jobs-artifacts', AWS_S3_DELETE_ACTIONS).policyArn,
+  ],
 });
 
 // private-server: the backup setup wizard probes the target bucket by assuming
@@ -57,9 +142,15 @@ const privateRole = eksServiceAccount('canopy-private', {
   serviceAccountName: CANOPY_SA_PRIVATE,
   oidcProviderArn,
   namespace,
-  managedPolicyArns: [assumeRolePolicy('canopy-private-assume').policyArn],
+  managedPolicyArns: [
+    assumeRolePolicy('canopy-private-assume').policyArn,
+    artifactPolicy('canopy-private-artifacts', AWS_S3_DELETE_ACTIONS).policyArn,
+  ],
 });
 
 export const canopyIssuerRoleArn = issuerRole.arn;
 export const canopyJobsRoleArn = jobsRole.arn;
 export const canopyPrivateRoleArn = privateRole.arn;
+export const canopyArtifactBucket = artifactBucket.bucketName;
+export const canopyArtifactPrefix = ARTIFACT_PREFIX;
+export const canopyArtifactRegion = region;
