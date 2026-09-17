@@ -283,6 +283,16 @@ new k8s.apps.v1.Deployment(
                 scheme: 'HTTP',
               },
             },
+            // The server exits on SIGTERM without draining, so this pause is
+            // what lets endpoint removal reach the proxies before the process
+            // goes and takes its in-flight requests with it.
+            lifecycle: {
+              preStop: {
+                sleep: {
+                  seconds: 5,
+                },
+              },
+            },
           },
           { serviceAccountName: canopyIssuerSa },
         ),
@@ -465,6 +475,16 @@ new k8s.apps.v1.Deployment(
                 path: '/livez',
                 port: 8000,
                 scheme: 'HTTP',
+              },
+            },
+            // The server exits on SIGTERM without draining, so this pause is
+            // what lets endpoint removal reach the proxies before the process
+            // goes and takes its in-flight requests with it.
+            lifecycle: {
+              preStop: {
+                sleep: {
+                  seconds: 5,
+                },
               },
             },
           },
