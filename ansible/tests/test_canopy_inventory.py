@@ -660,7 +660,7 @@ class HoldingTheEnvironment(PluginTestCase):
         with StubCanopy() as canopy:
             result = self.run_inventory(self.source(group="kamaka", rank="production"), canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(canopy.calls, ["take_lease", "for_group"])
+        self.assertEqual(canopy.calls, ["take_lease", "for_group", "release_lease"])
         self.assertEqual(canopy.requests, [{"group": "kamaka", "rank": "production"}])
 
     def test_the_lease_carries_the_intent(self):
@@ -745,13 +745,13 @@ class HoldingTheEnvironment(PluginTestCase):
         self.assertIn("canopy_lease", result.stderr)
         self.assertEqual(canopy.calls, [])
 
-    def test_a_listing_leaves_a_lease_to_expire(self):
-        # Nothing sees an `ansible-inventory` run end, so the lease is not given
-        # back and canopy's expiry is what clears it.
+    def test_a_listing_gives_the_lease_back(self):
+        # No play runs, so no callback ends one; the plugin gives it back as
+        # the process exits rather than holding the environment until expiry.
         with StubCanopy() as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertNotIn("release_lease", canopy.calls)
+        self.assertIn("release_lease", canopy.calls)
 
 
 class GroupingAMachine(PluginTestCase):
