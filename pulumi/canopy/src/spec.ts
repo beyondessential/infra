@@ -38,9 +38,6 @@ export function spec(
     },
     containers: [
       {
-        // Spread first: the fields below are what every canopy workload needs
-        // to run at all, and a caller adding a probe or a lifecycle hook must
-        // not be able to drop them.
         ...containerArgs,
         image: image(),
         imagePullPolicy: 'IfNotPresent',
