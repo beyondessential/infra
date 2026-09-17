@@ -4,11 +4,12 @@ import * as awsNative from '@pulumi/aws-native';
 
 import { region } from '../common/awsAccount.ts';
 import { nativeTags } from '../common/tags.ts';
-import { failIfIncorrectAccount, cfg } from '../common/coreRef.ts';
+import { failIfIncorrectAccount, cfg, zone } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
 import { AWS_S3_DELETE_ACTIONS, AWS_S3_READ_ACTIONS } from '../constants/external.ts';
 import {
+  CANOPY_SA_DOMAINS,
   CANOPY_SA_ISSUER,
   CANOPY_SA_JOBS,
   CANOPY_SA_PRIVATE,
@@ -148,9 +149,49 @@ const privateRole = eksServiceAccount('canopy-private', {
   ],
 });
 
+// canopy-domains: the pod that writes the records Canopy manages — addresses for
+// the names servers register, and the TXT challenge that proves control of a name
+// to a certificate authority.
+//
+// A zone in another account is reached by assuming that account's canopy-dns role
+// (created by its core stack, which is where the effective gate lives), hence the
+// assume-role policy. This account's own core zone takes no such hop, so the
+// write is granted here directly — scoped to that one zone and to the record
+// types Canopy publishes, which leaves the zone's delegation out of reach.
+const domainsRole = eksServiceAccount('canopy-domains', {
+  serviceAccountName: CANOPY_SA_DOMAINS,
+  oidcProviderArn,
+  namespace,
+  managedPolicyArns: [
+    assumeRolePolicy('canopy-domains-assume').policyArn,
+    new awsNative.iam.ManagedPolicy(
+      'canopy-domains-local-zone',
+      {
+        policyDocument: jsonStringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 'route53:ChangeResourceRecordSets',
+              Resource: zone.id.apply((id) => `arn:aws:route53:::hostedzone/${id}`),
+              Condition: {
+                'ForAllValues:StringEquals': {
+                  'route53:ChangeResourceRecordSetsRecordTypes': ['A', 'AAAA', 'TXT'],
+                },
+              },
+            },
+          ],
+        }),
+      },
+      { ignoreChanges: ['users', 'roles', 'groups'] },
+    ).policyArn,
+  ],
+});
+
 export const canopyIssuerRoleArn = issuerRole.arn;
 export const canopyJobsRoleArn = jobsRole.arn;
 export const canopyPrivateRoleArn = privateRole.arn;
+export const canopyDomainsRoleArn = domainsRole.arn;
 export const canopyArtifactBucket = artifactBucket.bucketName;
 export const canopyArtifactPrefix = ARTIFACT_PREFIX;
 export const canopyArtifactRegion = region;

@@ -38,4 +38,12 @@ if (!domain) {
 export { domain };
 
 export const zoneImport = cfg.get('zoneImport');
+
+/**
+ * The canopy-infra stack, where this account's zone is one Canopy manages.
+ *
+ * Setting it gives Canopy a role it can assume to write the records it manages
+ * in this account's zone; leaving it unset means Canopy has no access here.
+ */
+export const canopyInfra = cfg.get('canopyInfra');
 export const trailBucket = cfg.get('trailBucket') ?? `bes-${stackName}-cloudtrail`;
