@@ -1,7 +1,12 @@
 import * as k8s from '@pulumi/kubernetes';
 import type { Output } from '@pulumi/pulumi';
 
-import { CANOPY_SA_ISSUER, CANOPY_SA_JOBS, CANOPY_SA_PRIVATE } from '../../constants/canopy.ts';
+import {
+  CANOPY_SA_DOMAINS,
+  CANOPY_SA_ISSUER,
+  CANOPY_SA_JOBS,
+  CANOPY_SA_PRIVATE,
+} from '../../constants/canopy.ts';
 import { canopyInfra } from './canopy-infra.ts';
 import { namespace } from './namespace.ts';
 
@@ -10,6 +15,8 @@ import { namespace } from './namespace.ts';
 // before. The exported SA names are undefined in that case so callers skip
 // `serviceAccountName`.
 
+// `secretVerbs` empty means the identity is for AWS alone and gets no Role at
+// all, rather than a Role granting nothing.
 function serviceAccount(name: string, roleArn: Output<string>, secretVerbs: string[]): void {
   new k8s.core.v1.ServiceAccount(name, {
     metadata: {
@@ -18,6 +25,10 @@ function serviceAccount(name: string, roleArn: Output<string>, secretVerbs: stri
       annotations: { 'eks.amazonaws.com/role-arn': roleArn },
     },
   });
+
+  if (secretVerbs.length === 0) {
+    return;
+  }
 
   // Read (and, for the wizard, create) server-group repo-password Secrets.
   const role = new k8s.rbac.v1.Role(name, {
@@ -49,8 +60,11 @@ if (canopyInfra) {
     'patch',
     'delete',
   ]);
+  // domains reaches Route 53 and nothing in the cluster.
+  serviceAccount(CANOPY_SA_DOMAINS, canopyInfra.get<string>('canopyDomainsRoleArn'), []);
 }
 
 export const canopyIssuerSa = canopyInfra ? CANOPY_SA_ISSUER : undefined;
 export const canopyJobsSa = canopyInfra ? CANOPY_SA_JOBS : undefined;
 export const canopyPrivateSa = canopyInfra ? CANOPY_SA_PRIVATE : undefined;
+export const canopyDomainsSa = canopyInfra ? CANOPY_SA_DOMAINS : undefined;

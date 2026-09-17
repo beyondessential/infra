@@ -4,12 +4,15 @@ import { postgresCronJob } from '../../common/k8s/postgresCron.ts';
 import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
 import { artifactStoreEnv } from './canopy-artifacts.ts';
-import { canopyJobsSa } from './canopy-sa.ts';
+import { canopyDomainsSa, canopyJobsSa } from './canopy-sa.ts';
 import { recoveryEnv } from './canopy-recovery.ts';
 import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
 import {
+  acmeAccountKey,
+  acmeContact,
+  acmeDirectory,
   architecture,
   costLabels,
   slackerOpenUrl,
@@ -86,6 +89,52 @@ new k8s.apps.v1.Deployment(
           // The sweep drops artifact bytes no registration reaches any more.
           { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv] },
           { serviceAccountName: canopyJobsSa },
+        ),
+      },
+    },
+  },
+  { dependsOn: [migrator] },
+);
+
+// The pod that holds the zone access: it publishes the addresses of the names
+// servers register, and drives certificate orders through the DNS-01 challenge.
+// Neither is on a request path — a server asks for a certificate and collects it
+// later — so this being briefly down delays issuance rather than failing it,
+// which is why one replica and Recreate are enough.
+new k8s.apps.v1.Deployment(
+  'domains',
+  {
+    metadata: {
+      labels: labels('domains'),
+      namespace,
+    },
+    spec: {
+      replicas: 1,
+      strategy: {
+        type: 'Recreate',
+      },
+      selector: {
+        matchLabels: labels('domains'),
+      },
+      template: {
+        metadata: {
+          labels: { ...labels('domains'), ...costLabels },
+        },
+        spec: spec(
+          'domains',
+          ['domains'],
+          {
+            env: [
+              // Absent means no account to order with: addresses carry on and
+              // certificates wait, which the pod reports once at startup.
+              ...(acmeAccountKey
+                ? [{ name: 'CANOPY_ACME_ACCOUNT_KEY', value: acmeAccountKey }]
+                : []),
+              ...(acmeDirectory ? [{ name: 'CANOPY_ACME_DIRECTORY', value: acmeDirectory }] : []),
+              ...(acmeContact ? [{ name: 'CANOPY_ACME_CONTACT', value: acmeContact }] : []),
+            ],
+          },
+          { serviceAccountName: canopyDomainsSa },
         ),
       },
     },

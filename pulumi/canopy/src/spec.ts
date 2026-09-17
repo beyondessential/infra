@@ -7,6 +7,7 @@ import { PostgresUrlSecretKey } from '../../common/k8s/postgresUrl.ts';
 import { image } from './image.ts';
 import './ca.ts';
 import { dbReady } from './db.ts';
+import { dnsZones } from './dns-zones.ts';
 import { all, type Input } from '@pulumi/pulumi';
 
 export function spec(
@@ -71,6 +72,11 @@ export function spec(
               })),
             },
           },
+          // Every workload, not only the domains pod that writes the records:
+          // private-server answers which zones are claimable into, public-server
+          // gates a server's name entitlements on them, and the monitor reports a
+          // group domain no configured zone covers.
+          ...(dnsZones ? [{ name: 'CANOPY_DNS_ZONES', value: dnsZones }] : []),
           ...(extraEnv ?? []),
         ]),
         resources: {
