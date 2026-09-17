@@ -1,5 +1,6 @@
-import { ComponentResource, type ComponentResourceOptions, Output } from '@pulumi/pulumi';
+import { ComponentResource, type ComponentResourceOptions, Output, log } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import * as semver from 'semver';
 import { migrator } from '../common/migrator.ts';
 import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
@@ -24,6 +25,7 @@ import {
   dbStorage,
   nodeEnv,
   normalizedStack,
+  releaseVersion,
   seedSnapshot,
   sharedBlobStorage,
   timezone,
@@ -127,7 +129,16 @@ export class CentralServer extends ComponentResource {
           'seedSnapshot writes fake clinical data, so it needs a stack whose nodeEnv is not production',
         );
       }
-      seedTopUp({ parent: this, podSpec, provisionerJob });
+      // `generate seed` ships in Tamanu 2.65. A release branch cut before it has no such
+      // subcommand, so the Job would exit 1 and take the whole deploy down with it; those
+      // stacks keep whatever data the restored snapshot came with.
+      if (releaseVersion == null || semver.gte(releaseVersion, '2.65.0-0')) {
+        seedTopUp({ parent: this, podSpec, provisionerJob });
+      } else {
+        log.warn(
+          `Tamanu v${releaseVersion} has no \`generate seed\`; keeping the restored snapshot's data as-is`,
+        );
+      }
     }
 
     runTasks({
