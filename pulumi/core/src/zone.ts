@@ -1,6 +1,6 @@
 import * as aws from '@pulumi/aws-native';
-import { domain, zoneImport } from './config.ts';
-import { interpolate } from '@pulumi/pulumi';
+import { domain, extraZones, zoneImport } from './config.ts';
+import { interpolate, type Output } from '@pulumi/pulumi';
 
 let zone: aws.route53.HostedZone | undefined;
 let policy: aws.iam.ManagedPolicy | undefined;
@@ -54,3 +54,22 @@ if (domain) {
 export const zoneId = zone?.id;
 export const zoneNS = zone?.nameServers;
 export const zoneMgmtPolicy = policy?.policyArn;
+
+// Sibling zones created alongside the primary. Keyed by domain so their IDs and
+// nameservers can be read from stack outputs (the latter feed the by-hand NS
+// delegation in the parent zone).
+const extraZoneResources = extraZones.map(
+  (name) =>
+    new aws.route53.HostedZone(
+      name,
+      { name: `${name}.` },
+      { ignoreChanges: ['name', 'description'] },
+    ),
+);
+
+export const extraZoneIds: { [domain: string]: Output<string> } = Object.fromEntries(
+  extraZones.map((name, i) => [name, extraZoneResources[i].id]),
+);
+export const extraZoneNS: { [domain: string]: Output<string[]> } = Object.fromEntries(
+  extraZones.map((name, i) => [name, extraZoneResources[i].nameServers]),
+);

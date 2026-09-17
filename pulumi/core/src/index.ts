@@ -11,6 +11,6 @@ export { tags, domain as zoneName } from './config.ts';
 export { ghaOidc } from './oidc.ts';
 export { eksCniV6Policy } from './policy.ts';
 export { network, dbSubnetGroup } from './network.ts';
-export { zoneId, zoneNS, zoneMgmtPolicy } from './zone.ts';
+export { zoneId, zoneNS, zoneMgmtPolicy, extraZoneIds, extraZoneNS } from './zone.ts';
 export { spotDataFeed } from './spot-data-feed.ts';
 export { alertsTopicArn } from './alerts.ts';
