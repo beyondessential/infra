@@ -25,6 +25,7 @@ import { API_GROUP as GATEWAY_API_GROUP } from '../../common/k8s/gateway/consts/
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
 import { labels } from './labels.ts';
+import { acmeEnv } from './canopy-acme.ts';
 import { artifactStoreEnv } from './canopy-artifacts.ts';
 import { sharedBackupsServerEnv } from './canopy-backups-shared.ts';
 import { migrator } from './jobs.ts';
@@ -416,6 +417,10 @@ new k8s.apps.v1.Deployment(
                 name: 'CANOPY_MCP_ALLOWED_HOSTS',
                 value: `${tailscaleHostname}.${TAILNET_DOMAIN}`,
               },
+              // The settings panel reports the authority and whether the account
+              // is usable, and reads that from here rather than from the pod
+              // that does the ordering.
+              ...acmeEnv,
               {
                 name: 'CLIENT_IP_SOURCE',
                 value: 'RightmostXForwardedFor',

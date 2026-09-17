@@ -9,10 +9,8 @@ import { recoveryEnv } from './canopy-recovery.ts';
 import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
+import { acmeEnv } from './canopy-acme.ts';
 import {
-  acmeAccountKey,
-  acmeContact,
-  acmeDirectory,
   architecture,
   costLabels,
   slackerOpenUrl,
@@ -123,17 +121,9 @@ new k8s.apps.v1.Deployment(
         spec: spec(
           'domains',
           ['domains'],
-          {
-            env: [
-              // Absent means no account to order with: addresses carry on and
-              // certificates wait, which the pod reports once at startup.
-              ...(acmeAccountKey
-                ? [{ name: 'CANOPY_ACME_ACCOUNT_KEY', value: acmeAccountKey }]
-                : []),
-              ...(acmeDirectory ? [{ name: 'CANOPY_ACME_DIRECTORY', value: acmeDirectory }] : []),
-              ...(acmeContact ? [{ name: 'CANOPY_ACME_CONTACT', value: acmeContact }] : []),
-            ],
-          },
+          // Absent means no account to order with: addresses carry on and
+          // certificates wait, which the pod reports once at startup.
+          { env: acmeEnv },
           { serviceAccountName: canopyDomainsSa },
         ),
       },
