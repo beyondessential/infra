@@ -1,7 +1,6 @@
 import type { Input } from '@pulumi/pulumi';
 
-import { cfg } from '../../common/k8s/coreRef.ts';
-import { CrossStack } from '../../common/CrossStack.ts';
+import { canopyInfra } from './canopy-infra.ts';
 
 type Env = { name: string; value: Input<string> }[];
 
@@ -17,13 +16,10 @@ type Env = { name: string; value: Input<string> }[];
 //
 // The bucket is in the same account as the IRSA roles, so there is no role to
 // assume and CANOPY_ARTIFACT_ROLE_ARN stays unset.
-const infraRef = cfg.get('canopy-infra');
-const infra = infraRef ? new CrossStack(infraRef) : undefined;
-
-export const artifactStoreEnv: Env = infra
+export const artifactStoreEnv: Env = canopyInfra
   ? [
-      { name: 'CANOPY_ARTIFACT_BUCKET', value: infra.get<string>('canopyArtifactBucket') },
-      { name: 'CANOPY_ARTIFACT_REGION', value: infra.get<string>('canopyArtifactRegion') },
-      { name: 'CANOPY_ARTIFACT_PREFIX', value: infra.get<string>('canopyArtifactPrefix') },
+      { name: 'CANOPY_ARTIFACT_BUCKET', value: canopyInfra.get<string>('canopyArtifactBucket') },
+      { name: 'CANOPY_ARTIFACT_REGION', value: canopyInfra.get<string>('canopyArtifactRegion') },
+      { name: 'CANOPY_ARTIFACT_PREFIX', value: canopyInfra.get<string>('canopyArtifactPrefix') },
     ]
   : [];
