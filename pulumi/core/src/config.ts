@@ -37,6 +37,13 @@ if (!domain) {
 
 export { domain };
 
+// Additional hosted zones to create in this account, on top of the primary
+// `domain`. Each entry is a fully-qualified domain (e.g. a sibling under the
+// same parent), created as its own zone; its NS must be delegated from the
+// parent zone by hand. Used where several deployments share one account but
+// need distinct apex domains rather than subdomains of the account's zone.
+export const extraZones: string[] = cfg.getObject('extraZones') ?? [];
+
 export const zoneImport = cfg.get('zoneImport');
 
 /**

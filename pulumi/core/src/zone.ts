@@ -1,13 +1,9 @@
 import * as aws from '@pulumi/aws-native';
-import { canopyInfra, domain, tags as configTags, zoneImport } from './config.ts';
-import { interpolate, jsonStringify } from '@pulumi/pulumi';
+import { interpolate, jsonStringify, type Output } from '@pulumi/pulumi';
+import { canopyInfra, domain, extraZones, tags as configTags, zoneImport } from './config.ts';
 import { CrossStack } from '../../common/CrossStack.ts';
 import { nativeTags } from '../../common/tags.ts';
 
-// The record types Canopy publishes: addresses for the names servers register,
-// and the TXT challenge that proves control of a name to a certificate
-// authority. Withholding everything else is what keeps the zone's delegation
-// (NS) and its own apex records out of reach.
 const CANOPY_RECORD_TYPES = ['A', 'AAAA', 'TXT'];
 
 let zone: aws.route53.HostedZone | undefined;
@@ -122,4 +118,21 @@ if (domain) {
 export const zoneId = zone?.id;
 export const zoneNS = zone?.nameServers;
 export const zoneMgmtPolicy = policy?.policyArn;
+
+const extraZoneResources = extraZones.map(
+  (name) =>
+    new aws.route53.HostedZone(
+      name,
+      { name: `${name}.` },
+      { ignoreChanges: ['name', 'description'] },
+    ),
+);
+
+export const extraZoneIds: { [domain: string]: Output<string> } = Object.fromEntries(
+  extraZones.map((name, i) => [name, extraZoneResources[i].id]),
+);
+export const extraZoneNS: { [domain: string]: Output<string[]> } = Object.fromEntries(
+  extraZones.map((name, i) => [name, extraZoneResources[i].nameServers]),
+);
+
 export const canopyDnsRoleArn = canopyDnsRole?.arn;
