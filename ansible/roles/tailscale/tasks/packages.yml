@@ -9,14 +9,11 @@
     dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
     mode: "0644"
 
-- name: Add tailscale repo
-  become: true
-  ansible.builtin.apt_repository:
-    repo: deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{
-      ansible_facts['distribution_release'] }} main
-    filename: tailscale
-    state: present
-
+# These must run BEFORE "Add tailscale repo": if a host already has Tailscale
+# (installed via Tailscale's own setup script), it ships a tailscale.list that
+# references key /etc/apt/keyrings/tailscale.asc. apt_repository runs a cache
+# update while adding our entry, and apt aborts on the conflicting Signed-By
+# before any later cleanup task can run. So strip the drifted source first.
 - name: Remove duplicate tailscale repo
   become: true
   ansible.builtin.file:
@@ -30,6 +27,14 @@
     line: "deb [signed-by=/etc/apt/keyrings/tailscale.asc] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release']
       }} main"
     state: absent
+
+- name: Add tailscale repo
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{
+      ansible_facts['distribution_release'] }} main
+    filename: tailscale
+    state: present
 
 - name: Prioritise tailscale repo
   become: true
