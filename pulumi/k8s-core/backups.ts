@@ -34,6 +34,15 @@ new awsClassic.s3.BucketLifecycleConfiguration('s3-backups-lifecycle', {
       noncurrentVersionExpiration: {
         noncurrentDays: 30,
       },
+      // Barman's deletes are version-less, so each leaves a delete marker; reap
+      // the dangling marker once its last noncurrent version is gone.
+      expiration: {
+        expiredObjectDeleteMarker: true,
+      },
+      // A failed backup leaves parts behind that bill and never show in a listing.
+      abortIncompleteMultipartUpload: {
+        daysAfterInitiation: 7,
+      },
     },
   ],
 });
