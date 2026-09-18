@@ -17,7 +17,6 @@ export function spec(
   podArgs: { serviceAccountName?: Input<string> } = {},
 ): k8s.types.input.core.v1.PodSpec {
   return {
-    ...containerArgs,
     ...(podArgs.serviceAccountName ? { serviceAccountName: podArgs.serviceAccountName } : {}),
     tolerations: [CAN_RUN_ON_SPOT],
     affinity: {
@@ -39,6 +38,7 @@ export function spec(
     },
     containers: [
       {
+        ...containerArgs,
         image: image(),
         imagePullPolicy: 'IfNotPresent',
         name,
