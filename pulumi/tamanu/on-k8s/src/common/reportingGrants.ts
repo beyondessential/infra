@@ -1,6 +1,7 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
+import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { DEFAULT_POSTGRES_VERSION } from '../../../../constants/internal.ts';
 
 // Tamanu's app role self-manages the tamanu_reporting/tamanu_raw roles, which on
@@ -28,6 +29,10 @@ END $do$;
 
 export interface ReportingGrantsArgs {
   parent: ComponentResource;
+  // Resolves once the cluster is serving. The Job reads the superuser secret CNPG creates
+  // with the cluster, and a pod whose secret is missing never starts, so it never fails
+  // either: it sits in CreateContainerConfigError and holds the whole deploy.
+  dbReady: PostgresReady;
 }
 
 // Per-up unique pulumi name so every `pulumi up` replaces the Job and the
@@ -37,7 +42,10 @@ export interface ReportingGrantsArgs {
 // re-running each deploy costs nothing.
 const deployNonce = Math.floor(Date.now() / 1000);
 
-export function reportingGrants(name: string, { parent }: ReportingGrantsArgs): k8s.batch.v1.Job {
+export function reportingGrants(
+  name: string,
+  { parent, dbReady }: ReportingGrantsArgs,
+): k8s.batch.v1.Job {
   return new k8s.batch.v1.Job(
     `${name}-reporting-grants-${deployNonce}`,
     {
@@ -59,7 +67,7 @@ export function reportingGrants(name: string, { parent }: ReportingGrantsArgs): 
                 command: ['psql'],
                 args: ['-v', 'ON_ERROR_STOP=1', '-c', GRANTS_SQL],
                 env: [
-                  { name: 'PGHOST', value: `${name}-db-rw` },
+                  { name: 'PGHOST', value: dbReady.apply(() => `${name}-db-rw`) },
                   { name: 'PGDATABASE', value: 'app' },
                   { name: 'PGUSER', value: 'postgres' },
                   {

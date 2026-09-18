@@ -7,8 +7,6 @@ tamanu_server_type: "{{ type }}"
 tamanu_image_server: "ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:{{ tamanu_version }}"
 tamanu_image_frontend: "ghcr.io/beyondessential/tamanu-frontend:{{ tamanu_frontend_version }}"
 tamanu_image_patient_portal: "ghcr.io/beyondessential/tamanu-patient-portal:{{ tamanu_version }}"
-tamanu_sync_email: admin@tamanu.io
-tamanu_sync_password: admin
 tamanu_default_department: GenericClinic
 tamanu_default_location: GenericClinic
 tamanu_letterhead_title: Tamanu Health

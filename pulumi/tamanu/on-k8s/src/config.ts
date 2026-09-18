@@ -1,4 +1,5 @@
 import { Config, getStack, output, type Output } from '@pulumi/pulumi';
+import * as semver from 'semver';
 import { billingTags } from '../../../common/billing.ts';
 import {
   backups,
@@ -9,6 +10,7 @@ import {
 } from '../../../common/k8s/coreRef.ts';
 import type { Architecture } from '../../../common/k8s/affinities.ts';
 import { truncateDomainIfNeeded } from '../../../common/dns.ts';
+import { imageTag } from './image.ts';
 
 export const normalizedStack = getStack()
   .toLowerCase()
@@ -234,6 +236,14 @@ export const seedSnapshot: boolean =
     ? (cfg.getBoolean('seedSnapshot') ?? false)
     : false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
+
+// The Tamanu version this stack is deploying, for gating on features a given release has.
+// Auto-deploys always use `sha-<gitsha>` image tags but set appVersion from the branch's
+// package.json, so prefer that; standing envs pin a `v<version>` tag with no appVersion, so
+// fall back to the tag. Null means the deploy carries no version at all, and callers should
+// then assume the newest behaviour.
+export const releaseVersion: string | null =
+  semver.valid(appVersion ?? '') ?? semver.valid(imageTag);
 
 // Release-branch deploys get configTemplate 'rc' (see parseDeployConfig in tamanu's
 // ghaCdHelpers). Those exist to rehearse the release, so they seed from the previous

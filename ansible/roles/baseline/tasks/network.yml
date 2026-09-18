@@ -71,9 +71,13 @@
     enabled: true
     state: started
 
+# Cloud images (and some Pakistan-region VMs) ship a static regular-file
+# /etc/resolv.conf. The file module refuses to convert a real file to a symlink
+# unless forced, so force it to hand DNS over to resolved's stub on every host.
 - name: Set resolved as DNS
   become: true
   ansible.builtin.file:
     src: /run/systemd/resolve/stub-resolv.conf
     dest: /etc/resolv.conf
     state: link
+    force: true

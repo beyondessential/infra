@@ -4,6 +4,7 @@
 export const CANOPY_SA_ISSUER = 'canopy-issuer';
 export const CANOPY_SA_JOBS = 'canopy-jobs';
 export const CANOPY_SA_PRIVATE = 'canopy-private';
+export const CANOPY_SA_DOMAINS = 'canopy-domains';
 
 // Canopy's k8s namespace. Pinned to `tamanu-meta-<stack>` to match
 // `canopy/src/config.ts` normalizedStack (the live namespace was kept when the

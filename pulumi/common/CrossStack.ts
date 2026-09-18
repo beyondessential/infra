@@ -17,6 +17,12 @@ export interface CrossStackZone {
   id: Output<string>;
   name: Output<string>;
   mgmtPolicyArn: Output<string>;
+  /**
+   * Role Canopy assumes to write the records it manages in this zone. Undefined
+   * where the zone's account has not been pointed at Canopy (`core:canopyInfra`
+   * unset), and where the zone is in Canopy's own account and needs no hop.
+   */
+  canopyDnsRoleArn: Output<string | undefined>;
 }
 
 export interface CrossStackK8sCore {
@@ -49,13 +55,27 @@ export interface CrossStackK8sCoreOutput {
   tailscaleProxyDefaultTags: Output<string[]>;
 }
 
+// A StackReference is a resource named after the stack it reads, so two of them
+// for one stack collide on URN and fail the program. Constructing a CrossStack is
+// cheap and callers reasonably do it wherever they need one — including inside an
+// apply, where whether another module got there first is not knowable — so the
+// underlying reference is shared per stack name instead of being each caller's
+// problem to arrange.
+const references = new Map<string, StackReference>();
+
 export class CrossStack {
   readonly name: string;
   readonly ref: StackReference;
 
   constructor(name: string) {
     this.name = name;
-    this.ref = new StackReference(name);
+    const existing = references.get(name);
+    if (existing) {
+      this.ref = existing;
+    } else {
+      this.ref = new StackReference(name);
+      references.set(name, this.ref);
+    }
   }
 
   get<T>(key: string): Output<T> {
@@ -99,7 +119,13 @@ export class CrossStack {
       id: this.get('zoneId'),
       name: this.get('zoneName'),
       mgmtPolicyArn: this.get('zoneMgmtPolicy'),
+      canopyDnsRoleArn: this.get('canopyDnsRoleArn'),
     };
+  }
+
+  // from core
+  accountId(): Output<string> {
+    return this.get('accountId');
   }
 
   // from core

@@ -93,6 +93,22 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
 export const publicServerVersionsSecret = cfg.requireSecret('publicServerVersionsSecret');
 
+/**
+ * Canopy's account at the certificate authority: a PKCS#8 PEM private key.
+ *
+ * The account is found-or-created from the key at every start, so this is the
+ * whole of it and there is no state written back. Optional: without it the
+ * domains pod still publishes addresses and issues nothing, which is how a
+ * deployment that has zones but no authority is configured.
+ */
+export const acmeAccountKey = cfg.getSecret('acmeAccountKey');
+
+/** Authority directory URL. Canopy defaults to Let's Encrypt production. */
+export const acmeDirectory = cfg.get('acmeDirectory');
+
+/** Contact URI (`mailto:…`) the authority can reach an operator at. */
+export const acmeContact = cfg.get('acmeContact');
+
 export const slackerOpenUrl = cfg.require('slackerOpenUrl');
 export const slackerCloseUrl = cfg.require('slackerCloseUrl');
 export const slackerSelfAlertUrl = cfg.require('slackerSelfAlertUrl');

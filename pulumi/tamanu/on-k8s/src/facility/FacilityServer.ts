@@ -11,7 +11,6 @@ import { ingress } from '../common/ingress.ts';
 import { WebFrontend } from '../web/WebFrontend.ts';
 import {
   type ReplicaConfig,
-  appVersion,
   BARMAN_BACKUP_BUCKET,
   BARMAN_BACKUP_ROLE_ARN,
   backupRetentionDays,
@@ -20,10 +19,10 @@ import {
   dbAzColocate,
   dbStorage,
   normalizedStack,
+  releaseVersion,
   sharedBlobStorage,
   timezone,
 } from '../config.ts';
-import { imageTag } from '../image.ts';
 import { runTasks } from './tasks.ts';
 import { runFhirWorker } from './fhir.ts';
 import type { Provisioning } from '../central/provisioner.ts';
@@ -79,11 +78,6 @@ export class FacilityServer extends ComponentResource {
     // setupSync ships in Tamanu 2.60; older release images (standing envs pinned
     // to old tags, auto-deploys of release branches) lack the subcommand, so they
     // keep the legacy config-based sync setup and skip the seeding Job entirely.
-    // Auto-deploys always use `sha-<gitsha>` image tags but set appVersion from
-    // the branch's package.json, so prefer that; standing envs pin a `v<version>`
-    // tag with no appVersion, so fall back to the tag. A deploy with neither
-    // carries no version at all, so assume the subcommand is present.
-    const releaseVersion = semver.valid(appVersion ?? '') ?? semver.valid(imageTag);
     const hasSetupSync = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
     // startFhirWorker isn't runnable on the facility image before 2.60; older
     // pinned/standing-env tags would otherwise crash-loop (see TAN-2532 revert).
@@ -125,7 +119,7 @@ export class FacilityServer extends ComponentResource {
     });
 
     // Reconcile reporting-role grants before the app boots (see reportingGrants.ts)
-    reportingGrants(`facility-${name}`, { parent: this });
+    reportingGrants(`facility-${name}`, { parent: this, dbReady });
 
     const migratorJob = migrator(`facility-${name}`, {
       parent: this,

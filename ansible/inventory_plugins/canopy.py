@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import hashlib
 import http.client
 import json
@@ -358,9 +359,9 @@ class InventoryModule(BaseInventoryPlugin):
             raise
 
         # The play holds the environment until it ends, which the callback is
-        # what notices. Nothing reads this back where no callback is loaded, so
-        # an `ansible-inventory` run leaves a lease to expire on its own.
+        # what notices; the exit hook covers a run that never plays one.
         os.environ[LEASE_ENV] = json.dumps({"url": base, "lease_id": lease["id"]})
+        atexit.register(self._give_back_at_exit, os.getpid())
         return data, True
 
     def _post(self, url, payload):
@@ -392,6 +393,14 @@ class InventoryModule(BaseInventoryPlugin):
                 f"the {KEEPER} callback is not loaded, so nothing would give the run lease back: "
                 "set `callback_plugins = ./callback_plugins` in the ansible.cfg the run picks up"
             )
+
+    def _give_back_at_exit(self, owner_pid):
+        """Give the lease back where no play ever ran, so reading an inventory
+        does not hold the environment until the lease expires. Ansible's task
+        workers are forks that inherit this handler, so only the process that
+        took the lease may give it back."""
+        if os.getpid() == owner_pid:
+            self._give_back_held()
 
     def _give_back_held(self):
         """Give back the lease of a run that never starts: the callback only
