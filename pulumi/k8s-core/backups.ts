@@ -3,7 +3,7 @@ import { eksServiceAccount } from '../common/eksServiceAccount.ts';
 import { clusterName, oidcProvider, tags } from './cluster.ts';
 import { stackName } from '../common/coreRef.ts';
 import { interpolate } from '@pulumi/pulumi';
-import { AWS_S3_MULTIPART_ACTIONS } from '../constants/external.ts';
+import { AWS_S3_DELETE_ACTIONS } from '../constants/external.ts';
 
 export const bucket = new awsClassic.s3.BucketV2('s3-backups', {
   bucket: `bes-k8s-${stackName}-backups`,
@@ -15,6 +15,38 @@ export const bucket = new awsClassic.s3.BucketV2('s3-backups', {
 
 // TODO: intelligent tiering
 
+// Barman expires backups past the recovery window itself, so the role holds
+// s3:DeleteObject. Versioning keeps that from being destructive: a delete is a
+// marker over a retained version, and the role has no s3:DeleteObjectVersion.
+new awsClassic.s3.BucketVersioning('s3-backups-versioning', {
+  bucket: bucket.id,
+  versioningConfiguration: {
+    status: 'Enabled',
+  },
+});
+
+new awsClassic.s3.BucketLifecycleConfiguration('s3-backups-lifecycle', {
+  bucket: bucket.id,
+  rules: [
+    {
+      id: 'expire-noncurrent',
+      status: 'Enabled',
+      noncurrentVersionExpiration: {
+        noncurrentDays: 30,
+      },
+      // Barman's deletes are version-less, so each leaves a delete marker; reap
+      // the dangling marker once its last noncurrent version is gone.
+      expiration: {
+        expiredObjectDeleteMarker: true,
+      },
+      // A failed backup leaves parts behind that bill and never show in a listing.
+      abortIncompleteMultipartUpload: {
+        daysAfterInitiation: 7,
+      },
+    },
+  ],
+});
+
 const policy = new awsClassic.iam.Policy(
   's3-backups-policy',
   {
@@ -25,7 +57,7 @@ const policy = new awsClassic.iam.Policy(
       Statement: [
         {
           Effect: 'Allow',
-          Action: AWS_S3_MULTIPART_ACTIONS,
+          Action: AWS_S3_DELETE_ACTIONS,
           Resource: [
             interpolate`arn:aws:s3:::${bucket.bucket}`,
             interpolate`arn:aws:s3:::${bucket.bucket}/*`,
