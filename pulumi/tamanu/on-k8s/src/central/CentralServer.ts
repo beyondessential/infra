@@ -1,6 +1,5 @@
 import { ComponentResource, type ComponentResourceOptions, Output, log } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import * as semver from 'semver';
 import { migrator } from '../common/migrator.ts';
 import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
@@ -16,6 +15,7 @@ import {
   type ReplicaConfig,
   BARMAN_BACKUP_BUCKET,
   BARMAN_BACKUP_ROLE_ARN,
+  atLeastVersion,
   backupRetentionDays,
   backupsEnabled,
   costLabels,
@@ -132,7 +132,7 @@ export class CentralServer extends ComponentResource {
       // `generate seed` ships in Tamanu 2.65. A release branch cut before it has no such
       // subcommand, so the Job would exit 1 and take the whole deploy down with it; those
       // stacks keep whatever data the restored snapshot came with.
-      if (releaseVersion == null || semver.gte(releaseVersion, '2.65.0-0')) {
+      if (atLeastVersion('2.65.0-0')) {
         seedTopUp({ parent: this, podSpec, provisionerJob });
       } else {
         log.warn(

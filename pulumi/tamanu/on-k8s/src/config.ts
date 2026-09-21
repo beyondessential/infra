@@ -240,10 +240,16 @@ export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined
 // The Tamanu version this stack is deploying, for gating on features a given release has.
 // Auto-deploys always use `sha-<gitsha>` image tags but set appVersion from the branch's
 // package.json, so prefer that; standing envs pin a `v<version>` tag with no appVersion, so
-// fall back to the tag. Null means the deploy carries no version at all, and callers should
-// then assume the newest behaviour.
+// fall back to the tag.
 export const releaseVersion: string | null =
   semver.valid(appVersion ?? '') ?? semver.valid(imageTag);
+
+// Release branches before 2.59 send neither appVersion nor a semver tag, so an unresolvable
+// version reads as too old for the feature. Gating the other way puts a subcommand the image
+// does not have into a Job, which then either never exits or exits 1, taking the deploy with it.
+export function atLeastVersion(version: string): boolean {
+  return releaseVersion != null && semver.gte(releaseVersion, version);
+}
 
 // Release-branch deploys get configTemplate 'rc' (see parseDeployConfig in tamanu's
 // ghaCdHelpers). Those exist to rehearse the release, so they seed from the previous
