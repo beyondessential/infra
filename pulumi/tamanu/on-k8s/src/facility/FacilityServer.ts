@@ -1,6 +1,5 @@
 import { ComponentResource, type ComponentResourceOptions, type Output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
-import * as semver from 'semver';
 import { runPostgres } from '../../../../common/k8s/postgres.ts';
 import { templatedConfig } from '../common/templatedConfig.ts';
 import { blobStoreVolume } from '../common/blobStore.ts';
@@ -13,13 +12,13 @@ import {
   type ReplicaConfig,
   BARMAN_BACKUP_BUCKET,
   BARMAN_BACKUP_ROLE_ARN,
+  atLeastVersion,
   backupRetentionDays,
   backupsEnabled,
   costLabels,
   dbAzColocate,
   dbStorage,
   normalizedStack,
-  releaseVersion,
   sharedBlobStorage,
   timezone,
 } from '../config.ts';
@@ -78,10 +77,10 @@ export class FacilityServer extends ComponentResource {
     // setupSync ships in Tamanu 2.60; older release images (standing envs pinned
     // to old tags, auto-deploys of release branches) lack the subcommand, so they
     // keep the legacy config-based sync setup and skip the seeding Job entirely.
-    const hasSetupSync = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
+    const hasSetupSync = atLeastVersion('2.60.0-0');
     // startFhirWorker isn't runnable on the facility image before 2.60; older
     // pinned/standing-env tags would otherwise crash-loop (see TAN-2532 revert).
-    const hasFacilityFhir = releaseVersion == null || semver.gte(releaseVersion, '2.60.0-0');
+    const hasFacilityFhir = atLeastVersion('2.60.0-0');
 
     const appConfig = provisioning.apply((provisioning) =>
       templatedConfig({
