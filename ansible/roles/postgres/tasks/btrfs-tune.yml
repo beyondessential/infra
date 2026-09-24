@@ -10,7 +10,7 @@
     replace: "compress=zstd:1"
   register: pg_btrfs_fstab_compression
 
-- name: Apply btrfs compression level live
+- name: Apply btrfs compression level live  # noqa: no-handler
   become: true
   ansible.builtin.command: mount -o remount,compress=zstd:1 /var/lib/postgresql  # noqa: command-instead-of-module
   when: pg_btrfs_fstab_compression is changed
