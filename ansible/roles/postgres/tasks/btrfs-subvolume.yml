@@ -91,7 +91,7 @@
       ansible.builtin.shell: |
         set -e
         mkdir -p /mnt/btrfs-postgres
-        mount -o compress=zstd:6,subvol=@postgres UUID={{ pg_root_uuid.stdout }} /mnt/btrfs-postgres
+        mount -o compress=zstd:1,subvol=@postgres UUID={{ pg_root_uuid.stdout }} /mnt/btrfs-postgres
         rsync -aAXH /var/lib/postgresql/ /mnt/btrfs-postgres/
         umount /mnt/btrfs-postgres
         rm -rf /var/lib/postgresql/*
@@ -110,7 +110,7 @@
       ansible.builtin.lineinfile:
         path: /etc/fstab
         regexp: "^\\S+\\s+/var/lib/postgresql\\s+"
-        line: "UUID={{ pg_root_uuid.stdout }} /var/lib/postgresql btrfs compress=zstd:6,subvol=@postgres 0 2"
+        line: "UUID={{ pg_root_uuid.stdout }} /var/lib/postgresql btrfs compress=zstd:1,subvol=@postgres 0 2"
         state: present
 
     # noqa command-instead-of-module: activate the fstab entry written by the

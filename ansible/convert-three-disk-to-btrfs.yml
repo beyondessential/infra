@@ -883,7 +883,7 @@
 
         - name: Mount intermediate btrfs
           ansible.builtin.shell: |  # noqa: command-instead-of-module transient mount; must not persist to fstab as the mount module would
-            mount -o compress=zstd:6 {{ intermediate_partition_lookup.stdout }} /mnt/btrfsroot
+            mount -o compress=zstd:1 {{ intermediate_partition_lookup.stdout }} /mnt/btrfsroot
           changed_when: true
 
         - name: Verify mount
@@ -995,7 +995,7 @@
             sed -i '/^[^#].*[[:space:]]\/var\/lib\/postgresql[[:space:]]/d' /mnt/btrfsroot/etc/fstab
 
             cat >> /mnt/btrfsroot/etc/fstab << EOF
-            UUID=$uuid / btrfs compress=zstd:6 0 1
+            UUID=$uuid / btrfs compress=zstd:1 0 1
             EOF
           changed_when: true
 
@@ -1025,7 +1025,7 @@
         - name: Mount intermediate btrfs if not mounted
           ansible.builtin.shell: |
             mkdir -p /mnt/btrfsroot
-            mount -o compress=zstd:6 {{ intermediate_btrfs_partition }} /mnt/btrfsroot
+            mount -o compress=zstd:1 {{ intermediate_btrfs_partition }} /mnt/btrfsroot
           changed_when: true
           when: intermediate_mount_check.stdout == "not_mounted"
 
@@ -1427,7 +1427,7 @@
 
         - name: Mount final root subvolume
           ansible.builtin.shell: |  # noqa: command-instead-of-module transient staging mount; must not persist to fstab as the mount module would
-            mount -o compress=zstd:6,subvol=@ UUID={{ final_uuid }} /mnt/finalroot
+            mount -o compress=zstd:1,subvol=@ UUID={{ final_uuid }} /mnt/finalroot
           changed_when: true
 
         - name: Create directory structure in final root
@@ -1442,9 +1442,9 @@
 
         - name: Mount final subvolumes
           ansible.builtin.shell: |  # noqa: command-instead-of-module transient staging mounts; must not persist to fstab as the mount module would
-            mount -o compress=zstd:6,subvol=@log UUID={{ final_uuid }} /mnt/finalroot/var/log
-            mount -o compress=zstd:6,subvol=@containers UUID={{ final_uuid }} /mnt/finalroot/var/lib/containers
-            mount -o compress=zstd:6,subvol=@postgres UUID={{ final_uuid }} /mnt/finalroot/var/lib/postgresql
+            mount -o compress=zstd:1,subvol=@log UUID={{ final_uuid }} /mnt/finalroot/var/log
+            mount -o compress=zstd:1,subvol=@containers UUID={{ final_uuid }} /mnt/finalroot/var/lib/containers
+            mount -o compress=zstd:1,subvol=@postgres UUID={{ final_uuid }} /mnt/finalroot/var/lib/postgresql
           changed_when: true
 
         - name: Create swap file on final btrfs
@@ -1566,10 +1566,10 @@
             sed -i '/nvme2n1/d' /mnt/finalroot/etc/fstab
 
             cat >> /mnt/finalroot/etc/fstab << EOF
-            UUID=$uuid / btrfs compress=zstd:6,subvol=@ 0 1
-            UUID=$uuid /var/log btrfs compress=zstd:6,subvol=@log 0 2
-            UUID=$uuid /var/lib/containers btrfs compress=zstd:6,subvol=@containers 0 2
-            UUID=$uuid /var/lib/postgresql btrfs compress=zstd:6,subvol=@postgres 0 2
+            UUID=$uuid / btrfs compress=zstd:1,subvol=@ 0 1
+            UUID=$uuid /var/log btrfs compress=zstd:1,subvol=@log 0 2
+            UUID=$uuid /var/lib/containers btrfs compress=zstd:1,subvol=@containers 0 2
+            UUID=$uuid /var/lib/postgresql btrfs compress=zstd:1,subvol=@postgres 0 2
             /swap.img none swap sw 0 0
             EOF
           changed_when: true
