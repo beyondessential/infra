@@ -8,12 +8,16 @@
     path: /etc/fstab
     regexp: 'compress=zstd:(?!1\b)\d+'
     replace: "compress=zstd:1"
-  register: pg_btrfs_fstab_compression
 
-- name: Apply btrfs compression level live  # noqa: no-handler
+- name: Read live mount options for /var/lib/postgresql
+  ansible.builtin.command: findmnt -no OPTIONS -T /var/lib/postgresql
+  register: pg_mount_options
+  changed_when: false
+
+- name: Apply btrfs compression level live
   become: true
   ansible.builtin.command: mount -o remount,compress=zstd:1 /var/lib/postgresql  # noqa: command-instead-of-module
-  when: pg_btrfs_fstab_compression is changed
+  when: pg_mount_options.stdout is search('compress=zstd:(?!1\b)\d+')
   changed_when: true
 
 - name: Set wal_init_zero to off
