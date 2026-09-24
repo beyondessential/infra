@@ -1,23 +1,30 @@
 ---
 # Tuning for BTRFS with CoW enabled
 
-# btrfs compression is filesystem-wide, so every btrfs line in fstab has to agree
+- name: Read the filesystem and live mount options for /var/lib/postgresql
+  ansible.builtin.command: findmnt -no UUID,LABEL,OPTIONS -P -T /var/lib/postgresql
+  register: pg_mount_info
+  changed_when: false
+
+- name: Match fstab lines for the postgres filesystem
+  ansible.builtin.set_fact:
+    pg_btrfs_fstab_sources: >-
+      UUID={{ pg_mount_info.stdout | regex_search('UUID="([^"]*)"', '\1') | first | regex_escape }}{%
+      if pg_mount_info.stdout is search('LABEL="[^"]+"') %}|LABEL={{
+      pg_mount_info.stdout | regex_search('LABEL="([^"]+)"', '\1') | first | regex_escape }}{% endif %}
+
+# btrfs compression is filesystem-wide, so every fstab line for this filesystem has to agree
 - name: Set btrfs compression to zstd:1 in fstab
   become: true
   ansible.builtin.replace:
     path: /etc/fstab
-    regexp: 'compress=zstd:(?!1\b)\d+'
-    replace: "compress=zstd:1"
-
-- name: Read live mount options for /var/lib/postgresql
-  ansible.builtin.command: findmnt -no OPTIONS -T /var/lib/postgresql
-  register: pg_mount_options
-  changed_when: false
+    regexp: '^((?:{{ pg_btrfs_fstab_sources }})\s.*compress=zstd):(?!1\b)\d+'
+    replace: '\1:1'
 
 - name: Apply btrfs compression level live
   become: true
   ansible.builtin.command: mount -o remount,compress=zstd:1 /var/lib/postgresql  # noqa: command-instead-of-module
-  when: pg_mount_options.stdout is search('compress=zstd:(?!1\b)\d+')
+  when: pg_mount_info.stdout is search('compress=zstd:(?!1\b)\d+')
   changed_when: true
 
 - name: Set wal_init_zero to off

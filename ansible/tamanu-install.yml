@@ -17,7 +17,7 @@
       volume: sdl
       mount: /var/log
       fs_type: btrfs
-      mount_opts: defaults,compress=zstd:1
+      mount_opts: defaults,compress=zstd:6
       tags: [base, volumes]
     - role: ebs-volume
       when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_Partitioning is defined and ansible_ec2_tag_Partitioning == 'split-data-logs'
