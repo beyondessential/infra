@@ -17,7 +17,7 @@ export const tailscaleVersion = 'v1.102.5';
 export const goTarball = 'go1.27.1.linux-arm64.tar.gz';
 export const goSha256 = '3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec';
 
-export const nodeName = '[Tailscale DERP] iti';
+export const nodeName = 'Tailscale DERP: iti';
 export const tailscaleName = 'iti-derp';
 // Mintable by the tamanu-on-linux OAuth client; retag to tag:infra-derp once up.
 export const tailscaleTags = ['tag:server', 'tag:server-tamanu'];
