@@ -1,5 +1,5 @@
 import * as aws from '@pulumi/aws';
-import { ComponentResourceOptions, Input } from '@pulumi/pulumi';
+import type { ComponentResourceOptions, Input } from '@pulumi/pulumi';
 
 import { region } from './awsAccount.ts';
 
