@@ -183,6 +183,9 @@ const box = new aws.ec2.Instance(
             'install',
             `tailscale.com/cmd/derper@${tailscaleVersion}`,
           ],
+          // The AMI's ufw only opens 22, 80 and 443. The comment must be hex:
+          // ufw 0.36+ chokes on plain-text ones (see ansible/roles/ufw).
+          ['ufw', 'allow', 'proto', 'udp', 'to', 'any', 'port', '3478', 'comment', '5354554e'],
           writeFile('/etc/systemd/system/derper.service', unit),
           ['systemctl', 'daemon-reload'],
           ['systemctl', 'enable', '--now', 'derper'],
