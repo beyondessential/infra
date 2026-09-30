@@ -1,0 +1,6 @@
+name: iti-derp
+description: Temporary pinned-cert DERP relay to recover tailnet access to Naitauba Iti
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -1,0 +1,5 @@
+{
+  "name": "@bes/iti-derp",
+  "type": "module",
+  "main": "./index.ts"
+}
