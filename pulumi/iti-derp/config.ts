@@ -11,10 +11,7 @@ export const regionId = cfg.getNumber('regionId') ?? 900;
 export const stunAllowCidrs = cfg.requireObject<string[]>('stunAllowCidrs');
 
 // TLS SNI only: the DERP map forces IPv4/IPv6, so clients never resolve it.
-// Must match the cert's SAN.
 export const derpHostname = cfg.get('derpHostname') ?? 'iti-derp.bes.au';
-export const certPem = cfg.require('certPem');
-export const keyPem = cfg.requireSecret('keyPem');
 
 export const tailscaleVersion = 'v1.102.5';
 export const goTarball = 'go1.27.1.linux-arm64.tar.gz';

@@ -1,7 +1,8 @@
-import { X509Certificate, createHash, createPrivateKey } from 'node:crypto';
+import { X509Certificate, createHash } from 'node:crypto';
 
 import * as aws from '@pulumi/aws';
-import { all, jsonStringify, secret } from '@pulumi/pulumi';
+import { local } from '@pulumi/command';
+import { all, jsonStringify, secret, unsecret } from '@pulumi/pulumi';
 import { DeviceKey, TailnetKey, getDeviceOutput } from '@pulumi/tailscale';
 
 import { region } from '../common/awsAccount.ts';
@@ -25,8 +26,6 @@ import {
   regionId,
   stunAllowCidrs,
   derpHostname,
-  certPem,
-  keyPem,
   tailscaleVersion,
   goTarball,
   goSha256,
@@ -37,20 +36,41 @@ import {
 
 // The client-side pin still enforces NotBefore/NotAfter, so a cert minted with
 // the usual `now + N` window would fail against the very clock skew this relay
-// exists to route around.
-const cert = new X509Certificate(certPem);
-if (!cert.checkHost(derpHostname)) {
-  throw new Error(`certPem has no SAN for ${derpHostname}`);
-}
-if (new Date(cert.validFrom) > new Date('2001-01-01') || new Date(cert.validTo) < new Date('2090-01-01')) {
-  throw new Error(`certPem validity ${cert.validFrom} – ${cert.validTo} is too narrow`);
-}
-const certName = `sha256-raw:${createHash('sha256').update(cert.raw).digest('hex')}`;
-keyPem.apply((pem) => {
-  if (!cert.checkPrivateKey(createPrivateKey(pem))) {
-    throw new Error('keyPem does not match certPem');
+// exists to route around. @pulumi/tls can't backdate NotBefore, so openssl
+// (>= 3.4, for -not_before) mints it once on create; the pin stays stable
+// after that.
+const certGen = new local.Command(
+  'iti-derp-cert',
+  {
+    create: `set -eu
+d=$(mktemp -d)
+trap 'rm -rf "$d"' EXIT
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \\
+  -keyout "$d/key" -out "$d/crt" \\
+  -subj "/CN=$DERP_HOSTNAME" -addext "subjectAltName=DNS:$DERP_HOSTNAME" \\
+  -not_before 20000101000000Z -not_after 20991231235959Z 2>/dev/null
+cat "$d/crt" "$d/key"`,
+    environment: { DERP_HOSTNAME: derpHostname },
+    logging: 'none',
+  },
+  { additionalSecretOutputs: ['stdout'] },
+);
+
+function pemBlock(pem: string, label: string): string {
+  const match = new RegExp(`-----BEGIN ${label}-----[\\s\\S]+?-----END ${label}-----\\n?`).exec(pem);
+  if (!match) {
+    throw new Error(`openssl output has no ${label}`);
   }
-});
+  return match[0];
+}
+
+const certPem = certGen.stdout.apply((out) => pemBlock(out, 'CERTIFICATE'));
+const keyPem = certGen.stdout.apply((out) => pemBlock(out, 'PRIVATE KEY'));
+const certName = unsecret(
+  certPem.apply(
+    (pem) => `sha256-raw:${createHash('sha256').update(new X509Certificate(pem).raw).digest('hex')}`,
+  ),
+);
 
 const $core = new CrossStack(core);
 const $network = $core.network();
@@ -138,7 +158,7 @@ const box = new aws.ec2.Instance(
     },
     subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[0]),
     vpcSecurityGroupIds: [sg.id],
-    userData: all([authKey.key, keyPem]).apply(([authKey, keyPem]) =>
+    userData: all([authKey.key, certPem, keyPem]).apply(([authKey, certPem, keyPem]) =>
       secret(
         cloudInitYaml([
           ...hostnameCommands(tailscaleName),
