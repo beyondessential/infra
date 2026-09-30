@@ -4,6 +4,7 @@ import { AWS_STS, AWS_S3_DELETE_ACTIONS } from '../../constants/external.ts';
 import { oidcProvider } from './oidc.ts';
 import { staging } from './bucket.ts';
 import { ghaClaims, tags } from './config.ts';
+import { vmimport } from './vmimport.ts';
 
 // Snapshot import, AMI registration, and the attribute changes that make the
 // snapshot and image publicly shareable.
@@ -59,6 +60,17 @@ export const role = new awsClassic.iam.Role('gha-linux-images-upload', {
               interpolate`arn:aws:s3:::${staging.bucket}`,
               interpolate`arn:aws:s3:::${staging.bucket}/*`,
             ],
+          },
+          // ImportSnapshot hands the vmimport service role to VM Import/Export
+          // on the caller's behalf, and the service checks the caller may pass
+          // it (it took the default role unchecked before late September 2026).
+          {
+            Effect: 'Allow',
+            Action: 'iam:PassRole',
+            Resource: vmimport.arn,
+            Condition: {
+              StringEquals: { 'iam:PassedToService': 'vmie.amazonaws.com' },
+            },
           },
         ],
       }),
