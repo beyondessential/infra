@@ -2,24 +2,37 @@
 # Tuning for BTRFS with CoW enabled
 
 - name: Read the filesystem and live mount options for /var/lib/postgresql
-  ansible.builtin.command: findmnt -no UUID,LABEL,OPTIONS -P -T /var/lib/postgresql
+  ansible.builtin.command: findmnt -no UUID,OPTIONS -P -T /var/lib/postgresql
   register: pg_mount_info
   changed_when: false
 
-- name: Match fstab lines for the postgres filesystem
-  ansible.builtin.set_fact:
-    pg_btrfs_fstab_sources: >-
-      UUID={{ pg_mount_info.stdout | regex_search('UUID="([^"]*)"', '\1') | first | regex_escape }}{%
-      if pg_mount_info.stdout is search('LABEL="[^"]+"') %}|LABEL={{
-      pg_mount_info.stdout | regex_search('LABEL="([^"]+)"', '\1') | first | regex_escape }}{% endif %}
+- name: List btrfs mount points
+  ansible.builtin.command: findmnt -rn -t btrfs -o UUID,TARGET
+  register: btrfs_mounts
+  changed_when: false
 
-# btrfs compression is filesystem-wide, so every fstab line for this filesystem has to agree
+# fstab names the device many ways (UUID=, LABEL=, PARTUUID=, /dev/disk/by-*, /dev/sdX), so match by mount point
+- name: Find mount points on the postgres filesystem
+  ansible.builtin.set_fact:
+    pg_fs_targets: >-
+      {{ btrfs_mounts.stdout_lines
+         | select('match', (pg_mount_info.stdout | regex_search('UUID="([^"]*)"', '\1') | first) ~ ' ')
+         | map('regex_replace', '^\S+ ', '') | unique }}
+
+# btrfs applies the first mount's options to the whole filesystem, so every fstab line for it has to agree
 - name: Set btrfs compression to zstd:1 in fstab
   become: true
   ansible.builtin.replace:
     path: /etc/fstab
-    regexp: '^((?:{{ pg_btrfs_fstab_sources }})\s.*compress=zstd):(?!1\b)\d+'
+    regexp: '^(\S+\s+(?:{{ pg_fs_targets | map("regex_escape") | join("|") }})\s+btrfs\s+(?:\S*,)?compress=zstd)(?::\d+)?(?=[,\s])'
     replace: '\1:1'
+  register: pg_fstab_compress
+
+- name: Reload systemd mount units
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: pg_fstab_compress is changed
 
 - name: Apply btrfs compression level live
   become: true
