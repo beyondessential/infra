@@ -32,7 +32,7 @@
   become: true
   ansible.builtin.systemd_service:
     daemon_reload: true
-  when: pg_fstab_compress is changed
+  when: pg_fstab_compress is changed  # noqa: no-handler reload before the remount, not at end of play
 
 - name: Apply btrfs compression level live
   become: true
