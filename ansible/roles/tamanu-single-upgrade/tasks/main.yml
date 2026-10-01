@@ -158,3 +158,18 @@
 
 - name: Reload caddy
   ansible.builtin.meta: flush_handlers
+
+# The previous versions are read by tamanu-single-install in the pre phase; a
+# run limited to the go phase doesn't know them, so it leaves images alone.
+- name: Remove superseded Tamanu images
+  when: previous_tamanu_version is defined and previous_tamanu_frontend_version is defined
+  ansible.builtin.include_role:
+    name: tamanu-single-common
+    tasks_from: prune-images
+  vars:
+    tamanu_image_prune_repos: [tamanu-central, tamanu-facility, tamanu-frontend, tamanu-patient-portal]
+    tamanu_image_prune_keep:
+      - "{{ tamanu_version }}"
+      - "{{ tamanu_frontend_version }}"
+      - "{{ previous_tamanu_version }}"
+      - "{{ previous_tamanu_frontend_version }}"
