@@ -88,6 +88,43 @@
     - Reload systemd
     - Restart iti services
 
+# rppal (the GPIO crate under bestool's LCD driver) finds the RP1 pin
+# controller by opening /dev/gpiochip0, gpiochip1, ... in turn and gives up at
+# the first missing number. Pi 5 kernels from 6.12.109 number the chips from
+# 11 with RP1 last, so the scan fails before reaching it. Alias the RP1 chip as
+# gpiochip0 when the kernel hasn't put it there itself.
+- name: Alias the RP1 GPIO chip as gpiochip0
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/60-iti-gpiochip0.rules
+    mode: "0644"
+    content: |
+      ACTION=="add|change", SUBSYSTEM=="gpio", KERNEL=="gpiochip*", KERNEL!="gpiochip0", DRIVERS=="pinctrl-rp1", SYMLINK+="gpiochip0"
+  register: iti_gpiochip_rule
+
+- name: Reload udev rules  # noqa: no-handler
+  # Must reload and apply immediately after writing the rule, in order; deferred handlers would run too late.
+  become: true
+  when: iti_gpiochip_rule.changed
+  ansible.builtin.command:
+    cmd: udevadm control --reload-rules
+  changed_when: true
+
+- name: Apply gpiochip0 alias to existing GPIO chips  # noqa: no-handler
+  # Paired with the reload above; --settle so the symlink exists before the LCD server restarts.
+  become: true
+  when: iti_gpiochip_rule.changed
+  ansible.builtin.command:
+    cmd: udevadm trigger --settle --subsystem-match=gpio --action=change
+  changed_when: true
+
+- name: Restart LCD server onto the gpiochip0 alias  # noqa: no-handler
+  become: true
+  when: iti_gpiochip_rule.changed
+  ansible.builtin.systemd:
+    name: iti-lcd-server
+    state: restarted
+
 # Dropping the unit file into /etc/systemd/system/ only loads it; an explicit
 # enable is what creates the .wants symlink that boot follows. The upstream
 # units carry `preset: enabled` but that's only a recommendation honoured by
