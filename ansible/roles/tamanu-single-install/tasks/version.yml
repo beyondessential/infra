@@ -1,4 +1,13 @@
 ---
+# Pull before anything points at the new version: the quadlets resolve their
+# image from TAMANU_VERSION in /etc/tamanu/env, so writing that first and then
+# failing to pull leaves the box unable to start after its next restart.
+- name: Pull the Tamanu images
+  become: true
+  loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"
+  containers.podman.podman_image:
+    name: "{{ item }}"
+
 - name: Create versioned tamanu config directory
   become: true
   ansible.builtin.file:
@@ -77,12 +86,6 @@
     executable: /bin/bash
   register: tamanu_config_key
   changed_when: tamanu_config_key.stdout == "created"
-
-- name: Pull the Tamanu images
-  become: true
-  loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"
-  containers.podman.podman_image:
-    name: "{{ item }}"
 
 # The relative source path resolves against the image's working directory.
 # default.json5 holds the app's built-in defaults that production.json5

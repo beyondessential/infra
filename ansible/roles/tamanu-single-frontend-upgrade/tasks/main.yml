@@ -113,3 +113,13 @@
 
 - name: Reload caddy
   ansible.builtin.meta: flush_handlers
+
+- name: Remove superseded frontend images
+  ansible.builtin.include_role:
+    name: tamanu-single-common
+    tasks_from: prune-images
+  vars:
+    tamanu_image_prune_repos: [tamanu-frontend]
+    tamanu_image_prune_keep:
+      - "{{ tamanu_frontend_version }}"
+      - "{{ previous_tamanu_frontend_version }}"

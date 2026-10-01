@@ -156,14 +156,13 @@
     line: tz = "local"
     regexp: "^#?tz\\s*="
 
-- name: Set podman image auto-cleanup
+# Superseded by podman-images-clean.timer. Its `--all` prune removes the images
+# of stopped quadlet services.
+- name: Remove podman image cron cleanup
   become: true
-  ansible.builtin.copy:
-    dest: /etc/cron.daily/podman-image-cleanup
-    mode: "0755"
-    content: |
-      #!/bin/sh
-      podman image prune --all --filter until=24h --force
+  ansible.builtin.file:
+    path: /etc/cron.daily/podman-image-cleanup
+    state: absent
 
 - name: Make quadlet directory
   become: true
