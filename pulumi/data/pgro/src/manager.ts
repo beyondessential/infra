@@ -8,6 +8,8 @@ import {
   canopyBaseUrl,
   canopyDeviceKey,
   canopyPgdataPvcSize,
+  builderPullUser,
+  builderPullPat,
 } from './config.ts';
 
 const labels = {
@@ -147,6 +149,34 @@ if (canopyActive) {
   if (canopyPgdataPvcSize) {
     controllerEnv.push({ name: 'CANOPY_PGDATA_PVC_SIZE', value: canopyPgdataPvcSize });
   }
+}
+
+// pgro copies this into each build namespace it creates, so it lives here in
+// the operator's namespace rather than in any replica's.
+if (builderPullUser && builderPullPat) {
+  new k8s.core.v1.Secret(
+    'pgro-builder-pull',
+    {
+      metadata: {
+        name: 'pgro-builder-pull',
+        namespace,
+      },
+      type: 'kubernetes.io/dockerconfigjson',
+      stringData: {
+        '.dockerconfigjson': builderPullPat.apply((pat) =>
+          JSON.stringify({
+            auths: {
+              'ghcr.io': {
+                auth: Buffer.from(`${builderPullUser}:${pat}`).toString('base64'),
+              },
+            },
+          }),
+        ),
+      },
+    },
+    { parent: ns },
+  );
+  controllerEnv.push({ name: 'BUILDER_PULL_SECRET', value: 'pgro-builder-pull' });
 }
 
 const containers: k8s.types.input.core.v1.Container[] = [
