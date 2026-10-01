@@ -138,7 +138,7 @@
       - tamanu
       - doctor
       - --check
-      - db_connect
+      - postgres:connect
       - --no-daemon
   changed_when: false
 
