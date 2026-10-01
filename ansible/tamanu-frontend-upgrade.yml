@@ -23,9 +23,11 @@
   roles:
     - role: tamanu-single-frontend-upgrade
       type: central
+      db_name: tamanu
 
 - name: Facility frontend upgrade
   hosts: facility
   roles:
     - role: tamanu-single-frontend-upgrade
       type: facility
+      db_name: tamanu
