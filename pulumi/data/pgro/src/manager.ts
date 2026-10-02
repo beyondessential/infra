@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { jsonStringify } from '@pulumi/pulumi';
 import { TAILSCALE_VERSION } from '../../../k8s-essentials/versions.ts';
 import { namespace, ns } from './namespace.ts';
 import {
@@ -163,15 +164,15 @@ if (builderPullUser && builderPullPat) {
       },
       type: 'kubernetes.io/dockerconfigjson',
       stringData: {
-        '.dockerconfigjson': builderPullPat.apply((pat) =>
-          JSON.stringify({
-            auths: {
-              'ghcr.io': {
-                auth: Buffer.from(`${builderPullUser}:${pat}`).toString('base64'),
-              },
+        '.dockerconfigjson': jsonStringify({
+          auths: {
+            'ghcr.io': {
+              auth: builderPullPat.apply((pat) =>
+                Buffer.from(`${builderPullUser}:${pat}`).toString('base64'),
+              ),
             },
-          }),
-        ),
+          },
+        }),
       },
     },
     { parent: ns },
