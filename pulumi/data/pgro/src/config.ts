@@ -22,3 +22,8 @@ export const canopyDeviceKey = cfg.getSecret('canopyDeviceKey');
 
 // Override for canopy-provisioned pgdata PVCs (operator default is 20Gi).
 export const canopyPgdataPvcSize = cfg.get('canopyPgdataPvcSize');
+
+// ghcr credentials for pulling a private reporting-schema builder image
+// (`tamanu-dbt-*`). Unset where every builder image is public.
+export const builderPullUser = cfg.get('builderPullUser');
+export const builderPullPat = cfg.getSecret('builderPullPat');
