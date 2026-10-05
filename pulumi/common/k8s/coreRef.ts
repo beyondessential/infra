@@ -29,6 +29,7 @@ export const region = core.region();
 
 const upperCore = $core.coreStack.apply((name) => new CrossStack(`bes/core/${name}`));
 export const $network = upperCore.apply((core) => core.network());
+export const accountId = upperCore.apply((core) => core.accountId());
 
 // Guard that AWS credentials point at the cluster's account (the core stack
 // publishes `accountId`). Reuses the core reference above rather than importing
