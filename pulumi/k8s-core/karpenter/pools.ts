@@ -17,13 +17,6 @@ import {
   exitNodeClass,
 } from './classes.ts';
 
-// NOTE: not all NodePools live here. The dedicated Rust-build pools
-// (build-{arm,x86}-{spot,ondemand}) and their EC2NodeClass are owned by the
-// out-of-tree `rust-build` stack (pulumi/rust-build/), which consumes
-// nodeRoleName + clusterSecurityGroupId exported from k8s-core/index.ts. A
-// capacity audit of this file alone will miss them. See
-// docs/plans/rust-remote-build.md.
-
 // Instance type lists, mirroring what nodes/groups.ts uses for the equivalent
 // managed nodegroups. The helpers price-cap spot against on-demand and exclude
 // burstable types from large workload pools.
