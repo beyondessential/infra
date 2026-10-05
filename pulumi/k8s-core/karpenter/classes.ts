@@ -86,6 +86,37 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
+// k[capacity.db-replica-pool] k[placement.workload-subnets] k[storage.workload-disk-size]
+// Workload-tier class for the dedicated database replica pool. Each node holds
+// one replica plus the daemonsets, so max-pods is capped low: the kubelet
+// memory reservation scales with it, and on a 16 GiB node the difference is
+// what lets a replica sized near the node's memory fit at all. The distinct
+// Purpose tag attributes these instances as replica capacity in billing.
+export const dbReplicaNodeClass = new k8s.apiextensions.CustomResource(
+  'nodeclass-db-replica',
+  {
+    apiVersion: 'karpenter.k8s.aws/v1',
+    kind: 'EC2NodeClass',
+    metadata: { name: 'db-replica' },
+    spec: {
+      role: nodeRoleName,
+      amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
+      subnetSelectorTerms: workloadSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
+      metadataOptions: commonMetadataOptions,
+      blockDeviceMappings: ebs(`${workloadDiskGi}Gi`),
+      kubelet: { maxPods: 15 },
+      tags: {
+        'bes.node.purpose': 'workload',
+        Name: `${namePrefix} db-replica`,
+        Purpose: 'k8s-db-replica',
+        ...inheritedTags,
+      },
+    },
+  },
+  { provider, dependsOn: [karpenter] },
+);
+
 // k[placement.ingress-subnets] k[storage.system-ingress-disk-size]
 export const ingressNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-ingress',
