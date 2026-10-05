@@ -119,8 +119,8 @@ const issuerRole = eksServiceAccount('canopy-issuer', {
   namespace,
   managedPolicyArns: [
     assumeRolePolicy('canopy-issuer-assume').policyArn,
-    // public-server only serves held artifacts; it never registers one.
-    artifactPolicy('canopy-issuer-artifacts', AWS_S3_READ_ACTIONS).policyArn,
+    // public-server takes in a schema builder's registration, and drops the bytes again if it refuses one.
+    artifactPolicy('canopy-issuer-artifacts', AWS_S3_DELETE_ACTIONS).policyArn,
   ],
 });
 
