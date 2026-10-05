@@ -34,15 +34,22 @@ import {
 // minimum (4 vCPU / 8 GiB) and the price cap is sized to admit the 2xlarge
 // shapes of the same families — Karpenter still picks the cheapest available
 // offering, so larger shapes only land when smaller ones can't be provisioned.
+// The x families are admitted here as more capacity for memory-heavy pods.
 const workloadArmSpot = upToMonthly(
-  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8)), 'linux'),
+  spotWithinOnDemandPrice(
+    nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8, { highMemory: true })),
+    'linux',
+  ),
   'linux',
   'spot',
   200,
 ).map((i) => i.instance_type);
 
 const workloadX86Spot = upToMonthly(
-  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)), 'linux'),
+  spotWithinOnDemandPrice(
+    nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8, { highMemory: true })),
+    'linux',
+  ),
   'linux',
   'spot',
   150,
