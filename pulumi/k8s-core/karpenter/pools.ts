@@ -36,6 +36,7 @@ import {
 // shapes of the same families — Karpenter still picks the cheapest available
 // offering, so larger shapes only land when smaller ones can't be provisioned.
 // The x families are admitted here as more capacity for memory-heavy pods.
+// k[capacity.spot-interruption-cap]
 // Types the Spot Instance Advisor puts above 10% monthly interruption are
 // dropped: observed reclaim rates run far above the advisor's figures, but
 // still rank the same way.

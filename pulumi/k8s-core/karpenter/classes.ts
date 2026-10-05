@@ -61,7 +61,11 @@ function ebs(volumeSize: string) {
 // kubelet image GC high threshold (85%) is the ceiling to stay clear of.
 const workloadDiskGi = cfg.getNumber('workloadDiskGi') ?? 60;
 
-// k[placement.workload-subnets] k[storage.workload-disk-size]
+// k[placement.workload-subnets] k[storage.workload-disk-size] k[capacity.workload-pod-density]
+// Pods take IPv6 addresses from delegated prefixes, so network interfaces don't
+// bound pod density; without an explicit limit Karpenter applies the
+// interface-derived one (58 on an xlarge), which fills nodes on pod count well
+// before memory.
 export const workloadNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-workload',
   {
@@ -75,6 +79,7 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
       securityGroupSelectorTerms: clusterSgTerm,
       metadataOptions: commonMetadataOptions,
       blockDeviceMappings: ebs(`${workloadDiskGi}Gi`),
+      kubelet: { maxPods: 110 },
       tags: {
         'bes.node.purpose': 'workload',
         Name: `${namePrefix} workload`,
