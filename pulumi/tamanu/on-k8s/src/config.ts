@@ -59,6 +59,13 @@ export const dbExposeTags = [
 // This package currently deploys demo/branch environments, where losing an AZ
 // is acceptable; set to false for any production-grade stack.
 export const dbAzColocate = cfg.getBoolean('dbAzColocate') ?? true;
+// CNPG's budget on the primary allows no evictions, which exempts every node
+// holding one from consolidation. Demo and branch environments take a
+// failover on drain instead; set to true for any production-grade stack.
+export const dbDisruptionBudgets = cfg.getBoolean('dbDisruptionBudgets') ?? false;
+// Demo databases hold little data and use ~200-450MiB; branch environments on
+// the main cluster run closer to the default.
+export const dbMemory = cfg.get('dbMemory') ?? (_isDemoCluster ? '512Mi' : '750Mi');
 export const timezone = cfg.get('timezone') ?? 'Pacific/Auckland';
 export const ipAllowList: undefined | string[] = cfg.getObject('ipAllowList') ?? undefined; // TODO
 

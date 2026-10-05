@@ -48,6 +48,10 @@ export interface PostgresArgs {
   // Memory request for the postgres container, and the basis every
   // memory-derived postgres parameter is computed from.
   memoryRequest?: Input<string>;
+  // Keep CNPG's PodDisruptionBudgets. The primary's budget allows no
+  // evictions, so every node holding a primary is exempt from consolidation;
+  // turn this off where a failover on drain is acceptable.
+  disruptionBudgets?: boolean;
   // Expose CNPG's :9187 metrics to the (annotation-based, operator-less)
   // Prometheus via a dedicated metrics-only Service. Annotating the cluster
   // pods directly would also annotate the rw/r/ro services and double-scrape.
@@ -89,6 +93,7 @@ export function runPostgres({
   colocateAz = false,
   maxConnections = 100,
   memoryRequest = '750Mi',
+  disruptionBudgets = true,
   scrapeMetrics = false,
 }: PostgresArgs): PostgresReady {
   new k8s.apiextensions.CustomResource(
@@ -118,6 +123,8 @@ export function runPostgres({
           major: majorVersion,
         },
         instances: replicas,
+        // k[postgres.disruption.opt-out]
+        enablePDB: disruptionBudgets,
         // Maintain the <name>-db-superuser secret: the reporting-grants Job and
         // the postgres URLs in <name>-db-url read it, and CNPG only creates it
         // when superuser access is enabled (off by default since CNPG 1.21).
@@ -253,6 +260,12 @@ export function runPostgres({
         },
         spec: {
           retentionPolicy: `${barmanBackup.retentionDays}d`,
+          // k[postgres.backup-sidecar.requests]
+          instanceSidecarConfiguration: {
+            resources: {
+              requests: { cpu: '10m', memory: '128Mi' },
+            },
+          },
           configuration: {
             destinationPath: interpolate`s3://${barmanBackup.bucket}/${barmanBackup.deployName}/${name}-db/`,
             s3Credentials: {
