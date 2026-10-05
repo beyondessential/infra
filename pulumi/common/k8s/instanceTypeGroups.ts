@@ -34,27 +34,45 @@ export interface RegionInstance {
   arch: string[];
   instance_type: string;
   family: string;
-  linuxPricing: {
-    ondemand: number;
-    spot: number;
-  };
-  windowsPricing: {
-    ondemand: number;
-    spot: number;
-  };
+  linuxPricing: RegionPricing;
+  windowsPricing: RegionPricing;
   burst_minutes: number | null;
   vCPU: number;
   memory: number;
 }
 
+export interface RegionPricing {
+  ondemand: number;
+  spot: number;
+  // Upper bound, in percent, of the Spot Instance Advisor's interruption-frequency
+  // band for this type in this region; undefined when the advisor has no data.
+  spotInterruptMax?: number;
+}
+
 export interface Pricing {
-  linux?: {
-    ondemand: string;
-    spot_avg: string;
-  };
-  mswin?: {
-    ondemand: string;
-    spot_avg: string;
+  linux?: PlatformPricing;
+  mswin?: PlatformPricing;
+}
+
+interface PlatformPricing {
+  ondemand: string;
+  spot_avg: string;
+  pct_interrupt?: '<5%' | '5-10%' | '10-15%' | '15-20%' | '>20%' | null;
+}
+
+const INTERRUPT_BAND_MAX: Record<string, number> = {
+  '<5%': 5,
+  '5-10%': 10,
+  '10-15%': 15,
+  '15-20%': 20,
+  '>20%': 100,
+};
+
+function regionPricing(p: PlatformPricing | undefined): RegionPricing {
+  return {
+    ondemand: parseFloat(p?.ondemand ?? 'Infinity'),
+    spot: parseFloat(p?.spot_avg ?? 'Infinity'),
+    spotInterruptMax: p?.pct_interrupt ? INTERRUPT_BAND_MAX[p.pct_interrupt] : undefined,
   };
 }
 
@@ -78,10 +96,7 @@ function isK8sFamily(instance_type: string, { highMemory = false }: FamilyOption
 }
 
 // Filter for region, but also eliminate a bunch of instances we never want to use
-export function instancesForRegion(
-  region: string,
-  families: FamilyOptions = {},
-): RegionInstance[] {
+export function instancesForRegion(region: string, families: FamilyOptions = {}): RegionInstance[] {
   return INSTANCES.filter(
     (i) =>
       Object.keys(i.regions).includes(region) &&
@@ -93,26 +108,21 @@ export function instancesForRegion(
       !i.instance_type.includes('metal') &&
       isNitro(i.instance_type) &&
       isK8sFamily(i.instance_type, families),
-  ).map((i) => ({
-    placement_group_support: i.placement_group_support,
-    pretty_name: i.pretty_name,
-    physical_processor: i.physical_processor,
-    arch: i.arch,
-    instance_type: i.instance_type,
-    family: i.family,
-    linuxPricing: {
-      ondemand: parseFloat(i.pricing[region].linux?.ondemand ?? 'Infinity'),
-      spot: parseFloat(i.pricing[region].linux?.spot_avg ?? 'Infinity'),
-    },
-    windowsPricing: {
-      ondemand: parseFloat(i.pricing[region].mswin?.ondemand ?? 'Infinity'),
-      spot: parseFloat(i.pricing[region].mswin?.spot_avg ?? 'Infinity'),
-    },
-    burst_minutes: i.burst_minutes,
-    vCPU: i.vCPU,
-    memory: i.memory,
-  }))
-  .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
+  )
+    .map((i) => ({
+      placement_group_support: i.placement_group_support,
+      pretty_name: i.pretty_name,
+      physical_processor: i.physical_processor,
+      arch: i.arch,
+      instance_type: i.instance_type,
+      family: i.family,
+      linuxPricing: regionPricing(i.pricing[region].linux),
+      windowsPricing: regionPricing(i.pricing[region].mswin),
+      burst_minutes: i.burst_minutes,
+      vCPU: i.vCPU,
+      memory: i.memory,
+    }))
+    .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
 export function instancesSizedAtLeast(
@@ -171,6 +181,18 @@ export function spotWithinOnDemandPrice(
   if (sorted.length === 0) return [];
   const onDemandPrice = sorted[0][`${platform}Pricing`].ondemand * fuzz;
   return instances.filter((i) => i[`${platform}Pricing`].spot < onDemandPrice);
+}
+
+// The advisor's bands are monthly, region-wide frequencies; a type it rates
+// rarely interrupted can still be reclaimed far more often in practice, so
+// treat this as a ranking rather than a prediction. Types without advisor
+// data are dropped.
+export function spotInterruptAtMost(
+  instances: RegionInstance[],
+  platform: 'linux' | 'windows',
+  percent: number,
+): RegionInstance[] {
+  return instances.filter((i) => (i[`${platform}Pricing`].spotInterruptMax ?? Infinity) <= percent);
 }
 
 export function upToMonthly(
