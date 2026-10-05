@@ -58,19 +58,30 @@ export interface Pricing {
   };
 }
 
+export interface FamilyOptions {
+  // Also admit the x memory-optimised families (1:16 and up). Worth it only
+  // where memory-heavy pods can make one the cheapest fit; CPU-bound or
+  // network-bound pools gain nothing but pricier capacity from them.
+  highMemory?: boolean;
+}
+
 // Instance families suitable for general K8s workloads start with:
 // t - burstable (t3, t4g, etc.)
 // m - general purpose (m5, m6g, m7i, etc.)
 // c - compute optimized (c5, c6g, c7i, etc.)
 // r - memory optimized (r5, r6g, r7i, etc.)
+// x - memory optimized, high ratio (x2gd, x8g, etc.), only with `highMemory`
 // Excludes: GPU (g*, p*), storage-optimized (d*, i*), ML ASIC (inf*),
-// HPC (hpc*), high-memory (u-*, x*, z*)
-function isK8sFamily(instance_type: string): boolean {
-  return /^[tmcr]/i.test(instance_type);
+// HPC (hpc*), very-high-memory (u-*), high-frequency (z*)
+function isK8sFamily(instance_type: string, { highMemory = false }: FamilyOptions): boolean {
+  return (highMemory ? /^[tmcrx]/i : /^[tmcr]/i).test(instance_type);
 }
 
 // Filter for region, but also eliminate a bunch of instances we never want to use
-export function instancesForRegion(region: string): RegionInstance[] {
+export function instancesForRegion(
+  region: string,
+  families: FamilyOptions = {},
+): RegionInstance[] {
   return INSTANCES.filter(
     (i) =>
       Object.keys(i.regions).includes(region) &&
@@ -81,7 +92,7 @@ export function instancesForRegion(region: string): RegionInstance[] {
       i.generation === 'current' &&
       !i.instance_type.includes('metal') &&
       isNitro(i.instance_type) &&
-      isK8sFamily(i.instance_type),
+      isK8sFamily(i.instance_type, families),
   ).map((i) => ({
     placement_group_support: i.placement_group_support,
     pretty_name: i.pretty_name,
@@ -109,8 +120,9 @@ export function instancesSizedAtLeast(
   arch: string,
   cpu: number,
   memory: number,
+  families: FamilyOptions = {},
 ): RegionInstance[] {
-  const instances = instancesForRegion(region);
+  const instances = instancesForRegion(region, families);
   return instances
     .filter((i) => i.arch.includes(arch) && i.vCPU >= cpu && i.memory >= memory)
     .sort((a, b) => a.instance_type.localeCompare(b.instance_type));

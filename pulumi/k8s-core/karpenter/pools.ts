@@ -11,6 +11,7 @@ import {
 } from '../../common/k8s/instanceTypeGroups.ts';
 import {
   workloadNodeClass,
+  dbReplicaNodeClass,
   ingressNodeClass,
   systemNodeClass,
   exitNodeClass,
@@ -27,27 +28,34 @@ import {
 // managed nodegroups. The helpers price-cap spot against on-demand and exclude
 // burstable types from large workload pools.
 
-// k[capacity.spot-price-cap] k[capacity.no-burstable-large] k[capacity.workload-node-floor]
+// k[capacity.spot-price-cap] k[capacity.no-burstable-large] k[capacity.workload-node-floor+2]
 // Spot pools cast a wide net: lots of (instance-type, AZ) offerings so a per-AZ
 // capacity drought in one family doesn't strand pods. Floor matches the spec
 // minimum (4 vCPU / 8 GiB) and the price cap is sized to admit the 2xlarge
 // shapes of the same families — Karpenter still picks the cheapest available
 // offering, so larger shapes only land when smaller ones can't be provisioned.
+// The x families are admitted here as more capacity for memory-heavy pods.
 const workloadArmSpot = upToMonthly(
-  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8)), 'linux'),
+  spotWithinOnDemandPrice(
+    nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8, { highMemory: true })),
+    'linux',
+  ),
   'linux',
   'spot',
   200,
 ).map((i) => i.instance_type);
 
 const workloadX86Spot = upToMonthly(
-  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8)), 'linux'),
+  spotWithinOnDemandPrice(
+    nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8, { highMemory: true })),
+    'linux',
+  ),
   'linux',
   'spot',
   150,
 ).map((i) => i.instance_type);
 
-// k[capacity.workload-node-floor]
+// k[capacity.workload-node-floor+2]
 // On-demand fallback pools offer exactly one node shape, family-diverse: a
 // uniform shape can't fragment into many small nodes during spot droughts.
 const workloadArmOndemand = upToMonthly(
@@ -236,6 +244,31 @@ pool('workload-x86-ondemand', {
   instanceTypes: workloadX86Ondemand,
   capacityTypes: ['on-demand'],
   limits: { cpu: 500, memory: '1000Gi' },
+  weight: 10,
+});
+
+// k[capacity.db-replica-pool] k[capacity.workload-node-floor+2] k[node.taint.spot]
+// Dedicated pool for restored database replicas (pgro opts its pods in via its
+// ConfigMap nodeSelector and tolerations). Replica demand is memory-heavy and
+// near-idle on CPU, so the shapes are 1:8 and 1:16 Graviton sized for one
+// replica per node, chosen for low spot interruption rates in ap-southeast-2:
+// x8g as the primary, r6g.large as the diversification fallback. All sit far
+// below on-demand price on spot. x8g is outside the general-purpose families
+// the instanceTypeGroups helpers admit, hence the literal list. On-demand is
+// allowed as a fallback so a spot drought delays nothing; Karpenter prefers
+// spot when both are offered. Replica pods carry do-not-disrupt and are
+// replaced on every restore cycle, so only empty nodes are ever reclaimed.
+pool('db-replica', {
+  purpose: 'workload',
+  schedule: 'mixed',
+  arch: 'arm64',
+  nodeClassRef: dbReplicaNodeClass,
+  instanceTypes: ['x8g.medium', 'x8g.large', 'r6g.large'],
+  capacityTypes: ['spot', 'on-demand'],
+  spotTaint: true,
+  extraTaints: [{ key: 'bes.node.group', value: 'db-replica', effect: 'NoSchedule' }],
+  consolidationPolicy: 'WhenEmpty',
+  limits: { cpu: 100, memory: '1600Gi' },
   weight: 10,
 });
 

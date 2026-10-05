@@ -28,12 +28,17 @@ const configMap = new k8s.core.v1.ConfigMap(
     data: {
       maxConcurrentRestores: String(maxConcurrentRestores),
       // Scheduling defaults the operator stamps onto every pod it creates
-      // (restore Jobs, replica Deployments), as `key=value,key=value`. Without
-      // them those pods land on whichever pool the autoscaler weights highest;
-      // restored databases belong on the workload tier, and do-not-disrupt
-      // keeps Karpenter from consolidating a node out from under a restore.
-      nodeSelector: 'bes.node.purpose=workload',
+      // (restore Jobs, replica Deployments). Without them those pods land on
+      // whichever pool the autoscaler weights highest. Restored databases
+      // belong on the dedicated replica pool (k8s-core karpenter/pools.ts),
+      // and Karpenter only provisions there for pods tolerating both of its
+      // taints. do-not-disrupt keeps Karpenter from consolidating a node out
+      // from under a restore. The operator image must support `tolerations`:
+      // one that ignores the key leaves its pods selecting a pool they can't
+      // schedule onto.
+      nodeSelector: 'bes.node.group=db-replica',
       podAnnotations: 'karpenter.sh/do-not-disrupt=true',
+      tolerations: 'bes.node.group=db-replica:NoSchedule,spotInstance=true:PreferNoSchedule',
     },
   },
   { parent: ns },
