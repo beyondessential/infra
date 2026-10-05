@@ -6,6 +6,7 @@ import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k
 import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
 import { $network } from '../../../../common/k8s/coreRef.ts';
 import type { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
+import { appMemoryLimit } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
 import type { BlobStoreVolume } from '../common/blobStore.ts';
 import { architecture, nodeEnv } from '../config.ts';
@@ -214,11 +215,14 @@ export function podSpecFactory({
             },
           },
         ]),
+        // Requests sit at the typical pod's p95; the limit only stops a leak
+        // from pressuring the node (peaks seen are ~650Mi).
         resources: {
           requests: {
             cpu: '5m',
-            memory: '150Mi',
+            memory: '200Mi',
           },
+          ...appMemoryLimit(podType),
         },
         ...containerArgs,
       },
