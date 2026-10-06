@@ -38,6 +38,7 @@ http:// {
 
 {% if tamanu_caddy_tls and not (public_hostname | regex_search('\\.local$')) %}
 https://{{ public_hostname }} {
+  import canopy_certificate
   import server
 }
 http://{{ public_hostname }} {
@@ -67,6 +68,7 @@ http://{{ hostname }} {
 }
     {% else %}
 https://{{ hostname }} {
+  import canopy_certificate
   import server
 }
 http://{{ hostname }} {

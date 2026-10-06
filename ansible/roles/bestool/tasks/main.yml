@@ -104,6 +104,11 @@
     - Reload systemd
     - Restart bestool-alertd
 
+# Lands before the start below, so a daemon first started here already admits
+# Caddy.
+- name: Permit Caddy to fetch certificates
+  ansible.builtin.include_tasks: caddy-certificates.yml
+
 - name: Enable and start bestool-alertd
   become: true
   ansible.builtin.systemd:

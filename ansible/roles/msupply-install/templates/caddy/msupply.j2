@@ -31,6 +31,14 @@
 }
 
 https://{{ msupply_hostname }} {
+{# See the canopy_certificate snippet in tamanu-single-install's common.j2: a
+   decline falls through to the global cert_issuer, and the block is emitted only
+   once alertd serves the endpoint and admits caddy. #}
+{% if caddy_canopy_certificates_active | default(false) | bool %}
+  tls {
+    get_certificate http http://127.0.0.1:8271/certificate
+  }
+{% endif %}
   import msupply_server
 }
 

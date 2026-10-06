@@ -22,3 +22,10 @@ alertd_app_db: tamanu
 # e.g. munin's Caddy vhost — can see it, not just the tamanu central/facility
 # plays.
 tailnet: tail53aef
+
+# Tamanu and mSupply sites name bestool-alertd's certificate endpoint, so a
+# Canopy-issued chain is served wherever one has been collected and Caddy's own
+# issuer covers every name the daemon declines. Defined here in `common` because
+# the tamanu and msupply roles both render sites from it. Takes effect only where
+# the installed bestool serves the endpoint (see bestool/tasks/caddy-certificates.yml).
+caddy_canopy_certificates: true

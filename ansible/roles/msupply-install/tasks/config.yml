@@ -28,6 +28,12 @@
     owner: msupply
     group: msupply
 
+- name: Permit Caddy to fetch certificates from alertd
+  when: msupply_hostname is defined
+  ansible.builtin.include_role:
+    name: bestool
+    tasks_from: caddy-certificates
+
 - name: Add mSupply Caddy server
   when: msupply_hostname is defined
   become: true

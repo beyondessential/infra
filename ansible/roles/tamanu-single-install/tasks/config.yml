@@ -15,6 +15,11 @@
     src: tamanu-run.j2
     mode: "0755"
 
+- name: Permit Caddy to fetch certificates from alertd
+  ansible.builtin.include_role:
+    name: bestool
+    tasks_from: caddy-certificates
+
 - name: Add upstream snippet
   become: true
   ansible.builtin.template:
