@@ -48,8 +48,6 @@ export interface CrossStackK8sCoreOutput {
   opencostRoleArn: Output<string>;
   spotDataFeedBucketName: Output<string>;
   opencostExportBucketName: Output<string>;
-  nodeRoleName: Output<string>;
-  clusterSecurityGroupId: Output<string>;
   envoyGatewayEnabled: Output<boolean>;
   externalDnsZoneDomains: Output<string[]>;
   tailscaleProxyDefaultTags: Output<string[]>;
@@ -166,8 +164,6 @@ export class CrossStack {
       opencostRoleArn: this.get('opencostRoleArn'),
       spotDataFeedBucketName: this.get('spotDataFeedBucketName'),
       opencostExportBucketName: this.get('opencostExportBucketName'),
-      nodeRoleName: this.get('nodeRoleName'),
-      clusterSecurityGroupId: this.get('clusterSecurityGroupId'),
       envoyGatewayEnabled: this.get('envoyGatewayEnabled'),
       externalDnsZoneDomains: this.get('externalDnsZoneDomains'),
       tailscaleProxyDefaultTags: this.get('tailscaleProxyDefaultTags'),
