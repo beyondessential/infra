@@ -132,12 +132,20 @@ function __namespace_empty --argument-names kubeconfig ns
     test (count $held) -eq 0
 end
 
-# CNPG clusters that are neither healthy nor hibernated. The program waits for
-# its databases without a time limit, so an up against a broken one never ends.
+# CNPG clusters with no ready instance, i.e. no working primary. The program
+# waits for its databases without a time limit, so an up against one never
+# ends. A replica that is still catching up doesn't count.
 function __unhealthy_databases --argument-names kubeconfig ns
-    kubectl --kubeconfig $kubeconfig -n $ns get clusters.postgresql.cnpg.io --no-headers \
-        -o custom-columns=NAME:.metadata.name,PHASE:.status.phase 2>/dev/null \
-        | string match -rv -i 'healthy state|hibernat' | string replace -r '\s{2,}' ': '
+    kubectl --kubeconfig $kubeconfig -n $ns get clusters.postgresql.cnpg.io -o json 2>/dev/null \
+        | jq -r '.items[] | select((.metadata.annotations["cnpg.io/hibernation"] // "") != "on")
+            | select((.status.readyInstances // 0) == 0) | "\(.metadata.name): \(.status.phase)"'
+end
+
+# A stack whose databases were hibernated when its TTL ran out. An up would wake
+# it, and there is nothing running in it to change.
+function __hibernated --argument-names kubeconfig ns
+    kubectl --kubeconfig $kubeconfig -n $ns get clusters.postgresql.cnpg.io -o json 2>/dev/null \
+        | jq -e '[.items[] | .metadata.annotations["cnpg.io/hibernation"] // ""] | length > 0 and all(. == "on")' >/dev/null
 end
 
 echo '== classifying stacks'
@@ -151,6 +159,7 @@ set -l ghost_ns
 set -l ghost_present
 set -l skipped
 set -l unhealthy
+set -l hibernated
 for stack in $stacks
     # State runs to megabytes; held in a fish variable it takes minutes to echo.
     set -l state $logs/$stack.state.json
@@ -182,6 +191,8 @@ for stack in $stacks
         set -a ghosts $stack; set -a ghost_cluster $cluster; set -a ghost_ns $ns; set -a ghost_present false
     else if __namespace_empty $kc $ns
         set -a ghosts $stack; set -a ghost_cluster $cluster; set -a ghost_ns $ns; set -a ghost_present true
+    else if test $mode = preview -o $mode = up; and __hibernated $kc $ns
+        set -a hibernated $stack
     else
         set -l broken (__unhealthy_databases $kc $ns)
         if test (count $broken) -gt 0 -a $mode != destroy -a $mode != destroy-preview
@@ -190,6 +201,10 @@ for stack in $stacks
         end
         set -a live $stack; set -a live_cluster $cluster; set -a live_ns $ns; set -a live_managed $ns_managed
     end
+end
+if test (count $hibernated) -gt 0
+    echo 'Skipping hibernated stacks (an up would wake them):'
+    printf '  %s\n' $hibernated
 end
 if test (count $unhealthy) -gt 0
     echo 'Skipping stacks with unhealthy databases (fix those first):'
@@ -320,7 +335,7 @@ for i in (seq (count $live))
 end
 
 echo
-echo "$mode ok: "(count $done)", ghosts removed: "(count $removed)" of "(count $ghosts)", failed: "(count $failed)", unhealthy: "(count $unhealthy)", skipped: "(count $skipped)
+echo "$mode ok: "(count $done)", ghosts removed: "(count $removed)" of "(count $ghosts)", failed: "(count $failed)", unhealthy: "(count $unhealthy)", hibernated: "(count $hibernated)", skipped: "(count $skipped)
 for s in $unhealthy
     echo "  unhealthy: $s"
 end
