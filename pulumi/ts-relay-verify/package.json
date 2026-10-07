@@ -1,0 +1,5 @@
+{
+  "name": "@bes/ts-relay-verify",
+  "type": "module",
+  "main": "./index.ts"
+}

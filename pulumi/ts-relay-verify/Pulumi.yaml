@@ -1,0 +1,6 @@
+name: ts-relay-verify
+description: Disposable client box to prove the peer-relay feature actually carries traffic, independent of its own Tailscale state
+runtime:
+  name: nodejs
+  options:
+    typescript: false

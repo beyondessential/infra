@@ -44,20 +44,6 @@ export function emergencySshKeyCommands(sshKey: string = EMERGENCY_SSH_KEY): str
   ];
 }
 
-export function btrfsSwapFileCommands(): string[][] {
-  return [
-    ['mount', '/dev/disk/by-label/root', '/mnt', '-o', 'subvol=/'],
-    ['btrfs', 'subvolume', 'create', '/mnt/@swap'],
-    ['btrfs', 'filesystem', 'mkswapfile', '--size', '1g', '/mnt/@swap/swapfile'],
-    ['umount', '/mnt'],
-    ['mkdir', '/swap'],
-    ['mount', '/dev/disk/by-label/root', '/swap', '-o', 'subvol=/@swap'],
-    ['sh', '-c', 'echo LABEL=root /swap btrfs defaults,subvol=/@swap 0 0 >> /etc/fstab'],
-    ['swapon', '/swap/swapfile'],
-    ['sh', '-c', 'echo /swap/swapfile none swap defaults 0 0 >> /etc/fstab'],
-  ];
-}
-
 export function cloudInitYaml(runcmd: string[][]): string {
   return `#cloud-config\n${JSON.stringify({ runcmd })}`;
 }
