@@ -2,17 +2,8 @@
 # The bestool binary itself is installed (and kept up to date) by the toolbox
 # role. This role owns the bestool-alertd daemon and the bits it needs to run.
 
-# alertd's version-gated ExecStart (see the template) needs the installed
-# version. On a full tamanu run tamanu-single-install/facts.yml has already set
-# this, but this role must also work when that role is skipped, so gather it here.
-- name: Gather package facts
-  ansible.builtin.package_facts:
-    manager: apt
-
-- name: Set bestool installed version fact
-  when: "'bestool' in ansible_facts.packages"
-  ansible.builtin.set_fact:
-    bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
+- name: Gather bestool version
+  ansible.builtin.include_tasks: version.yml
 
 # On tamanu servers tamanu-single-common has already created /etc/bestool as
 # root:tamanu (setgid, group-shared). This is the fallback for any host where
@@ -112,6 +103,11 @@
   notify:
     - Reload systemd
     - Restart bestool-alertd
+
+# Lands before the start below, so a daemon first started here already admits
+# Caddy.
+- name: Permit Caddy to fetch certificates
+  ansible.builtin.include_tasks: caddy-certificates.yml
 
 - name: Enable and start bestool-alertd
   become: true

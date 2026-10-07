@@ -5,6 +5,20 @@
 
    Lives in snippets/ because caddy resolves snippet definitions strictly in
    parse order, and the packaged Caddyfile imports snippets/ before servers/. #}
+{# Imported by each https site serving Tamanu, and not by the tailscale one, whose
+   own tls block asks tailscaled. alertd answers for a name with a Canopy-issued
+   chain or declines it, and a decline falls through to the global cert_issuer;
+   the daemon being unreachable or refusing caddy fails the handshake instead,
+   which is why this stays empty until bestool/tasks/caddy-certificates.yml has
+   found a daemon that serves the endpoint and admitted caddy to it. #}
+(canopy_certificate) {
+{% if caddy_canopy_certificates_active | default(false) | bool %}
+  tls {
+    get_certificate http http://127.0.0.1:8271/certificate
+  }
+{% endif %}
+}
+
 (tamanu_common) {
   # one file for both vhosts: every entry carries request.host, and caddy drops
   # access entries from the default logger once they have an output of their own,

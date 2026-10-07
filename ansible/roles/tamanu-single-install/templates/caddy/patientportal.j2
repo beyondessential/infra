@@ -11,6 +11,7 @@
 
 {% if tamanu_caddy_tls and not (patient_portal_fqdn | regex_search('\\.local$')) %}
 https://{{ patient_portal_fqdn }} {
+  import canopy_certificate
   import patient_portal_server
 }
 http://{{ patient_portal_fqdn }} {

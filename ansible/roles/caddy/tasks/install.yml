@@ -147,3 +147,18 @@
   notify:
     - Reload systemd
     - Restart caddy
+
+# A site naming alertd's certificate endpoint loads nothing before its first
+# handshake, and that handshake fails while the daemon is unreachable; ordering
+# after the daemon keeps a boot from serving in that gap. Wanting it is left to
+# the bestool role, so Caddy still starts on a host without the daemon.
+- name: Install caddy ordering drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/after-alertd.conf
+    mode: "0644"
+    content: |
+      [Unit]
+      After=bestool-alertd.service
+  notify:
+    - Reload systemd
