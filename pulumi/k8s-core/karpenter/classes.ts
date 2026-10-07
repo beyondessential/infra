@@ -122,6 +122,35 @@ export const dbReplicaNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
+// k[capacity.db-critical-pool] k[placement.workload-subnets] k[storage.workload-disk-size]
+// Class for the critical database pool: one instance per node, so max-pods is
+// capped low to keep the kubelet's memory reservation small, and a distinct
+// Purpose tag attributes these instances as critical database capacity.
+export const dbCriticalNodeClass = new k8s.apiextensions.CustomResource(
+  'nodeclass-db-critical',
+  {
+    apiVersion: 'karpenter.k8s.aws/v1',
+    kind: 'EC2NodeClass',
+    metadata: { name: 'db-critical' },
+    spec: {
+      role: nodeRoleName,
+      amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
+      subnetSelectorTerms: workloadSubnetTerms,
+      securityGroupSelectorTerms: clusterSgTerm,
+      metadataOptions: commonMetadataOptions,
+      blockDeviceMappings: ebs(`${workloadDiskGi}Gi`),
+      kubelet: { maxPods: 15 },
+      tags: {
+        'bes.node.purpose': 'workload',
+        Name: `${namePrefix} db-critical`,
+        Purpose: 'k8s-db-critical',
+        ...inheritedTags,
+      },
+    },
+  },
+  { provider, dependsOn: [karpenter] },
+);
+
 // k[placement.ingress-subnets] k[storage.system-ingress-disk-size]
 export const ingressNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-ingress',
