@@ -96,7 +96,7 @@ export function runPostgres({
   disruptionBudgets = true,
   scrapeMetrics = false,
 }: PostgresArgs): PostgresReady {
-  new k8s.apiextensions.CustomResource(
+  const cluster = new k8s.apiextensions.CustomResource(
     `${name}-db`,
     {
       apiVersion: 'postgresql.cnpg.io/v1',
@@ -339,17 +339,23 @@ export function runPostgres({
     );
   }
 
+  // k[postgres.readiness]
+  // Keyed on the cluster resource's id, which resolves only once Pulumi's create or
+  // update of it succeeded: an existing cluster still serves from before a rejected
+  // update, and dependents would otherwise start against it and wait on a superuser
+  // secret that the rejected update was meant to enable.
   const dbReady = k8sWaitFor(
     `${name}-db`,
-    async (kc, namespace) => {
+    async (kc, [namespace]) => {
       const k8sApi = kc.makeApiClient(CoreV1Api);
       const endpoint = await k8sApi.readNamespacedEndpoints({ name: `${name}-db-rw`, namespace });
       const readyAddresses = endpoint?.subsets?.[0]?.addresses ?? [];
       if (readyAddresses.length === 0) {
         throw new Error('No ready addresses');
       }
+      await k8sApi.readNamespacedSecret({ name: `${name}-db-superuser`, namespace });
     },
-    namespace,
+    all([namespace, cluster.id]),
   );
   const url = postgresUrlSecret({ parent, namespace, name, dbReady });
   return dbReady.apply(() => url);
