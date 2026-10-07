@@ -27,10 +27,13 @@ export const dbReady = runPostgres({
   },
   inheritedMetadataLabels: costLabels,
   maxConnections: 200,
-  // Sized against the working set rather than the pod's floor: the database is
-  // ~48GB and the instances hold 13-15GiB of page cache over it, with a 95th
-  // percentile working set of 5.8GiB. This yields 2GB of shared_buffers.
+  // Sized against the working set rather than the pod's floor; this yields 2GB
+  // of shared_buffers, and the dedicated node's remaining memory is page cache
+  // over the database.
   memoryRequest: '8Gi',
+  // Off spot: Canopy depends on this database, and each reclaim of a node
+  // holding the primary forced a switchover and a cold cache.
+  placement: 'dedicated',
   scrapeMetrics: true,
 });
 
