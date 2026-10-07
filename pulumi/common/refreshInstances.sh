@@ -21,8 +21,8 @@ jq 'map({
   ebs_optimized: .ebs_optimized,
   regions: .regions,
   pricing: .pricing | map_values({
-    linux: { ondemand: .linux.ondemand, spot_avg: .linux.spot_avg },
-    mswin: { ondemand: .mswin.ondemand, spot_avg: .mswin.spot_avg },
+    linux: { ondemand: .linux.ondemand, spot_avg: .linux.spot_avg, pct_interrupt: .linux.pct_interrupt },
+    mswin: { ondemand: .mswin.ondemand, spot_avg: .mswin.spot_avg, pct_interrupt: .mswin.pct_interrupt },
   }),
 } | select(
   (.generation == "current")

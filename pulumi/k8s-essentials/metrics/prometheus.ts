@@ -24,6 +24,9 @@ new k8s.helm.v3.Release(
         // 2+ means that stats are duplicated, which makes the metrics
         // display as doubled in e.g. headlamp or other monitors.
         replicaCount: 1,
+        // Must stay below the volume size: on a full disk the WAL can't open
+        // and the server crashloops instead of pruning.
+        retentionSize: '40GB',
         statefulSet: {
           enabled: true,
         },

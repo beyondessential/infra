@@ -28,6 +28,7 @@ export const region = core.region();
 
 const upperCore = $core.coreStack.apply((name) => new CrossStack(`bes/core/${name}`));
 export const $network = upperCore.apply((core) => core.network());
+export const accountId = upperCore.apply((core) => core.accountId());
 
 export async function failIfIncorrectCluster(kubeconfig?: string): Promise<void> {
   const kubeServer = (() => {

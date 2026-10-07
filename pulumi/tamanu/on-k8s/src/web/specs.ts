@@ -85,8 +85,8 @@ export function podSpecFactory(imageType: ImageType): PodSpecFactory {
             cpu: '1m',
             memory: '10Mi',
           },
+          // No CPU limit: a 10m quota throttled asset serving in ~12% of periods.
           limits: {
-            cpu: '10m',
             memory: '100Mi',
           },
         },

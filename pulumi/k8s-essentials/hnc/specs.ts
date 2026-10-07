@@ -98,8 +98,12 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
         ],
         command: ['/hnc-bin/manager'],
         image: 'gcr.io/distroless/static:nonroot',
+        // One slow answer must not kill it: a restart re-lists every object in
+        // every managed namespace, which is slower still under load, and the
+        // webhooks fail closed, blocking changes in all those namespaces.
         livenessProbe: {
-          failureThreshold: 1,
+          failureThreshold: 3,
+          timeoutSeconds: 5,
           httpGet: {
             path: '/healthz',
             port: 8081,
@@ -133,7 +137,6 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
         },
         resources: {
           limits: {
-            cpu: '100m',
             memory: '300Mi',
           },
           requests: {

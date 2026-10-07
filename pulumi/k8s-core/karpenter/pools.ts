@@ -8,6 +8,7 @@ import {
   onlyBurst,
   instancesSizedAtLeast,
   instancesSizedExactly,
+  spotInterruptAtMost,
 } from '../../common/k8s/instanceTypeGroups.ts';
 import {
   workloadNodeClass,
@@ -28,10 +29,20 @@ import {
 // shapes of the same families — Karpenter still picks the cheapest available
 // offering, so larger shapes only land when smaller ones can't be provisioned.
 // The x families are admitted here as more capacity for memory-heavy pods.
+// k[capacity.spot-interruption-cap]
+// Types the Spot Instance Advisor puts above 10% monthly interruption are
+// dropped: observed reclaim rates run far above the advisor's figures, but
+// still rank the same way.
+const SPOT_INTERRUPT_MAX_PERCENT = 10;
+
 const workloadArmSpot = upToMonthly(
-  spotWithinOnDemandPrice(
-    nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8, { highMemory: true })),
+  spotInterruptAtMost(
+    spotWithinOnDemandPrice(
+      nonBurst(instancesSizedAtLeast(region, 'arm64', 4, 8, { highMemory: true })),
+      'linux',
+    ),
     'linux',
+    SPOT_INTERRUPT_MAX_PERCENT,
   ),
   'linux',
   'spot',
@@ -39,9 +50,13 @@ const workloadArmSpot = upToMonthly(
 ).map((i) => i.instance_type);
 
 const workloadX86Spot = upToMonthly(
-  spotWithinOnDemandPrice(
-    nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8, { highMemory: true })),
+  spotInterruptAtMost(
+    spotWithinOnDemandPrice(
+      nonBurst(instancesSizedAtLeast(region, 'x86_64', 4, 8, { highMemory: true })),
+      'linux',
+    ),
     'linux',
+    SPOT_INTERRUPT_MAX_PERCENT,
   ),
   'linux',
   'spot',
@@ -66,7 +81,11 @@ const workloadX86Ondemand = upToMonthly(
 ).map((i) => i.instance_type);
 
 const ingressArm = upToMonthly(
-  spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)), 'linux'),
+  spotInterruptAtMost(
+    spotWithinOnDemandPrice(nonBurst(instancesSizedAtLeast(region, 'arm64', 2, 4)), 'linux'),
+    'linux',
+    SPOT_INTERRUPT_MAX_PERCENT,
+  ),
   'linux',
   'spot',
   50,

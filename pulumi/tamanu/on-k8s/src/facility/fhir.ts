@@ -23,7 +23,8 @@ export function runFhirWorker({
   topics,
 }: RunFhirWorkerArgs): k8s.apps.v1.Deployment {
   return new k8s.apps.v1.Deployment(
-    `facility-${name}-fhir-${deviceId}`,
+    // Facility ids keep their case; object names can't carry it.
+    `facility-${name}-fhir-${deviceId.toLowerCase()}`,
     {
       metadata: {
         namespace,

@@ -7,6 +7,7 @@ import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k
 import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
 import type { PodSpecArgs, PodSpecFactory } from '../common/specFactory.ts';
+import { appMemoryLimit } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
 import type { BlobStoreVolume } from '../common/blobStore.ts';
 import { image, imageTag } from '../image.ts';
@@ -263,11 +264,14 @@ export function podSpecFactory({
               },
             },
           ]),
+          // Requests sit at the typical pod's p95; the limit only stops a leak
+          // from pressuring the node (peaks seen are ~500Mi).
           resources: {
             requests: {
               cpu: '5m',
-              memory: '200Mi',
+              memory: '256Mi',
             },
+            ...appMemoryLimit(podType),
           },
           ...containerArgs,
         },
