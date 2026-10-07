@@ -13,6 +13,7 @@ import {
 import {
   workloadNodeClass,
   dbReplicaNodeClass,
+  dbCriticalNodeClass,
   ingressNodeClass,
   systemNodeClass,
   exitNodeClass,
@@ -137,6 +138,8 @@ interface PoolArgs {
   capacityTypes: ('spot' | 'on-demand')[];
   limits: { cpu: number; memory: string };
   budgets?: DisruptionBudget[];
+  // How long a node may live before it is replaced regardless of budgets.
+  expireAfter?: string;
 }
 
 function pool(name: string, args: PoolArgs) {
@@ -154,6 +157,7 @@ function pool(name: string, args: PoolArgs) {
     capacityTypes,
     limits,
     budgets,
+    expireAfter = '168h', // rotate weekly, for patches and recosting
   } = args;
 
   return new k8s.apiextensions.CustomResource(
@@ -174,8 +178,7 @@ function pool(name: string, args: PoolArgs) {
             },
           },
           spec: {
-            // rotate nodes at least every week, for patches and recosting
-            expireAfter: '168h', // 7 days
+            expireAfter,
 
             // how long do pods have to vacate before they're force-terminated
             terminationGracePeriod: '30m',
@@ -281,6 +284,31 @@ pool('db-replica', {
   extraTaints: [{ key: 'bes.node.group', value: 'db-replica', effect: 'NoSchedule' }],
   consolidationPolicy: 'WhenEmpty',
   limits: { cpu: 100, memory: '1600Gi' },
+  weight: 10,
+});
+
+// k[capacity.db-critical-pool]
+// On-demand only, so nothing reclaims a database out from under production.
+// Expiry is forceful and ignores budgets, so nodes never expire; they are
+// replaced only on drift (new AMIs, config changes), one at a time, in a
+// window from 14:00 to 16:00 UTC (early morning in New Zealand). Draining a
+// node taints it karpenter.sh/disrupted, which CNPG treats as a drain and
+// answers with a switchover before the primary is evicted.
+pool('db-critical', {
+  purpose: 'workload',
+  schedule: 'ondemand',
+  arch: 'arm64',
+  nodeClassRef: dbCriticalNodeClass,
+  instanceTypes: ['r8g.large', 'r7g.large', 'r6g.large'],
+  capacityTypes: ['on-demand'],
+  extraTaints: [{ key: 'bes.node.group', value: 'db-critical', effect: 'NoSchedule' }],
+  consolidationPolicy: 'WhenEmpty',
+  expireAfter: 'Never',
+  budgets: [
+    { nodes: '0', reasons: ['Drifted'], schedule: '0 16 * * *', duration: '22h' },
+    { nodes: '1' },
+  ],
+  limits: { cpu: 16, memory: '128Gi' },
   weight: 10,
 });
 

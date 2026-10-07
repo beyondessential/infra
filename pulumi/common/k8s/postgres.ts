@@ -48,6 +48,9 @@ export interface PostgresArgs {
   // Memory request for the postgres container, and the basis every
   // memory-derived postgres parameter is computed from.
   memoryRequest?: Input<string>;
+  // 'dedicated' runs the instances only on the on-demand pool for critical
+  // databases, one per node; the default prefers spot capacity.
+  placement?: 'spot' | 'dedicated';
   // Keep CNPG's PodDisruptionBudgets. The primary's budget allows no
   // evictions, so every node holding a primary is exempt from consolidation;
   // turn this off where a failover on drain is acceptable.
@@ -94,6 +97,7 @@ export function runPostgres({
   maxConnections = 100,
   memoryRequest = '750Mi',
   disruptionBudgets = true,
+  placement = 'spot',
   scrapeMetrics = false,
 }: PostgresArgs): PostgresReady {
   const cluster = new k8s.apiextensions.CustomResource(
@@ -182,6 +186,7 @@ export function runPostgres({
                 },
               }
             : {},
+        // k[postgres.placement.dedicated]
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
@@ -190,16 +195,31 @@ export function runPostgres({
             // here so CA scales the arm pool in the right AZ rather than
             // letting the scheduler land on a leftover amd64 node.
             'bes.node.arch': 'arm64',
+            ...(placement === 'dedicated' ? { 'bes.node.group': 'db-critical' } : {}),
           },
-          tolerations: [CAN_RUN_ON_SPOT],
-          nodeAffinity: {
-            preferredDuringSchedulingIgnoredDuringExecution: [
-              {
-                weight: 1,
-                preference: RUN_ON_SPOT,
-              },
-            ],
-          },
+          ...(placement === 'dedicated'
+            ? {
+                tolerations: [
+                  {
+                    key: 'bes.node.group',
+                    operator: 'Equal',
+                    value: 'db-critical',
+                    effect: 'NoSchedule',
+                  },
+                ],
+                podAntiAffinityType: 'required',
+              }
+            : {
+                tolerations: [CAN_RUN_ON_SPOT],
+                nodeAffinity: {
+                  preferredDuringSchedulingIgnoredDuringExecution: [
+                    {
+                      weight: 1,
+                      preference: RUN_ON_SPOT,
+                    },
+                  ],
+                },
+              }),
           ...(colocateAz
             ? {
                 additionalPodAffinity: {
