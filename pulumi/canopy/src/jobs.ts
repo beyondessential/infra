@@ -55,7 +55,7 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: { ...labels('monitor'), ...costLabels },
         },
-        spec: spec('monitor', ['monitor']),
+        spec: spec('monitor', ['monitor'], {}, { pooled: true }),
       },
     },
   },
@@ -86,7 +86,7 @@ new k8s.apps.v1.Deployment(
           ['backups'],
           // The sweep drops artifact bytes no registration reaches any more.
           { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv] },
-          { serviceAccountName: canopyJobsSa },
+          { serviceAccountName: canopyJobsSa, pooled: true },
         ),
       },
     },
@@ -124,7 +124,7 @@ new k8s.apps.v1.Deployment(
           // Absent means no account to order with: addresses carry on and
           // certificates wait, which the pod reports once at startup.
           { env: acmeEnv },
-          { serviceAccountName: canopyDomainsSa },
+          { serviceAccountName: canopyDomainsSa, pooled: true },
         ),
       },
     },
@@ -151,30 +151,35 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: { ...labels('slacker'), ...costLabels },
         },
-        spec: spec('slacker', ['slacker_outbox'], {
-          env: [
-            { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
-            { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
-            { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
-            { name: 'SLACK_WEBHOOK_SELF_ALERT_URL', value: slackerSelfAlertUrl },
-            ...(slackerMaintenanceDeclaredUrl
-              ? [
-                  {
-                    name: 'SLACK_WEBHOOK_MAINTENANCE_DECLARED_URL',
-                    value: slackerMaintenanceDeclaredUrl,
-                  },
-                ]
-              : []),
-            ...(slackerMaintenanceEndedUrl
-              ? [
-                  {
-                    name: 'SLACK_WEBHOOK_MAINTENANCE_ENDED_URL',
-                    value: slackerMaintenanceEndedUrl,
-                  },
-                ]
-              : []),
-          ],
-        }),
+        spec: spec(
+          'slacker',
+          ['slacker_outbox'],
+          {
+            env: [
+              { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
+              { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
+              { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
+              { name: 'SLACK_WEBHOOK_SELF_ALERT_URL', value: slackerSelfAlertUrl },
+              ...(slackerMaintenanceDeclaredUrl
+                ? [
+                    {
+                      name: 'SLACK_WEBHOOK_MAINTENANCE_DECLARED_URL',
+                      value: slackerMaintenanceDeclaredUrl,
+                    },
+                  ]
+                : []),
+              ...(slackerMaintenanceEndedUrl
+                ? [
+                    {
+                      name: 'SLACK_WEBHOOK_MAINTENANCE_ENDED_URL',
+                      value: slackerMaintenanceEndedUrl,
+                    },
+                  ]
+                : []),
+            ],
+          },
+          { pooled: true },
+        ),
       },
     },
   },
