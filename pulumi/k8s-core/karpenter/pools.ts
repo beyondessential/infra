@@ -212,6 +212,11 @@ function pool(name: string, args: PoolArgs) {
   );
 }
 
+// k[lifecycle.spot-consolidation-delay]
+// Long enough for the pool to settle after a reclaim, short against node
+// lifetimes of a few hours: every pod change restarts the timer.
+const SPOT_WORKLOAD_CONSOLIDATE_AFTER = '30m';
+
 // Weights mirror autoscaler.ts:271 priority-expander order:
 // arm-spot-large=80 > spot-large=60 > ingress-arm=50 > system-arm=40 > arm=30 > others=10
 
@@ -224,6 +229,7 @@ pool('workload-arm-spot', {
   instanceTypes: workloadArmSpot,
   capacityTypes: ['spot'],
   spotTaint: true,
+  consolidateAfter: SPOT_WORKLOAD_CONSOLIDATE_AFTER,
   limits: { cpu: 1000, memory: '2000Gi' },
   weight: 80,
 });
@@ -236,6 +242,7 @@ pool('workload-x86-spot', {
   instanceTypes: workloadX86Spot,
   capacityTypes: ['spot'],
   spotTaint: true,
+  consolidateAfter: SPOT_WORKLOAD_CONSOLIDATE_AFTER,
   limits: { cpu: 500, memory: '1000Gi' },
   weight: 60,
 });
