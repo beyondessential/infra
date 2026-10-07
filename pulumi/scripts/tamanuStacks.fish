@@ -132,12 +132,55 @@ function __namespace_empty --argument-names kubeconfig ns
     test (count $held) -eq 0
 end
 
-# CNPG clusters that are neither healthy nor hibernated. The program waits for
-# its databases without a time limit, so an up against a broken one never ends.
+# CNPG clusters with no ready instance, i.e. no working primary. The program
+# waits for its databases without a time limit, so an up against one never
+# ends. A replica that is still catching up doesn't count.
 function __unhealthy_databases --argument-names kubeconfig ns
-    kubectl --kubeconfig $kubeconfig -n $ns get clusters.postgresql.cnpg.io --no-headers \
-        -o custom-columns=NAME:.metadata.name,PHASE:.status.phase 2>/dev/null \
-        | string match -rv -i 'healthy state|hibernat' | string replace -r '\s{2,}' ': '
+    kubectl --kubeconfig $kubeconfig -n $ns get clusters.postgresql.cnpg.io -o json 2>/dev/null \
+        | jq -r '.items[] | select((.metadata.annotations["cnpg.io/hibernation"] // "") != "on")
+            | select((.status.readyInstances // 0) == 0) | "\(.metadata.name): \(.status.phase)"'
+end
+
+# A stack whose databases were hibernated when its TTL ran out. An up would wake
+# it, and there is nothing running in it to change.
+function __hibernated --argument-names kubeconfig ns
+    kubectl --kubeconfig $kubeconfig -n $ns get clusters.postgresql.cnpg.io -o json 2>/dev/null \
+        | jq -e '[.items[] | .metadata.annotations["cnpg.io/hibernation"] // ""] | length > 0 and all(. == "on")' >/dev/null
+end
+
+# Run a command with its output appended to a log, echoing progress while it
+# runs: each resource that finishes or fails as it happens, and a reminder of
+# the step it is on when nothing has moved for two minutes.
+function __run --argument-names log
+    set -l cmd $argv[2..]
+    sh -c '"$@" >>"$LOG" 2>&1; echo $? >"$LOG.rc"' sh $cmd &
+    set -l pid $last_pid
+    set -l seen (count (cat $log 2>/dev/null))
+    set -l quiet 0
+    while kill -0 $pid 2>/dev/null
+        sleep 5
+        set -l lines (cat $log 2>/dev/null)
+        set -l new $lines[(math $seen + 1)..-1]
+        set seen (count $lines)
+        set -l shown (string match -r '^\s*[+~-]+\s+\S+ \S+ (?:created|updated|deleted|replaced)\b.*|.*\*\*[a-z ]*failed\*\*.*|^\s*error: .*' -- $new | string trim)
+        for l in $shown
+            echo "   "(string shorten -m 160 -- $l)
+        end
+        if test (count $shown) -gt 0
+            set quiet 0
+        else
+            set quiet (math $quiet + 5)
+            if test $quiet -ge 120
+                set -l at (string match -rv '^\s*$|^@ ' -- $lines | tail -n1 | string trim)
+                echo "   still on: "(string shorten -m 150 -- $at)
+                set quiet 0
+            end
+        end
+    end
+    wait $pid 2>/dev/null
+    set -l rc (cat $log.rc 2>/dev/null; or echo 1)
+    rm -f $log.rc
+    return $rc
 end
 
 echo '== classifying stacks'
@@ -151,6 +194,7 @@ set -l ghost_ns
 set -l ghost_present
 set -l skipped
 set -l unhealthy
+set -l hibernated
 for stack in $stacks
     # State runs to megabytes; held in a fish variable it takes minutes to echo.
     set -l state $logs/$stack.state.json
@@ -182,6 +226,8 @@ for stack in $stacks
         set -a ghosts $stack; set -a ghost_cluster $cluster; set -a ghost_ns $ns; set -a ghost_present false
     else if __namespace_empty $kc $ns
         set -a ghosts $stack; set -a ghost_cluster $cluster; set -a ghost_ns $ns; set -a ghost_present true
+    else if test $mode = preview -o $mode = up; and __hibernated $kc $ns
+        set -a hibernated $stack
     else
         set -l broken (__unhealthy_databases $kc $ns)
         if test (count $broken) -gt 0 -a $mode != destroy -a $mode != destroy-preview
@@ -190,6 +236,10 @@ for stack in $stacks
         end
         set -a live $stack; set -a live_cluster $cluster; set -a live_ns $ns; set -a live_managed $ns_managed
     end
+end
+if test (count $hibernated) -gt 0
+    echo 'Skipping hibernated stacks (an up would wake them):'
+    printf '  %s\n' $hibernated
 end
 if test (count $unhealthy) -gt 0
     echo 'Skipping stacks with unhealthy databases (fix those first):'
@@ -283,23 +333,25 @@ for i in (seq (count $live))
     set -l rc 0
     switch $mode
         case preview
-            KUBECONFIG=$kc pulumi -C $project_dir preview -s $stack --diff $refresh_flag \
-                --policy-pack $pulumi_root/policies >$log 2>&1
+            LOG=$log KUBECONFIG=$kc __run $log pulumi -C $project_dir preview -s $stack --diff $refresh_flag \
+                --policy-pack $pulumi_root/policies
             set rc $status
         case up
-            # SIGINT makes pulumi cancel cleanly and record what it did.
-            KUBECONFIG=$kc timeout --signal=INT --kill-after=5m 45m \
+            # SIGINT makes pulumi cancel cleanly and record what it did; a second
+            # one (Ctrl-C again) stops it outright. --foreground keeps pulumi in
+            # the terminal's process group so Ctrl-C reaches it directly.
+            LOG=$log KUBECONFIG=$kc __run $log timeout --foreground --signal=INT --kill-after=5m 45m \
                 pulumi -C $project_dir up -s $stack --yes --skip-preview $refresh_flag \
-                --policy-pack $pulumi_root/policies >$log 2>&1
+                --policy-pack $pulumi_root/policies
             set rc $status
         case destroy-preview
-            KUBECONFIG=$kc pulumi -C $project_dir destroy -s $stack --preview-only >$log 2>&1
+            LOG=$log KUBECONFIG=$kc __run $log pulumi -C $project_dir destroy -s $stack --preview-only
             set rc $status
         case destroy
             __namespace_delete $kc $ns $live_managed[$i] >$log 2>&1
             set rc $status
             if test $rc -eq 0
-                KUBECONFIG=$kc pulumi -C $project_dir destroy -s $stack --yes --skip-preview --remove >>$log 2>&1
+                LOG=$log KUBECONFIG=$kc __run $log pulumi -C $project_dir destroy -s $stack --yes --skip-preview --remove
                 set rc $status
             end
             # Destroying the NamespacePatch of a stack that only references its
@@ -320,7 +372,7 @@ for i in (seq (count $live))
 end
 
 echo
-echo "$mode ok: "(count $done)", ghosts removed: "(count $removed)" of "(count $ghosts)", failed: "(count $failed)", unhealthy: "(count $unhealthy)", skipped: "(count $skipped)
+echo "$mode ok: "(count $done)", ghosts removed: "(count $removed)" of "(count $ghosts)", failed: "(count $failed)", unhealthy: "(count $unhealthy)", hibernated: "(count $hibernated)", skipped: "(count $skipped)
 for s in $unhealthy
     echo "  unhealthy: $s"
 end
