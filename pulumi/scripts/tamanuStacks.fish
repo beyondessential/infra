@@ -148,6 +148,41 @@ function __hibernated --argument-names kubeconfig ns
         | jq -e '[.items[] | .metadata.annotations["cnpg.io/hibernation"] // ""] | length > 0 and all(. == "on")' >/dev/null
 end
 
+# Run a command with its output appended to a log, echoing progress while it
+# runs: each resource that finishes or fails as it happens, and a reminder of
+# the step it is on when nothing has moved for two minutes.
+function __run --argument-names log
+    set -l cmd $argv[2..]
+    sh -c '"$@" >>"$LOG" 2>&1; echo $? >"$LOG.rc"' sh $cmd &
+    set -l pid $last_pid
+    set -l seen (count (cat $log 2>/dev/null))
+    set -l quiet 0
+    while kill -0 $pid 2>/dev/null
+        sleep 5
+        set -l lines (cat $log 2>/dev/null)
+        set -l new $lines[(math $seen + 1)..-1]
+        set seen (count $lines)
+        set -l shown (string match -r '^\s*[+~-]+\s+\S+ \S+ (?:created|updated|deleted|replaced)\b.*|.*\*\*[a-z ]*failed\*\*.*|^\s*error: .*' -- $new | string trim)
+        for l in $shown
+            echo "   "(string shorten -m 160 -- $l)
+        end
+        if test (count $shown) -gt 0
+            set quiet 0
+        else
+            set quiet (math $quiet + 5)
+            if test $quiet -ge 120
+                set -l at (string match -rv '^\s*$|^@ ' -- $lines | tail -n1 | string trim)
+                echo "   still on: "(string shorten -m 150 -- $at)
+                set quiet 0
+            end
+        end
+    end
+    wait $pid 2>/dev/null
+    set -l rc (cat $log.rc 2>/dev/null; or echo 1)
+    rm -f $log.rc
+    return $rc
+end
+
 echo '== classifying stacks'
 set -l live
 set -l live_cluster
@@ -298,23 +333,25 @@ for i in (seq (count $live))
     set -l rc 0
     switch $mode
         case preview
-            KUBECONFIG=$kc pulumi -C $project_dir preview -s $stack --diff $refresh_flag \
-                --policy-pack $pulumi_root/policies >$log 2>&1
+            LOG=$log KUBECONFIG=$kc __run $log pulumi -C $project_dir preview -s $stack --diff $refresh_flag \
+                --policy-pack $pulumi_root/policies
             set rc $status
         case up
-            # SIGINT makes pulumi cancel cleanly and record what it did.
-            KUBECONFIG=$kc timeout --signal=INT --kill-after=5m 45m \
+            # SIGINT makes pulumi cancel cleanly and record what it did; a second
+            # one (Ctrl-C again) stops it outright. --foreground keeps pulumi in
+            # the terminal's process group so Ctrl-C reaches it directly.
+            LOG=$log KUBECONFIG=$kc __run $log timeout --foreground --signal=INT --kill-after=5m 45m \
                 pulumi -C $project_dir up -s $stack --yes --skip-preview $refresh_flag \
-                --policy-pack $pulumi_root/policies >$log 2>&1
+                --policy-pack $pulumi_root/policies
             set rc $status
         case destroy-preview
-            KUBECONFIG=$kc pulumi -C $project_dir destroy -s $stack --preview-only >$log 2>&1
+            LOG=$log KUBECONFIG=$kc __run $log pulumi -C $project_dir destroy -s $stack --preview-only
             set rc $status
         case destroy
             __namespace_delete $kc $ns $live_managed[$i] >$log 2>&1
             set rc $status
             if test $rc -eq 0
-                KUBECONFIG=$kc pulumi -C $project_dir destroy -s $stack --yes --skip-preview --remove >>$log 2>&1
+                LOG=$log KUBECONFIG=$kc __run $log pulumi -C $project_dir destroy -s $stack --yes --skip-preview --remove
                 set rc $status
             end
             # Destroying the NamespacePatch of a stack that only references its
