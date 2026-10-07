@@ -145,6 +145,14 @@ export function derivePostgresParameters({
     // replication traffic, pg_wal I/O and backup sizes.
     // k[postgres.tuning.wal-compression]
     wal_compression: 'lz4',
+
+    // A backend blocked on a lock doesn't otherwise notice its client left until
+    // it next writes to it; behind PgBouncer, which reopens the server
+    // connection straight away, those orphans pile up until slots run out.
+    // k[postgres.client-check]
+    client_connection_check_interval: '10s',
+    // k[postgres.log-lock-waits]
+    log_lock_waits: 'on',
   };
 
   // Above 2GB, maintenance_work_mem is more than any one autovacuum worker

@@ -149,3 +149,10 @@ test('quantities are parsed by their declared unit', () => {
   assert.throws(() => parseQuantityToBytes('banana'), /unparseable/);
   assert.throws(() => parseQuantityToBytes('5Xi'), /unknown unit/);
 });
+
+// k[verify postgres.client-check] k[verify postgres.log-lock-waits]
+test('backends check for departed clients and log lock waits', () => {
+  const p = derivePostgresParameters({ memory: '750Mi', storage: '5Gi', maxConnections: 100 });
+  assert.equal(p.client_connection_check_interval, '10s');
+  assert.equal(p.log_lock_waits, 'on');
+});
