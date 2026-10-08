@@ -63,6 +63,12 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
       resources: ['endpoints'],
       verbs: ['get', 'list', 'watch'],
     },
+    // Tamanu's CD fake data step runs the generator inside the central-api pod.
+    {
+      apiGroups: [''],
+      resources: ['pods/exec'],
+      verbs: ['create'],
+    },
     {
       apiGroups: ['apps'],
       resources: ['deployments'],
