@@ -1,4 +1,5 @@
 ---
+tamanu_clone: false
 tamanu_version: "{{ version | default('v2.10.0') }}"
 tamanu_frontend_version: "{{ frontend_version | default(tamanu_version) }}"
 tamanu_db_name: "{{ db_name }}"

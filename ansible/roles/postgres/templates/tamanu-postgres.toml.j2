@@ -1,0 +1,17 @@
+type = "tamanu-postgres"
+
+[postgresql]
+cluster = "main"
+{% if tamanu_clone %}
+
+# A clone is restored from another server's backup: keep Tamanu down until the
+# restored database has forgotten that server, so it never syncs or sends as it.
+[[pre_restore]]
+command = ["/usr/bin/bestool", "tamanu", "stop"]
+
+[[post_restore]]
+command = ["/usr/sbin/runuser", "-u", "postgres", "--", "/usr/bin/psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "tamanu", "-f", "/etc/bestool/forget-server-identity.sql"]
+
+[[post_restore]]
+command = ["/usr/bin/bestool", "tamanu", "start"]
+{% endif %}
