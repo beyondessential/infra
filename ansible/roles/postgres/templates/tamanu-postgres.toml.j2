@@ -12,6 +12,10 @@ command = ["/usr/bin/bestool", "tamanu", "stop"]
 [[post_restore]]
 command = ["/usr/sbin/runuser", "-u", "postgres", "--", "/usr/bin/psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "tamanu", "-f", "/etc/bestool/forget-server-identity.sql"]
 
+# Nothing encrypted with the old key survives the scrub, so a fresh one is safe.
+[[post_restore]]
+command = ["/bin/sh", "-c", "podman secret rm tamanu-config-key; dd if=/dev/urandom bs=32 count=1 status=none | podman secret create tamanu-config-key -"]
+
 [[post_restore]]
 command = ["/usr/bin/bestool", "tamanu", "start"]
 {% endif %}
