@@ -1,0 +1,18 @@
+\set password `cat {{ tamanu_clone_sync_file }}.password`
+\set email '{{ tamanu_clone_sync_email }}'
+\set name 'System: {{ tamanu_facility_id | replace("'", "''") }} sync (clone)'
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+BEGIN;
+-- users_email_key is deferrable from v2.65, which ON CONFLICT cannot use.
+UPDATE users SET
+  display_name = :'name',
+  role = 'admin',
+  kind = 'sync',
+  password = crypt(:'password', gen_salt('bf', 10)),
+  visibility_status = 'current',
+  deleted_at = NULL
+WHERE email = :'email';
+INSERT INTO users (email, display_name, role, kind, password)
+SELECT :'email', :'name', 'admin', 'sync', crypt(:'password', gen_salt('bf', 10))
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = :'email');
+COMMIT;

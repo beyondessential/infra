@@ -19,6 +19,14 @@
   when: tamanu_server_type != 'central'
 - name: Configure tamanu backup
   ansible.builtin.include_tasks: backup.yml
+- name: Configure clone sync setup
+  ansible.builtin.include_tasks: clone.yml
+  when: tamanu_clone and tamanu_version | regex_replace('^v', '') is version('2.60.0', '>=')
+  vars:
+    tamanu_clone_central: "{{ groups['central'] | first }}"
+    tamanu_clone_sync_name: "{{ inventory_hostname | lower | regex_replace('[^a-z0-9-]', '-') }}"
+    tamanu_clone_sync_file: /etc/bestool/clone-sync/{{ tamanu_clone_sync_name }}
+    tamanu_clone_sync_email: clone.{{ tamanu_clone_sync_name }}@sync.tamanu
 - name: Configure tamanu doctor
   ansible.builtin.include_tasks: doctor.yml
   when: bestool_installed_version is defined and bestool_installed_version is version('1.8.0', '>=')

@@ -18,4 +18,8 @@ command = ["/bin/sh", "-c", "podman secret rm tamanu-config-key; dd if=/dev/uran
 
 [[post_restore]]
 command = ["/usr/bin/bestool", "tamanu", "start"]
+
+# After start, so a failed setup leaves Tamanu up and unsynced rather than down.
+[[post_restore]]
+command = ["/bin/sh", "-c", "[ ! -e /etc/bestool/clone-setup.sh ] || exec /etc/bestool/clone-setup.sh"]
 {% endif %}

@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+version=$(grep TAMANU_VERSION= /etc/tamanu/env | cut -d= -f2)
+
+# Passed through the environment so the password never appears in a process's arguments.
+SYNC_URL="{{ tamanu_central_canonical_url | urlsplit('scheme') }}://{{ tamanu_clone_sync_email | urlencode }}:$(cat /etc/tamanu/clone-sync-password)@{{ tamanu_central_canonical_url | urlsplit('netloc') }}"
+export SYNC_URL
+
+exec /usr/bin/podman run --rm \
+  -v "/etc/tamanu/$version:/config" \
+  -v /var/run/postgresql:/var/run/postgresql \
+  --env-file /etc/tamanu/env \
+  --env SYNC_URL \
+  --env {{ ('TAMANU_FACILITY_IDS=' ~ tamanu_facility_id) | quote }} \
+  --secret tamanu-config-key,mode=0400 \
+  "ghcr.io/beyondessential/tamanu-facility:$version" \
+  setupSync --force

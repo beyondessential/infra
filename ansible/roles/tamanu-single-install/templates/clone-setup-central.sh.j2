@@ -1,0 +1,8 @@
+#!/bin/sh
+# A restore replaces users with the source's, so put back each clone facility's account.
+set -eu
+cd /
+for sql in /etc/bestool/clone-sync/*.sql; do
+  [ -e "$sql" ] || continue
+  /usr/sbin/runuser -u postgres -- /usr/bin/psql -X -q -v ON_ERROR_STOP=1 -d {{ tamanu_db_name }} -f "$sql"
+done
