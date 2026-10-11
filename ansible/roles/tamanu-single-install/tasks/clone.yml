@@ -24,6 +24,7 @@
           chown postgres:postgres {{ tamanu_clone_sync_file }}.password &&
           chmod 0400 {{ tamanu_clone_sync_file }}.password
         creates: "{{ tamanu_clone_sync_file }}.password"
+      register: tamanu_clone_sync_generated
 
     - name: Install clone sync account on central
       delegate_to: "{{ tamanu_clone_central }}"
@@ -34,7 +35,9 @@
         group: postgres
         mode: "0400"
 
+    # A check run does not generate the password, so there is nothing to read yet.
     - name: Read clone sync password
+      when: not (ansible_check_mode and tamanu_clone_sync_generated is changed)
       delegate_to: "{{ tamanu_clone_central }}"
       ansible.builtin.slurp:
         src: "{{ tamanu_clone_sync_file }}.password"
@@ -42,6 +45,7 @@
       no_log: true
 
     - name: Store clone sync password
+      when: tamanu_clone_sync_password is not skipped
       ansible.builtin.copy:
         content: "{{ tamanu_clone_sync_password.content | b64decode }}"
         dest: /etc/tamanu/clone-sync-password
