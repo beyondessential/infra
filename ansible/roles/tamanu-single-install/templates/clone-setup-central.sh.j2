@@ -5,8 +5,8 @@ cd /
 status=0
 for sql in /etc/bestool/clone-sync/*.sql; do
   [ -e "$sql" ] || continue
-  if [ ! -s "${sql%.sql}.password" ]; then
-    echo "no password beside $sql, not setting that account up" >&2
+  if [ "$(wc -c 2>/dev/null < "${sql%.sql}.password" || echo 0)" -lt 64 ]; then
+    echo "no full password beside $sql, not setting that account up" >&2
     status=1
     continue
   fi
