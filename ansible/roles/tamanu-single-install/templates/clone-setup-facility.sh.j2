@@ -2,8 +2,11 @@
 set -eu
 version=$(grep TAMANU_VERSION= /etc/tamanu/env | cut -d= -f2)
 
+scheme={{ tamanu_central_canonical_url | urlsplit('scheme') | quote }}
+user={{ tamanu_clone_sync_email | urlencode | quote }}
+host={{ tamanu_central_canonical_url | urlsplit('netloc') | quote }}
 # Passed through the environment so the password never appears in a process's arguments.
-SYNC_URL="{{ tamanu_central_canonical_url | urlsplit('scheme') }}://{{ tamanu_clone_sync_email | urlencode }}:$(cat /etc/tamanu/clone-sync-password)@{{ tamanu_central_canonical_url | urlsplit('netloc') }}"
+SYNC_URL="$scheme://$user:$(cat /etc/tamanu/clone-sync-password)@$host"
 export SYNC_URL
 
 exec /usr/bin/podman run --rm \

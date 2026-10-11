@@ -21,7 +21,11 @@
   ansible.builtin.include_tasks: backup.yml
 - name: Configure clone sync setup
   ansible.builtin.include_tasks: clone.yml
-  when: tamanu_clone and tamanu_version | regex_replace('^v', '') is version('2.60.0', '>=')
+  # A clone whose central is outside this inventory is set up by hand.
+  when: >-
+    tamanu_clone
+    and groups['central'] | default([]) | length > 0
+    and tamanu_version | regex_replace('^v', '') is version('2.60.0', '>=')
   vars:
     tamanu_clone_central: "{{ groups['central'] | first }}"
     tamanu_clone_sync_name: "{{ inventory_hostname | lower | regex_replace('[^a-z0-9-]', '-') }}"

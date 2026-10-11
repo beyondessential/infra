@@ -3,6 +3,7 @@
 # clone hosts: never derived from inventory, never written on the control node.
 - name: Set up clone sync account
   when: tamanu_server_type == 'facility'
+  become: true
   block:
     - name: Make clone sync account store on central
       delegate_to: "{{ tamanu_clone_central }}"
@@ -49,6 +50,7 @@
       no_log: true
 
 - name: Install clone setup script
+  become: true
   ansible.builtin.template:
     src: clone-setup-{{ tamanu_server_type }}.sh.j2
     dest: /etc/bestool/clone-setup.sh

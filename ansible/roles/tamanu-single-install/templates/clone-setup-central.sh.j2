@@ -4,5 +4,9 @@ set -eu
 cd /
 for sql in /etc/bestool/clone-sync/*.sql; do
   [ -e "$sql" ] || continue
-  /usr/sbin/runuser -u postgres -- /usr/bin/psql -X -q -v ON_ERROR_STOP=1 -d {{ tamanu_db_name }} -f "$sql"
+  if [ ! -s "${sql%.sql}.password" ]; then
+    echo "no password beside $sql, not setting that account up" >&2
+    exit 1
+  fi
+  /usr/sbin/runuser -u postgres -- /usr/bin/psql -X -q -v ON_ERROR_STOP=1 -d {{ tamanu_db_name | quote }} -f "$sql"
 done
