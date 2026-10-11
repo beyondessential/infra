@@ -1,12 +1,15 @@
 #!/bin/sh
 # A restore replaces users with the source's, so put back each clone facility's account.
-set -eu
+set -u
 cd /
+status=0
 for sql in /etc/bestool/clone-sync/*.sql; do
   [ -e "$sql" ] || continue
   if [ ! -s "${sql%.sql}.password" ]; then
     echo "no password beside $sql, not setting that account up" >&2
-    exit 1
+    status=1
+    continue
   fi
-  /usr/sbin/runuser -u postgres -- /usr/bin/psql -X -q -v ON_ERROR_STOP=1 -d {{ tamanu_db_name | quote }} -f "$sql"
+  /usr/sbin/runuser -u postgres -- /usr/bin/psql -X -q -v ON_ERROR_STOP=1 -d {{ tamanu_db_name | quote }} -f "$sql" || status=1
 done
+exit $status

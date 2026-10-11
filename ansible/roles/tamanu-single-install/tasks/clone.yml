@@ -1,6 +1,7 @@
 ---
 # The password is random and generated on the clone central, so it exists only on the
 # clone hosts: never derived from inventory, never written on the control node.
+# To rotate one, delete its password file on the central, re-run, then run clone-setup.sh.
 - name: Set up clone sync account
   when: tamanu_server_type == 'facility'
   become: true
