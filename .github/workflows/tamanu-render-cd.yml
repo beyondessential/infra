@@ -1,0 +1,154 @@
+name: tamanu-render CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tamanu-render/**"
+      - ".github/workflows/tamanu-render-cd.yml"
+    tags: ["tamanu-render-v*.*.*"]
+  pull_request:
+    paths:
+      - "tamanu-render/**"
+      - ".github/workflows/tamanu-render-cd.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --component clippy,rustfmt --no-self-update stable
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tamanu-render
+
+      - name: Format
+        working-directory: tamanu-render
+        run: cargo fmt --check
+
+      - name: Lint
+        working-directory: tamanu-render
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Test
+        working-directory: tamanu-render
+        run: cargo test --locked
+
+  build-binaries:
+    name: Build ${{ matrix.arch }} binaries
+    runs-on: ${{ matrix.runner }}
+    needs: [test]
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --no-self-update stable
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tamanu-render
+          key: ${{ matrix.arch }}-release
+
+      - name: Build binaries
+        working-directory: tamanu-render
+        run: cargo build --locked --target ${{ matrix.target }} --release --bin tamanu-render
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts/${{ matrix.arch }}
+          cp tamanu-render/target/${{ matrix.target }}/release/tamanu-render artifacts/${{ matrix.arch }}/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: artifacts/${{ matrix.arch }}/
+          retention-days: 1
+
+  build-image:
+    name: Build container image
+    runs-on: ubuntu-24.04
+    needs: [build-binaries]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Login to ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      - name: Extract version
+        id: version
+        working-directory: tamanu-render
+        run: echo "version=$(cargo pkgid | cut -d# -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Download AMD64 binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-amd64
+          path: tamanu-render/.build-context/amd64/
+
+      - name: Download ARM64 binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-arm64
+          path: tamanu-render/.build-context/arm64/
+
+      - name: Add plugin config
+        run: cp tamanu-render/cmp/plugin.yaml tamanu-render/.build-context/plugin.yaml
+
+      - name: Setup buildkit
+        uses: docker/setup-buildx-action@v3
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/beyondessential/tamanu-render
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=match,pattern=tamanu-render-v(.*),group=1
+          labels: |
+            org.opencontainers.image.vendor=BES International
+            org.opencontainers.image.title=tamanu-render
+            org.opencontainers.image.url=https://github.com/beyondessential/infra/
+            org.opencontainers.image.source=https://github.com/beyondessential/infra/
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: tamanu-render/.build-context
+          file: tamanu-render/Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}

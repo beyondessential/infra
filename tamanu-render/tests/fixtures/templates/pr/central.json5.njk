@@ -1,0 +1,12 @@
+{
+  canonicalHostName: 'https://{{ fqdn }}',
+  auth: {
+    secret: '{{ 40 | randomstring }}',
+    refreshSecret: '{{ 40 | randomstring }}',
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  features: { example: true },
+  countryTimeZone: '{{ timezone }}',
+}

@@ -6,8 +6,10 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
+json5 = "1.3.1"
 k8s-openapi = { version = "0.28.0", features = ["latest"] }
 minijinja = "3.0.0"
+percent-encoding = "2.3.2"
 semver = "1.0.28"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"

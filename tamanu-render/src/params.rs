@@ -35,6 +35,11 @@ pub struct Cluster {
 	/// The VPC's address ranges, which servers trust as proxies.
 	pub network_v4_cidr: Option<String>,
 	pub network_v6_cidr: Option<String>,
+	/// The cluster's own Barman backup bucket, from `k8s-core`.
+	pub backups_bucket: Option<String>,
+	/// The IRSA role ARN CNPG pods assume to write backups, from `k8s-core`.
+	/// Used for any cluster whose stack does not set `barmanRoleArn`.
+	pub backups_service_account_arn: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -80,4 +85,18 @@ pub struct StackConfig {
 	pub facility_tasks_replicas: Option<u32>,
 	pub facility_web_replicas: Option<u32>,
 	pub patient_portal_replicas: Option<u32>,
+
+	/// IAM role ARN the app service account assumes.
+	pub service_account: Option<String>,
+	pub db_storage: Option<String>,
+	pub db_memory: Option<String>,
+	pub db_expose: Option<bool>,
+	pub db_az_colocate: Option<bool>,
+	pub db_disruption_budgets: Option<bool>,
+	/// Puts the blob store on a shared volume rather than each pod's own disk.
+	pub shared_blob_storage: Option<bool>,
+	pub backups_enabled: Option<bool>,
+	pub backup_retention_days: Option<u32>,
+	pub barman_role_arn: Option<String>,
+	pub barman_bucket: Option<String>,
 }

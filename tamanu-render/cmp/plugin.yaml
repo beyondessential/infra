@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ConfigManagementPlugin
+metadata:
+  name: tamanu-render
+spec:
+  version: v1
+  generate:
+    command: [tamanu-render]
+    args: [--format, stream]

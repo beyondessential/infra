@@ -62,6 +62,23 @@ pub struct Domains {
 }
 
 #[derive(Debug, Clone)]
+pub struct DbConfig {
+	pub storage: String,
+	pub memory: String,
+	pub expose: bool,
+	/// Tags for the Tailscale proxy device fronting the central database.
+	pub expose_tags: String,
+	pub az_colocate: bool,
+	pub disruption_budgets: bool,
+	pub backups_enabled: bool,
+	pub backup_retention_days: u32,
+	/// The stack's `barmanRoleArn`, else the cluster's own backups role.
+	pub barman_role_arn: Option<String>,
+	/// The stack's `barmanBucket`, else the cluster's own backups bucket.
+	pub barman_bucket: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Config {
 	pub stack: String,
 	pub namespace: String,
@@ -80,6 +97,11 @@ pub struct Config {
 	pub redirects: BTreeMap<String, String>,
 	pub billing_stage: String,
 	pub billing_deployment: String,
+	pub service_account: Option<String>,
+	/// Ranges servers trust as proxies, in the `PROXY_TRUSTED` format.
+	pub proxy_trusted: String,
+	pub db: DbConfig,
+	pub shared_blob_storage: bool,
 	release_version: Option<Version>,
 }
 
@@ -135,6 +157,40 @@ impl Config {
 			.and_then(parse_semver)
 			.or_else(|| parse_semver(&p.image_tag));
 
+		let mut expose_tags = p.cluster.tailscale_proxy_default_tags.clone();
+		expose_tags.extend(["tag:server".to_owned(), "tag:server-tamanu".to_owned()]);
+		if is_demo_cluster {
+			expose_tags.push("tag:server-tamanu-demo".to_owned());
+		}
+		let db = DbConfig {
+			storage: c.db_storage.clone().unwrap_or_else(|| "5Gi".into()),
+			memory: c
+				.db_memory
+				.clone()
+				.unwrap_or_else(|| if is_demo_cluster { "512Mi" } else { "750Mi" }.into()),
+			expose: c.db_expose.unwrap_or(true),
+			expose_tags: expose_tags.join(","),
+			az_colocate: c.db_az_colocate.unwrap_or(true),
+			disruption_budgets: c.db_disruption_budgets.unwrap_or(false),
+			backups_enabled: c.backups_enabled.unwrap_or(false),
+			backup_retention_days: c.backup_retention_days.unwrap_or(3),
+			barman_role_arn: c
+				.barman_role_arn
+				.clone()
+				.or_else(|| p.cluster.backups_service_account_arn.clone()),
+			barman_bucket: c
+				.barman_bucket
+				.clone()
+				.or_else(|| p.cluster.backups_bucket.clone()),
+		};
+		let proxy_trusted = ["loopback"]
+			.into_iter()
+			.chain(p.cluster.network_v4_cidr.as_deref())
+			.chain(p.cluster.network_v6_cidr.as_deref())
+			.filter(|s| !s.is_empty())
+			.collect::<Vec<_>>()
+			.join(", ");
+
 		Ok(Self {
 			stack,
 			namespace,
@@ -166,6 +222,10 @@ impl Config {
 				.deployment
 				.clone()
 				.unwrap_or_else(|| "engineering".into()),
+			service_account: c.service_account.clone(),
+			proxy_trusted,
+			db,
+			shared_blob_storage: c.shared_blob_storage.unwrap_or(false),
 			release_version,
 		})
 	}
@@ -396,6 +456,24 @@ mod tests {
 		let cfg = Config::derive(&p).unwrap();
 		assert_eq!(cfg.replicas.facility.api, 5);
 		assert_eq!(cfg.replicas.central.db, 2);
+	}
+
+	#[test]
+	fn derives_proxy_and_db_settings() {
+		let mut p = params("sha-x");
+		p.cluster.network_v4_cidr = Some("10.0.0.0/16".into());
+		p.cluster.tailscale_proxy_default_tags = vec!["tag:k8s".into()];
+		let cfg = Config::derive(&p).unwrap();
+		assert_eq!(cfg.proxy_trusted, "loopback, 10.0.0.0/16");
+		assert_eq!(cfg.db.expose_tags, "tag:k8s,tag:server,tag:server-tamanu");
+		assert_eq!(cfg.db.memory, "750Mi");
+		assert!(cfg.db.expose && cfg.db.az_colocate && !cfg.db.disruption_budgets);
+
+		p.cluster.full_name = "example-demo".into();
+		p.config.db_memory = Some("1Gi".into());
+		let cfg = Config::derive(&p).unwrap();
+		assert!(cfg.db.expose_tags.ends_with("tag:server-tamanu-demo"));
+		assert_eq!(cfg.db.memory, "1Gi");
 	}
 
 	pub(crate) fn params(image_tag: &str) -> Params {

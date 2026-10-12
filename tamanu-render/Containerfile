@@ -1,0 +1,26 @@
+FROM debian:bookworm-slim AS gcclibs
+RUN cp /lib/*-linux-gnu/libgcc_s.so.1 /libgcc_s.so.1
+
+FROM busybox:glibc
+
+COPY --from=gcclibs /libgcc_s.so.1 /lib/libgcc_s.so.1
+
+ARG TARGETPLATFORM
+
+COPY --chmod=755 amd64/ /tmp/bins/amd64/
+COPY --chmod=755 arm64/ /tmp/bins/arm64/
+
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+      cp /tmp/bins/amd64/* /usr/bin/; \
+    elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+      cp /tmp/bins/arm64/* /usr/bin/; \
+    else \
+      echo "Unknown platform: $TARGETPLATFORM"; exit 1; \
+    fi && \
+    rm -rf /tmp/bins
+
+# Argo CD's repo server runs this sidecar as 999 and reads its plugin config
+# from this path. The plugin server binary is mounted in by the repo server.
+COPY plugin.yaml /home/argocd/cmp-server/config/plugin.yaml
+
+USER 999

@@ -72,6 +72,11 @@ fn requirement(key: &str, value: &str) -> NodeSelectorRequirement {
 /// Spot nodes are preferred and tolerated, but the workload pool and the
 /// configured architecture are required.
 pub fn workload_affinity(cfg: &Config) -> Affinity {
+	workload_affinity_for(cfg.architecture)
+}
+
+/// [`workload_affinity`] for a workload that picks its own architecture.
+pub fn workload_affinity_for(architecture: crate::config::Architecture) -> Affinity {
 	Affinity {
 		node_affinity: Some(NodeAffinity {
 			preferred_during_scheduling_ignored_during_execution: Some(vec![
@@ -86,7 +91,7 @@ pub fn workload_affinity(cfg: &Config) -> Affinity {
 			required_during_scheduling_ignored_during_execution: Some(NodeSelector {
 				node_selector_terms: vec![NodeSelectorTerm {
 					match_expressions: Some(vec![
-						requirement("bes.node.arch", cfg.architecture.as_str()),
+						requirement("bes.node.arch", architecture.as_str()),
 						requirement("bes.node.purpose", "workload"),
 					]),
 					match_fields: None,
@@ -163,4 +168,13 @@ pub fn web_pod_spec(cfg: &Config, image_type: ImageType, args: PodSpecArgs) -> P
 		}],
 		..Default::default()
 	}
+}
+
+/// One-shot pods (migrations, provisioning) can legitimately use far more
+/// memory than a server at steady state, so only long-running pods get a
+/// memory limit.
+pub fn app_memory_limit(pod_type: &str) -> Option<BTreeMap<String, Quantity>> {
+	const ONE_SHOT: [&str; 4] = ["migrator", "provisioner", "seed-top-up", "setup-sync"];
+	(!ONE_SHOT.contains(&pod_type))
+		.then(|| BTreeMap::from([("memory".into(), Quantity("1Gi".into()))]))
 }

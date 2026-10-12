@@ -1,0 +1,25 @@
+{
+  canonicalHostName: 'https://{{ fqdn }}',
+  sync: {
+    {% if legacySyncConfig %}
+    legacy: true,
+    {% endif %}
+    host: '{{ centralApiUrl }}',
+    email: 'admin@example.org',
+    password: '{{ provisioning.users["admin@example.org"].password }}',
+    syncApiConnection: {
+      host: '{{ syncApiUrl }}',
+      port: {{ syncApiPort }},
+    },
+  },
+  auth: {
+    secret: '{{ 40 | randomstring }}',
+  },
+  survey: {
+    defaultCodes: {
+      location: {% if instance == "facility-1" %}'First'{% else %}'Other'{% endif %},
+    },
+  },
+  serverFacilityId: '{{ facilityId }}',
+  deviceId: '{{ deviceId }}',
+}

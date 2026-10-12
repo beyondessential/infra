@@ -6,6 +6,48 @@ expression: "render_yaml(&params(json!({\n    \"nodeEnv\": \"staging\", \"patien
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-traffic-policy
+  namespace: tamanu-main
+spec:
+  http3: {}
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: central
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-traffic-policy
+  namespace: tamanu-main
+spec:
+  http3: {}
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-1
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-traffic-policy
+  namespace: tamanu-main
+spec:
+  http3: {}
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-2
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
   name: patient-portal-traffic-policy
   namespace: tamanu-main
 spec:
@@ -14,6 +56,2812 @@ spec:
   - group: gateway.networking.k8s.io
     kind: Gateway
     name: patient-portal
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: central
+  name: central-db
+  namespace: tamanu-main
+spec:
+  affinity:
+    additionalPodAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            cnpg.io/cluster: central-db
+        topologyKey: topology.kubernetes.io/zone
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: bes.node.schedule
+            operator: In
+            values:
+            - spot
+        weight: 1
+    nodeSelector:
+      bes.node.arch: arm64
+      bes.node.purpose: workload
+    tolerations:
+    - effect: PreferNoSchedule
+      key: spotInstance
+      operator: Equal
+      value: 'true'
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+      - |-
+        CREATE ROLE raw LOGIN;
+        CREATE ROLE reporting LOGIN;
+        GRANT USAGE ON SCHEMA public TO raw;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+        ALTER ROLE app CREATEROLE;
+  enablePDB: false
+  enableSuperuserAccess: true
+  env:
+  - name: TZ
+    value: Pacific/Auckland
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    major: 18
+    name: postgresql
+  inheritedMetadata:
+    labels:
+      billing.deployment: engineering
+      billing.product: tamanu
+      billing.stage: test
+  instances: 2
+  managed:
+    roles:
+    - login: true
+      name: raw
+      passwordSecret:
+        name: central-raw-db
+    - login: true
+      name: reporting
+      passwordSecret:
+        name: central-reporting-db
+  postgresql:
+    parameters:
+      client_connection_check_interval: 10s
+      effective_cache_size: 576000kB
+      effective_io_concurrency: '200'
+      jit: off
+      log_lock_waits: on
+      maintenance_work_mem: 65536kB
+      max_connections: '100'
+      max_slot_wal_keep_size: 1572864kB
+      random_page_cost: '1.1'
+      shared_buffers: 192000kB
+      temp_file_limit: 1310720kB
+      wal_buffers: 5760kB
+      wal_compression: lz4
+      work_mem: 4096kB
+  primaryUpdateStrategy: unsupervised
+  resources:
+    requests:
+      cpu: 10m
+      memory: 750Mi
+  storage:
+    size: 5Gi
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: facility-1
+  name: facility-1-db
+  namespace: tamanu-main
+spec:
+  affinity:
+    additionalPodAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            cnpg.io/cluster: facility-1-db
+        topologyKey: topology.kubernetes.io/zone
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: bes.node.schedule
+            operator: In
+            values:
+            - spot
+        weight: 1
+    nodeSelector:
+      bes.node.arch: arm64
+      bes.node.purpose: workload
+    tolerations:
+    - effect: PreferNoSchedule
+      key: spotInstance
+      operator: Equal
+      value: 'true'
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+      - |-
+        CREATE ROLE raw LOGIN;
+        CREATE ROLE reporting LOGIN;
+        GRANT USAGE ON SCHEMA public TO raw;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+        ALTER ROLE app CREATEROLE;
+  enablePDB: false
+  enableSuperuserAccess: true
+  env:
+  - name: TZ
+    value: Pacific/Auckland
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    major: 18
+    name: postgresql
+  inheritedMetadata:
+    labels:
+      billing.deployment: engineering
+      billing.product: tamanu
+      billing.stage: test
+  instances: 2
+  managed:
+    roles:
+    - login: true
+      name: raw
+      passwordSecret:
+        name: facility-1-raw-db
+    - login: true
+      name: reporting
+      passwordSecret:
+        name: facility-1-reporting-db
+  postgresql:
+    parameters:
+      client_connection_check_interval: 10s
+      effective_cache_size: 576000kB
+      effective_io_concurrency: '200'
+      jit: off
+      log_lock_waits: on
+      maintenance_work_mem: 65536kB
+      max_connections: '100'
+      max_slot_wal_keep_size: 1572864kB
+      random_page_cost: '1.1'
+      shared_buffers: 192000kB
+      temp_file_limit: 1310720kB
+      wal_buffers: 5760kB
+      wal_compression: lz4
+      work_mem: 4096kB
+  primaryUpdateStrategy: unsupervised
+  resources:
+    requests:
+      cpu: 10m
+      memory: 750Mi
+  storage:
+    size: 5Gi
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: facility-2
+  name: facility-2-db
+  namespace: tamanu-main
+spec:
+  affinity:
+    additionalPodAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            cnpg.io/cluster: facility-2-db
+        topologyKey: topology.kubernetes.io/zone
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: bes.node.schedule
+            operator: In
+            values:
+            - spot
+        weight: 1
+    nodeSelector:
+      bes.node.arch: arm64
+      bes.node.purpose: workload
+    tolerations:
+    - effect: PreferNoSchedule
+      key: spotInstance
+      operator: Equal
+      value: 'true'
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+      - |-
+        CREATE ROLE raw LOGIN;
+        CREATE ROLE reporting LOGIN;
+        GRANT USAGE ON SCHEMA public TO raw;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+        ALTER ROLE app CREATEROLE;
+  enablePDB: false
+  enableSuperuserAccess: true
+  env:
+  - name: TZ
+    value: Pacific/Auckland
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    major: 18
+    name: postgresql
+  inheritedMetadata:
+    labels:
+      billing.deployment: engineering
+      billing.product: tamanu
+      billing.stage: test
+  instances: 2
+  managed:
+    roles:
+    - login: true
+      name: raw
+      passwordSecret:
+        name: facility-2-raw-db
+    - login: true
+      name: reporting
+      passwordSecret:
+        name: facility-2-reporting-db
+  postgresql:
+    parameters:
+      client_connection_check_interval: 10s
+      effective_cache_size: 576000kB
+      effective_io_concurrency: '200'
+      jit: off
+      log_lock_waits: on
+      maintenance_work_mem: 65536kB
+      max_connections: '100'
+      max_slot_wal_keep_size: 1572864kB
+      random_page_cost: '1.1'
+      shared_buffers: 192000kB
+      temp_file_limit: 1310720kB
+      wal_buffers: 5760kB
+      wal_compression: lz4
+      work_mem: 4096kB
+  primaryUpdateStrategy: unsupervised
+  resources:
+    requests:
+      cpu: 10m
+      memory: 750Mi
+  storage:
+    size: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api
+  namespace: tamanu-main
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/name: central
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: api-server
+        app.kubernetes.io/name: central
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - serve
+        env:
+        - name: PORT
+          value: '3000'
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: DISK_PATH
+          value: /
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: central-db-url
+        - name: DB_HOST
+          value: central-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: TUPAIA_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: tupaia
+        - name: TUPAIA_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: tupaia
+        - name: MAILGUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: mailgun
+        - name: MAILGUN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              key: domain
+              name: mailgun
+        - name: MAILGUN_FROM
+          valueFrom:
+            secretKeyRef:
+              key: from
+              name: mailgun
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-reporting-db
+        image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: server
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 256Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-central
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-fhir-refresh
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fhir-refresh
+      app.kubernetes.io/name: central
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fhir-refresh
+        app.kubernetes.io/name: central
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startFhirWorker
+        - --topics
+        - fhir.refresh.allFromUpstream,fhir.refresh.entireResource,fhir.refresh.fromUpstream
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: DISK_PATH
+          value: /
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: central-db-url
+        - name: DB_HOST
+          value: central-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: TUPAIA_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: tupaia
+        - name: TUPAIA_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: tupaia
+        - name: MAILGUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: mailgun
+        - name: MAILGUN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              key: domain
+              name: mailgun
+        - name: MAILGUN_FROM
+          valueFrom:
+            secretKeyRef:
+              key: from
+              name: mailgun
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-reporting-db
+        image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: fhir-refresh
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-central
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-fhir-resolver
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fhir-resolver
+      app.kubernetes.io/name: central
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fhir-resolver
+        app.kubernetes.io/name: central
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startFhirWorker
+        - --topics
+        - fhir.resolver
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: DISK_PATH
+          value: /
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: central-db-url
+        - name: DB_HOST
+          value: central-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: TUPAIA_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: tupaia
+        - name: TUPAIA_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: tupaia
+        - name: MAILGUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: mailgun
+        - name: MAILGUN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              key: domain
+              name: mailgun
+        - name: MAILGUN_FROM
+          valueFrom:
+            secretKeyRef:
+              key: from
+              name: mailgun
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-reporting-db
+        image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: fhir-resolver
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-central
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-tasks
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: task-runner
+      app.kubernetes.io/name: central
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: task-runner
+        app.kubernetes.io/name: central
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - tasks
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: DISK_PATH
+          value: /
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: central-db-url
+        - name: DB_HOST
+          value: central-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: TUPAIA_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: tupaia
+        - name: TUPAIA_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: tupaia
+        - name: MAILGUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: mailgun
+        - name: MAILGUN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              key: domain
+              name: mailgun
+        - name: MAILGUN_FROM
+          valueFrom:
+            secretKeyRef:
+              key: from
+              name: mailgun
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-reporting-db
+        image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: task-runner
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-central
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-web
+  namespace: tamanu-main
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/name: central
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: web
+        app.kubernetes.io/name: central
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - env:
+        - name: PORT
+          value: '3000'
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        image: ghcr.io/beyondessential/tamanu-frontend:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: http
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 100Mi
+          requests:
+            cpu: 1m
+            memory: 10Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api
+  namespace: tamanu-main
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: api-server
+        app.kubernetes.io/instance: facility-1
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startApi
+        env:
+        - name: PORT
+          value: '3000'
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: server
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-sync
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: sync-server
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync-server
+        app.kubernetes.io/instance: facility-1
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startSync
+        env:
+        - name: PORT
+          value: '3000'
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: server
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-tasks
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: task-runner
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: task-runner
+        app.kubernetes.io/instance: facility-1
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startTasks
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: task-runner
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: facility-1-web
+  namespace: tamanu-main
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: web
+        app.kubernetes.io/instance: facility-1
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - env:
+        - name: PORT
+          value: '3000'
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        image: ghcr.io/beyondessential/tamanu-frontend:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: http
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 100Mi
+          requests:
+            cpu: 1m
+            memory: 10Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-api
+  namespace: tamanu-main
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: api-server
+        app.kubernetes.io/instance: facility-2
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startApi
+        env:
+        - name: PORT
+          value: '3000'
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: server
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-sync
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: sync-server
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync-server
+        app.kubernetes.io/instance: facility-2
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startSync
+        env:
+        - name: PORT
+          value: '3000'
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: server
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-tasks
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: task-runner
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: task-runner
+        app.kubernetes.io/instance: facility-2
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startTasks
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: task-runner
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: facility-2-web
+  namespace: tamanu-main
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: web
+        app.kubernetes.io/instance: facility-2
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - env:
+        - name: PORT
+          value: '3000'
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        image: ghcr.io/beyondessential/tamanu-frontend:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: http
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 100Mi
+          requests:
+            cpu: 1m
+            memory: 10Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-refresh-fhir-facility-1
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fhir-refresh
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fhir-refresh
+        app.kubernetes.io/instance: facility-1
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startFhirWorker
+        - --topics
+        - fhir.refresh.allFromUpstream,fhir.refresh.entireResource,fhir.refresh.fromUpstream
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: fhir-refresh
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-refresh-fhir-facility-2
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fhir-refresh
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fhir-refresh
+        app.kubernetes.io/instance: facility-2
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startFhirWorker
+        - --topics
+        - fhir.refresh.allFromUpstream,fhir.refresh.entireResource,fhir.refresh.fromUpstream
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: fhir-refresh
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-resolver-fhir-facility-1
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fhir-resolver
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fhir-resolver
+        app.kubernetes.io/instance: facility-1
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startFhirWorker
+        - --topics
+        - fhir.resolver
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: fhir-resolver
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-resolver-fhir-facility-2
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fhir-resolver
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fhir-resolver
+        app.kubernetes.io/instance: facility-2
+        app.kubernetes.io/name: facility
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - startFhirWorker
+        - --topics
+        - fhir.resolver
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: fhir-resolver
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -104,6 +2952,72 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
+    argocd.argoproj.io/sync-wave: '3'
+    cert-manager.io/cluster-issuer: letsencrypt
+    cert-manager.io/private-key-algorithm: ECDSA
+  name: central
+  namespace: tamanu-main
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+  - hostname: central.main.cd.tamanu.app
+    name: central
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: central-termination-tls
+      mode: Terminate
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+    cert-manager.io/cluster-issuer: letsencrypt
+    cert-manager.io/private-key-algorithm: ECDSA
+  name: facility-1
+  namespace: tamanu-main
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+  - hostname: facility-1.main.cd.tamanu.app
+    name: facility-1
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: facility-1-termination-tls
+      mode: Terminate
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+    cert-manager.io/cluster-issuer: letsencrypt
+    cert-manager.io/private-key-algorithm: ECDSA
+  name: facility-2
+  namespace: tamanu-main
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+  - hostname: facility-2.main.cd.tamanu.app
+    name: facility-2
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: facility-2-termination-tls
+      mode: Terminate
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     cert-manager.io/private-key-algorithm: ECDSA
   name: patient-portal
@@ -120,6 +3034,366 @@ spec:
       - kind: Secret
         name: patient-portal-termination-tls
       mode: Terminate
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: central
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api-import
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: central
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api-import-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: central
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: central
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-frontend
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: central
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-web
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-1
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-1-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api-import
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-1
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-1-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api-import-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-1
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-1-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-1
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-1-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-frontend
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-1
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-1-web
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-api
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-2
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-2-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-api-import
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-2
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-2-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-api-import-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-2
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-2-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-api-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-2
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-2-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-frontend
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: facility-2
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: facility-2-web
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /
+    timeouts:
+      request: 60s
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -230,6 +3504,1176 @@ spec:
         value: /
     timeouts:
       request: 60s
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: central-migrator
+  namespace: tamanu-main
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - migrate
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: DISK_PATH
+          value: /
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: central-db-url
+        - name: DB_HOST
+          value: central-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: TUPAIA_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: tupaia
+        - name: TUPAIA_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: tupaia
+        - name: MAILGUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: mailgun
+        - name: MAILGUN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              key: domain
+              name: mailgun
+        - name: MAILGUN_FROM
+          valueFrom:
+            secretKeyRef:
+              key: from
+              name: mailgun
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-reporting-db
+        image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: migrator
+        resources:
+          requests:
+            cpu: 5m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      restartPolicy: Never
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-central
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '2'
+  name: central-provisioner
+  namespace: tamanu-main
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - provision
+        - --skip-if-not-needed
+        - /provisioning/provisioning.json5
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: DISK_PATH
+          value: /
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: central-db-url
+        - name: DB_HOST
+          value: central-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-db-app
+        - name: TUPAIA_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: tupaia
+        - name: TUPAIA_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: tupaia
+        - name: MAILGUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: mailgun
+        - name: MAILGUN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              key: domain
+              name: mailgun
+        - name: MAILGUN_FROM
+          valueFrom:
+            secretKeyRef:
+              key: from
+              name: mailgun
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: central-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-reporting-db
+        image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: provisioner
+        resources:
+          requests:
+            cpu: 5m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+        - mountPath: /provisioning
+          name: provisioning-volume
+      restartPolicy: Never
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-central
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+      - configMap:
+          name: provisioning
+        name: provisioning-volume
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: central-reporting-grants
+  namespace: tamanu-main
+spec:
+  backoffLimit: 8
+  template:
+    spec:
+      containers:
+      - args:
+        - -v
+        - ON_ERROR_STOP=1
+        - -c
+        - |-
+          DO $do$
+          BEGIN
+            ALTER ROLE app WITH CREATEROLE;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_reporting') THEN
+              GRANT tamanu_reporting TO app WITH ADMIN OPTION;
+            END IF;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_raw') THEN
+              GRANT tamanu_raw TO app WITH ADMIN OPTION;
+            END IF;
+          END $do$;
+        command:
+        - psql
+        env:
+        - name: PGHOST
+          value: central-db-rw
+        - name: PGDATABASE
+          value: app
+        - name: PGUSER
+          value: postgres
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-superuser
+        image: postgres:18
+        name: grants
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: facility-1-migrator
+  namespace: tamanu-main
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - migrate
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: migrator
+        resources:
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      restartPolicy: Never
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: facility-1-reporting-grants
+  namespace: tamanu-main
+spec:
+  backoffLimit: 8
+  template:
+    spec:
+      containers:
+      - args:
+        - -v
+        - ON_ERROR_STOP=1
+        - -c
+        - |-
+          DO $do$
+          BEGIN
+            ALTER ROLE app WITH CREATEROLE;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_reporting') THEN
+              GRANT tamanu_reporting TO app WITH ADMIN OPTION;
+            END IF;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_raw') THEN
+              GRANT tamanu_raw TO app WITH ADMIN OPTION;
+            END IF;
+          END $do$;
+        command:
+        - psql
+        env:
+        - name: PGHOST
+          value: facility-1-db-rw
+        - name: PGDATABASE
+          value: app
+        - name: PGUSER
+          value: postgres
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-superuser
+        image: postgres:18
+        name: grants
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '2'
+  name: facility-1-setup-sync
+  namespace: tamanu-main
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - setupSync
+        env:
+        - name: SYNC_URL
+          valueFrom:
+            secretKeyRef:
+              key: url
+              name: facility-1-sync-url
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-1-db-url
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: setup-sync
+        resources:
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      restartPolicy: Never
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: facility-2-migrator
+  namespace: tamanu-main
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - migrate
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: migrator
+        resources:
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      restartPolicy: Never
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: facility-2-reporting-grants
+  namespace: tamanu-main
+spec:
+  backoffLimit: 8
+  template:
+    spec:
+      containers:
+      - args:
+        - -v
+        - ON_ERROR_STOP=1
+        - -c
+        - |-
+          DO $do$
+          BEGIN
+            ALTER ROLE app WITH CREATEROLE;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_reporting') THEN
+              GRANT tamanu_reporting TO app WITH ADMIN OPTION;
+            END IF;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_raw') THEN
+              GRANT tamanu_raw TO app WITH ADMIN OPTION;
+            END IF;
+          END $do$;
+        command:
+        - psql
+        env:
+        - name: PGHOST
+          value: facility-2-db-rw
+        - name: PGDATABASE
+          value: app
+        - name: PGUSER
+          value: postgres
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-superuser
+        image: postgres:18
+        name: grants
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '2'
+  name: facility-2-setup-sync
+  namespace: tamanu-main
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - args:
+        - setupSync
+        env:
+        - name: SYNC_URL
+          valueFrom:
+            secretKeyRef:
+              key: url
+              name: facility-2-sync-url
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: app.dburl
+              name: facility-2-db-url
+        - name: DB_HOST
+          value: facility-2-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: DB_RAW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-raw-db
+        - name: DB_RAW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-raw-db
+        - name: DB_REPORTING_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-2-reporting-db
+        - name: DB_REPORTING_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-2-reporting-db
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: setup-sync
+        resources:
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      restartPolicy: Never
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-2
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api
+  namespace: tamanu-main
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: api-server
+    app.kubernetes.io/name: central
+  trafficDistribution: PreferClose
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+    tailscale.com/hostname: k8s-pg-main
+    tailscale.com/tags: tag:server,tag:server-tamanu
+  name: central-db-tailscale
+  namespace: tamanu-main
+spec:
+  allocateLoadBalancerNodePorts: false
+  loadBalancerClass: tailscale
+  ports:
+  - name: postgresql
+    port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    cnpg.io/cluster: central-db
+    cnpg.io/instanceRole: primary
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-web
+  namespace: tamanu-main
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: web
+    app.kubernetes.io/name: central
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facility-1-api
+  namespace: tamanu-main
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: api-server
+    app.kubernetes.io/instance: facility-1
+    app.kubernetes.io/name: facility
+  trafficDistribution: PreferClose
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facility-1-sync
+  namespace: tamanu-main
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: sync-server
+    app.kubernetes.io/instance: facility-1
+    app.kubernetes.io/name: facility
+  trafficDistribution: PreferClose
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facility-1-web
+  namespace: tamanu-main
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: web
+    app.kubernetes.io/instance: facility-1
+    app.kubernetes.io/name: facility
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facility-2-api
+  namespace: tamanu-main
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: api-server
+    app.kubernetes.io/instance: facility-2
+    app.kubernetes.io/name: facility
+  trafficDistribution: PreferClose
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facility-2-sync
+  namespace: tamanu-main
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: sync-server
+    app.kubernetes.io/instance: facility-2
+    app.kubernetes.io/name: facility
+  trafficDistribution: PreferClose
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: facility-2-web
+  namespace: tamanu-main
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: web
+    app.kubernetes.io/instance: facility-2
+    app.kubernetes.io/name: facility
 ---
 apiVersion: v1
 kind: Service

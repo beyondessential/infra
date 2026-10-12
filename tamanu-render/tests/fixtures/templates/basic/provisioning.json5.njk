@@ -1,0 +1,16 @@
+{
+  users: {
+    'admin@example.org': {
+      role: 'admin',
+      password: 'fixture-password',
+    },
+  },
+  facilities: {
+    {% for name in facilityNames %}
+    '{{ name }}': {
+      name: 'Facility {{ loop.index }}',
+      code: '{{ name }}',
+    },
+    {% endfor %}
+  },
+}

@@ -1,0 +1,118 @@
+---
+source: tests/postgres.rs
+expression: yaml(&out)
+---
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: central
+  name: central-db
+  namespace: tamanu-main
+spec:
+  affinity:
+    additionalPodAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            cnpg.io/cluster: central-db
+        topologyKey: topology.kubernetes.io/zone
+    nodeSelector:
+      bes.node.arch: arm64
+      bes.node.group: db-critical
+      bes.node.purpose: workload
+    podAntiAffinityType: required
+    tolerations:
+    - effect: NoSchedule
+      key: bes.node.group
+      operator: Equal
+      value: db-critical
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+      - |-
+        CREATE ROLE raw LOGIN;
+        CREATE ROLE reporting LOGIN;
+        GRANT USAGE ON SCHEMA public TO raw;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+        ALTER ROLE app CREATEROLE;
+  enablePDB: false
+  enableSuperuserAccess: true
+  env:
+  - name: TZ
+    value: Pacific/Auckland
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    major: 18
+    name: postgis-system-bookworm
+  inheritedMetadata:
+    labels:
+      billing.deployment: engineering
+      billing.product: tamanu
+      billing.stage: test
+  instances: 2
+  managed:
+    roles:
+    - login: true
+      name: raw
+      passwordSecret:
+        name: central-raw-db
+    - login: true
+      name: reporting
+      passwordSecret:
+        name: central-reporting-db
+  postgresql:
+    parameters:
+      client_connection_check_interval: 10s
+      effective_cache_size: 6291456kB
+      effective_io_concurrency: '200'
+      jit: off
+      log_lock_waits: on
+      maintenance_work_mem: 524288kB
+      max_connections: '200'
+      max_slot_wal_keep_size: 18874368kB
+      random_page_cost: '1.1'
+      shared_buffers: 2097152kB
+      temp_file_limit: 15728640kB
+      wal_buffers: 16384kB
+      wal_compression: lz4
+      work_mem: 10082kB
+  primaryUpdateStrategy: unsupervised
+  resources:
+    requests:
+      cpu: 10m
+      memory: 8Gi
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/example-backups
+  storage:
+    size: 60Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+    prometheus.io/path: /metrics
+    prometheus.io/port: '9187'
+    prometheus.io/scrape: 'true'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: central
+  name: central-db-metrics
+  namespace: tamanu-main
+spec:
+  clusterIP: None
+  ports:
+  - name: metrics
+    port: 9187
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    cnpg.io/cluster: central-db

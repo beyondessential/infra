@@ -1,0 +1,149 @@
+---
+source: tests/postgres.rs
+expression: yaml(&out)
+---
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: central
+  name: central-db
+  namespace: tamanu-main
+spec:
+  affinity:
+    additionalPodAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            cnpg.io/cluster: central-db
+        topologyKey: topology.kubernetes.io/zone
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: bes.node.schedule
+            operator: In
+            values:
+            - spot
+        weight: 1
+    nodeSelector:
+      bes.node.arch: arm64
+      bes.node.purpose: workload
+    tolerations:
+    - effect: PreferNoSchedule
+      key: spotInstance
+      operator: Equal
+      value: 'true'
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+      - |-
+        CREATE ROLE raw LOGIN;
+        CREATE ROLE reporting LOGIN;
+        GRANT USAGE ON SCHEMA public TO raw;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+        ALTER ROLE app CREATEROLE;
+  enablePDB: false
+  enableSuperuserAccess: true
+  env:
+  - name: TZ
+    value: Pacific/Auckland
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    major: 18
+    name: postgresql
+  inheritedMetadata:
+    labels:
+      billing.deployment: engineering
+      billing.product: tamanu
+      billing.stage: test
+  instances: 2
+  managed:
+    roles:
+    - login: true
+      name: raw
+      passwordSecret:
+        name: central-raw-db
+    - login: true
+      name: reporting
+      passwordSecret:
+        name: central-reporting-db
+  postgresql:
+    parameters:
+      client_connection_check_interval: 10s
+      effective_cache_size: 576000kB
+      effective_io_concurrency: '200'
+      jit: off
+      log_lock_waits: on
+      maintenance_work_mem: 65536kB
+      max_connections: '100'
+      max_slot_wal_keep_size: 3145728kB
+      random_page_cost: '1.1'
+      shared_buffers: 192000kB
+      temp_file_limit: 2621440kB
+      wal_buffers: 5760kB
+      wal_compression: lz4
+      work_mem: 4096kB
+  primaryUpdateStrategy: unsupervised
+  resources:
+    requests:
+      cpu: 10m
+      memory: 750Mi
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/example-backups
+  storage:
+    size: 10Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: central-reporting-grants
+  namespace: tamanu-main
+spec:
+  backoffLimit: 8
+  template:
+    spec:
+      containers:
+      - args:
+        - -v
+        - ON_ERROR_STOP=1
+        - -c
+        - |-
+          DO $do$
+          BEGIN
+            ALTER ROLE app WITH CREATEROLE;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_reporting') THEN
+              GRANT tamanu_reporting TO app WITH ADMIN OPTION;
+            END IF;
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'tamanu_raw') THEN
+              GRANT tamanu_raw TO app WITH ADMIN OPTION;
+            END IF;
+          END $do$;
+        command:
+        - psql
+        env:
+        - name: PGHOST
+          value: central-db-rw
+        - name: PGDATABASE
+          value: app
+        - name: PGUSER
+          value: postgres
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: central-db-superuser
+        image: postgres:18
+        name: grants
+      restartPolicy: Never

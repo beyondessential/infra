@@ -1,0 +1,79 @@
+---
+source: tests/postgres.rs
+expression: "yaml(&[cron_job(\"partition-example\", a).unwrap()])"
+---
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app: example
+  name: partition-example
+  namespace: tamanu-main
+spec:
+  jobTemplate:
+    metadata:
+      labels:
+        app: example
+    spec:
+      backoffLimit: 10
+      template:
+        metadata:
+          labels:
+            app: example
+        spec:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - preference:
+                  matchExpressions:
+                  - key: bes.node.schedule
+                    operator: In
+                    values:
+                    - spot
+                weight: 1
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: bes.node.arch
+                    operator: In
+                    values:
+                    - arm64
+                  - key: bes.node.purpose
+                    operator: In
+                    values:
+                    - workload
+          containers:
+          - args:
+            - -c
+            - SELECT 1
+            command:
+            - psql
+            env:
+            - name: PGDATABASE
+              value: app
+            - name: PGHOST
+              value: central-db-rw
+            - name: PGUSER
+              value: app
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: app.password
+                  name: central-db-url
+            image: postgres:18
+            name: partition-example
+            resources:
+              limits:
+                cpu: 100m
+                memory: 128Mi
+              requests:
+                cpu: 10m
+                memory: 32Mi
+          restartPolicy: Never
+          tolerations:
+          - effect: PreferNoSchedule
+            key: spotInstance
+            operator: Equal
+            value: 'true'
+  schedule: 0 3 * * *

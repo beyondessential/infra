@@ -1,0 +1,142 @@
+---
+source: tests/postgres.rs
+expression: yaml(&out)
+---
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: facility-2
+  name: facility-2-db
+  namespace: tamanu-main
+spec:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: bes.node.schedule
+            operator: In
+            values:
+            - spot
+        weight: 1
+    nodeSelector:
+      bes.node.arch: arm64
+      bes.node.purpose: workload
+    tolerations:
+    - effect: PreferNoSchedule
+      key: spotInstance
+      operator: Equal
+      value: 'true'
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+      - |-
+        CREATE ROLE raw LOGIN;
+        CREATE ROLE reporting LOGIN;
+        GRANT USAGE ON SCHEMA public TO raw;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
+        ALTER ROLE app CREATEROLE;
+  enablePDB: true
+  enableSuperuserAccess: true
+  env:
+  - name: TZ
+    value: Pacific/Auckland
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    major: 18
+    name: postgresql
+  inheritedMetadata:
+    labels:
+      billing.deployment: engineering
+      billing.product: tamanu
+      billing.stage: test
+  instances: 3
+  managed:
+    roles:
+    - login: true
+      name: raw
+      passwordSecret:
+        name: facility-2-raw-db
+    - login: true
+      name: reporting
+      passwordSecret:
+        name: facility-2-reporting-db
+  plugins:
+  - isWALArchiver: true
+    name: barman-cloud.cloudnative-pg.io
+    parameters:
+      barmanObjectName: facility-2-db-object-store
+      serverName: facility-2-db
+  postgresql:
+    parameters:
+      client_connection_check_interval: 10s
+      effective_cache_size: 576000kB
+      effective_io_concurrency: '200'
+      jit: off
+      log_lock_waits: on
+      maintenance_work_mem: 65536kB
+      max_connections: '100'
+      max_slot_wal_keep_size: 1572864kB
+      random_page_cost: '1.1'
+      shared_buffers: 192000kB
+      temp_file_limit: 1310720kB
+      wal_buffers: 5760kB
+      wal_compression: lz4
+      work_mem: 4096kB
+  primaryUpdateStrategy: unsupervised
+  resources:
+    requests:
+      cpu: 10m
+      memory: 750Mi
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/example-backups
+  storage:
+    size: 5Gi
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  name: facility-2-db-object-store
+  namespace: tamanu-main
+spec:
+  configuration:
+    data:
+      compression: gzip
+    destinationPath: s3://example-backups/main/facility-2-db/
+    s3Credentials:
+      inheritFromIAMRole: true
+    wal:
+      compression: gzip
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 128Mi
+  retentionPolicy: 7d
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  name: facility-2-db-scheduled
+  namespace: tamanu-main
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: facility-2-db
+  immediate: true
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  schedule: 0 0 2 * * *

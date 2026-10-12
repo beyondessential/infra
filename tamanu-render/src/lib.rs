@@ -4,8 +4,10 @@
 //! deterministic stream of manifests. Rendering is pure: it reads nothing from
 //! the cluster, the clock or a random source, and it never emits secret values.
 
+pub mod blob_store;
 pub mod central;
 pub mod config;
+pub mod crypto;
 pub mod facility;
 pub mod gateway;
 pub mod meta;
