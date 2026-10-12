@@ -1,12 +1,4 @@
-import {
-  all,
-  getStack,
-  Config,
-  type Input,
-  interpolate,
-  output,
-  type Output,
-} from '@pulumi/pulumi';
+import { all, getStack, Config, type Input, interpolate, type Output } from '@pulumi/pulumi';
 import { billingTags as makeBillingTags } from '../../../common/billing.ts';
 import { cfg, zone } from '../../../common/coreRef.ts';
 import { TAILNET_DOMAIN } from '../../../constants/internal.ts';
@@ -233,13 +225,6 @@ export const retired = cfg.getBoolean('retired') ?? false;
 const retiredTargetBase = cfg.get('retiredTargetBase');
 const retiredHostMap: { [label: string]: string } = cfg.getObject('retiredHostMap') ?? {};
 
-/**
- * Hostnames this stack redirects away from while still running, for a deployment
- * that has been renamed rather than retired. Maps hostname to target URL, both
- * written out in full.
- */
-export const extraRedirects: { [host: string]: string } = cfg.getObject('extraRedirects') ?? {};
-
 export interface RedirectEntry {
   host: Output<string>;
   target: Output<string>;
@@ -263,15 +248,10 @@ const servedLabels: string[] = [
 // Then add `retiredTargetBase`, which puts the redirects at those names. A
 // deployment being retired with nothing to redirect to simply never gets the
 // second step.
-export const redirects: RedirectEntry[] = [
-  ...(retired && retiredTargetBase
+export const redirects: RedirectEntry[] =
+  retired && retiredTargetBase
     ? servedLabels.map((label) => ({
         host: interpolate`${label}.${domainBase}`,
         target: interpolate`https://${retiredHostMap[label] ?? label}.${retiredTargetBase}`,
       }))
-    : []),
-  ...Object.entries(extraRedirects).map(([host, target]) => ({
-    host: output(host),
-    target: output(target),
-  })),
-];
+    : [];
