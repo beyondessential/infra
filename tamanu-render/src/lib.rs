@@ -9,6 +9,7 @@ pub mod config;
 pub mod facility;
 pub mod gateway;
 pub mod meta;
+pub mod migrator;
 pub mod names;
 pub mod params;
 pub mod pod;

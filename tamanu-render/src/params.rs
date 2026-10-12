@@ -32,6 +32,9 @@ pub struct Cluster {
 	pub dns_zone_domains: Vec<String>,
 	#[serde(default)]
 	pub tailscale_proxy_default_tags: Vec<String>,
+	/// The VPC's address ranges, which servers trust as proxies.
+	pub network_v4_cidr: Option<String>,
+	pub network_v6_cidr: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
