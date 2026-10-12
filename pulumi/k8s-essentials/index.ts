@@ -58,3 +58,7 @@ if (cfg.getBoolean('hncEnabled') ?? true) {
 if (cfg.getBoolean('downscalerEnabled') ?? true) {
   await import('./downscaler.ts');
 }
+
+if (cfg.getBoolean('argoEnabled') ?? false) {
+  await import('./argo/index.ts');
+}
