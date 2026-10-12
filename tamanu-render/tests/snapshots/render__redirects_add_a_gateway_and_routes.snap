@@ -1,0 +1,10 @@
+---
+source: tests/render.rs
+expression: kinds_names
+---
+[
+    "\"ClientTrafficPolicy\" \"redirects-traffic-policy\"",
+    "\"Gateway\" \"redirects\"",
+    "\"HTTPRoute\" \"redirect-old-example-org\"",
+    "\"HTTPRoute\" \"redirect-older-example-org\"",
+]

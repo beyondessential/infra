@@ -1,0 +1,248 @@
+---
+source: tests/render.rs
+expression: "render_yaml(&params(json!({\n    \"nodeEnv\": \"staging\", \"patientPortalReplicas\": 1\n})))"
+---
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: patient-portal-traffic-policy
+  namespace: tamanu-main
+spec:
+  http3: {}
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: patient-portal
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-portal-web
+  namespace: tamanu-main
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/name: patient-portal
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: web
+        app.kubernetes.io/name: patient-portal
+        app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        billing.deployment: engineering
+        billing.product: tamanu
+        billing.stage: test
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - env:
+        - name: PORT
+          value: '3000'
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        image: ghcr.io/beyondessential/tamanu-patient-portal:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 10
+        name: http
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          limits:
+            memory: 100Mi
+          requests:
+            cpu: 1m
+            memory: 10Mi
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /
+            port: 3000
+          periodSeconds: 1
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    cert-manager.io/private-key-algorithm: ECDSA
+  name: patient-portal
+  namespace: tamanu-main
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+  - hostname: portal.main.cd.tamanu.app
+    name: patient-portal
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: patient-portal-termination-tls
+      mode: Terminate
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: patient-portal-api
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: patient-portal
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: patient-portal-api-import
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: patient-portal
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /api/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: patient-portal-api-import-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: patient-portal
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1/admin/import
+    timeouts:
+      request: 600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: patient-portal-api-legacy
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: patient-portal
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: central-api
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /v1
+    timeouts:
+      request: 60s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: patient-portal-frontend
+  namespace: tamanu-main
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: patient-portal
+    namespace: tamanu-main
+  rules:
+  - backendRefs:
+    - name: patient-portal-web
+      namespace: tamanu-main
+      port: 80
+    matches:
+    - path:
+        value: /
+    timeouts:
+      request: 60s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-portal-web
+  namespace: tamanu-main
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: web
+    app.kubernetes.io/name: patient-portal
