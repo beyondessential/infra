@@ -1,7 +1,7 @@
 import { ComponentResource } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../namespace.ts';
-import { costLabels } from '../config.ts';
+import { costLabels, syntheticTests } from '../config.ts';
 import { appLabels, appSelector } from './specs.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
 
@@ -71,7 +71,10 @@ export function runApi({
             podType: 'server',
             podSpreadSelector: appLabels('api-server'),
             command: ['serve'],
-            env: [{ name: 'PORT', value: '3000' }],
+            env: [
+              { name: 'PORT', value: '3000' },
+              ...(syntheticTests ? [{ name: 'TAMANU_ENABLE_SYNTHETIC_RANDOM_API', value: 'true' }] : []),
+            ],
             containerArgs: {
               ports: [
                 {
