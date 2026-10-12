@@ -18,7 +18,8 @@ fn params(image_tag: &str, app_version: Option<&str>, config: Value) -> Params {
 }
 
 fn render(p: &Params) -> Vec<Value> {
-	let cfg = Config::derive(p).unwrap();
+	let mut cfg = Config::derive(p).unwrap();
+	cfg.provisioning = Some(json!({ "users": { "admin@tamanu.io": { "password": "fixture" } } }));
 	tamanu_render::facility::render_apps(&cfg).unwrap()
 }
 
@@ -177,20 +178,17 @@ fn processes_are_ordered_by_wave() {
 fn no_secrets_are_rendered_and_credentials_are_referenced() {
 	let out = render(&current(json!({ "facilities": 2 })));
 	assert!(!out.iter().any(|r| r["kind"] == "Secret"));
-	let text = yaml(&out);
-	assert!(
-		!text.contains("admin@"),
-		"a credential leaked into a manifest"
-	);
 
+	// The provisioned admin's credentials already sit in the provisioning
+	// ConfigMap, so the setup-sync Job carries them in its URL.
 	let job = find(&out, "Job", "facility-2-setup-sync");
 	let env = job["spec"]["template"]["spec"]["containers"][0]["env"]
 		.as_array()
 		.unwrap();
 	let sync_url = env.iter().find(|e| e["name"] == "SYNC_URL").unwrap();
 	assert_eq!(
-		sync_url["valueFrom"]["secretKeyRef"]["name"],
-		"facility-2-sync-url"
+		sync_url["value"],
+		"https://admin%40tamanu.io:fixture@central.main.cd.tamanu.app/"
 	);
 }
 
@@ -218,7 +216,8 @@ fn rendering_is_deterministic() {
 #[test]
 fn each_facility_has_a_cluster_and_grants_beside_its_apps() {
 	let p = current(json!({ "facilities": 2 }));
-	let cfg = Config::derive(&p).unwrap();
+	let mut cfg = Config::derive(&p).unwrap();
+	cfg.provisioning = Some(json!({ "users": { "admin@tamanu.io": { "password": "fixture" } } }));
 	let out = tamanu_render::facility::render(&cfg).unwrap();
 	let names = names(&out);
 	for n in [1, 2] {

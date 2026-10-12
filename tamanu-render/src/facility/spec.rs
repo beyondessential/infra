@@ -5,6 +5,7 @@ use k8s_openapi::api::core::v1::{
 	ConfigMapVolumeSource, Container, EnvVar, PodSpec, ResourceRequirements, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 use crate::blob_store::BlobStore;
@@ -133,11 +134,7 @@ impl<'a> PodFactory<'a> {
 		env.extend([
 			// Single connection string for the core user. Tamanu prefers this over
 			// the structured DB_* vars below, which stay as a fallback.
-			env_secret(
-				"DATABASE_URL",
-				&names::db_url_secret(server),
-				names::DB_URL_KEY,
-			),
+			env_secret("DATABASE_URL", &app_db, names::DB_APP_URI_KEY),
 			self::env("DB_HOST", names::db_rw_service(server)),
 			env_secret("DB_PASSWORD", &app_db, "password"),
 			env_secret("DB_USERNAME", &app_db, "username"),
@@ -147,9 +144,45 @@ impl<'a> PodFactory<'a> {
 			env_secret("DB_RAW_PASSWORD", &raw, "password"),
 			env_secret("DB_REPORTING_USERNAME", &reporting, "username"),
 			env_secret("DB_REPORTING_PASSWORD", &reporting, "password"),
+			env_secret(
+				"AUTH_SECRET",
+				&names::config_secrets(server),
+				names::AUTH_SECRET_KEY,
+			),
 		]);
 		env
 	}
+}
+
+/// The `custom-environment-variables.json` the facility server reads: which
+/// config keys come from which environment variables.
+pub fn config_from_env() -> Value {
+	json!({
+		"auth": { "secret": "AUTH_SECRET" },
+		"db": {
+			"host": "DB_HOST",
+			"username": "DB_USERNAME",
+			"password": "DB_PASSWORD",
+			"name": "DB_NAME",
+			"reportSchemas": {
+				"connections": {
+					"raw": {
+						"username": "DB_RAW_USERNAME",
+						"password": "DB_RAW_PASSWORD",
+					},
+					"reporting": {
+						"username": "DB_REPORTING_USERNAME",
+						"password": "DB_REPORTING_PASSWORD",
+					},
+				},
+			},
+		},
+		"errors": { "apiKey": "BUGSNAG_API_KEY" },
+		"crypto": {
+			"keyFile": "CRYPTO_KEY_FILE",
+			"settingsPsk": "CRYPTO_SETTINGS_PSK",
+		},
+	})
 }
 
 #[cfg(test)]

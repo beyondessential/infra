@@ -86,14 +86,18 @@ fn to_jinja(v: &Value) -> JinjaValue {
 		Value::String(s) => JinjaValue::from(s.as_str()),
 		Value::Array(a) => JinjaValue::from(a.iter().map(to_jinja).collect::<Vec<_>>()),
 		Value::Object(o) => JinjaValue::from(
-			o.iter().map(|(k, v)| (k.clone(), to_jinja(v))).collect::<BTreeMap<String, JinjaValue>>(),
+			o.iter()
+				.map(|(k, v)| (k.clone(), to_jinja(v)))
+				.collect::<BTreeMap<String, JinjaValue>>(),
 		),
 	}
 }
 
 fn environment() -> Environment<'static> {
 	let mut env = Environment::new();
-	env.add_filter("randomstring", |length: usize, _format: Option<String>| placeholder(length));
+	env.add_filter("randomstring", |length: usize, _format: Option<String>| {
+		placeholder(length)
+	});
 	env
 }
 
@@ -162,7 +166,8 @@ fn parse_json5(text: &str) -> Result<Value> {
 /// credentials from it, and the setup-sync Job needs them for the sync URL.
 pub fn provisioning(cfg: &Config, templates: &Templates) -> Result<(Value, String, String)> {
 	let ids: Vec<&str> = cfg.facilities.iter().map(|f| f.id.as_str()).collect();
-	let (template, rendered) = templates.render(cfg, Kind::Provisioning, json!({ "facilityNames": ids }))?;
+	let (template, rendered) =
+		templates.render(cfg, Kind::Provisioning, json!({ "facilityNames": ids }))?;
 	let parsed = parse_json5(&rendered)?;
 	Ok((parsed, rendered, template))
 }
@@ -172,7 +177,12 @@ pub fn provisioning(cfg: &Config, templates: &Templates) -> Result<(Value, Strin
 ///
 /// `central_env` and `facility_env` are the servers' `custom-environment-variables.json`
 /// contents.
-pub fn render(cfg: &Config, templates: &Templates, central_env: &Value, facility_env: &Value) -> Result<Vec<Value>> {
+pub fn render(
+	cfg: &Config,
+	templates: &Templates,
+	central_env: &Value,
+	facility_env: &Value,
+) -> Result<Vec<Value>> {
 	let mut out = Vec::new();
 
 	let (provisioning, prov_text, prov_template) = self::provisioning(cfg, templates)?;
@@ -199,7 +209,10 @@ pub fn render(cfg: &Config, templates: &Templates, central_env: &Value, facility
 		&template,
 		BTreeMap::from([
 			(Kind::Central.key().into(), text),
-			("custom-environment-variables.json".into(), serde_json::to_string(central_env)?),
+			(
+				"custom-environment-variables.json".into(),
+				serde_json::to_string(central_env)?,
+			),
 		]),
 	)?);
 
@@ -230,7 +243,10 @@ pub fn render(cfg: &Config, templates: &Templates, central_env: &Value, facility
 			&template,
 			BTreeMap::from([
 				(Kind::Facility.key().into(), text),
-				("custom-environment-variables.json".into(), serde_json::to_string(facility_env)?),
+				(
+					"custom-environment-variables.json".into(),
+					serde_json::to_string(facility_env)?,
+				),
 			]),
 		)?);
 	}
@@ -276,7 +292,9 @@ pub fn sync_url(cfg: &Config, provisioning: &Value) -> Result<String> {
 }
 
 pub fn templates_at(dir: impl AsRef<Path>) -> Templates {
-	Templates { dir: dir.as_ref().to_owned() }
+	Templates {
+		dir: dir.as_ref().to_owned(),
+	}
 }
 
 #[cfg(test)]
@@ -297,7 +315,10 @@ mod tests {
 	}
 
 	fn fixtures() -> Templates {
-		templates_at(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/templates"))
+		templates_at(concat!(
+			env!("CARGO_MANIFEST_DIR"),
+			"/tests/fixtures/templates"
+		))
 	}
 
 	#[test]
@@ -305,7 +326,10 @@ mod tests {
 		let (parsed, _, template) = provisioning(&cfg("basic", None), &fixtures()).unwrap();
 		assert_eq!(template, "basic");
 		assert_eq!(parsed["facilities"]["facility-2"]["name"], "Facility 2");
-		assert_eq!(parsed["users"]["admin@tamanu.io"]["password"], "fixture-password");
+		assert_eq!(
+			parsed["users"]["admin@tamanu.io"]["password"],
+			"fixture-password"
+		);
 	}
 
 	#[test]
@@ -316,52 +340,122 @@ mod tests {
 
 	#[test]
 	fn randomstring_is_a_fixed_placeholder() {
-		let maps = render(&cfg("basic", Some("2.66.0")), &fixtures(), &json!({}), &json!({})).unwrap();
-		let central = maps.iter().find(|m| m["metadata"]["name"] == "config-central").unwrap();
+		let maps = render(
+			&cfg("basic", Some("2.66.0")),
+			&fixtures(),
+			&json!({}),
+			&json!({}),
+		)
+		.unwrap();
+		let central = maps
+			.iter()
+			.find(|m| m["metadata"]["name"] == "config-central")
+			.unwrap();
 		let text = central["data"]["local.json5"].as_str().unwrap();
-		assert!(text.contains(&format!("secret: '{}'", "x".repeat(80))), "{text}");
-		let again = render(&cfg("basic", Some("2.66.0")), &fixtures(), &json!({}), &json!({})).unwrap();
+		assert!(
+			text.contains(&format!("secret: '{}'", "x".repeat(80))),
+			"{text}"
+		);
+		let again = render(
+			&cfg("basic", Some("2.66.0")),
+			&fixtures(),
+			&json!({}),
+			&json!({}),
+		)
+		.unwrap();
 		assert_eq!(maps, again);
 	}
 
 	#[test]
 	fn facility_config_uses_provisioned_credentials_and_instance() {
-		let maps = render(&cfg("basic", Some("2.66.0")), &fixtures(), &json!({}), &json!({})).unwrap();
-		let f1 = maps.iter().find(|m| m["metadata"]["name"] == "config-facility-1").unwrap();
+		let maps = render(
+			&cfg("basic", Some("2.66.0")),
+			&fixtures(),
+			&json!({}),
+			&json!({}),
+		)
+		.unwrap();
+		let f1 = maps
+			.iter()
+			.find(|m| m["metadata"]["name"] == "config-facility-1")
+			.unwrap();
 		let text = f1["data"]["local.json5"].as_str().unwrap();
 		assert!(text.contains("password: 'fixture-password'"), "{text}");
 		assert!(text.contains("location: 'First'"), "{text}");
 		assert!(text.contains("host: 'http://facility-1-sync'"), "{text}");
-		let f2 = maps.iter().find(|m| m["metadata"]["name"] == "config-facility-2").unwrap();
-		assert!(f2["data"]["local.json5"].as_str().unwrap().contains("location: 'Other'"));
+		let f2 = maps
+			.iter()
+			.find(|m| m["metadata"]["name"] == "config-facility-2")
+			.unwrap();
+		assert!(
+			f2["data"]["local.json5"]
+				.as_str()
+				.unwrap()
+				.contains("location: 'Other'")
+		);
 	}
 
 	#[test]
 	fn legacy_sync_config_is_set_for_old_versions() {
-		let old = render(&cfg("basic", Some("2.59.0")), &fixtures(), &json!({}), &json!({})).unwrap();
-		let f1 = old.iter().find(|m| m["metadata"]["name"] == "config-facility-1").unwrap();
-		assert!(f1["data"]["local.json5"].as_str().unwrap().contains("legacy: true"));
+		let old = render(
+			&cfg("basic", Some("2.59.0")),
+			&fixtures(),
+			&json!({}),
+			&json!({}),
+		)
+		.unwrap();
+		let f1 = old
+			.iter()
+			.find(|m| m["metadata"]["name"] == "config-facility-1")
+			.unwrap();
+		assert!(
+			f1["data"]["local.json5"]
+				.as_str()
+				.unwrap()
+				.contains("legacy: true")
+		);
 	}
 
 	#[test]
 	fn network_ranges_reach_templates() {
 		let maps = render(&cfg("basic", None), &fixtures(), &json!({}), &json!({})).unwrap();
-		let central = maps.iter().find(|m| m["metadata"]["name"] == "config-central").unwrap();
-		assert!(central["data"]["local.json5"].as_str().unwrap().contains("'10.0.0.0/16', 'fd00::/48'"));
+		let central = maps
+			.iter()
+			.find(|m| m["metadata"]["name"] == "config-central")
+			.unwrap();
+		assert!(
+			central["data"]["local.json5"]
+				.as_str()
+				.unwrap()
+				.contains("'10.0.0.0/16', 'fd00::/48'")
+		);
 	}
 
 	#[test]
 	fn sync_url_encodes_credentials() {
 		let c = cfg("basic", None);
-		let url = sync_url(&c, &json!({"users": {"admin@tamanu.io": {"password": "p%41 ss/"}}})).unwrap();
-		assert_eq!(url, "https://admin%40tamanu.io:p%2541%20ss%2F@central.main.cd.tamanu.app/");
+		let url = sync_url(
+			&c,
+			&json!({"users": {"admin@tamanu.io": {"password": "p%41 ss/"}}}),
+		)
+		.unwrap();
+		assert_eq!(
+			url,
+			"https://admin%40tamanu.io:p%2541%20ss%2F@central.main.cd.tamanu.app/"
+		);
 	}
 
 	#[test]
 	fn config_maps_are_labelled_with_their_template() {
 		let maps = render(&cfg("basic", None), &fixtures(), &json!({}), &json!({})).unwrap();
-		let prov = maps.iter().find(|m| m["metadata"]["name"] == "provisioning").unwrap();
-		assert_eq!(prov["metadata"]["labels"]["bes.tamanu/templated-from"], "provisioning-template-basic");
+		let prov = maps
+			.iter()
+			.find(|m| m["metadata"]["name"] == "provisioning")
+			.unwrap();
+		assert_eq!(
+			prov["metadata"]["labels"]["bes.tamanu/templated-from"],
+			"provisioning-template-basic"
+		);
 		assert_eq!(prov["data"]["timezone"], "Pacific/Auckland");
 	}
 }

@@ -4,6 +4,8 @@
 mod spec;
 mod workloads;
 
+pub use spec::config_from_env;
+
 use anyhow::Result;
 use serde_json::Value;
 

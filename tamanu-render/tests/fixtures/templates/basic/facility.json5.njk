@@ -5,8 +5,8 @@
     legacy: true,
     {% endif %}
     host: '{{ centralApiUrl }}',
-    email: 'admin@example.org',
-    password: '{{ provisioning.users["admin@example.org"].password }}',
+    email: 'admin@tamanu.io',
+    password: '{{ provisioning.users["admin@tamanu.io"].password }}',
     syncApiConnection: {
       host: '{{ syncApiUrl }}',
       port: {{ syncApiPort }},

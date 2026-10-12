@@ -81,8 +81,8 @@ pub fn cron_job(name: &str, args: CronJobArgs) -> Result<Value> {
 				env("PGUSER", args.db_user),
 				env_secret(
 					"PGPASSWORD",
-					&names::db_url_secret(&args.server),
-					names::db_url_key::APP_PASSWORD,
+					&names::db_app_secret(&args.server),
+					"password",
 				),
 			]),
 			resources: Some(args.resources),
@@ -129,7 +129,7 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn reads_the_app_password_from_the_url_secret() {
+	fn reads_the_app_password_from_the_cnpg_secret() {
 		let job = cron_job(
 			"partition-statuses",
 			CronJobArgs::new("ns", "central", "0 3 * * *", "SELECT 1"),
@@ -139,8 +139,8 @@ mod tests {
 		assert_eq!(c["image"], "postgres:18");
 		assert_eq!(c["args"][1], "SELECT 1");
 		let secret = &c["env"][3]["valueFrom"]["secretKeyRef"];
-		assert_eq!(secret["name"], "central-db-url");
-		assert_eq!(secret["key"], "app.password");
+		assert_eq!(secret["name"], "central-db-app");
+		assert_eq!(secret["key"], "password");
 		assert_eq!(c["env"][1]["value"], "central-db-rw");
 	}
 

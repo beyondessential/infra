@@ -100,6 +100,12 @@ pub struct Config {
 	pub service_account: Option<String>,
 	/// Ranges servers trust as proxies, in the `PROXY_TRUSTED` format.
 	pub proxy_trusted: String,
+	/// The VPC ranges, available to config templates. Empty when unpublished.
+	pub network_v4_cidr: String,
+	pub network_v6_cidr: String,
+	/// The rendered provisioning document, once templates have been read. The
+	/// facilities' setup-sync Jobs need its admin credentials.
+	pub provisioning: Option<serde_json::Value>,
 	pub db: DbConfig,
 	pub shared_blob_storage: bool,
 	release_version: Option<Version>,
@@ -224,6 +230,9 @@ impl Config {
 				.unwrap_or_else(|| "engineering".into()),
 			service_account: c.service_account.clone(),
 			proxy_trusted,
+			network_v4_cidr: p.cluster.network_v4_cidr.clone().unwrap_or_default(),
+			network_v6_cidr: p.cluster.network_v6_cidr.clone().unwrap_or_default(),
+			provisioning: None,
 			db,
 			shared_blob_storage: c.shared_blob_storage.unwrap_or(false),
 			release_version,

@@ -1,10 +1,10 @@
 //! CloudNativePG cluster for one Tamanu server, ported from `runPostgres` in
 //! `common/k8s/postgres.ts` and its tuning, cron and URL helpers.
 //!
-//! The `{name}-db-url` Secret `runPostgres` created is the stub's job; see
-//! [`names::db_url_secret`] and [`names::db_url_key`]. The readiness wait on the
-//! cluster is replaced by sync waves: the cluster is in [`waves::BASE`] and
-//! everything that needs it healthy runs in a later wave.
+//! Servers connect with the `uri` CNPG puts in the cluster's `app` Secret (see
+//! [`names::DB_APP_URI_KEY`]), so no connection-string Secret is built for them.
+//! The readiness wait on the cluster is replaced by sync waves: the cluster is
+//! in [`waves::BASE`] and everything that needs it healthy runs in a later wave.
 
 pub mod cron;
 pub mod reporting;
@@ -602,8 +602,8 @@ mod tests {
 	}
 
 	#[test]
-	fn url_key_constants_match_the_shared_name() {
-		assert_eq!(names::DB_URL_KEY, "app.dburl");
-		assert_eq!(names::db_url_key::APP_PASSWORD, "app.password");
+	fn servers_read_the_connection_string_cnpg_publishes() {
+		assert_eq!(names::DB_APP_URI_KEY, "uri");
+		assert_eq!(names::db_app_secret("central"), "central-db-app");
 	}
 }

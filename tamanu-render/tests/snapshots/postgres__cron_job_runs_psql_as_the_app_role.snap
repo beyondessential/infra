@@ -59,8 +59,8 @@ spec:
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: app.password
-                  name: central-db-url
+                  key: password
+                  name: central-db-app
             image: postgres:18
             name: partition-example
             resources:

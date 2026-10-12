@@ -2,7 +2,7 @@
 //! `facility/server.ts`, `tasks.ts`, `fhir.ts` and the setup-sync Job in
 //! `FacilityServer.ts`.
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentSpec, DeploymentStrategy};
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::{
@@ -14,9 +14,9 @@ use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use serde_json::Value;
 
 use crate::config::Config;
+use crate::config_map;
 use crate::meta::{app_labels, app_selector, cost_labels};
-use crate::names;
-use crate::pod::{ContainerArgs, ImageType, env, env_secret};
+use crate::pod::{ContainerArgs, ImageType, env};
 use crate::waves;
 
 use super::spec::{PodArgs, PodFactory};
@@ -226,14 +226,14 @@ pub fn run_fhir_worker(ctx: &Ctx<'_>, role: &str, topics: &[&str]) -> Result<Val
 /// provisioned admin. It needs the facts table, so it runs after the migrator,
 /// and the servers wait on it by wave.
 pub fn setup_sync(ctx: &Ctx<'_>) -> Result<Value> {
+	let provisioning = ctx.cfg.provisioning.as_ref().ok_or_else(|| {
+		anyhow!("setup-sync needs the provisioning document, which comes from the templates")
+	})?;
+	let sync_url = config_map::sync_url(ctx.cfg, provisioning)?;
 	let mut pod = ctx.pods.build(PodArgs {
 		pod_type: "setup-sync",
 		command: vec!["setupSync".into()],
-		env: vec![env_secret(
-			"SYNC_URL",
-			&names::facility_sync_url_secret(ctx.server),
-			names::SYNC_URL_KEY,
-		)],
+		env: vec![env("SYNC_URL", sync_url)],
 		..Default::default()
 	});
 	pod.restart_policy = Some("Never".into());

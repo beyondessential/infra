@@ -1,5 +1,12 @@
 use serde_json::{Value, json};
+use tamanu_render::Options;
 use tamanu_render::params::Params;
+
+fn options() -> Options {
+	Options {
+		templates: Some(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/templates").into()),
+	}
+}
 
 fn params(extra_config: Value) -> Params {
 	serde_json::from_value(json!({
@@ -13,7 +20,7 @@ fn params(extra_config: Value) -> Params {
 }
 
 fn render_yaml(p: &Params) -> String {
-	tamanu_render::to_yaml(&tamanu_render::render(p).unwrap()).unwrap()
+	tamanu_render::to_yaml(&tamanu_render::render_with(p, &options()).unwrap()).unwrap()
 }
 
 #[test]
@@ -37,7 +44,7 @@ fn redirects_add_a_gateway_and_routes() {
 			"older.example.org": "https://new.example.org",
 		},
 	}));
-	let out = tamanu_render::render(&p).unwrap();
+	let out = tamanu_render::render_with(&p, &options()).unwrap();
 	let kinds_names: Vec<_> = out
 		.iter()
 		.filter(|v| {
@@ -54,7 +61,9 @@ fn redirects_add_a_gateway_and_routes() {
 fn redirect_targets_with_a_path_are_rejected() {
 	let p =
 		params(json!({ "redirects": { "old.example.org": "https://new.example.org/somewhere" } }));
-	let err = tamanu_render::render(&p).unwrap_err().to_string();
+	let err = tamanu_render::render_with(&p, &options())
+		.unwrap_err()
+		.to_string();
 	assert!(err.contains("must not have a path"), "{err}");
 }
 
@@ -73,7 +82,7 @@ fn unknown_config_keys_are_rejected() {
 
 #[test]
 fn no_secret_resources_in_output() {
-	let out = tamanu_render::render(&params(json!({}))).unwrap();
+	let out = tamanu_render::render_with(&params(json!({})), &options()).unwrap();
 	assert!(
 		out.iter().all(|v| v["kind"] != "Secret"),
 		"renderer must not emit Secrets"

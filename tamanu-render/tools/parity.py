@@ -12,12 +12,22 @@ import re
 import sys
 
 
+SECRET = re.compile(r"'(?:[0-9a-f]{80}|x{80})'")
+
+
 def strip(obj):
+    if isinstance(obj, str):
+        # Generated secrets: random in state, a placeholder when rendered.
+        return SECRET.sub("'SECRET'", obj)
     if isinstance(obj, dict):
         out = {}
         for k, v in obj.items():
             if k == "annotations" and isinstance(v, dict):
-                v = {a: b for a, b in v.items() if not a.startswith("pulumi.com/")}
+                v = {
+                    a: b
+                    for a, b in v.items()
+                    if not a.startswith(("pulumi.com/", "argocd.argoproj.io/"))
+                }
                 if not v:
                     continue
             out[k] = strip(v)
@@ -54,15 +64,26 @@ def main():
 
     names = {}
     by_key = {}
+    nonce = re.compile(r"(.*-reporting-grants)-\d+")
     for r in state:
         inp = r.get("inputs") or {}
         if "kind" not in inp:
             continue
         logical = r["urn"].split("::")[-1]
+        m = nonce.fullmatch(logical)
+        if m:
+            logical = m.group(1)
         actual = inp.get("metadata", {}).get("name")
         if actual and re.fullmatch(re.escape(logical) + r"-[0-9a-f]{8}", actual):
             names[actual] = logical
         by_key[(inp["kind"], logical)] = inp
+
+    # Intentional renames: ConfigMaps are named config-{server}, and the grants
+    # Job lost the per-deploy nonce Pulumi added to force a replacement.
+    def render_rename(o):
+        s = json.dumps(o)
+        s = re.sub(r'"config-(central|facility-\d+)"', r'"\1"', s)
+        return json.loads(s)
 
     def rename(o):
         s = json.dumps(o)
@@ -83,7 +104,7 @@ def main():
             continue
         want = strip(rename(by_key[key]))
         want.get("metadata", {}).pop("name", None)
-        got = strip(r)
+        got = strip(render_rename(r))
         got.get("metadata", {}).pop("name", None)
         found = list(diff(want, got))
         if found:

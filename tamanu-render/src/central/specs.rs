@@ -133,6 +133,7 @@ impl<'a> PodSpecFactory<'a> {
 		let cfg = self.cfg;
 		let server = super::SERVER;
 		let secret_ref = env_secret;
+		let auth = names::config_secrets(server);
 		let app_db = names::db_app_secret(server);
 		let raw = names::raw_db_secret(server);
 		let reporting = names::reporting_db_secret(server);
@@ -152,11 +153,7 @@ impl<'a> PodSpecFactory<'a> {
 		out.extend([
 			// A single connection string for the core user. Tamanu prefers this
 			// over the structured DB_* variables below, which stay as a fallback.
-			secret_ref(
-				"DATABASE_URL",
-				&names::db_url_secret(server),
-				names::DB_URL_KEY,
-			),
+			secret_ref("DATABASE_URL", &app_db, names::DB_APP_URI_KEY),
 			env("DB_HOST", names::db_rw_service(server)),
 			secret_ref("DB_PASSWORD", &app_db, "password"),
 			secret_ref("DB_USERNAME", &app_db, "username"),
@@ -171,6 +168,8 @@ impl<'a> PodSpecFactory<'a> {
 			secret_ref("DB_RAW_PASSWORD", &raw, "password"),
 			secret_ref("DB_REPORTING_USERNAME", &reporting, "username"),
 			secret_ref("DB_REPORTING_PASSWORD", &reporting, "password"),
+			secret_ref("AUTH_SECRET", &auth, names::AUTH_SECRET_KEY),
+			secret_ref("AUTH_REFRESH_SECRET", &auth, names::AUTH_REFRESH_SECRET_KEY),
 		]);
 		out
 	}
@@ -226,6 +225,10 @@ pub fn deployment(
 /// come from which environment variables.
 pub fn config_from_env() -> Value {
 	json!({
+		"auth": {
+			"secret": "AUTH_SECRET",
+			"refreshSecret": "AUTH_REFRESH_SECRET",
+		},
 		"db": {
 			"host": "DB_HOST",
 			"username": "DB_USERNAME",
@@ -318,6 +321,8 @@ mod tests {
 				"DB_RAW_PASSWORD",
 				"DB_REPORTING_USERNAME",
 				"DB_REPORTING_PASSWORD",
+				"AUTH_SECRET",
+				"AUTH_REFRESH_SECRET",
 			]
 		);
 		let env = pod["containers"][0]["env"].as_array().unwrap();
@@ -385,9 +390,10 @@ mod tests {
 	#[test]
 	fn config_from_env_matches_what_the_pulumi_program_sent() {
 		let sent = r#"{"db":{"host":"DB_HOST","username":"DB_USERNAME","password":"DB_PASSWORD","name":"DB_NAME","reportSchemas":{"connections":{"raw":{"username":"DB_RAW_USERNAME","password":"DB_RAW_PASSWORD"},"reporting":{"username":"DB_REPORTING_USERNAME","password":"DB_REPORTING_PASSWORD"}}}},"countryTimeZone":"TZ","localisation":{"timeZone":"TZ"},"tupaiaApiClient":{"auth":{"username":"TUPAIA_API_USERNAME","password":"TUPAIA_API_PASSWORD"}},"mailgun":{"apiKey":"MAILGUN_API_KEY","domain":"MAILGUN_DOMAIN","from":"MAILGUN_FROM"},"errors":{"apiKey":"BUGSNAG_API_KEY"},"crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"}}"#;
-		assert_eq!(
-			config_from_env(),
-			serde_json::from_str::<Value>(sent).unwrap()
-		);
+		let mut got = config_from_env();
+		let auth = got.as_object_mut().unwrap().remove("auth").unwrap();
+		assert_eq!(got, serde_json::from_str::<Value>(sent).unwrap());
+		assert_eq!(auth["secret"], "AUTH_SECRET");
+		assert_eq!(auth["refreshSecret"], "AUTH_REFRESH_SECRET");
 	}
 }

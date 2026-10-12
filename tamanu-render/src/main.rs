@@ -17,15 +17,22 @@ struct Args {
 	#[arg(long)]
 	params: Option<PathBuf>,
 
+	/// Read config templates from this directory. Defaults to `templates` when
+	/// it exists, which is where an Argo plugin finds them in the checkout.
+	#[arg(long)]
+	templates: Option<PathBuf>,
+
 	/// Output format.
-	#[arg(long, value_enum, default_value_t = Format::Yaml)]
+	#[arg(long, value_enum, default_value_t = Format::Stream)]
 	format: Format,
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum Format {
-	/// A multi-document YAML stream, as Argo expects from a plugin.
+	/// A multi-document YAML stream, for reading.
 	Yaml,
+	/// A stream of JSON documents separated by `---`, as the Argo plugin emits.
+	Stream,
 	/// One JSON array, for diffing and tooling.
 	Json,
 }
@@ -41,9 +48,14 @@ fn main() -> Result<()> {
 		(None, Err(_)) => read_stdin()?,
 	};
 	let params: Params = serde_json::from_str(&raw).context("parsing parameters")?;
-	let resources = tamanu_render::render(&params)?;
+	let templates = args.templates.clone().or_else(|| {
+		let default = PathBuf::from("templates");
+		default.is_dir().then_some(default)
+	});
+	let resources = tamanu_render::render_with(&params, &tamanu_render::Options { templates })?;
 	match args.format {
 		Format::Yaml => print!("{}", tamanu_render::to_yaml(&resources)?),
+		Format::Stream => print!("{}", tamanu_render::to_stream(&resources)?),
 		Format::Json => println!("{}", serde_json::to_string_pretty(&resources)?),
 	}
 	Ok(())

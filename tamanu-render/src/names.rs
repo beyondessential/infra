@@ -32,17 +32,9 @@ pub fn reporting_db_secret(server: &str) -> String {
 /// `serviceAccount` config is set.
 pub const SERVICE_ACCOUNT: &str = "app-sa";
 
-/// Secret: the application's connection string for a server's database, with
-/// the key [`DB_URL_KEY`]. Created by the stub.
-pub fn db_url_secret(server: &str) -> String {
-	format!("{server}-db-url")
-}
-
-/// The key in [`db_url_secret`] holding the `app` role's connection string.
-pub const DB_URL_KEY: &str = "app.dburl";
-
-/// Secret: CNPG's credentials for the `app` role, with `username` and
-/// `password` keys. Created by CNPG with the cluster.
+/// Secret: CNPG's credentials for the `app` role, with `username`, `password`
+/// and `uri` keys, the last being the connection string the servers use.
+/// Created by CNPG with the cluster.
 pub fn db_app_secret(server: &str) -> String {
 	format!("{server}-db-app")
 }
@@ -58,35 +50,16 @@ pub fn db_rw_service(server: &str) -> String {
 	format!("{}-rw", db_cluster(server))
 }
 
-/// Secret: central's URL with the provisioned admin's credentials embedded
-/// (percent-encoded), under the key [`SYNC_URL_KEY`]. The facility's setup-sync
-/// Job seeds it into the facility's sync facts. Created by the stub.
-pub fn facility_sync_url_secret(server: &str) -> String {
-	format!("{server}-sync-url")
+/// The key in [`db_app_secret`] holding the `app` role's connection string.
+pub const DB_APP_URI_KEY: &str = "uri";
+
+/// Secret: signing secrets for a server's auth tokens, under [`AUTH_SECRET_KEY`]
+/// and, for central only, [`AUTH_REFRESH_SECRET_KEY`]. The rendered config holds
+/// placeholders for these paths, and the server reads the environment instead.
+/// Created by the stub.
+pub fn config_secrets(server: &str) -> String {
+	format!("config-secrets-{server}")
 }
 
-pub const SYNC_URL_KEY: &str = "url";
-
-/// Keys of [`db_url_secret`] beyond [`DB_URL_KEY`], from `postgresUrl.ts`. The
-/// stub fills them from CNPG's `app` and superuser passwords, with `name` the
-/// server (`central` or `facility-N`), `rw` and `ro` its `{name}-db-rw` and
-/// `{name}-db-ro` Services, and `P` the relevant password:
-///
-/// - `app.password`: the app role's password.
-/// - `app.dburl`: `postgres://app:P@rw/app`.
-/// - `app.jdbc`: `jdbc:postgresql://rw/app?user=app&password=P`.
-/// - `app.rodburl`: `postgres://app:P@ro/app?sslmode=disable`.
-/// - `app.localdburl`: `postgres://app:P@localhost:5433/app`.
-/// - `app.localjdbc`: `jdbc:postgresql://localhost:5433/app?user=app&password=P`.
-/// - `postgres.password`: the superuser's password.
-/// - `postgres.dburl`: `postgres://postgres:P@rw/postgres`.
-/// - `postgres.localdburl`: `postgres://postgres:P@localhost:5433/postgres`.
-/// - `postgres.localjdbc`: `jdbc:postgresql://localhost:5433/postgres?user=postgres&password=P`.
-///
-/// The Secret is labelled `app.kubernetes.io/name: {name}` and
-/// `app.kubernetes.io/component: database`.
-pub mod db_url_key {
-	pub const APP_PASSWORD: &str = "app.password";
-	pub const APP_RO_DB_URL: &str = "app.rodburl";
-	pub const APP_JDBC_URL: &str = "app.jdbc";
-}
+pub const AUTH_SECRET_KEY: &str = "authSecret";
+pub const AUTH_REFRESH_SECRET_KEY: &str = "authRefreshSecret";

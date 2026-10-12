@@ -339,6 +339,69 @@ spec:
   storage:
     size: 5Gi
 ---
+apiVersion: v1
+data:
+  custom-environment-variables.json: '{"auth":{"refreshSecret":"AUTH_REFRESH_SECRET","secret":"AUTH_SECRET"},"countryTimeZone":"TZ","crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"},"db":{"host":"DB_HOST","name":"DB_NAME","password":"DB_PASSWORD","reportSchemas":{"connections":{"raw":{"password":"DB_RAW_PASSWORD","username":"DB_RAW_USERNAME"},"reporting":{"password":"DB_REPORTING_PASSWORD","username":"DB_REPORTING_USERNAME"}}},"username":"DB_USERNAME"},"errors":{"apiKey":"BUGSNAG_API_KEY"},"localisation":{"timeZone":"TZ"},"mailgun":{"apiKey":"MAILGUN_API_KEY","domain":"MAILGUN_DOMAIN","from":"MAILGUN_FROM"},"tupaiaApiClient":{"auth":{"password":"TUPAIA_API_PASSWORD","username":"TUPAIA_API_USERNAME"}}}'
+  local.json5: |-
+    {
+      canonicalHostName: 'https://central.main.cd.tamanu.app',
+      auth: {
+        secret: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        refreshSecret: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      },
+      proxy: {
+        trusted: ['loopback', '', ''],
+      },
+      countryTimeZone: 'Pacific/Auckland',
+    }
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    bes.tamanu/templated-from: config-central-template-basic
+  name: config-central
+  namespace: tamanu-main
+---
+apiVersion: v1
+data:
+  custom-environment-variables.json: '{"auth":{"secret":"AUTH_SECRET"},"crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"},"db":{"host":"DB_HOST","name":"DB_NAME","password":"DB_PASSWORD","reportSchemas":{"connections":{"raw":{"password":"DB_RAW_PASSWORD","username":"DB_RAW_USERNAME"},"reporting":{"password":"DB_REPORTING_PASSWORD","username":"DB_REPORTING_USERNAME"}}},"username":"DB_USERNAME"},"errors":{"apiKey":"BUGSNAG_API_KEY"}}'
+  local.json5: "{\n  canonicalHostName: 'https://facility-1.main.cd.tamanu.app',\n  sync: {\n    \n    host: 'https://central.main.cd.tamanu.app',\n    email: 'admin@tamanu.io',\n    password: 'fixture-password',\n    syncApiConnection: {\n      host: 'http://facility-1-sync',\n      port: 80,\n    },\n  },\n  auth: {\n    secret: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',\n  },\n  survey: {\n    defaultCodes: {\n      location: 'First',\n    },\n  },\n  serverFacilityId: 'facility-1',\n  deviceId: 'facility-1',\n}"
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    bes.tamanu/templated-from: config-facility-template-basic
+  name: config-facility-1
+  namespace: tamanu-main
+---
+apiVersion: v1
+data:
+  custom-environment-variables.json: '{"auth":{"secret":"AUTH_SECRET"},"crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"},"db":{"host":"DB_HOST","name":"DB_NAME","password":"DB_PASSWORD","reportSchemas":{"connections":{"raw":{"password":"DB_RAW_PASSWORD","username":"DB_RAW_USERNAME"},"reporting":{"password":"DB_REPORTING_PASSWORD","username":"DB_REPORTING_USERNAME"}}},"username":"DB_USERNAME"},"errors":{"apiKey":"BUGSNAG_API_KEY"}}'
+  local.json5: "{\n  canonicalHostName: 'https://facility-2.main.cd.tamanu.app',\n  sync: {\n    \n    host: 'https://central.main.cd.tamanu.app',\n    email: 'admin@tamanu.io',\n    password: 'fixture-password',\n    syncApiConnection: {\n      host: 'http://facility-2-sync',\n      port: 80,\n    },\n  },\n  auth: {\n    secret: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',\n  },\n  survey: {\n    defaultCodes: {\n      location: 'Other',\n    },\n  },\n  serverFacilityId: 'facility-2',\n  deviceId: 'facility-2',\n}"
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    bes.tamanu/templated-from: config-facility-template-basic
+  name: config-facility-2
+  namespace: tamanu-main
+---
+apiVersion: v1
+data:
+  provisioning.json5: "{\n  users: {\n    'admin@tamanu.io': {\n      role: 'admin',\n      password: 'fixture-password',\n    },\n  },\n  facilities: {\n    \n    'facility-1': {\n      name: 'Facility 1',\n      code: 'facility-1',\n    },\n    \n    'facility-2': {\n      name: 'Facility 2',\n      code: 'facility-2',\n    },\n    \n  },\n}"
+  timezone: Pacific/Auckland
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  labels:
+    bes.tamanu/templated-from: provisioning-template-basic
+  name: provisioning
+  namespace: tamanu-main
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -411,8 +474,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: central-db-url
+              key: uri
+              name: central-db-app
         - name: DB_HOST
           value: central-db-rw
         - name: DB_PASSWORD
@@ -480,6 +543,16 @@ spec:
             secretKeyRef:
               key: password
               name: central-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-central
+        - name: AUTH_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authRefreshSecret
+              name: config-secrets-central
         image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -599,8 +672,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: central-db-url
+              key: uri
+              name: central-db-app
         - name: DB_HOST
           value: central-db-rw
         - name: DB_PASSWORD
@@ -668,6 +741,16 @@ spec:
             secretKeyRef:
               key: password
               name: central-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-central
+        - name: AUTH_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authRefreshSecret
+              name: config-secrets-central
         image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: fhir-refresh
@@ -772,8 +855,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: central-db-url
+              key: uri
+              name: central-db-app
         - name: DB_HOST
           value: central-db-rw
         - name: DB_PASSWORD
@@ -841,6 +924,16 @@ spec:
             secretKeyRef:
               key: password
               name: central-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-central
+        - name: AUTH_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authRefreshSecret
+              name: config-secrets-central
         image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: fhir-resolver
@@ -945,8 +1038,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: central-db-url
+              key: uri
+              name: central-db-app
         - name: DB_HOST
           value: central-db-rw
         - name: DB_PASSWORD
@@ -1014,6 +1107,16 @@ spec:
             secretKeyRef:
               key: password
               name: central-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-central
+        - name: AUTH_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authRefreshSecret
+              name: config-secrets-central
         image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: task-runner
@@ -1207,8 +1310,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -1251,6 +1354,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1372,8 +1480,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -1416,6 +1524,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1535,8 +1648,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -1579,6 +1692,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: task-runner
@@ -1772,8 +1890,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -1816,6 +1934,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1937,8 +2060,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -1981,6 +2104,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2100,8 +2228,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -2144,6 +2272,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: task-runner
@@ -2337,8 +2470,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -2381,6 +2514,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: fhir-refresh
@@ -2487,8 +2625,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -2531,6 +2669,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: fhir-refresh
@@ -2637,8 +2780,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -2681,6 +2824,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: fhir-resolver
@@ -2787,8 +2935,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -2831,6 +2979,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: fhir-resolver
@@ -3565,8 +3718,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: central-db-url
+              key: uri
+              name: central-db-app
         - name: DB_HOST
           value: central-db-rw
         - name: DB_PASSWORD
@@ -3634,6 +3787,16 @@ spec:
             secretKeyRef:
               key: password
               name: central-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-central
+        - name: AUTH_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authRefreshSecret
+              name: config-secrets-central
         image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: migrator
@@ -3727,8 +3890,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: central-db-url
+              key: uri
+              name: central-db-app
         - name: DB_HOST
           value: central-db-rw
         - name: DB_PASSWORD
@@ -3796,6 +3959,16 @@ spec:
             secretKeyRef:
               key: password
               name: central-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-central
+        - name: AUTH_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authRefreshSecret
+              name: config-secrets-central
         image: ghcr.io/beyondessential/tamanu-central:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: provisioner
@@ -3937,8 +4110,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -3981,6 +4154,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: migrator
@@ -4098,10 +4276,7 @@ spec:
         - setupSync
         env:
         - name: SYNC_URL
-          valueFrom:
-            secretKeyRef:
-              key: url
-              name: facility-1-sync-url
+          value: https://admin%40tamanu.io:fixture-password@central.main.cd.tamanu.app/
         - name: CRYPTO_KEY_FILE
           value: /secrets/configKey
         - name: CRYPTO_SETTINGS_PSK
@@ -4122,8 +4297,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-1-db-url
+              key: uri
+              name: facility-1-db-app
         - name: DB_HOST
           value: facility-1-db-rw
         - name: DB_PASSWORD
@@ -4166,6 +4341,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-1-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: setup-sync
@@ -4255,8 +4435,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -4299,6 +4479,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: migrator
@@ -4416,10 +4601,7 @@ spec:
         - setupSync
         env:
         - name: SYNC_URL
-          valueFrom:
-            secretKeyRef:
-              key: url
-              name: facility-2-sync-url
+          value: https://admin%40tamanu.io:fixture-password@central.main.cd.tamanu.app/
         - name: CRYPTO_KEY_FILE
           value: /secrets/configKey
         - name: CRYPTO_SETTINGS_PSK
@@ -4440,8 +4622,8 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              key: app.dburl
-              name: facility-2-db-url
+              key: uri
+              name: facility-2-db-app
         - name: DB_HOST
           value: facility-2-db-rw
         - name: DB_PASSWORD
@@ -4484,6 +4666,11 @@ spec:
             secretKeyRef:
               key: password
               name: facility-2-reporting-db
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-2
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         name: setup-sync
