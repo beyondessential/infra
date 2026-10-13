@@ -6,7 +6,6 @@ on:
     paths:
       - "tamanu/on-k8s/renderer/**"
       - ".github/workflows/infra-argo-tamanu-renderer-cd.yml"
-    tags: ["infra-argo-tamanu-renderer-v*.*.*"]
   pull_request:
     paths:
       - "tamanu/on-k8s/renderer/**"
@@ -105,11 +104,6 @@ jobs:
       - name: Login to ghcr.io
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
-      - name: Extract version
-        id: version
-        working-directory: tamanu/on-k8s/renderer
-        run: echo "version=$(cargo pkgid | cut -d# -f2)" >> "$GITHUB_OUTPUT"
-
       - name: Download AMD64 binaries
         uses: actions/download-artifact@v4
         with:
@@ -135,13 +129,12 @@ jobs:
           tags: |
             type=sha
             type=ref,event=branch
-            type=match,pattern=infra-argo-tamanu-renderer-v(.*),group=1
           labels: |
             org.opencontainers.image.vendor=BES International
             org.opencontainers.image.title=infra-argo-tamanu-renderer
             org.opencontainers.image.url=https://github.com/beyondessential/infra/
             org.opencontainers.image.source=https://github.com/beyondessential/infra/
-            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
