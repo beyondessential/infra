@@ -5,7 +5,7 @@ import { facilityList } from '../config.ts';
 import { namespace } from '../namespace.ts';
 
 // Secret values are never rendered, so this stub creates every Secret that the
-// renderer references by name. The names are the contract in tamanu-render's
+// renderer references by name. The names are the contract in infra-argo-tamanu-renderer's
 // names.rs.
 
 export const servers = ['central', ...facilityList.map((_, i) => `facility-${i + 1}`)];

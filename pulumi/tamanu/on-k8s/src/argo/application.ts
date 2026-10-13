@@ -11,7 +11,7 @@ const ARGO_PROJECT = cfg.get('argoProject') ?? 'tamanu';
 const RENDERER_REPO = cfg.get('rendererRepo') ?? 'https://github.com/beyondessential/infra';
 const RENDERER_REF = cfg.get('rendererRef') ?? 'main';
 const RENDERER_PATH = cfg.get('rendererPath') ?? 'tamanu/on-k8s/renderer';
-const PLUGIN = 'tamanu-render-v1';
+const PLUGIN = 'infra-argo-tamanu-renderer-v1';
 const WAIT_MINUTES = cfg.getNumber('argoWaitMinutes') ?? 30;
 const POLL_SECONDS = 5;
 

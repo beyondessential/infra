@@ -2,14 +2,14 @@ import * as k8s from '@pulumi/kubernetes';
 import { cfg } from '../../common/k8s/coreRef.ts';
 import { ARGO_CD_VERSION } from '../versions.ts';
 
-// Argo CD applies Tamanu deployments that tamanu-render renders. Each deployment
+// Argo CD applies Tamanu deployments that infra-argo-tamanu-renderer renders. Each deployment
 // is an Application created by the tamanu/on-k8s stub; this stack owns the
 // controller, the render plugin and the project those Applications run under.
 
 const namespaceName = cfg.get('argoNamespace') ?? 'argocd';
 const RENDER_REPO = 'https://github.com/beyondessential/infra';
 
-// tamanu-render is published by that repository's CD. The tag is a required
+// infra-argo-tamanu-renderer is published by that repository's CD. The tag is a required
 // config value so the plugin never floats.
 const renderImageTag = cfg.require('argoRenderImageTag');
 
@@ -74,7 +74,7 @@ const release = new k8s.helm.v3.Release(
         volumes: [{ name: 'cmp-tmp', emptyDir: {} }],
         extraContainers: [
           {
-            name: 'tamanu-render',
+            name: 'infra-argo-tamanu-renderer',
             command: ['/var/run/argocd/argocd-cmp-server'],
             image: `ghcr.io/beyondessential/infra-argo-tamanu-renderer:${renderImageTag}`,
             securityContext: { runAsNonRoot: true, runAsUser: 999 },
@@ -107,7 +107,7 @@ new k8s.apiextensions.CustomResource(
     kind: 'AppProject',
     metadata: { name: 'tamanu', namespace: namespaceName },
     spec: {
-      description: 'Tamanu deployments rendered by tamanu-render',
+      description: 'Tamanu deployments rendered by infra-argo-tamanu-renderer',
       sourceRepos: [RENDER_REPO],
       destinations: [
         { server: 'https://kubernetes.default.svc', namespace: 'tamanu-*' },

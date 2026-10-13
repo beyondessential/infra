@@ -10,7 +10,7 @@ import {
 import { deployment, stage } from '../config.ts';
 import { imageTag } from '../image.ts';
 
-// The input contract with tamanu-render (its params.rs). Stack config keeps the
+// The input contract with infra-argo-tamanu-renderer (its params.rs). Stack config keeps the
 // names it has here and is passed as typed JSON; the renderer owns the
 // defaults. Keys it does not know are rejected there, so a key is added in both
 // places or not at all.
@@ -67,7 +67,7 @@ function rejectUnforwardedKeys(forwarded: string[]): void {
     .filter((key) => !known.has(key));
   if (unknown.length > 0) {
     throw new Error(
-      `Stack config not passed to tamanu-render: ${unknown.join(', ')}. ` +
+      `Stack config not passed to infra-argo-tamanu-renderer: ${unknown.join(', ')}. ` +
         "Add each to params.ts and to the renderer's params.rs, or list it in HANDLED_ELSEWHERE.",
     );
   }

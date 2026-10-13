@@ -9,7 +9,7 @@ await failIfIncorrectCluster();
 
 // The stub creates what cannot be rendered: secret values, and anything that
 // needs the live cluster or the clock. Everything else is rendered by
-// tamanu-render and applied by Argo CD. These modules create resources as they
+// infra-argo-tamanu-renderer and applied by Argo CD. These modules create resources as they
 // are evaluated, so they are loaded only after the cluster check.
 await import('../secrets.ts');
 await import('../common/crypto.ts');
