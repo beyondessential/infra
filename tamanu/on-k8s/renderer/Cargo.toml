@@ -1,7 +1,10 @@
 [package]
-name = "tamanu-render"
+name = "infra-argo-tamanu-renderer"
 version = "0.1.0"
 edition = "2024"
+
+[lib]
+name = "tamanu_renderer"
 
 [dependencies]
 anyhow = "1.0.104"

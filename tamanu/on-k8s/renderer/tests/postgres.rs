@@ -1,8 +1,8 @@
 use serde_json::{Value, json};
-use tamanu_render::config::Config;
-use tamanu_render::params::Params;
-use tamanu_render::postgres::cron::{CronJobArgs, cron_job};
-use tamanu_render::postgres::{
+use tamanu_renderer::config::Config;
+use tamanu_renderer::params::Params;
+use tamanu_renderer::postgres::cron::{CronJobArgs, cron_job};
+use tamanu_renderer::postgres::{
 	PgArgs, PgOptions, Placement, reporting_grants, reporting_roles, run_postgres,
 	run_postgres_with,
 };
@@ -29,7 +29,7 @@ fn args(cfg: &Config, server: &str, replicas: u32) -> PgArgs {
 }
 
 fn yaml(resources: &[Value]) -> String {
-	tamanu_render::to_yaml(resources).unwrap()
+	tamanu_renderer::to_yaml(resources).unwrap()
 }
 
 #[test]

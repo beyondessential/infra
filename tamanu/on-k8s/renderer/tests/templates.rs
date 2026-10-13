@@ -4,8 +4,8 @@
 use std::path::PathBuf;
 
 use serde_json::json;
-use tamanu_render::Options;
-use tamanu_render::params::Params;
+use tamanu_renderer::Options;
+use tamanu_renderer::params::Params;
 
 fn templates_dir() -> PathBuf {
 	PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates")
@@ -44,7 +44,7 @@ fn every_template_renders() {
 				let options = Options {
 					templates: Some(templates_dir()),
 				};
-				tamanu_render::render_with(&p, &options).unwrap_or_else(|e| {
+				tamanu_renderer::render_with(&p, &options).unwrap_or_else(|e| {
 					panic!("template {name}, {facilities} facilities, {app_version}: {e:#}")
 				});
 			}

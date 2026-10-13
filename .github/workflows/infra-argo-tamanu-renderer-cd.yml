@@ -1,16 +1,16 @@
-name: tamanu-render CD
+name: infra-argo-tamanu-renderer CD
 
 on:
   push:
     branches: [main]
     paths:
       - "tamanu/on-k8s/renderer/**"
-      - ".github/workflows/tamanu-render-cd.yml"
-    tags: ["tamanu-render-v*.*.*"]
+      - ".github/workflows/infra-argo-tamanu-renderer-cd.yml"
+    tags: ["infra-argo-tamanu-renderer-v*.*.*"]
   pull_request:
     paths:
       - "tamanu/on-k8s/renderer/**"
-      - ".github/workflows/tamanu-render-cd.yml"
+      - ".github/workflows/infra-argo-tamanu-renderer-cd.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -82,12 +82,12 @@ jobs:
 
       - name: Build binaries
         working-directory: tamanu/on-k8s/renderer
-        run: cargo build --locked --target ${{ matrix.target }} --release --bin tamanu-render
+        run: cargo build --locked --target ${{ matrix.target }} --release --bin infra-argo-tamanu-renderer
 
       - name: Prepare artifacts
         run: |
           mkdir -p artifacts/${{ matrix.arch }}
-          cp tamanu/on-k8s/renderer/target/${{ matrix.target }}/release/tamanu-render artifacts/${{ matrix.arch }}/
+          cp tamanu/on-k8s/renderer/target/${{ matrix.target }}/release/infra-argo-tamanu-renderer artifacts/${{ matrix.arch }}/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,7 +135,7 @@ jobs:
           tags: |
             type=sha
             type=ref,event=branch
-            type=match,pattern=tamanu-render-v(.*),group=1
+            type=match,pattern=infra-argo-tamanu-renderer-v(.*),group=1
           labels: |
             org.opencontainers.image.vendor=BES International
             org.opencontainers.image.title=infra-argo-tamanu-renderer

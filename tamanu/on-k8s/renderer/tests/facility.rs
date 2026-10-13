@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
-use tamanu_render::config::Config;
-use tamanu_render::params::Params;
+use tamanu_renderer::config::Config;
+use tamanu_renderer::params::Params;
 
 fn params(image_tag: &str, app_version: Option<&str>, config: Value) -> Params {
 	serde_json::from_value(json!({
@@ -20,11 +20,11 @@ fn params(image_tag: &str, app_version: Option<&str>, config: Value) -> Params {
 fn render(p: &Params) -> Vec<Value> {
 	let mut cfg = Config::derive(p).unwrap();
 	cfg.provisioning = Some(json!({ "users": { "admin@tamanu.io": { "password": "fixture" } } }));
-	tamanu_render::facility::render_apps(&cfg).unwrap()
+	tamanu_renderer::facility::render_apps(&cfg).unwrap()
 }
 
 fn yaml(resources: &[Value]) -> String {
-	tamanu_render::to_yaml(resources).unwrap()
+	tamanu_renderer::to_yaml(resources).unwrap()
 }
 
 fn current(config: Value) -> Params {
@@ -218,7 +218,7 @@ fn each_facility_has_a_cluster_and_grants_beside_its_apps() {
 	let p = current(json!({ "facilities": 2 }));
 	let mut cfg = Config::derive(&p).unwrap();
 	cfg.provisioning = Some(json!({ "users": { "admin@tamanu.io": { "password": "fixture" } } }));
-	let out = tamanu_render::facility::render(&cfg).unwrap();
+	let out = tamanu_renderer::facility::render(&cfg).unwrap();
 	let names = names(&out);
 	for n in [1, 2] {
 		assert!(

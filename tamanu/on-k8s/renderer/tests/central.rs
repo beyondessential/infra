@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
-use tamanu_render::config::Config;
-use tamanu_render::params::Params;
+use tamanu_renderer::config::Config;
+use tamanu_renderer::params::Params;
 
 fn config(extra_config: Value) -> Config {
 	let p: Params = serde_json::from_value(json!({
@@ -20,14 +20,14 @@ fn config(extra_config: Value) -> Config {
 }
 
 fn yaml(cfg: &Config) -> String {
-	let mut out = tamanu_render::central::workloads(cfg).unwrap();
+	let mut out = tamanu_renderer::central::workloads(cfg).unwrap();
 	out.sort_by_key(|v| {
 		(
 			v["kind"].as_str().unwrap().to_owned(),
 			v["metadata"]["name"].as_str().unwrap().to_owned(),
 		)
 	});
-	tamanu_render::to_yaml(&out).unwrap()
+	tamanu_renderer::to_yaml(&out).unwrap()
 }
 
 #[test]
@@ -53,13 +53,13 @@ fn central_rendering_is_deterministic() {
 
 #[test]
 fn central_emits_no_secrets() {
-	let out = tamanu_render::central::workloads(&config(json!({}))).unwrap();
+	let out = tamanu_renderer::central::workloads(&config(json!({}))).unwrap();
 	assert!(out.iter().all(|v| v["kind"] != "Secret"));
 }
 
 #[test]
 fn central_render_includes_the_database_and_reporting_grants() {
-	let out = tamanu_render::central::render(&config(json!({}))).unwrap();
+	let out = tamanu_renderer::central::render(&config(json!({}))).unwrap();
 	let has = |kind: &str, name: &str| {
 		out.iter()
 			.any(|v| v["kind"] == kind && v["metadata"]["name"] == name)

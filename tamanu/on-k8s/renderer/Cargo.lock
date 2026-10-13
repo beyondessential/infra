@@ -356,6 +356,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "infra-argo-tamanu-renderer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "insta",
+ "json5",
+ "k8s-openapi",
+ "minijinja",
+ "percent-encoding",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_norway",
+ "thiserror",
+ "url",
+]
+
+[[package]]
 name = "insta"
 version = "1.49.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -676,25 +695,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.8",
-]
-
-[[package]]
-name = "tamanu-render"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "insta",
- "json5",
- "k8s-openapi",
- "minijinja",
- "percent-encoding",
- "semver",
- "serde",
- "serde_json",
- "serde_norway",
- "thiserror",
- "url",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use tamanu_render::params::Params;
+use tamanu_renderer::params::Params;
 
 /// Renders a Tamanu deployment to manifests on stdout.
 ///
@@ -52,10 +52,10 @@ fn main() -> Result<()> {
 		let default = PathBuf::from("templates");
 		default.is_dir().then_some(default)
 	});
-	let resources = tamanu_render::render_with(&params, &tamanu_render::Options { templates })?;
+	let resources = tamanu_renderer::render_with(&params, &tamanu_renderer::Options { templates })?;
 	match args.format {
-		Format::Yaml => print!("{}", tamanu_render::to_yaml(&resources)?),
-		Format::Stream => print!("{}", tamanu_render::to_stream(&resources)?),
+		Format::Yaml => print!("{}", tamanu_renderer::to_yaml(&resources)?),
+		Format::Stream => print!("{}", tamanu_renderer::to_stream(&resources)?),
 		Format::Json => println!("{}", serde_json::to_string_pretty(&resources)?),
 	}
 	Ok(())
