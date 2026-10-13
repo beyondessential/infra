@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - "tamanu-render/**"
+      - "tamanu/on-k8s/renderer/**"
       - ".github/workflows/tamanu-render-cd.yml"
     tags: ["tamanu-render-v*.*.*"]
   pull_request:
     paths:
-      - "tamanu-render/**"
+      - "tamanu/on-k8s/renderer/**"
       - ".github/workflows/tamanu-render-cd.yml"
 
 concurrency:
@@ -38,18 +38,18 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: tamanu-render
+          workspaces: tamanu/on-k8s/renderer
 
       - name: Format
-        working-directory: tamanu-render
+        working-directory: tamanu/on-k8s/renderer
         run: cargo fmt --check
 
       - name: Lint
-        working-directory: tamanu-render
+        working-directory: tamanu/on-k8s/renderer
         run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Test
-        working-directory: tamanu-render
+        working-directory: tamanu/on-k8s/renderer
         run: cargo test --locked
 
   build-binaries:
@@ -77,17 +77,17 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: tamanu-render
+          workspaces: tamanu/on-k8s/renderer
           key: ${{ matrix.arch }}-release
 
       - name: Build binaries
-        working-directory: tamanu-render
+        working-directory: tamanu/on-k8s/renderer
         run: cargo build --locked --target ${{ matrix.target }} --release --bin tamanu-render
 
       - name: Prepare artifacts
         run: |
           mkdir -p artifacts/${{ matrix.arch }}
-          cp tamanu-render/target/${{ matrix.target }}/release/tamanu-render artifacts/${{ matrix.arch }}/
+          cp tamanu/on-k8s/renderer/target/${{ matrix.target }}/release/tamanu-render artifacts/${{ matrix.arch }}/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -107,23 +107,23 @@ jobs:
 
       - name: Extract version
         id: version
-        working-directory: tamanu-render
+        working-directory: tamanu/on-k8s/renderer
         run: echo "version=$(cargo pkgid | cut -d# -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Download AMD64 binaries
         uses: actions/download-artifact@v4
         with:
           name: binaries-amd64
-          path: tamanu-render/.build-context/amd64/
+          path: tamanu/on-k8s/renderer/.build-context/amd64/
 
       - name: Download ARM64 binaries
         uses: actions/download-artifact@v4
         with:
           name: binaries-arm64
-          path: tamanu-render/.build-context/arm64/
+          path: tamanu/on-k8s/renderer/.build-context/arm64/
 
       - name: Add plugin config
-        run: cp tamanu-render/cmp/plugin.yaml tamanu-render/.build-context/plugin.yaml
+        run: cp tamanu/on-k8s/renderer/cmp/plugin.yaml tamanu/on-k8s/renderer/.build-context/plugin.yaml
 
       - name: Setup buildkit
         uses: docker/setup-buildx-action@v3
@@ -146,8 +146,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: tamanu-render/.build-context
-          file: tamanu-render/Containerfile
+          context: tamanu/on-k8s/renderer/.build-context
+          file: tamanu/on-k8s/renderer/Containerfile
           platforms: linux/amd64,linux/arm64
           push: true
           labels: ${{ steps.meta.outputs.labels }}
