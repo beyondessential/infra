@@ -131,14 +131,14 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/beyondessential/tamanu-render
+          images: ghcr.io/beyondessential/infra-argo-tamanu-renderer
           tags: |
             type=sha
             type=ref,event=branch
             type=match,pattern=tamanu-render-v(.*),group=1
           labels: |
             org.opencontainers.image.vendor=BES International
-            org.opencontainers.image.title=tamanu-render
+            org.opencontainers.image.title=infra-argo-tamanu-renderer
             org.opencontainers.image.url=https://github.com/beyondessential/infra/
             org.opencontainers.image.source=https://github.com/beyondessential/infra/
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
