@@ -46,13 +46,14 @@ export function podSpecFactory({
 }: PodSpecFactoryArgs): PodSpecFactory {
   return ({
     podType,
+    podSpreadSelector,
     command,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
     volumes = [],
     env = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => {
     return {
-      ...workloadScheduling(),
+      ...workloadScheduling(podSpreadSelector),
       serviceAccountName: sa?.metadata.name,
       volumes: compact([
         {

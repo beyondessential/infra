@@ -4,6 +4,7 @@ import { namespace } from '../namespace.ts';
 import { costLabels } from '../config.ts';
 import { type ServerType, appLabels, appSelector } from './specs.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
+import { replicaDisruptionBudget } from '../common/scheduling.ts';
 
 export interface RunWebArgs {
   parent: ComponentResource;
@@ -96,6 +97,8 @@ export function runWeb(
     },
     { parent, ignoreChanges: ['spec.replicas'] },
   );
+
+  replicaDisruptionBudget(`${name}-web`, appSelector(serverType, instance), parent);
 
   return { service, deployment };
 }

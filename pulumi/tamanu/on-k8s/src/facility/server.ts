@@ -4,6 +4,7 @@ import { namespace } from '../namespace.ts';
 import { costLabels, syntheticTests } from '../config.ts';
 import { appLabels, appSelector } from './specs.ts';
 import type { PodSpecFactory } from '../common/specFactory.ts';
+import { replicaDisruptionBudget } from '../common/scheduling.ts';
 
 export interface RunApiArgs {
   parent: ComponentResource;
@@ -111,6 +112,10 @@ export function runServer(
     },
     { parent, dependsOn },
   );
+
+  if (type === 'api') {
+    replicaDisruptionBudget(`facility-${name}-api`, appSelector('api-server', deviceId), parent);
+  }
 
   return { service, deployment };
 }

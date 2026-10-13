@@ -30,11 +30,12 @@ export function appLabels(serverType: ServerType, instance?: string): { [key: st
 export function podSpecFactory(imageType: ImageType): PodSpecFactory {
   return ({
     podType,
+    podSpreadSelector,
     containerArgs: { volumeMounts = [], ...containerArgs } = {},
     volumes = [],
     env = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
-    ...workloadScheduling(),
+    ...workloadScheduling(podSpreadSelector),
     volumes,
     containers: [
       {
