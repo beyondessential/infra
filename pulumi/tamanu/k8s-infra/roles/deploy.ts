@@ -81,6 +81,11 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
     {
+      apiGroups: ['policy'],
+      resources: ['poddisruptionbudgets'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
+    {
       apiGroups: ['batch'],
       resources: ['jobs', 'cronjobs'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
