@@ -1,0 +1,37 @@
+{
+  canonicalHostName: 'https://{{ fqdn }}',
+  db: {
+    migrateOnStartup: false,
+  },
+  sync: {
+    enabled: true,
+    {% if legacySyncConfig %}
+    // Pre-2.60 images read the sync target from config; newer images are seeded
+    // into local system facts by the setup-sync Job instead.
+    host: '{{ centralApiUrl }}',
+    email: 'admin@tamanu.io',
+    password: '{{ provisioning.users["admin@tamanu.io"].password }}',
+    {% endif %}
+    syncApiConnection: {
+      host: '{{ syncApiUrl }}',
+      port: {{ syncApiPort }},
+    },
+  },
+  auth: {
+    useHardcodedPermissions: false,
+    secret: '{{ 40 | randomstring }}',
+  },
+  errors: {
+    enabled: true,
+  },
+  proxy: {
+    trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
+  },
+  countryTimeZone: '{{ timezone }}',
+  localisation: {
+    timeZone: '{{ timezone }}',
+  },
+  serverFacilityIds: ['{{ facilityId }}'],
+  deviceId: '{{ deviceId }}',
+}
+
