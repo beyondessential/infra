@@ -76,7 +76,7 @@ const release = new k8s.helm.v3.Release(
           {
             name: 'tamanu-render',
             command: ['/var/run/argocd/argocd-cmp-server'],
-            image: `ghcr.io/beyondessential/infra-argo-tamanu-render:${renderImageTag}`,
+            image: `ghcr.io/beyondessential/infra-argo-tamanu-renderer:${renderImageTag}`,
             securityContext: { runAsNonRoot: true, runAsUser: 999 },
             resources: {
               requests: { cpu: '10m', memory: '32Mi' },
