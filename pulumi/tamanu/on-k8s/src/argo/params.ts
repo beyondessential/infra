@@ -1,4 +1,4 @@
-import { type Output, getStack, jsonStringify } from '@pulumi/pulumi';
+import { type Output, getStack, jsonStringify, runtime } from '@pulumi/pulumi';
 import { cfg } from '../../../../common/cfg.ts';
 import {
   $network,
@@ -35,13 +35,52 @@ const obj = <T>(key: string): T | undefined => {
   return value === undefined ? undefined : (JSON.parse(value) as T);
 };
 
+// Keys the program reads that the renderer does not take: the stub uses them
+// itself, they only matter to the legacy path, or they are not rendered.
+const HANDLED_ELSEWHERE = new Set([
+  'imageTag',
+  'appVersion',
+  'k8s-core',
+  'externalNamespace',
+  'ttlHours',
+  'deployer',
+  'deployment',
+  'ipAllowList',
+  'seedSnapshot',
+  'argoNamespace',
+  'argoProject',
+  'argoWaitMinutes',
+  'rendererRepo',
+  'rendererRef',
+  'rendererPath',
+]);
+
+// A stack key that is neither passed on nor handled elsewhere would be silently
+// dropped, and the deployment would render differently from what the legacy
+// program does with it. Fail instead.
+function rejectUnforwardedKeys(forwarded: string[]): void {
+  const known = new Set([...forwarded, ...HANDLED_ELSEWHERE]);
+  const project = `${cfg.name}:`;
+  const unknown = Object.keys(runtime.allConfig())
+    .filter((key) => key.startsWith(project))
+    .map((key) => key.slice(project.length))
+    .filter((key) => !known.has(key));
+  if (unknown.length > 0) {
+    throw new Error(
+      `Stack config not passed to tamanu-render: ${unknown.join(', ')}. ` +
+        "Add each to params.ts and to the renderer's params.rs, or list it in HANDLED_ELSEWHERE.",
+    );
+  }
+}
+
 function stackConfig() {
-  return {
+  const config = {
     namespace: str('namespace'),
     domainBase: str('domainBase'),
     configTemplate: str('configTemplate'),
     nodeEnv: str('nodeEnv'),
     architecture: str('architecture'),
+    capacity: str('capacity'),
     timezone: str('timezone'),
     facilities: num('facilities'),
     facilityNames: obj<unknown[]>('facilityNames'),
@@ -72,7 +111,10 @@ function stackConfig() {
     backupRetentionDays: num('backupRetentionDays'),
     barmanRoleArn: str('barmanRoleArn'),
     barmanBucket: str('barmanBucket'),
+    syntheticTests: bool('syntheticTests'),
   };
+  rejectUnforwardedKeys(Object.keys(config));
+  return config;
 }
 
 /** The renderer's parameter document, as the JSON an Argo plugin receives. */
