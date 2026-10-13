@@ -121,8 +121,19 @@ pub enum Placement {
 	/// Prefers spot capacity.
 	#[default]
 	Spot,
+	/// Only the general on-demand workload pools, one instance per node.
+	OnDemand,
 	/// Only the on-demand `db-critical` pool, one instance per node.
 	Dedicated,
+}
+
+impl From<crate::config::Capacity> for Placement {
+	fn from(capacity: crate::config::Capacity) -> Self {
+		match capacity {
+			crate::config::Capacity::Spot => Self::Spot,
+			crate::config::Capacity::OnDemand => Self::OnDemand,
+		}
+	}
 }
 
 /// Cluster options no Tamanu server sets, with the defaults `runPostgres` has.
@@ -152,8 +163,13 @@ impl Default for PgOptions {
 	}
 }
 
+/// A Tamanu server's cluster, placed on the capacity the stack asks for.
 pub fn run_postgres(cfg: &Config, args: PgArgs) -> Result<Vec<Value>> {
-	run_postgres_with(cfg, args, &PgOptions::default())
+	let opts = PgOptions {
+		placement: cfg.capacity.into(),
+		..PgOptions::default()
+	};
+	run_postgres_with(cfg, args, &opts)
 }
 
 pub fn run_postgres_with(cfg: &Config, args: PgArgs, opts: &PgOptions) -> Result<Vec<Value>> {
@@ -227,6 +243,10 @@ fn affinity(args: &PgArgs, opts: &PgOptions, cluster_name: &str) -> Result<Value
 					"effect": "NoSchedule",
 				}]),
 			);
+			affinity.insert("podAntiAffinityType".into(), json!("required"));
+		}
+		Placement::OnDemand => {
+			node_selector["bes.node.schedule"] = json!("ondemand");
 			affinity.insert("podAntiAffinityType".into(), json!("required"));
 		}
 		Placement::Spot => {
@@ -314,6 +334,9 @@ fn cluster(
 	// grants Job and the `{name}-db-url` Secret read it.
 	spec.insert("enableSuperuserAccess".into(), json!(true));
 	spec.insert("primaryUpdateStrategy".into(), json!("unsupervised"));
+	// The operator rejects any single update that changes both the image and
+	// postgres parameters under this method, so such changes are split.
+	spec.insert("primaryUpdateMethod".into(), json!("switchover"));
 	spec.insert("storage".into(), json!({ "size": args.storage }));
 	spec.insert(
 		"env".into(),

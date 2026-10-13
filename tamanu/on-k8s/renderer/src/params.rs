@@ -66,6 +66,9 @@ pub struct StackConfig {
 	pub config_template: Option<String>,
 	pub node_env: Option<String>,
 	pub architecture: Option<String>,
+	/// `spot` (the default) or `ondemand`: keeps the app servers and databases
+	/// off spot capacity, for demos that must stay up.
+	pub capacity: Option<String>,
 	pub timezone: Option<String>,
 	pub facilities: Option<u32>,
 	pub facility_names: Option<Vec<FacilityEntry>>,
@@ -99,4 +102,7 @@ pub struct StackConfig {
 	pub backup_retention_days: Option<u32>,
 	pub barman_role_arn: Option<String>,
 	pub barman_bucket: Option<String>,
+	/// Marks the servers to serve the synthetic tests' random-record API. The
+	/// synthetic tests Deployment itself is not rendered.
+	pub synthetic_tests: Option<bool>,
 }

@@ -89,6 +89,7 @@ spec:
       wal_buffers: 5760kB
       wal_compression: lz4
       work_mem: 4096kB
+  primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   resources:
     requests:

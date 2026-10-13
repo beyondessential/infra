@@ -126,9 +126,12 @@ pub struct PodSpecArgs {
 	pub env: Vec<EnvVar>,
 	pub volumes: Vec<Volume>,
 	pub container: ContainerArgs,
+	/// Selects the pods whose replicas are spread across nodes.
+	pub spread: Option<crate::meta::Labels>,
 }
 
 pub fn web_pod_spec(cfg: &Config, image_type: ImageType, args: PodSpecArgs) -> PodSpec {
+	let scheduling = crate::scheduling::workload_scheduling(cfg, args.spread.as_ref());
 	let mut env = args.env;
 	env.push(self::env("NODE_ENV", &cfg.node_env));
 	if let Some(sha) = cfg.image_tag.strip_prefix("sha-") {
@@ -151,8 +154,9 @@ pub fn web_pod_spec(cfg: &Config, image_type: ImageType, args: PodSpecArgs) -> P
 	};
 
 	PodSpec {
-		tolerations: Some(vec![spot_toleration()]),
-		affinity: Some(workload_affinity(cfg)),
+		tolerations: scheduling.tolerations,
+		affinity: Some(scheduling.affinity),
+		topology_spread_constraints: scheduling.topology_spread_constraints,
 		volumes: Some(args.volumes).filter(|v| !v.is_empty()),
 		containers: vec![Container {
 			name: args.pod_type,
@@ -177,4 +181,11 @@ pub fn app_memory_limit(pod_type: &str) -> Option<BTreeMap<String, Quantity>> {
 	const ONE_SHOT: [&str; 4] = ["migrator", "provisioner", "seed-top-up", "setup-sync"];
 	(!ONE_SHOT.contains(&pod_type))
 		.then(|| BTreeMap::from([("memory".into(), Quantity("1Gi".into()))]))
+}
+
+/// The variable that makes a server serve the synthetic tests' random-record
+/// API, when the stack runs them.
+pub fn synthetic_api_env(cfg: &Config) -> Option<EnvVar> {
+	cfg.synthetic_tests
+		.then(|| env("TAMANU_ENABLE_SYNTHETIC_RANDOM_API", "true"))
 }

@@ -12,9 +12,8 @@ use crate::blob_store::BlobStore;
 use crate::config::Config;
 use crate::crypto;
 use crate::names;
-use crate::pod::{
-	ContainerArgs, ImageType, app_memory_limit, env, env_secret, spot_toleration, workload_affinity,
-};
+use crate::pod::{ContainerArgs, ImageType, app_memory_limit, env, env_secret};
+use crate::scheduling::workload_scheduling;
 
 /// Builds the pod spec for each process of one facility. The processes differ
 /// only in their container name, command, extra env and container settings.
@@ -30,6 +29,8 @@ pub struct PodArgs<'a> {
 	pub command: Vec<String>,
 	pub env: Vec<EnvVar>,
 	pub container: ContainerArgs,
+	/// Selects the pods whose replicas are spread across nodes.
+	pub spread: Option<crate::meta::Labels>,
 }
 
 impl<'a> PodFactory<'a> {
@@ -48,8 +49,10 @@ impl<'a> PodFactory<'a> {
 			command,
 			env: extra_env,
 			container,
+			spread,
 		} = args;
 		let cfg = self.cfg;
+		let scheduling = workload_scheduling(cfg, spread.as_ref());
 
 		let mut volumes = vec![
 			Volume {
@@ -91,8 +94,9 @@ impl<'a> PodFactory<'a> {
 		};
 
 		PodSpec {
-			tolerations: Some(vec![spot_toleration()]),
-			affinity: Some(workload_affinity(cfg)),
+			tolerations: scheduling.tolerations,
+			affinity: Some(scheduling.affinity),
+			topology_spread_constraints: scheduling.topology_spread_constraints,
 			volumes: Some(volumes),
 			containers: vec![Container {
 				name: pod_type.into(),

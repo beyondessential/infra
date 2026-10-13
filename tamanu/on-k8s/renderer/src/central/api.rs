@@ -8,10 +8,11 @@ use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use serde_json::Value;
 
 use crate::config::Config;
-use crate::pod::{ContainerArgs, env};
+use crate::pod::{ContainerArgs, env, synthetic_api_env};
+use crate::scheduling::replica_disruption_budget;
 use crate::waves;
 
-use super::specs::{PodArgs, PodSpecFactory, deployment, selector};
+use super::specs::{PodArgs, PodSpecFactory, deployment, labels, selector};
 
 const COMPONENT: &str = "api-server";
 
@@ -50,6 +51,8 @@ pub fn api(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Vec<Va
 	};
 	let mut args = PodArgs::new("server", ["serve"]);
 	args.env = vec![env("PORT", "3000")];
+	args.env.extend(synthetic_api_env(cfg));
+	args.spread = Some(labels(cfg, COMPONENT));
 	args.container = ContainerArgs {
 		ports: vec![ContainerPort {
 			container_port: 3000,
@@ -83,5 +86,6 @@ pub fn api(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Vec<Va
 			false,
 			pods.pod_spec(args),
 		)?,
+		replica_disruption_budget(cfg, &service_name(), selector(COMPONENT))?,
 	])
 }

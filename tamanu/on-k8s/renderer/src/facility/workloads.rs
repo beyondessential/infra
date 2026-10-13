@@ -16,7 +16,8 @@ use serde_json::Value;
 use crate::config::Config;
 use crate::config_map;
 use crate::meta::{app_labels, app_selector, cost_labels};
-use crate::pod::{ContainerArgs, ImageType, env};
+use crate::pod::{ContainerArgs, ImageType, env, synthetic_api_env};
+use crate::scheduling::replica_disruption_budget;
 use crate::waves;
 
 use super::spec::{PodArgs, PodFactory};
@@ -147,7 +148,16 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 	let pod = ctx.pods.build(PodArgs {
 		pod_type: "server",
 		command: vec![kind.command().into()],
-		env: vec![env("PORT", "3000")],
+		env: [env("PORT", "3000")]
+			.into_iter()
+			.chain(synthetic_api_env(ctx.cfg))
+			.collect(),
+		spread: Some(app_labels(
+			ctx.cfg,
+			ImageType::Facility,
+			&component,
+			Some(ctx.device_id),
+		)),
 		container: ContainerArgs {
 			ports: vec![ContainerPort {
 				container_port: 3000,
@@ -172,10 +182,25 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 		},
 	});
 
-	Ok(vec![
+	let mut out = vec![
 		serde_json::to_value(service)?,
-		deployment(ctx, name, &component, kind.strategy(), replicas, pod)?,
-	])
+		deployment(
+			ctx,
+			name.clone(),
+			&component,
+			kind.strategy(),
+			replicas,
+			pod,
+		)?,
+	];
+	if kind == ServerType::Api {
+		out.push(replica_disruption_budget(
+			ctx.cfg,
+			&name,
+			app_selector(ImageType::Facility, &component, Some(ctx.device_id)),
+		)?);
+	}
+	Ok(out)
 }
 
 /// The task runner. Stops the old pod before starting the new one, to avoid

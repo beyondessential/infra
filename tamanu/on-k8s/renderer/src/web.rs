@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::config::Config;
 use crate::meta::{app_labels, app_selector, cost_labels};
 use crate::pod::{ContainerArgs, ImageType, PodSpecArgs, env, web_pod_spec};
+use crate::scheduling::replica_disruption_budget;
 
 pub struct WebArgs<'a> {
 	pub name: &'a str,
@@ -69,6 +70,7 @@ pub fn run_web(cfg: &Config, args: WebArgs<'_>) -> Result<Vec<Value>> {
 			pod_type: "http".into(),
 			env: vec![env("PORT", "3000")],
 			volumes: vec![],
+			spread: Some(app_labels(cfg, server_type, "web", instance)),
 			container: ContainerArgs {
 				ports: vec![ContainerPort {
 					container_port: 3000,
@@ -103,7 +105,7 @@ pub fn run_web(cfg: &Config, args: WebArgs<'_>) -> Result<Vec<Value>> {
 		spec: Some(DeploymentSpec {
 			replicas: Some(replicas as i32),
 			selector: LabelSelector {
-				match_labels: Some(selector),
+				match_labels: Some(selector.clone()),
 				match_expressions: None,
 			},
 			template: PodTemplateSpec {
@@ -121,5 +123,6 @@ pub fn run_web(cfg: &Config, args: WebArgs<'_>) -> Result<Vec<Value>> {
 	Ok(vec![
 		serde_json::to_value(service)?,
 		serde_json::to_value(deployment)?,
+		replica_disruption_budget(cfg, &format!("{name}-web"), selector)?,
 	])
 }

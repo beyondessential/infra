@@ -29,6 +29,15 @@ impl Architecture {
 	}
 }
 
+/// What kind of nodes the app servers and databases run on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Capacity {
+	/// Cheap, but reclaims restart pods mid-session.
+	Spot,
+	/// Only on-demand workload nodes.
+	OnDemand,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReplicaConfig {
 	pub api: u32,
@@ -88,6 +97,8 @@ pub struct Config {
 	pub domain_base: String,
 	pub node_env: String,
 	pub architecture: Architecture,
+	pub capacity: Capacity,
+	pub synthetic_tests: bool,
 	pub timezone: String,
 	pub config_template: String,
 	pub facilities: Vec<Facility>,
@@ -145,6 +156,11 @@ impl Config {
 			"amd64" => Architecture::Amd64,
 			"arm64" => Architecture::Arm64,
 			other => bail!("Invalid architecture: {other}"),
+		};
+		let capacity = match c.capacity.as_deref().unwrap_or("spot") {
+			"spot" => Capacity::Spot,
+			"ondemand" => Capacity::OnDemand,
+			other => bail!("Invalid capacity: {other}"),
 		};
 
 		let facilities = facility_list(c)?;
@@ -206,6 +222,8 @@ impl Config {
 			domain_base,
 			node_env: c.node_env.clone().unwrap_or_else(|| "production".into()),
 			architecture,
+			capacity,
+			synthetic_tests: c.synthetic_tests.unwrap_or(false),
 			timezone: c
 				.timezone
 				.clone()

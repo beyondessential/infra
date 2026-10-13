@@ -12,9 +12,8 @@ use serde_json::{Value, json};
 use crate::blob_store::BlobStore;
 use crate::config::Config;
 use crate::meta::{Labels, app_labels, app_selector, cost_labels};
-use crate::pod::{
-	ContainerArgs, ImageType, app_memory_limit, env, env_secret, spot_toleration, workload_affinity,
-};
+use crate::pod::{ContainerArgs, ImageType, app_memory_limit, env, env_secret};
+use crate::scheduling::workload_scheduling;
 use crate::{crypto, names, waves};
 
 pub fn selector(component: &str) -> Labels {
@@ -31,6 +30,8 @@ pub struct PodArgs {
 	pub env: Vec<EnvVar>,
 	pub volumes: Vec<Volume>,
 	pub container: ContainerArgs,
+	/// Selects the pods whose replicas are spread across nodes.
+	pub spread: Option<Labels>,
 }
 
 impl PodArgs {
@@ -41,6 +42,7 @@ impl PodArgs {
 			env: vec![],
 			volumes: vec![],
 			container: ContainerArgs::default(),
+			spread: None,
 		}
 	}
 }
@@ -63,7 +65,9 @@ impl<'a> PodSpecFactory<'a> {
 			env: extra_env,
 			volumes: extra_volumes,
 			container,
+			spread,
 		} = args;
+		let scheduling = workload_scheduling(cfg, spread.as_ref());
 
 		let mut volumes = vec![
 			Volume {
@@ -105,8 +109,9 @@ impl<'a> PodSpecFactory<'a> {
 		resources.limits = app_memory_limit(&pod_type);
 
 		PodSpec {
-			tolerations: Some(vec![spot_toleration()]),
-			affinity: Some(workload_affinity(cfg)),
+			tolerations: scheduling.tolerations,
+			affinity: Some(scheduling.affinity),
+			topology_spread_constraints: scheduling.topology_spread_constraints,
 			service_account_name: cfg
 				.service_account
 				.is_some()

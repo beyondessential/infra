@@ -143,6 +143,7 @@ spec:
       wal_buffers: 5760kB
       wal_compression: lz4
       work_mem: 4096kB
+  primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   resources:
     requests:
@@ -237,6 +238,7 @@ spec:
       wal_buffers: 5760kB
       wal_compression: lz4
       work_mem: 4096kB
+  primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   resources:
     requests:
@@ -331,6 +333,7 @@ spec:
       wal_buffers: 5760kB
       wal_compression: lz4
       work_mem: 4096kB
+  primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   resources:
     requests:
@@ -588,6 +591,17 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: api-server
+            app.kubernetes.io/name: central
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-central
@@ -1235,6 +1249,17 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: web
+            app.kubernetes.io/name: central
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1394,6 +1419,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: api-server
+            app.kubernetes.io/instance: facility-1
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-facility-1
@@ -1564,6 +1601,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: sync-server
+            app.kubernetes.io/instance: facility-1
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-facility-1
@@ -1815,6 +1864,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: web
+            app.kubernetes.io/instance: facility-1
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1974,6 +2035,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: api-server
+            app.kubernetes.io/instance: facility-2
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-facility-2
@@ -2144,6 +2217,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: sync-server
+            app.kubernetes.io/instance: facility-2
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-facility-2
@@ -2395,6 +2480,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: web
+            app.kubernetes.io/instance: facility-2
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3100,6 +3197,17 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: web
+            app.kubernetes.io/name: patient-portal
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -4701,6 +4809,108 @@ spec:
           - key: configKey
             path: configKey
           secretName: tamanu-crypto
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-api
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/name: central
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: central-web
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/name: central
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-web
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-api
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-2-web
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/instance: facility-2
+      app.kubernetes.io/name: facility
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: patient-portal-web
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/name: patient-portal
 ---
 apiVersion: v1
 kind: Service

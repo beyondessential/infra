@@ -919,6 +919,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: sync-server
+            app.kubernetes.io/instance: facility-1
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-facility-1
@@ -1106,6 +1118,18 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: api-server
+            app.kubernetes.io/instance: facility-1
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
       volumes:
       - configMap:
           name: config-facility-1
@@ -1117,6 +1141,21 @@ spec:
           - key: configKey
             path: configKey
           secretName: tamanu-crypto
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-api
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api-server
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
 ---
 apiVersion: v1
 kind: Service
@@ -1221,6 +1260,33 @@ spec:
         key: spotInstance
         operator: Equal
         value: 'true'
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: web
+            app.kubernetes.io/instance: facility-1
+            app.kubernetes.io/name: facility
+            app.kubernetes.io/version: sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        matchLabelKeys:
+        - pod-template-hash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-web
+  namespace: tamanu-main
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      app.kubernetes.io/instance: facility-1
+      app.kubernetes.io/name: facility
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway

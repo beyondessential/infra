@@ -209,6 +209,8 @@ mod tests {
 				"HTTPRoute central-frontend",
 				"Job central-migrator",
 				"Job central-provisioner",
+				"PodDisruptionBudget central-api",
+				"PodDisruptionBudget central-web",
 				"Service central-api",
 				"Service central-db-tailscale",
 				"Service central-web",

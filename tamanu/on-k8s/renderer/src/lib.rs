@@ -18,6 +18,7 @@ pub mod params;
 pub mod pod;
 pub mod postgres;
 pub mod redirect;
+pub mod scheduling;
 pub mod service_account;
 pub mod waves;
 pub mod web;
