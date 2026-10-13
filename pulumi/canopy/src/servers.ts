@@ -21,6 +21,7 @@ import { Gateway } from '../../common/k8s/gateway/Gateway.ts';
 import { HTTPRoute } from '../../common/k8s/gateway/HTTPRoute.ts';
 import { BackendTrafficPolicy } from '../../common/k8s/gateway/BackendTrafficPolicy.ts';
 import { API_GROUP as GATEWAY_API_GROUP } from '../../common/k8s/gateway/consts/API.ts';
+import { HTTPRouteFilterType } from '../../common/k8s/gateway/consts/HTTPRouteFilterType.ts';
 
 import { namespace } from './namespace.ts';
 import { caRootCert } from './ca.ts';
@@ -34,26 +35,32 @@ import { canopyIssuerSa, canopyPrivateSa } from './canopy-sa.ts';
 import { recoveryKeysEnv } from './canopy-recovery.ts';
 import { redirectSvc } from './redirect.ts';
 
-const publicSvc = new k8s.core.v1.Service(
-  'public-server',
-  {
-    metadata: {
-      namespace,
+const publicService = (name: string, task: string) =>
+  new k8s.core.v1.Service(
+    name,
+    {
+      metadata: {
+        namespace,
+      },
+      spec: {
+        ports: [
+          {
+            protocol: 'TCP',
+            port: 80,
+            targetPort: 'http',
+            name: 'http',
+          },
+        ],
+        selector: labels(task),
+      },
     },
-    spec: {
-      ports: [
-        {
-          protocol: 'TCP',
-          port: 80,
-          targetPort: 'http',
-          name: 'http',
-        },
-      ],
-      selector: labels('public'),
-    },
-  },
-  { replaceOnChanges: ['clusterIP'] },
-);
+    { replaceOnChanges: ['clusterIP'] },
+  );
+
+// The backend trusts exactly one client-certificate header, so nginx and the
+// Gateway each front their own public-server: the Gateway's trusts XFCC, nginx's
+// the header nginx sets (k[migration.cert-header-split]).
+const envoyPublicSvc = publicService('public-server-envoy', 'public-envoy');
 
 const gateway = Gateway('http', {
   metadata: {
@@ -154,8 +161,19 @@ HTTPRoute('http', {
         backendRefs: [
           {
             namespace,
-            name: publicSvc.metadata.name,
+            name: envoyPublicSvc.metadata.name,
             port: 80,
+          },
+        ],
+        // XFCC is overwritten by the Gateway, but these pass through untouched,
+        // and a backend trusting the nginx path would believe them.
+        // k[envoy.mtls-foreign-headers]
+        filters: [
+          {
+            type: HTTPRouteFilterType.RequestHeaderModifier,
+            requestHeaderModifier: {
+              remove: ['mtls-certificate', 'ssl-client-cert'],
+            },
           },
         ],
         // k[envoy.timeouts+2]
@@ -167,11 +185,112 @@ HTTPRoute('http', {
   },
 });
 
+function publicServer(name: string, task: string, certHeader: 'mtls' | 'xfcc') {
+  return new k8s.apps.v1.Deployment(
+    name,
+    {
+      metadata: {
+        labels: labels(task),
+        namespace,
+        name, // forces pulumi to not replace willy-nilly, so it stays up
+      },
+      spec: {
+        replicas,
+        selector: {
+          matchLabels: labels(task),
+        },
+        template: {
+          metadata: {
+            labels: { ...labels(task), ...costLabels },
+          },
+          spec: spec(
+            'server',
+            ['public-server'],
+            {
+              env: [
+                // Front-line API server: more concurrent DB work than the jobs,
+                // so a larger pool than the crate's default. Stays well under the
+                // cluster's max_connections across both replicas.
+                {
+                  name: 'DB_MAX_OPEN_CONNECTIONS',
+                  value: '10',
+                },
+                // Artifact URLs and the RSS feed's link/guid are fetched later by
+                // someone else, so the origin must be canonical rather than the
+                // caller's own Host.
+                {
+                  name: 'PUBLIC_URL',
+                  value: `https://${domains[0]}`,
+                },
+                {
+                  name: 'STATUS_PAGE_URL',
+                  value: `https://${tailscaleHostname}.${TAILNET_DOMAIN}/`,
+                },
+                // k[migration.cert-header-split]
+                {
+                  name: 'CANOPY_DEVICE_AUTH_CERT_HEADER',
+                  value: certHeader,
+                },
+                {
+                  name: 'CLIENT_IP_SOURCE',
+                  value: 'RightmostXForwardedFor',
+                },
+                {
+                  name: 'SERVER_VERSIONS_SECRET',
+                  value: publicServerVersionsSecret,
+                },
+                ...sharedBackupsServerEnv,
+                // Serves the bytes of a group-scoped artifact to the group it is
+                // offered to. Must be the same bucket private-server registers into.
+                ...artifactStoreEnv,
+              ],
+              // Wait up to 60 seconds for the server to start...
+              startupProbe: {
+                periodSeconds: 1,
+                failureThreshold: 60,
+                httpGet: {
+                  path: '/livez',
+                  port: 8000,
+                  scheme: 'HTTP',
+                },
+              },
+              // ...then continuously check if it's up, and restart if it fails
+              livenessProbe: {
+                periodSeconds: 10,
+                failureThreshold: 2,
+                httpGet: {
+                  path: '/livez',
+                  port: 8000,
+                  scheme: 'HTTP',
+                },
+              },
+              lifecycle: {
+                preStop: {
+                  sleep: {
+                    seconds: 5,
+                  },
+                },
+              },
+            },
+            { serviceAccountName: canopyIssuerSa, pooled: true },
+          ),
+        },
+      },
+    },
+    { dependsOn: [migrator] },
+  );
+}
+
+publicServer('public-server-envoy', 'public-envoy', 'xfcc');
+
 // Deprecated: superseded by the Gateway above, and removed once envoyStage
 // reaches `primary`. Its auth-tls-secret names a CA only because ingress-nginx
 // will not request or forward a client certificate without one named; the
 // certificates it forwards do not chain to it (k[envoy.mtls-unverified]).
 if (nginxIngressEnabled) {
+  const publicSvc = publicService('public-server', 'public');
+  publicServer('public-server', 'public', 'mtls');
+
   new k8s.networking.v1.Ingress('http', {
     metadata: {
       namespace,
@@ -209,95 +328,6 @@ if (nginxIngressEnabled) {
     },
   });
 }
-
-new k8s.apps.v1.Deployment(
-  'public-server',
-  {
-    metadata: {
-      labels: labels('public'),
-      namespace,
-      name: 'public-server', // forces pulumi to not replace willy-nilly, so it stays up
-    },
-    spec: {
-      replicas,
-      selector: {
-        matchLabels: labels('public'),
-      },
-      template: {
-        metadata: {
-          labels: { ...labels('public'), ...costLabels },
-        },
-        spec: spec(
-          'server',
-          ['public-server'],
-          {
-            env: [
-              // Front-line API server: more concurrent DB work than the jobs,
-              // so a larger pool than the crate's default. Stays well under the
-              // cluster's max_connections across both replicas.
-              {
-                name: 'DB_MAX_OPEN_CONNECTIONS',
-                value: '10',
-              },
-              // Artifact URLs and the RSS feed's link/guid are fetched later by
-              // someone else, so the origin must be canonical rather than the
-              // caller's own Host.
-              {
-                name: 'PUBLIC_URL',
-                value: `https://${domains[0]}`,
-              },
-              {
-                name: 'STATUS_PAGE_URL',
-                value: `https://${tailscaleHostname}.${TAILNET_DOMAIN}/`,
-              },
-              {
-                name: 'CLIENT_IP_SOURCE',
-                value: 'RightmostXForwardedFor',
-              },
-              {
-                name: 'SERVER_VERSIONS_SECRET',
-                value: publicServerVersionsSecret,
-              },
-              ...sharedBackupsServerEnv,
-              // Serves the bytes of a group-scoped artifact to the group it is
-              // offered to. Must be the same bucket private-server registers into.
-              ...artifactStoreEnv,
-            ],
-            // Wait up to 60 seconds for the server to start...
-            startupProbe: {
-              periodSeconds: 1,
-              failureThreshold: 60,
-              httpGet: {
-                path: '/livez',
-                port: 8000,
-                scheme: 'HTTP',
-              },
-            },
-            // ...then continuously check if it's up, and restart if it fails
-            livenessProbe: {
-              periodSeconds: 10,
-              failureThreshold: 2,
-              httpGet: {
-                path: '/livez',
-                port: 8000,
-                scheme: 'HTTP',
-              },
-            },
-            lifecycle: {
-              preStop: {
-                sleep: {
-                  seconds: 5,
-                },
-              },
-            },
-          },
-          { serviceAccountName: canopyIssuerSa, pooled: true },
-        ),
-      },
-    },
-  },
-  { dependsOn: [migrator] },
-);
 
 const privateSvc = new k8s.core.v1.Service('private-server', {
   metadata: {
