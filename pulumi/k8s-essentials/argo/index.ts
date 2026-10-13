@@ -3,18 +3,12 @@ import { cfg } from '../../common/k8s/coreRef.ts';
 import { ARGO_CD_VERSION } from '../versions.ts';
 
 // The Argo CD controller, shared by anything on the cluster that wants GitOps.
-// What applies Tamanu deployments through it (the project they run under and
-// who may create them) lives in tamanu/k8s-infra.
+// What applies Tamanu deployments through it (the project they run under, who
+// may create them, and the plugin that renders them) lives in tamanu/k8s-infra.
+// A stack that needs a config management plugin adds its own sidecar with
+// common/k8s/argoPlugin.ts, so none are listed here.
 
 const namespaceName = cfg.get('argoNamespace') ?? 'argocd';
-
-// A config management plugin runs as a sidecar of the repo server. Each is an
-// image with its plugin config baked in, named as the plugin.
-interface ArgoPlugin {
-  name: string;
-  image: string;
-}
-const plugins = cfg.getObject<ArgoPlugin[]>('argoPlugins') ?? [];
 
 const namespace = new k8s.core.v1.Namespace('argocd', { metadata: { name: namespaceName } });
 
@@ -72,26 +66,6 @@ const release = new k8s.helm.v3.Release(
           // No ingress: the UI and API are reached with a port-forward.
           'server.insecure': true,
         },
-      },
-      repoServer: {
-        volumes: [{ name: 'cmp-tmp', emptyDir: {} }],
-        extraContainers: plugins.map(({ name, image }) => ({
-          name,
-          command: ['/var/run/argocd/argocd-cmp-server'],
-          image,
-          securityContext: { runAsNonRoot: true, runAsUser: 999 },
-          resources: {
-            requests: { cpu: '10m', memory: '32Mi' },
-            limits: { memory: '256Mi' },
-          },
-          // The plugin config is baked into the image. The repo server provides
-          // the plugin server binary, and the sidecar must not share its /tmp.
-          volumeMounts: [
-            { mountPath: '/var/run/argocd', name: 'var-files' },
-            { mountPath: '/home/argocd/cmp-server/plugins', name: 'plugins' },
-            { mountPath: '/tmp', name: 'cmp-tmp' },
-          ],
-        })),
       },
     },
   },
