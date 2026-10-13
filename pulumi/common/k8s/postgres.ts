@@ -49,8 +49,9 @@ export interface PostgresArgs {
   // memory-derived postgres parameter is computed from.
   memoryRequest?: Input<string>;
   // 'dedicated' runs the instances only on the on-demand pool for critical
-  // databases, one per node; the default prefers spot capacity.
-  placement?: 'spot' | 'dedicated';
+  // databases, one per node; 'ondemand' runs them only on the general
+  // on-demand workload pools; the default prefers spot capacity.
+  placement?: 'spot' | 'ondemand' | 'dedicated';
   // Keep CNPG's PodDisruptionBudgets. The primary's budget allows no
   // evictions, so every node holding a primary is exempt from consolidation;
   // turn this off where a failover on drain is acceptable.
@@ -77,6 +78,24 @@ export interface LocalObjectReference {
 }
 
 export type PostgresReady = Output<k8s.core.v1.Secret>;
+
+// Tolerations and affinity per placement; the nodeSelector carries the hard
+// pool constraints.
+const PLACEMENT_SCHEDULING = {
+  spot: {
+    tolerations: [CAN_RUN_ON_SPOT],
+    nodeAffinity: {
+      preferredDuringSchedulingIgnoredDuringExecution: [{ weight: 1, preference: RUN_ON_SPOT }],
+    },
+  },
+  ondemand: {},
+  dedicated: {
+    tolerations: [
+      { key: 'bes.node.group', operator: 'Equal', value: 'db-critical', effect: 'NoSchedule' },
+    ],
+    podAntiAffinityType: 'required',
+  },
+} satisfies Record<NonNullable<PostgresArgs['placement']>, object>;
 
 export function runPostgres({
   parent,
@@ -186,7 +205,7 @@ export function runPostgres({
                 },
               }
             : {},
-        // k[postgres.placement.dedicated]
+        // k[postgres.placement.dedicated+2] k[postgres.placement.on-demand]
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
@@ -196,30 +215,9 @@ export function runPostgres({
             // letting the scheduler land on a leftover amd64 node.
             'bes.node.arch': 'arm64',
             ...(placement === 'dedicated' ? { 'bes.node.group': 'db-critical' } : {}),
+            ...(placement === 'ondemand' ? { 'bes.node.schedule': 'ondemand' } : {}),
           },
-          ...(placement === 'dedicated'
-            ? {
-                tolerations: [
-                  {
-                    key: 'bes.node.group',
-                    operator: 'Equal',
-                    value: 'db-critical',
-                    effect: 'NoSchedule',
-                  },
-                ],
-                podAntiAffinityType: 'required',
-              }
-            : {
-                tolerations: [CAN_RUN_ON_SPOT],
-                nodeAffinity: {
-                  preferredDuringSchedulingIgnoredDuringExecution: [
-                    {
-                      weight: 1,
-                      preference: RUN_ON_SPOT,
-                    },
-                  ],
-                },
-              }),
+          ...PLACEMENT_SCHEDULING[placement],
           ...(colocateAz
             ? {
                 additionalPodAffinity: {

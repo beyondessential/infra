@@ -2,14 +2,13 @@ import { type Output, all, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import type { PostgresReady } from '../../../../common/k8s/postgres.ts';
 import { PostgresUrlSecretKey } from '../../../../common/k8s/postgresUrl.ts';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
+import { workloadScheduling } from '../common/scheduling.ts';
 import { $network } from '../../../../common/k8s/coreRef.ts';
 import type { PodSpecFactory, PodSpecArgs } from '../common/specFactory.ts';
 import { appMemoryLimit } from '../common/specFactory.ts';
 import { cryptoEnv, cryptoVolume, cryptoVolumeMount } from '../common/crypto.ts';
 import type { BlobStoreVolume } from '../common/blobStore.ts';
-import { architecture, nodeEnv } from '../config.ts';
+import { nodeEnv } from '../config.ts';
 import { image, imageTag } from '../image.ts';
 import { compact } from 'lodash-es';
 
@@ -54,24 +53,7 @@ export function podSpecFactory({
     volumes = [],
     env = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
-    tolerations: [CAN_RUN_ON_SPOT],
-    affinity: {
-      nodeAffinity: {
-        preferredDuringSchedulingIgnoredDuringExecution: [
-          {
-            weight: 1,
-            preference: RUN_ON_SPOT,
-          },
-        ],
-        requiredDuringSchedulingIgnoredDuringExecution: {
-          nodeSelectorTerms: [
-            {
-              matchExpressions: [archAffinity(architecture), purposeAffinity('workload')],
-            },
-          ],
-        },
-      },
-    },
+    ...workloadScheduling(),
     volumes: compact([
       {
         name: 'config-volume',
@@ -132,7 +114,7 @@ export function podSpecFactory({
             // over the structured DB_* vars below, which stay as a fallback.
             name: 'DATABASE_URL',
             valueFrom: {
-              secretKeyRef: dbReady.apply(url => ({
+              secretKeyRef: dbReady.apply((url) => ({
                 name: url.metadata.name,
                 key: PostgresUrlSecretKey.AppDbUrl,
               })),

@@ -1,9 +1,8 @@
 import { compact } from 'lodash-es';
 import * as k8s from '@pulumi/kubernetes';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../../../common/k8s/tolerations.ts';
+import { workloadScheduling } from '../common/scheduling.ts';
 import type { PodSpecArgs, PodSpecFactory } from '../common/specFactory.ts';
-import { architecture, nodeEnv } from '../config.ts';
+import { nodeEnv } from '../config.ts';
 import { type ImageType, image, imageTag } from '../image.ts';
 
 export type ServerType = Exclude<ImageType, 'frontend'>;
@@ -35,24 +34,7 @@ export function podSpecFactory(imageType: ImageType): PodSpecFactory {
     volumes = [],
     env = [],
   }: PodSpecArgs): k8s.types.input.core.v1.PodSpec => ({
-    tolerations: [CAN_RUN_ON_SPOT],
-    affinity: {
-      nodeAffinity: {
-        preferredDuringSchedulingIgnoredDuringExecution: [
-          {
-            weight: 1,
-            preference: RUN_ON_SPOT,
-          },
-        ],
-        requiredDuringSchedulingIgnoredDuringExecution: {
-          nodeSelectorTerms: [
-            {
-              matchExpressions: [archAffinity(architecture), purposeAffinity('workload')],
-            },
-          ],
-        },
-      },
-    },
+    ...workloadScheduling(),
     volumes,
     containers: [
       {

@@ -1,9 +1,8 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
 import { imageTag } from './image.ts';
-import { architecture, costLabels, domains, facilityList } from './config.ts';
-import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
-import { RUN_ON_SPOT, archAffinity, purposeAffinity } from '../../../common/k8s/affinities.ts';
+import { costLabels, domains, facilityList } from './config.ts';
+import { workloadScheduling } from './common/scheduling.ts';
 
 const image = `ghcr.io/beyondessential/tamanu-synthetic-tests:${imageTag}`;
 
@@ -35,21 +34,7 @@ new k8s.apps.v1.Deployment('synthetic-tests', {
         },
       },
       spec: {
-        tolerations: [CAN_RUN_ON_SPOT],
-        affinity: {
-          nodeAffinity: {
-            preferredDuringSchedulingIgnoredDuringExecution: [
-              { weight: 1, preference: RUN_ON_SPOT },
-            ],
-            requiredDuringSchedulingIgnoredDuringExecution: {
-              nodeSelectorTerms: [
-                {
-                  matchExpressions: [archAffinity(architecture), purposeAffinity('workload')],
-                },
-              ],
-            },
-          },
-        },
+        ...workloadScheduling(),
         containers: [
           {
             name: 'artillery',

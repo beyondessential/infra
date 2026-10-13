@@ -74,6 +74,14 @@ if (!['amd64', 'arm64'].includes(architecture)) {
   throw new Error(`Invalid architecture: ${architecture}`);
 }
 
+// Spot is cheap but reclaims restart pods mid-session; 'ondemand' keeps the app
+// servers and the databases off spot entirely, for demos that must stay up.
+export type Capacity = 'spot' | 'ondemand';
+export const capacity: Capacity = (cfg.get('capacity') as Capacity | undefined) ?? 'spot';
+if (!['spot', 'ondemand'].includes(capacity)) {
+  throw new Error(`Invalid capacity: ${capacity}`);
+}
+
 export const nodeEnv = cfg.get('nodeEnv') ?? 'production';
 
 export const DEFAULT_CONFIG_TEMPLATE = 'basic';
