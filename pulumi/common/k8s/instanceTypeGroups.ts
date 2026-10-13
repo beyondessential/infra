@@ -138,6 +138,27 @@ export function instancesSizedAtLeast(
     .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
 }
 
+// Memory-dense shapes (16 GiB or more per vCPU) at least `cpu` vCPU / `memory`
+// GiB, a smaller vCPU floor than the general one because the memory makes up
+// for it.
+export function memoryDenseSizedAtLeast(
+  region: string,
+  arch: string,
+  cpu: number,
+  memory: number,
+): RegionInstance[] {
+  return instancesForRegion(region, { highMemory: true })
+    .filter(
+      (i) =>
+        i.arch.includes(arch) && i.vCPU >= cpu && i.memory >= memory && i.memory >= i.vCPU * 16,
+    )
+    .sort((a, b) => a.instance_type.localeCompare(b.instance_type));
+}
+
+export function uniqueByType(instances: RegionInstance[]): RegionInstance[] {
+  return [...new Map(instances.map((i) => [i.instance_type, i])).values()];
+}
+
 export function instancesSizedExactly(
   region: string,
   arch: string,

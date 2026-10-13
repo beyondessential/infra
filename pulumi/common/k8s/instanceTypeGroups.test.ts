@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   instancesForRegion,
+  memoryDenseSizedAtLeast,
   spotInterruptAtMost,
   type RegionInstance,
 } from './instanceTypeGroups.ts';
@@ -44,4 +45,14 @@ test('advisor bands parse to their upper bound', () => {
   );
   assert.ok(bands.size > 0, 'instances.json carries interruption bands');
   for (const b of bands) assert.ok([5, 10, 15, 20, 100].includes(b!), `unexpected band ${b}`);
+});
+
+// k[verify capacity.workload-node-floor]
+test('memory-dense shapes down to 2 vCPU / 32 GiB are admitted, nothing else below the floor', () => {
+  const types = memoryDenseSizedAtLeast('ap-southeast-2', 'arm64', 2, 32).map(
+    (i) => i.instance_type,
+  );
+  assert.ok(types.includes('x8g.large'));
+  assert.ok(!types.includes('x8g.medium'));
+  assert.ok(!types.some((t) => /^[cmt]/.test(t)));
 });
