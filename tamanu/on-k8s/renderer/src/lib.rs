@@ -34,23 +34,29 @@ use crate::params::Params;
 /// Inputs to rendering that are not part of the deployment's parameters.
 #[derive(Debug, Clone, Default)]
 pub struct Options {
-	/// Where the config templates are. Without them the ConfigMaps are not
-	/// rendered, and the facilities' setup-sync Jobs cannot be.
+	/// Read config templates from this directory instead of the ones built in.
 	pub templates: Option<PathBuf>,
 }
 
+impl Options {
+	fn templates(&self) -> config_map::Templates {
+		match &self.templates {
+			Some(dir) => config_map::templates_at(dir),
+			None => config_map::Templates::Embedded,
+		}
+	}
+}
+
 /// Everything a deployment consists of, sorted by kind, namespace and name.
-/// Renders without config templates; see [`render_with`].
+/// Renders with the templates built into the binary; see [`render_with`].
 pub fn render(params: &Params) -> Result<Vec<Value>> {
 	render_with(params, &Options::default())
 }
 
 pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 	let mut cfg = Config::derive(params)?;
-	let templates = options.templates.as_deref().map(config_map::templates_at);
-	if let Some(templates) = &templates {
-		cfg.provisioning = Some(config_map::provisioning(&cfg, templates)?.0);
-	}
+	let templates = options.templates();
+	cfg.provisioning = Some(config_map::provisioning(&cfg, &templates)?.0);
 
 	let mut out = Vec::new();
 	out.extend(service_account::service_account(&cfg)?);
@@ -78,14 +84,12 @@ pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 	out.extend(central::render(&cfg)?);
 	out.extend(facility::render(&cfg)?);
 
-	if let Some(templates) = &templates {
-		out.extend(config_map::render(
-			&cfg,
-			templates,
-			&central::config_from_env(),
-			&facility::config_from_env(),
-		)?);
-	}
+	out.extend(config_map::render(
+		&cfg,
+		&templates,
+		&central::config_from_env(),
+		&facility::config_from_env(),
+	)?);
 
 	out.sort_by_cached_key(sort_key);
 	Ok(out)

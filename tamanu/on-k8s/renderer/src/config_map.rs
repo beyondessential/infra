@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow, bail};
+use include_dir::{Dir, include_dir};
 use k8s_openapi::api::core::v1::ConfigMap;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use minijinja::{Environment, Value as JinjaValue};
@@ -60,11 +61,18 @@ impl Kind {
 	}
 }
 
-/// Where to find templates, and the inputs a template can use that are not
-/// derived from the deployment's config.
+/// The templates built into the binary, so that one image is one complete
+/// definition of how a deployment renders: there is no second thing to keep in
+/// step with it.
+static EMBEDDED: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/templates");
+
+/// Where templates come from.
 #[derive(Debug, Clone)]
-pub struct Templates {
-	pub dir: PathBuf,
+pub enum Templates {
+	/// Those compiled into the binary.
+	Embedded,
+	/// A directory, for trying a template without rebuilding.
+	Dir(PathBuf),
 }
 
 /// The placeholder `randomstring` yields, as long as its hex encoding would be.
@@ -104,20 +112,33 @@ fn environment() -> Environment<'static> {
 impl Templates {
 	fn read(&self, cfg: &Config, kind: Kind) -> Result<(String, String)> {
 		for name in [cfg.config_template.as_str(), DEFAULT_CONFIG_TEMPLATE] {
-			let path = self.dir.join(name).join(kind.file());
-			match std::fs::read_to_string(&path) {
-				Ok(text) => return Ok((name.to_owned(), text)),
-				Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
-				Err(e) => return Err(e).with_context(|| format!("reading {}", path.display())),
+			if let Some(text) = self.file(name, kind)? {
+				return Ok((name.to_owned(), text));
 			}
 		}
 		bail!(
-			"no {} template for {:?} or {:?} under {}",
+			"no {} template for {:?} or {:?}",
 			kind.file(),
 			cfg.config_template,
-			DEFAULT_CONFIG_TEMPLATE,
-			self.dir.display()
+			DEFAULT_CONFIG_TEMPLATE
 		)
+	}
+
+	fn file(&self, name: &str, kind: Kind) -> Result<Option<String>> {
+		match self {
+			Self::Embedded => Ok(EMBEDDED
+				.get_file(format!("{name}/{}", kind.file()))
+				.and_then(|f| f.contents_utf8())
+				.map(str::to_owned)),
+			Self::Dir(dir) => {
+				let path = dir.join(name).join(kind.file());
+				match std::fs::read_to_string(&path) {
+					Ok(text) => Ok(Some(text)),
+					Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+					Err(e) => Err(e).with_context(|| format!("reading {}", path.display())),
+				}
+			}
+		}
 	}
 
 	fn render(&self, cfg: &Config, kind: Kind, data: Value) -> Result<(String, String)> {
@@ -292,9 +313,7 @@ pub fn sync_url(cfg: &Config, provisioning: &Value) -> Result<String> {
 }
 
 pub fn templates_at(dir: impl AsRef<Path>) -> Templates {
-	Templates {
-		dir: dir.as_ref().to_owned(),
-	}
+	Templates::Dir(dir.as_ref().to_owned())
 }
 
 #[cfg(test)]

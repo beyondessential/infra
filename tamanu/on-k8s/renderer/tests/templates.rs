@@ -41,10 +41,7 @@ fn every_template_renders() {
 					"config": { "configTemplate": name, "facilities": facilities },
 				}))
 				.unwrap();
-				let options = Options {
-					templates: Some(templates_dir()),
-				};
-				tamanu_renderer::render_with(&p, &options).unwrap_or_else(|e| {
+				tamanu_renderer::render_with(&p, &Options::default()).unwrap_or_else(|e| {
 					panic!("template {name}, {facilities} facilities, {app_version}: {e:#}")
 				});
 			}
@@ -63,5 +60,28 @@ fn no_template_embeds_a_real_looking_secret() {
 				.any(|run| run.len() >= 32);
 			assert!(!long_hex, "{} holds a long hex string", path.display());
 		}
+	}
+}
+
+#[test]
+fn the_built_in_templates_are_the_ones_on_disk() {
+	for name in template_names() {
+		let p: Params = serde_json::from_value(json!({
+			"stack": "main",
+			"imageTag": "sha-abc",
+			"appVersion": "2.67.0",
+			"cluster": { "fullName": "c" },
+			"config": { "configTemplate": name },
+		}))
+		.unwrap();
+		let built_in = tamanu_renderer::render_with(&p, &Options::default()).unwrap();
+		let on_disk = tamanu_renderer::render_with(
+			&p,
+			&Options {
+				templates: Some(templates_dir()),
+			},
+		)
+		.unwrap();
+		assert_eq!(built_in, on_disk, "template {name}");
 	}
 }

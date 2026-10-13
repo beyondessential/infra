@@ -17,8 +17,7 @@ struct Args {
 	#[arg(long)]
 	params: Option<PathBuf>,
 
-	/// Read config templates from this directory. Defaults to `templates` when
-	/// it exists, which is where an Argo plugin finds them in the checkout.
+	/// Read config templates from this directory instead of the ones built in.
 	#[arg(long)]
 	templates: Option<PathBuf>,
 
@@ -48,11 +47,10 @@ fn main() -> Result<()> {
 		(None, Err(_)) => read_stdin()?,
 	};
 	let params: Params = serde_json::from_str(&raw).context("parsing parameters")?;
-	let templates = args.templates.clone().or_else(|| {
-		let default = PathBuf::from("templates");
-		default.is_dir().then_some(default)
-	});
-	let resources = tamanu_renderer::render_with(&params, &tamanu_renderer::Options { templates })?;
+	let options = tamanu_renderer::Options {
+		templates: args.templates.clone(),
+	};
+	let resources = tamanu_renderer::render_with(&params, &options)?;
 	match args.format {
 		Format::Yaml => print!("{}", tamanu_renderer::to_yaml(&resources)?),
 		Format::Stream => print!("{}", tamanu_renderer::to_stream(&resources)?),
