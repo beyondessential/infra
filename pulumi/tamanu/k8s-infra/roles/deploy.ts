@@ -74,6 +74,12 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
       resources: ['deployments'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
+    // tamanu/on-k8s gives each replicated workload a disruption budget.
+    {
+      apiGroups: ['policy'],
+      resources: ['poddisruptionbudgets'],
+      verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+    },
     {
       apiGroups: ['batch'],
       resources: ['jobs', 'cronjobs'],
