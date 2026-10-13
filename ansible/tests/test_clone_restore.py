@@ -165,14 +165,15 @@ class TheIdentityScrub(PostgresTestCase):
         self.assertEqual(self.psql("SELECT string_agg(key, ',' ORDER BY key) FROM local_system_facts"), "currentSyncTick")
         self.assertEqual(self.psql("SELECT string_agg(key, ',' ORDER BY key) FROM settings WHERE deleted_at IS NULL"), "mail.from")
 
-    def test_a_database_with_the_function_is_handed_to_it(self):
+    def test_a_database_with_the_function_is_handed_to_it_as_a_copy(self):
         self.psql(
-            TAMANU_TABLES + "CREATE TABLE calls (at timestamptz);"
-            "CREATE FUNCTION public.forget_server_identity() RETURNS void LANGUAGE sql AS 'INSERT INTO calls VALUES (now())';"
+            TAMANU_TABLES + "CREATE TABLE calls (copy text);"
+            "CREATE FUNCTION public.forget_server_identity() RETURNS void LANGUAGE sql"
+            " AS $$INSERT INTO calls VALUES (current_setting('tamanu.this_is_a_copy', true))$$;"
         )
         self.seed()
         self.psql(file=FORGET_SQL)
-        self.assertEqual(self.psql("SELECT count(*) FROM calls"), "1")
+        self.assertEqual(self.psql("SELECT string_agg(copy, ',') FROM calls"), "true")
         self.assertEqual(self.psql("SELECT count(*) FROM local_system_facts"), "7")
 
     def test_a_database_without_the_function_gets_the_same_removal(self):

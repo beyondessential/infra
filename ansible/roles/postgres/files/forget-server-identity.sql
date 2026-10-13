@@ -4,6 +4,8 @@
 DO $$
 BEGIN
   IF to_regprocedure('public.forget_server_identity()') IS NOT NULL THEN
+    -- The function refuses unless the transaction declares the database a copy.
+    PERFORM set_config('tamanu.this_is_a_copy', 'true', true);
     PERFORM public.forget_server_identity();
     RETURN;
   END IF;
