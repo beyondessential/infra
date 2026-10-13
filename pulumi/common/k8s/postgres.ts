@@ -50,7 +50,8 @@ export interface PostgresArgs {
   memoryRequest?: Input<string>;
   // 'dedicated' runs the instances only on the on-demand pool for critical
   // databases, one per node; 'ondemand' runs them only on the general
-  // on-demand workload pools; the default prefers spot capacity.
+  // on-demand workload pools, also one per node; the default prefers spot
+  // capacity.
   placement?: 'spot' | 'ondemand' | 'dedicated';
   // Keep CNPG's PodDisruptionBudgets. The primary's budget allows no
   // evictions, so every node holding a primary is exempt from consolidation;
@@ -88,7 +89,7 @@ const PLACEMENT_SCHEDULING = {
       preferredDuringSchedulingIgnoredDuringExecution: [{ weight: 1, preference: RUN_ON_SPOT }],
     },
   },
-  ondemand: {},
+  ondemand: { podAntiAffinityType: 'required' },
   dedicated: {
     tolerations: [
       { key: 'bes.node.group', operator: 'Equal', value: 'db-critical', effect: 'NoSchedule' },
@@ -209,7 +210,7 @@ export function runPostgres({
                 },
               }
             : {},
-        // k[postgres.placement.dedicated+2] k[postgres.placement.on-demand]
+        // k[postgres.placement.dedicated+2] k[postgres.placement.on-demand+2]
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
