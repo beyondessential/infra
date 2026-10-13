@@ -3,9 +3,12 @@ import * as k8s from '@pulumi/kubernetes';
 import {
   costLabels,
   domains,
+  gatewayAdvertisesDomains,
+  gatewayAlias,
   gatewayListeners,
-  gatewayRouteDomains,
+  gatewayServesDomains,
   maxRequestBody,
+  nginxIngressAdvertised,
   nginxIngressEnabled,
   normalizedStack,
   publicServerVersionsSecret,
@@ -135,55 +138,64 @@ BackendTrafficPolicy('http', {
   },
 });
 
-HTTPRoute('http', {
-  metadata: {
-    namespace,
-    annotations: {
-      'pulumi.com/patchForce': 'true',
+// external-dns skips a resource whose controller annotation names another
+// controller, which separates serving a hostname from advertising it in DNS
+// (k[migration.staging-alias], k[migration.drain]).
+const externalDnsIgnored = { 'external-dns.alpha.kubernetes.io/controller': 'none' };
+
+const gatewayRoute = (name: string, hostnames: string[], advertised: boolean) =>
+  HTTPRoute(name, {
+    metadata: {
+      namespace,
+      annotations: {
+        'pulumi.com/patchForce': 'true',
+        ...(advertised ? {} : externalDnsIgnored),
+      },
     },
-  },
-  spec: {
-    parentRefs: [
-      {
-        group: GATEWAY_API_GROUP,
-        kind: gateway.kind,
-        namespace,
-        name: gateway.metadata.name,
-      },
-    ],
-    // Advertising a hostname here is what makes external-dns publish a record for
-    // it, so which domains the route claims is what moves traffic onto the
-    // Gateway — separately from which ones it is configured to serve
-    // (k[migration.staging-alias]).
-    hostnames: gatewayRouteDomains,
-    rules: [
-      {
-        backendRefs: [
-          {
-            namespace,
-            name: envoyPublicSvc.metadata.name,
-            port: 80,
-          },
-        ],
-        // XFCC is overwritten by the Gateway, but these pass through untouched,
-        // and a backend trusting the nginx path would believe them.
-        // k[envoy.mtls-foreign-headers]
-        filters: [
-          {
-            type: HTTPRouteFilterType.RequestHeaderModifier,
-            requestHeaderModifier: {
-              remove: ['mtls-certificate', 'ssl-client-cert'],
-            },
-          },
-        ],
-        // k[envoy.timeouts+2]
-        timeouts: {
-          request: requestTimeout,
+    spec: {
+      parentRefs: [
+        {
+          group: GATEWAY_API_GROUP,
+          kind: gateway.kind,
+          namespace,
+          name: gateway.metadata.name,
         },
-      },
-    ],
-  },
-});
+      ],
+      hostnames,
+      rules: [
+        {
+          backendRefs: [
+            {
+              namespace,
+              name: envoyPublicSvc.metadata.name,
+              port: 80,
+            },
+          ],
+          // XFCC is overwritten by the Gateway, but these pass through untouched,
+          // and a backend trusting the nginx path would believe them.
+          // k[envoy.mtls-foreign-headers]
+          filters: [
+            {
+              type: HTTPRouteFilterType.RequestHeaderModifier,
+              requestHeaderModifier: {
+                remove: ['mtls-certificate', 'ssl-client-cert'],
+              },
+            },
+          ],
+          // k[envoy.timeouts+2]
+          timeouts: {
+            request: requestTimeout,
+          },
+        },
+      ],
+    },
+  });
+
+gatewayRoute('http', domains.map(gatewayAlias), true);
+
+const domainsRoute = gatewayServesDomains
+  ? gatewayRoute('http-domains', domains, gatewayAdvertisesDomains)
+  : undefined;
 
 function publicServer(name: string, task: string, certHeader: 'mtls' | 'xfcc') {
   return new k8s.apps.v1.Deployment(
@@ -283,50 +295,57 @@ function publicServer(name: string, task: string, certHeader: 'mtls' | 'xfcc') {
 
 publicServer('public-server-envoy', 'public-envoy', 'xfcc');
 
-// Deprecated: superseded by the Gateway above, and removed once envoyStage
-// reaches `primary`. Its auth-tls-secret names a CA only because ingress-nginx
+// Deprecated: superseded by the Gateway above, unadvertised at `drain` and
+// removed at `primary`. Its auth-tls-secret names a CA only because ingress-nginx
 // will not request or forward a client certificate without one named; the
 // certificates it forwards do not chain to it (k[envoy.mtls-unverified]).
 if (nginxIngressEnabled) {
   const publicSvc = publicService('public-server', 'public');
   publicServer('public-server', 'public', 'mtls');
 
-  new k8s.networking.v1.Ingress('http', {
-    metadata: {
-      namespace,
-      name: 'meta',
-      annotations: {
-        'cert-manager.io/cluster-issuer': 'letsencrypt',
-        'cert-manager.io/private-key-algorithm': 'ECDSA',
-        'nginx.ingress.kubernetes.io/auth-tls-secret': interpolate`${caRootCert.metadata.namespace}/${caRootCert.metadata.name}`,
-        'nginx.ingress.kubernetes.io/auth-tls-verify-client': 'optional_no_ca',
-        'nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream': 'true',
+  new k8s.networking.v1.Ingress(
+    'http',
+    {
+      metadata: {
+        namespace,
+        name: 'meta',
+        annotations: {
+          'cert-manager.io/cluster-issuer': 'letsencrypt',
+          'cert-manager.io/private-key-algorithm': 'ECDSA',
+          'nginx.ingress.kubernetes.io/auth-tls-secret': interpolate`${caRootCert.metadata.namespace}/${caRootCert.metadata.name}`,
+          'nginx.ingress.kubernetes.io/auth-tls-verify-client': 'optional_no_ca',
+          'nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream': 'true',
+          ...(nginxIngressAdvertised ? {} : externalDnsIgnored),
+        },
       },
-    },
-    spec: {
-      ingressClassName: 'nginx',
-      tls: [{ hosts: domains, secretName: 'http-tls' }],
-      rules: domains.map((host) => ({
-        host,
-        http: {
-          paths: [
-            {
-              path: '/',
-              pathType: 'Prefix',
-              backend: {
-                service: {
-                  name: publicSvc.metadata.name,
-                  port: {
-                    name: 'http',
+      spec: {
+        ingressClassName: 'nginx',
+        tls: [{ hosts: domains, secretName: 'http-tls' }],
+        rules: domains.map((host) => ({
+          host,
+          http: {
+            paths: [
+              {
+                path: '/',
+                pathType: 'Prefix',
+                backend: {
+                  service: {
+                    name: publicSvc.metadata.name,
+                    port: {
+                      name: 'http',
+                    },
                   },
                 },
               },
-            },
-          ],
-        },
-      })),
+            ],
+          },
+        })),
+      },
     },
-  });
+    // Updated after the Gateway's route, so that on the way to `drain` the
+    // domains are claimed by both before nginx gives them up, and never by neither.
+    { dependsOn: domainsRoute ? [domainsRoute] : [] },
+  );
 }
 
 const privateSvc = new k8s.core.v1.Service('private-server', {
