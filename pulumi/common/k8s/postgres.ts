@@ -153,6 +153,10 @@ export function runPostgres({
         // when superuser access is enabled (off by default since CNPG 1.21).
         enableSuperuserAccess: true,
         primaryUpdateStrategy: 'unsupervised',
+        // k[postgres.primary-update.switchover]
+        // The operator rejects any single update that changes both the image
+        // and postgres parameters under this method; split such changes.
+        primaryUpdateMethod: 'switchover',
         storage: {
           size: storage,
         },
