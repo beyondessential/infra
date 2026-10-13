@@ -243,6 +243,8 @@ export const envoyProxy = new k8s.apiextensions.CustomResource(
               // Without this the LBC silently ignores the UDP service port and only
               // creates a TCP listener. Requires LBC >= v2.13.0.
               'service.beta.kubernetes.io/aws-load-balancer-enable-tcp-udp-listener': 'true',
+              // Preserves IPv6 clients' addresses only: IPv4 clients reach these IPv6
+              // targets as the NLB's address (k[envoy.real-ip+2]).
               'service.beta.kubernetes.io/aws-load-balancer-target-group-attributes':
                 'preserve_client_ip.enabled=true',
               'service.beta.kubernetes.io/aws-load-balancer-attributes':
@@ -313,6 +315,7 @@ const http3Policy = new k8s.apiextensions.CustomResource('envoy-gateway-require-
           'and HTTP/3 will silently break for every gateway in the cluster.',
       },
       {
+        // k[envoy.proxy-protocol+2]
         expression:
           '!has(object.spec.enableProxyProtocol) || object.spec.enableProxyProtocol == false',
         message:

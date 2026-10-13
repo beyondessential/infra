@@ -49,6 +49,11 @@ new k8s.helm.v3.Release(
           'enable-real-ip': 'true',
           'proxy-body-size': '50m',
           'proxy-real-ip-cidr': '0.0.0.0/0,::/0',
+          // Take the client IP from the NLB's PROXY header. Forwarded headers
+          // would make nginx believe a client-supplied X-Forwarded-For instead;
+          // set explicitly so a value set out of band is overwritten.
+          // k[lb.nginx.real-ip]
+          'use-forwarded-headers': 'false',
           'use-http2': 'true',
           'use-proxy-protocol': 'true',
         },
