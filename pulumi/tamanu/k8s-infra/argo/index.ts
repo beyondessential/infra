@@ -1,17 +1,21 @@
 import * as k8s from '@pulumi/kubernetes';
-import { cfg } from '../../common/k8s/coreRef.ts';
-import { ARGO_CD_VERSION } from '../versions.ts';
+import { Config } from '@pulumi/pulumi';
 
 // Argo CD applies Tamanu deployments that infra-argo-tamanu-renderer renders. Each deployment
 // is an Application created by the tamanu/on-k8s stub; this stack owns the
 // controller, the render plugin and the project those Applications run under.
 
-const namespaceName = cfg.get('argoNamespace') ?? 'argocd';
+// https://artifacthub.io/packages/helm/argo/argo-cd
+// helm chart version (10.10.2 deploys Argo CD v3.5.4)
+const ARGO_CD_VERSION = '10.10.2';
+
+const argoCfg = new Config('argo');
+const namespaceName = argoCfg.get('namespace') ?? 'argocd';
 const RENDER_REPO = 'https://github.com/beyondessential/infra';
 
 // infra-argo-tamanu-renderer is published by that repository's CD. The tag is a required
 // config value so the plugin never floats.
-const renderImageTag = cfg.require('argoRenderImageTag');
+const renderImageTag = argoCfg.require('renderImageTag');
 
 const namespace = new k8s.core.v1.Namespace('argocd', { metadata: { name: namespaceName } });
 
