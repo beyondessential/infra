@@ -65,6 +65,21 @@ const release = new k8s.helm.v3.Release(
           // applications may already use for their own selectors.
           'application.resourceTrackingMethod': 'annotation',
           'resource.customizations.health.postgresql.cnpg.io_Cluster': CNPG_CLUSTER_HEALTH,
+          // The Tailscale grants decide who can reach the server, so it has no login of its
+          // own. Anyone who reaches it acts as the default role in `rbac` below.
+          'users.anonymous.enabled': true,
+          'admin.enabled': false,
+        },
+        rbac: {
+          // Anonymous users can run Tamanu deployments and nothing else: the default role
+          // is scoped to the `tamanu` project, because the controller itself can write to
+          // the whole cluster and an engineer's own access does not.
+          'policy.default': 'role:tamanu',
+          'policy.csv': [
+            'p, role:tamanu, applications, *, tamanu/*, allow',
+            'p, role:tamanu, logs, get, tamanu/*, allow',
+            'p, role:tamanu, projects, get, tamanu, allow',
+          ].join('\n'),
         },
         params: {
           // TLS ends at the Tailscale proxy in front of the server.
