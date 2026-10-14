@@ -25,7 +25,6 @@ const STUB_ONLY = new Set([
   'deployment',
   'k8s-core',
   'externalNamespace',
-  'deployer',
   'argoNamespace',
   'argoProject',
   'argoWaitMinutes',
