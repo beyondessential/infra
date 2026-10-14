@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 import { argoNamespace } from '../../common/k8s/argo.ts';
-import { cfg } from '../../common/k8s/coreRef.ts';
+import { cfg, clusterFullName } from '../../common/k8s/coreRef.ts';
 import { ARGO_CD_VERSION } from '../versions.ts';
 
 // The Argo CD controller, shared by anything on the cluster that wants GitOps.
@@ -67,7 +67,7 @@ const release = new k8s.helm.v3.Release(
           'resource.customizations.health.postgresql.cnpg.io_Cluster': CNPG_CLUSTER_HEALTH,
         },
         params: {
-          // No ingress: the UI and API are reached with a port-forward.
+          // TLS ends at the Tailscale proxy in front of the server.
           'server.insecure': true,
         },
       },
@@ -94,5 +94,43 @@ new k8s.apiextensions.CustomResource(
     spec: { sourceRepos: [], destinations: [], clusterResourceWhitelist: [] },
   },
   // The chart installs the custom resource definitions this needs.
+  { parent: namespace, dependsOn: [release] },
+);
+
+// The UI and API, reached over Tailscale only. Who may reach them is set by the grants on
+// the tag, in the tailnet policy. The operator's tag owners must include the tag below.
+const tailscaleName = cfg.get('argoTailscaleName') ?? `argocd-${clusterFullName}`;
+new k8s.networking.v1.Ingress(
+  'argo-cd-tailscale',
+  {
+    metadata: {
+      namespace: namespaceName,
+      annotations: {
+        'tailscale.com/hostname': tailscaleName,
+        'tailscale.com/tags': 'tag:k8s,tag:k8s-argo',
+      },
+    },
+    spec: {
+      ingressClassName: 'tailscale',
+      tls: [{ hosts: [tailscaleName] }],
+      rules: [
+        {
+          host: tailscaleName,
+          http: {
+            paths: [
+              {
+                path: '/',
+                pathType: 'Prefix',
+                backend: {
+                  // The chart names it after the release.
+                  service: { name: 'argo-cd-argocd-server', port: { number: 80 } },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
   { parent: namespace, dependsOn: [release] },
 );
