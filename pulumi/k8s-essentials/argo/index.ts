@@ -10,6 +10,10 @@ import { ARGO_CD_VERSION } from '../versions.ts';
 
 const namespaceName = cfg.get('argoNamespace') ?? 'argocd';
 
+// Installs a different chart than the pinned one, to start from an older release
+// and exercise an upgrade. Remove the key to return to the pin.
+const chartVersion = cfg.get('argoVersion') ?? ARGO_CD_VERSION;
+
 const namespace = new k8s.core.v1.Namespace('argocd', { metadata: { name: namespaceName } });
 
 // A CNPG Cluster has no built-in health check, so without this Argo treats it
@@ -37,7 +41,7 @@ const release = new k8s.helm.v3.Release(
   {
     name: 'argo-cd',
     chart: 'argo-cd',
-    version: ARGO_CD_VERSION,
+    version: chartVersion,
     repositoryOpts: { repo: 'https://argoproj.github.io/argo-helm' },
     namespace: namespace.metadata.name,
     values: {
