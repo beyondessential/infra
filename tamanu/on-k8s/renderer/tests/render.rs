@@ -235,3 +235,37 @@ fn a_value_of_the_wrong_type_is_rejected_with_the_value_in_the_message() {
 	.to_string();
 	assert!(err.contains("many"), "{err}");
 }
+
+fn wave(v: &Value) -> Option<&str> {
+	v.pointer("/metadata/annotations/argocd.argoproj.io~1sync-wave")
+		.and_then(Value::as_str)
+}
+
+/// Argo CD marks a route unhealthy while its backend Service is missing, and
+/// a wave only completes once everything in it is healthy. So routes, and
+/// everything else that depends on the workloads, must come after the wave
+/// that creates the Services.
+#[test]
+fn services_and_routes_are_never_in_the_base_wave() {
+	let p = params(json!({
+		"redirects": { "old.example.org": "https://new.example.org" },
+		"patientPortalReplicas": 1,
+		"facilities": 2,
+	}));
+	let out = tamanu_renderer::render_with(&p, &options()).unwrap();
+	let late = [
+		"Service",
+		"Deployment",
+		"Gateway",
+		"HTTPRoute",
+		"ClientTrafficPolicy",
+		"PodDisruptionBudget",
+	];
+	let early: Vec<_> = out
+		.iter()
+		.filter(|v| late.contains(&v["kind"].as_str().unwrap_or("")))
+		.filter(|v| wave(v) != Some("3"))
+		.map(|v| format!("{} {} wave {:?}", v["kind"], v["metadata"]["name"], wave(v)))
+		.collect();
+	assert!(early.is_empty(), "not in the workloads wave: {early:#?}");
+}

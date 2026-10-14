@@ -133,7 +133,7 @@ fn facility_apps(cfg: &Config, server: &str, facility: &Facility) -> Result<Vec<
 			replicas: replicas.web,
 		},
 	)? {
-		out.push(resource);
+		out.push(waves::in_wave(resource, waves::WORKLOADS));
 	}
 
 	let host = cfg

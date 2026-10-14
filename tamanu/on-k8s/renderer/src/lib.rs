@@ -60,7 +60,11 @@ pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 
 	let mut out = Vec::new();
 	out.extend(service_account::service_account(&cfg)?);
-	out.extend(redirect::redirect_sites(&cfg)?);
+	out.extend(
+		redirect::redirect_sites(&cfg)?
+			.into_iter()
+			.map(|r| waves::in_wave(r, waves::WORKLOADS)),
+	);
 
 	let mut portal = web::run_web(
 		&cfg,
@@ -72,14 +76,22 @@ pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 			replicas: cfg.patient_portal_replicas,
 		},
 	)?;
-	out.append(&mut portal);
-	out.extend(gateway::ingress(
-		&cfg,
-		"patient-portal",
-		&cfg.domains.patient_portal,
-		"central-api",
-		"patient-portal-web",
-	)?);
+	out.extend(
+		portal
+			.drain(..)
+			.map(|r| waves::in_wave(r, waves::WORKLOADS)),
+	);
+	out.extend(
+		gateway::ingress(
+			&cfg,
+			"patient-portal",
+			&cfg.domains.patient_portal,
+			"central-api",
+			"patient-portal-web",
+		)?
+		.into_iter()
+		.map(|r| waves::in_wave(r, waves::WORKLOADS)),
+	);
 
 	out.extend(central::render(&cfg)?);
 	out.extend(facility::render(&cfg)?);

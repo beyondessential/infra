@@ -183,7 +183,7 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 	});
 
 	let mut out = vec![
-		serde_json::to_value(service)?,
+		waves::in_wave(serde_json::to_value(service)?, waves::WORKLOADS),
 		deployment(
 			ctx,
 			name.clone(),

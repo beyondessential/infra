@@ -48,6 +48,8 @@ spec:
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-traffic-policy
   namespace: tamanu-main
 spec:
@@ -1781,6 +1783,8 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-1-web
   namespace: tamanu-main
 spec:
@@ -2397,6 +2401,8 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-2-web
   namespace: tamanu-main
 spec:
@@ -3116,6 +3122,8 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-web
   namespace: tamanu-main
 spec:
@@ -3279,6 +3287,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
+    argocd.argoproj.io/sync-wave: '3'
     cert-manager.io/cluster-issuer: letsencrypt
     cert-manager.io/private-key-algorithm: ECDSA
   name: patient-portal
@@ -3659,6 +3668,8 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-api
   namespace: tamanu-main
 spec:
@@ -3681,6 +3692,8 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-api-import
   namespace: tamanu-main
 spec:
@@ -3703,6 +3716,8 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-api-import-legacy
   namespace: tamanu-main
 spec:
@@ -3725,6 +3740,8 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-api-legacy
   namespace: tamanu-main
 spec:
@@ -3747,6 +3764,8 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-frontend
   namespace: tamanu-main
 spec:
@@ -4973,6 +4992,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-1-api
   namespace: tamanu-main
 spec:
@@ -4990,6 +5011,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-1-sync
   namespace: tamanu-main
 spec:
@@ -5007,6 +5030,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-1-web
   namespace: tamanu-main
 spec:
@@ -5024,6 +5049,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-2-api
   namespace: tamanu-main
 spec:
@@ -5041,6 +5068,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-2-sync
   namespace: tamanu-main
 spec:
@@ -5058,6 +5087,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-2-web
   namespace: tamanu-main
 spec:
@@ -5075,6 +5106,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
   name: patient-portal-web
   namespace: tamanu-main
 spec:
