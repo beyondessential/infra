@@ -85,7 +85,13 @@ new k8s.apiextensions.CustomResource(
   {
     apiVersion: 'argoproj.io/v1alpha1',
     kind: 'AppProject',
-    metadata: { name: 'default', namespace: namespaceName },
+    metadata: {
+      name: 'default',
+      namespace: namespaceName,
+      // Argo CD's server creates this project itself on startup, so its fields
+      // are already owned by it. Take them over rather than conflict.
+      annotations: { 'pulumi.com/patchForce': 'true' },
+    },
     spec: { sourceRepos: [], destinations: [], clusterResourceWhitelist: [] },
   },
   // The chart installs the custom resource definitions this needs.
