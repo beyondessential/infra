@@ -20,7 +20,9 @@ pub fn pg_args(
 	roles: Vec<postgres::ManagedRole>,
 	init_sql: String,
 ) -> Result<PgArgs> {
-	PgArgs::from_config(cfg, SERVER, cfg.replicas.central.db, roles, init_sql)
+	let mut args = PgArgs::from_config(cfg, SERVER, cfg.replicas.central.db, roles, init_sql)?;
+	args.seed_snapshot = cfg.seed_snapshot_name.clone();
+	Ok(args)
 }
 
 #[cfg(test)]

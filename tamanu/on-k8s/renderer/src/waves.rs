@@ -55,6 +55,19 @@ pub fn hook(resource: Value, wave: i32) -> Value {
 	resource
 }
 
+/// A hook that runs once everything has synced and is healthy, and is deleted
+/// before the next run creates it again.
+pub fn post_sync_hook(resource: Value) -> Value {
+	let mut resource = resource;
+	annotate(&mut resource, "argocd.argoproj.io/hook", "PostSync");
+	annotate(
+		&mut resource,
+		"argocd.argoproj.io/hook-delete-policy",
+		"BeforeHookCreation",
+	);
+	resource
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

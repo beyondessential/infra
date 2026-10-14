@@ -55,6 +55,9 @@ pub struct PgArgs {
 	pub timezone: String,
 	pub roles: Vec<ManagedRole>,
 	pub init_sql: String,
+	/// Restores the cluster from this VolumeSnapshot, in this namespace, in place of an
+	/// empty database.
+	pub seed_snapshot: Option<String>,
 	/// Propagated to every pod in the cluster, for AWS split cost allocation.
 	pub inherited_metadata_labels: BTreeMap<String, String>,
 	/// Overrides the stack's `barmanRoleArn` and the cluster's own backups role.
@@ -105,6 +108,7 @@ impl PgArgs {
 			timezone: cfg.timezone.clone(),
 			roles,
 			init_sql,
+			seed_snapshot: None,
 			inherited_metadata_labels: cost_labels(cfg),
 			barman_role_arn: cfg.db.barman_role_arn.clone(),
 			barman_backup,
@@ -353,7 +357,15 @@ fn cluster(
 	);
 	spec.insert(
 		"bootstrap".into(),
-		if args.init_sql.is_empty() {
+		if let Some(snapshot) = &args.seed_snapshot {
+			// The CRD validates this as a core/v1 TypedLocalObjectReference, which needs the
+			// group and kind as strings.
+			json!({ "recovery": { "volumeSnapshots": { "storage": {
+				"apiGroup": "snapshot.storage.k8s.io",
+				"kind": "VolumeSnapshot",
+				"name": snapshot,
+			} } } })
+		} else if args.init_sql.is_empty() {
 			json!({})
 		} else {
 			json!({ "initdb": { "postInitApplicationSQL": [args.init_sql] } })

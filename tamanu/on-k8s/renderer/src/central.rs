@@ -6,6 +6,7 @@ mod api;
 pub mod database;
 mod fhir;
 mod provisioner;
+mod seed_top_up;
 mod specs;
 mod tasks;
 
@@ -51,6 +52,7 @@ pub fn workloads(cfg: &Config) -> Result<Vec<Value>> {
 		pods.pod_spec(specs::PodArgs::new("migrator", ["migrate"])),
 	)?);
 	out.push(provisioner::provisioner(cfg, &pods)?);
+	out.extend(seed_top_up::seed_top_up(cfg, &pods)?);
 	out.push(tasks::tasks(cfg, &pods)?);
 	out.extend(fhir::fhir_workers(cfg, &pods)?);
 	out.extend(api::api(cfg, &pods)?);

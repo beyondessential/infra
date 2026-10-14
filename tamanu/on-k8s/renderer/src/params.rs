@@ -60,6 +60,19 @@ pub struct Params {
 	pub cluster: Cluster,
 	#[serde(default)]
 	pub billing: Billing,
+	/// Resolved by the stub when `seedSnapshot` is set.
+	#[serde(default)]
+	pub seed: Option<Seed>,
+}
+
+/// The seed snapshot a new central database is restored from. The stub finds
+/// the snapshot and clones it into the namespace, since that needs the live
+/// cluster and cluster-scoped objects.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Seed {
+	/// The namespaced VolumeSnapshot to restore from.
+	pub snapshot: String,
 }
 
 /// Facts about the cluster the stub reads from `k8s-core`.
@@ -178,6 +191,11 @@ pub struct StackConfig {
 	/// runs the synthetic tests Deployment.
 	#[serde(default, deserialize_with = "lenient")]
 	pub synthetic_tests: Option<bool>,
+	/// Tops the database up with generated data after a deploy, on top of a
+	/// restored seed snapshot. Writes fake clinical data, so it is refused for a
+	/// production `nodeEnv`.
+	#[serde(default, deserialize_with = "lenient")]
+	pub seed_snapshot: Option<bool>,
 
 	// Keys the program reads that nothing here renders: the Pulumi stub acts on
 	// them, or they only matter to the program this one replaces.
@@ -185,6 +203,4 @@ pub struct StackConfig {
 	pub ttl_hours: Option<IgnoredAny>,
 	#[serde(default)]
 	pub ip_allow_list: Option<IgnoredAny>,
-	#[serde(default)]
-	pub seed_snapshot: Option<IgnoredAny>,
 }

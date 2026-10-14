@@ -99,6 +99,10 @@ pub struct Config {
 	pub architecture: Architecture,
 	pub capacity: Capacity,
 	pub synthetic_tests: bool,
+	/// Whether to top the database up with generated data after a deploy.
+	pub seed_snapshot: bool,
+	/// The VolumeSnapshot the central database is restored from, if one was found.
+	pub seed_snapshot_name: Option<String>,
 	pub timezone: String,
 	pub config_template: String,
 	pub facilities: Vec<Facility>,
@@ -205,6 +209,7 @@ impl Config {
 				.clone()
 				.or_else(|| p.cluster.backups_bucket.clone()),
 		};
+		let node_env = c.node_env.clone().unwrap_or_else(|| "production".into());
 		let proxy_trusted = ["loopback"]
 			.into_iter()
 			.chain(p.cluster.network_v4_cidr.as_deref())
@@ -213,6 +218,15 @@ impl Config {
 			.collect::<Vec<_>>()
 			.join(", ");
 
+		// The top-up hands the app the override that lets it write fake data, so the config
+		// flag is the only thing standing between a real deployment and generated patients.
+		let seed_snapshot = c.seed_snapshot.unwrap_or(false);
+		if seed_snapshot && node_env == "production" {
+			bail!(
+				"seedSnapshot writes fake clinical data, so it needs a stack whose nodeEnv is not production"
+			);
+		}
+
 		Ok(Self {
 			stack,
 			namespace,
@@ -220,10 +234,12 @@ impl Config {
 			app_version: p.app_version.clone(),
 			is_demo_cluster,
 			domain_base,
-			node_env: c.node_env.clone().unwrap_or_else(|| "production".into()),
+			node_env,
 			architecture,
 			capacity,
 			synthetic_tests: c.synthetic_tests.unwrap_or(false),
+			seed_snapshot,
+			seed_snapshot_name: p.seed.as_ref().map(|s| s.snapshot.clone()),
 			timezone: c
 				.timezone
 				.clone()

@@ -219,7 +219,7 @@ fn stack_config_as_pulumi_stores_it_renders_the_same_as_typed_config() {
 
 #[test]
 fn keys_the_program_has_but_nothing_renders_are_accepted() {
-	let p = params(json!({ "ttlHours": "24", "ipAllowList": "null", "seedSnapshot": "true" }));
+	let p = params(json!({ "ttlHours": "24", "ipAllowList": "null" }));
 	tamanu_renderer::render_with(&p, &options()).unwrap();
 }
 
@@ -299,5 +299,67 @@ fn synthetic_tests_run_an_artillery_deployment_aimed_at_every_server() {
 	assert!(
 		off.iter()
 			.all(|v| v["metadata"]["name"] != "synthetic-tests")
+	);
+}
+
+fn seeded(config: Value) -> Params {
+	serde_json::from_value(json!({
+		"stack": "main",
+		"imageTag": "sha-a25d1d40354fd2d38442bce75328310ca37abae9",
+		"appVersion": "2.67.0",
+		"cluster": { "fullName": "tamanu-internal-main" },
+		"config": config,
+		"seed": { "snapshot": "seed-snapshot" },
+	}))
+	.unwrap()
+}
+
+#[test]
+fn a_seed_snapshot_restores_central_and_tops_it_up_after_the_sync() {
+	let out = tamanu_renderer::render_with(
+		&seeded(json!({ "seedSnapshot": "true", "nodeEnv": "staging" })),
+		&options(),
+	)
+	.unwrap();
+	assert_eq!(
+		find(&out, "Cluster", "central-db")["spec"]["bootstrap"],
+		json!({ "recovery": { "volumeSnapshots": { "storage": {
+			"apiGroup": "snapshot.storage.k8s.io",
+			"kind": "VolumeSnapshot",
+			"name": "seed-snapshot",
+		} } } })
+	);
+	assert!(
+		find(&out, "Cluster", "facility-1-db")["spec"]["bootstrap"]
+			.get("recovery")
+			.is_none(),
+		"only central is restored"
+	);
+	let job = find(&out, "Job", "central-seed-top-up");
+	assert_eq!(
+		job["metadata"]["annotations"]["argocd.argoproj.io/hook"],
+		"PostSync"
+	);
+}
+
+#[test]
+fn a_seed_snapshot_is_refused_for_a_production_deployment() {
+	let err = tamanu_renderer::render_with(&seeded(json!({ "seedSnapshot": "true" })), &options())
+		.unwrap_err()
+		.to_string();
+	assert!(err.contains("not production"), "{err}");
+}
+
+#[test]
+fn without_a_seed_snapshot_the_database_starts_empty() {
+	let out = tamanu_renderer::render_with(&params(json!({})), &options()).unwrap();
+	assert!(
+		find(&out, "Cluster", "central-db")["spec"]["bootstrap"]
+			.get("recovery")
+			.is_none()
+	);
+	assert!(
+		out.iter()
+			.all(|v| v["metadata"]["name"] != "central-seed-top-up")
 	);
 }
