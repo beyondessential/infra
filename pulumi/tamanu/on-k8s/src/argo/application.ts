@@ -60,6 +60,12 @@ export function application(params: Input<string>): k8s.apiextensions.CustomReso
     metadata: {
       name: namespaceName,
       namespace: ARGO_NAMESPACE,
+      annotations: {
+        // Custom resources gain fields from their CRD defaults and webhooks
+        // that the render does not set, which a client-side diff reports as
+        // drift forever. Diffing on the server accounts for them.
+        'argocd.argoproj.io/compare-options': 'ServerSideDiff=true',
+      },
       // Deleting the Application deletes what it created, so a destroy leaves
       // nothing behind even when the namespace outlives it.
       finalizers: ['resources-finalizer.argocd.argoproj.io'],
