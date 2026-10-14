@@ -21,7 +21,8 @@ await import('./secrets.ts');
 
 setupTtlHibernation(namespace);
 
-const app = application(renderParams());
+const { seedParams } = await import('./seed.ts');
+const app = application(renderParams(await seedParams()));
 
 // Resolves once Argo has synced the deployment and it is healthy, and fails the
 // update otherwise, as a failed migration does for the program Argo replaces.

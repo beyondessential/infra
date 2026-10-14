@@ -15,10 +15,12 @@ export const servers = ['central', ...facilityList.map((_, i) => `facility-${i +
 // `{server}-reporting-db`. The previous program created them under a component per server,
 // and the same parents here keep their identity, so a stack handed over from it keeps its
 // passwords.
+export const centralServer = new ComponentResource('bes:tamanu:CentralServer', 'central');
+
 for (const server of servers) {
   const parent =
     server === 'central'
-      ? new ComponentResource('bes:tamanu:CentralServer', 'central')
+      ? centralServer
       : new ComponentResource('bes:tamanu:FacilityServer', server.replace('facility-', ''));
   dbRoleSecret({ parent, name: `${server}-raw`, namespace, username: 'raw' });
   dbRoleSecret({ parent, name: `${server}-reporting`, namespace, username: 'reporting' });
