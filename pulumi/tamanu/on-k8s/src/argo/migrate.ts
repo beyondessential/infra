@@ -66,7 +66,9 @@ async function list(kind: Kind): Promise<KubernetesObject[]> {
   return result?.items ?? [];
 }
 
-const autonamed = (o: KubernetesObject) => o.metadata?.annotations?.[AUTONAMED] === 'true';
+// The stub's own TTL machinery is autonamed too, and stays.
+const autonamed = (o: KubernetesObject) =>
+  o.metadata?.annotations?.[AUTONAMED] === 'true' && !o.metadata.name?.startsWith('ttl-');
 
 async function isMigrated(): Promise<boolean> {
   const app = await orNothing(
@@ -81,10 +83,13 @@ async function isMigrated(): Promise<boolean> {
   return app !== undefined;
 }
 
-// A database cluster that Argo does not track was created by the previous program.
+// Anything the previous program named itself, or a database cluster that Argo does not
+// track, means the stack was deployed by it. Checking only for the cluster would miss a
+// stack that was deployed in part.
 async function hasLegacyObjects(): Promise<boolean> {
   const clusters = await list(POSTGRES);
-  return clusters.some((c) => !c.metadata?.annotations?.[TRACKING]);
+  if (clusters.some((c) => !c.metadata?.annotations?.[TRACKING])) return true;
+  return (await remaining()) > 0;
 }
 
 async function isMarked(): Promise<boolean> {
