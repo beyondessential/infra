@@ -30,7 +30,6 @@ const STUB_ONLY = new Set([
   'argoProject',
   'argoWaitMinutes',
   'rendererRepo',
-  'rendererRef',
   'rendererPath',
 ]);
 

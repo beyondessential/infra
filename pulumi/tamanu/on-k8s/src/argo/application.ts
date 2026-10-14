@@ -10,7 +10,11 @@ import { namespaceName } from '../namespace.ts';
 const ARGO_NAMESPACE = argoNamespace;
 const ARGO_PROJECT = cfg.get('argoProject') ?? 'tamanu';
 const RENDERER_REPO = cfg.get('rendererRepo') ?? 'https://github.com/beyondessential/infra';
-const RENDERER_REF = cfg.get('rendererRef') ?? 'main';
+// The render depends only on the params and the plugin image, never on the
+// checkout, so the revision is pinned to a commit that never changes. Argo then
+// neither polls for new commits nor re-renders on them; a new plugin image is
+// picked up by a hard refresh.
+const RENDERER_REF = '14ad80a52dfac3bfb5fb8367eea004029a2a26b0';
 const RENDERER_PATH = cfg.get('rendererPath') ?? 'tamanu/on-k8s/renderer';
 const PLUGIN = 'infra-argo-tamanu-renderer-v1';
 const WAIT_MINUTES = cfg.getNumber('argoWaitMinutes') ?? 30;
