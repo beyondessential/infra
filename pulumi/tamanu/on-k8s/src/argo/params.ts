@@ -10,43 +10,22 @@ import {
 import { deployment, stage } from '../config.ts';
 import { imageTag } from '../image.ts';
 
-// The input contract with infra-argo-tamanu-renderer (its params.rs). Stack config keeps the
-// names it has here and is passed as typed JSON; the renderer owns the
-// defaults. Keys it does not know are rejected there, so a key is added in both
-// places or not at all.
+// The input contract with infra-argo-tamanu-renderer (its params.rs). The stub
+// passes the stack's config through as Pulumi holds it, every value a string,
+// and the renderer parses and validates it, so a new option only changes the
+// renderer. What the stub adds is what only it can resolve: the image tag, the
+// version, and the cluster's facts.
 
-// CD writes an unset option as the string "null".
-function raw(key: string): string | undefined {
-  const value = cfg.get(key);
-  return value == null || value === 'null' ? undefined : value;
-}
-
-const str = raw;
-const num = (key: string) => {
-  const value = raw(key);
-  return value === undefined ? undefined : Number(value);
-};
-const bool = (key: string) => {
-  const value = raw(key);
-  return value === undefined ? undefined : value === 'true';
-};
-const obj = <T>(key: string): T | undefined => {
-  const value = raw(key);
-  return value === undefined ? undefined : (JSON.parse(value) as T);
-};
-
-// Keys the program reads that the renderer does not take: the stub uses them
-// itself, they only matter to the legacy path, or they are not rendered.
-const HANDLED_ELSEWHERE = new Set([
+// Keys the stub acts on itself, or that only the program the renderer replaces
+// reads. They are not the renderer's business. Anything else is passed on, and
+// the renderer rejects what it does not know.
+const STUB_ONLY = new Set([
   'imageTag',
   'appVersion',
+  'deployment',
   'k8s-core',
   'externalNamespace',
-  'ttlHours',
   'deployer',
-  'deployment',
-  'ipAllowList',
-  'seedSnapshot',
   'argoNamespace',
   'argoProject',
   'argoWaitMinutes',
@@ -55,65 +34,26 @@ const HANDLED_ELSEWHERE = new Set([
   'rendererPath',
 ]);
 
-// A stack key that is neither passed on nor handled elsewhere would be silently
-// dropped, and the deployment would render differently from what the legacy
-// program does with it. Fail instead.
-function rejectUnforwardedKeys(forwarded: string[]): void {
-  const known = new Set([...forwarded, ...HANDLED_ELSEWHERE]);
-  const project = `${cfg.name}:`;
-  const unknown = Object.keys(runtime.allConfig())
-    .filter((key) => key.startsWith(project))
-    .map((key) => key.slice(project.length))
-    .filter((key) => !known.has(key));
-  if (unknown.length > 0) {
-    throw new Error(
-      `Stack config not passed to infra-argo-tamanu-renderer: ${unknown.join(', ')}. ` +
-        "Add each to params.ts and to the renderer's params.rs, or list it in HANDLED_ELSEWHERE.",
-    );
-  }
+// CD writes an unset option as the string "null".
+function raw(key: string): string | undefined {
+  const value = cfg.get(key);
+  return value == null || value === 'null' ? undefined : value;
 }
 
-function stackConfig() {
-  const config = {
-    namespace: str('namespace'),
-    domainBase: str('domainBase'),
-    configTemplate: str('configTemplate'),
-    nodeEnv: str('nodeEnv'),
-    architecture: str('architecture'),
-    capacity: str('capacity'),
-    timezone: str('timezone'),
-    facilities: num('facilities'),
-    facilityNames: obj<unknown[]>('facilityNames'),
-    redirects: obj<Record<string, string>>('redirects'),
-
-    apiReplicas: num('apiReplicas'),
-    dbReplicas: num('dbReplicas'),
-    tasksReplicas: num('tasksReplicas'),
-    webReplicas: num('webReplicas'),
-    centralApiReplicas: num('centralApiReplicas'),
-    centralDbReplicas: num('centralDbReplicas'),
-    centralTasksReplicas: num('centralTasksReplicas'),
-    centralWebReplicas: num('centralWebReplicas'),
-    facilityApiReplicas: num('facilityApiReplicas'),
-    facilityDbReplicas: num('facilityDbReplicas'),
-    facilityTasksReplicas: num('facilityTasksReplicas'),
-    facilityWebReplicas: num('facilityWebReplicas'),
-    patientPortalReplicas: num('patientPortalReplicas'),
-
-    serviceAccount: str('serviceAccount'),
-    dbStorage: str('dbStorage'),
-    dbMemory: str('dbMemory'),
-    dbExpose: bool('dbExpose'),
-    dbAzColocate: bool('dbAzColocate'),
-    dbDisruptionBudgets: bool('dbDisruptionBudgets'),
-    sharedBlobStorage: bool('sharedBlobStorage'),
-    backupsEnabled: bool('backupsEnabled'),
-    backupRetentionDays: num('backupRetentionDays'),
-    barmanRoleArn: str('barmanRoleArn'),
-    barmanBucket: str('barmanBucket'),
-    syntheticTests: bool('syntheticTests'),
-  };
-  rejectUnforwardedKeys(Object.keys(config));
+function stackConfig(): Record<string, string> {
+  const project = `${cfg.name}:`;
+  const secrets = new Set<string>(JSON.parse(process.env.PULUMI_CONFIG_SECRET_KEYS ?? '[]'));
+  const config: Record<string, string> = {};
+  for (const [full, value] of Object.entries(runtime.allConfig())) {
+    if (!full.startsWith(project)) continue;
+    const key = full.slice(project.length);
+    if (STUB_ONLY.has(key)) continue;
+    if (secrets.has(full)) {
+      // The Application, and so the value, is readable in the cluster.
+      throw new Error(`${key} is a secret, which cannot be passed to the renderer`);
+    }
+    config[key] = value;
+  }
   return config;
 }
 
@@ -122,7 +62,7 @@ export function renderParams(): Output<string> {
   return jsonStringify({
     stack: getStack(),
     imageTag,
-    appVersion: str('appVersion'),
+    appVersion: raw('appVersion'),
     config: stackConfig(),
     cluster: {
       fullName: clusterFullName,
