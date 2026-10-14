@@ -1,20 +1,19 @@
 import * as k8s from '@pulumi/kubernetes';
-import { Config } from '@pulumi/pulumi';
+import { cfg } from '../../../common/cfg.ts';
 import { argoPlugin } from '../../../common/k8s/argoPlugin.ts';
 
 // What Tamanu deployments need from the shared Argo CD controller in
 // k8s-essentials, which must be installed first: the plugin that renders them,
 // the project they run under, and the access Tamanu CD needs to create them.
 
-const argoCfg = new Config('argo');
-const namespaceName = argoCfg.get('namespace') ?? 'argocd';
+const namespaceName = cfg.get('argoNamespace') ?? 'argocd';
 const RENDER_REPO = 'https://github.com/beyondessential/infra';
 
 // The renderer is published by that repository's CD. The tag is a required
 // config value so the plugin never floats.
 argoPlugin({
   name: 'infra-argo-tamanu-renderer',
-  image: `ghcr.io/beyondessential/infra-argo-tamanu-renderer:${argoCfg.require('renderImageTag')}`,
+  image: `ghcr.io/beyondessential/infra-argo-tamanu-renderer:${cfg.require('argoRenderImageTag')}`,
   namespace: namespaceName,
 });
 

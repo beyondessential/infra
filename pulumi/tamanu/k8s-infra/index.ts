@@ -1,4 +1,4 @@
-import { Config } from '@pulumi/pulumi';
+import { cfg } from '../../common/cfg.ts';
 import { failIfIncorrectCluster } from '../../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
 
@@ -7,8 +7,8 @@ import './superns.ts';
 import './roles/index.ts';
 import './seed/index.ts';
 
-// The Tamanu side of Argo CD, which k8s-essentials installs. Set `argo:enabled`
+// The Tamanu side of Argo CD, which k8s-essentials installs. Set `argoEnabled`
 // once it is there.
-if (new Config('argo').getBoolean('enabled')) {
+if (cfg.getBoolean('argoEnabled') ?? false) {
   await import('./argo/index.ts');
 }
