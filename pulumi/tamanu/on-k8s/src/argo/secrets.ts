@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { ComponentResource } from '@pulumi/pulumi';
 import { RandomBytes } from '@pulumi/random';
 import { dbRoleSecret } from '../../../../common/k8s/dbRoleSecret.ts';
 import { facilityList } from '../config.ts';
@@ -11,10 +12,18 @@ import { namespace } from '../namespace.ts';
 export const servers = ['central', ...facilityList.map((_, i) => `facility-${i + 1}`)];
 
 // Passwords for the legacy raw and reporting roles, as `{server}-raw-db` and
-// `{server}-reporting-db`.
+// `{server}-reporting-db`. The previous program created them under a component per server,
+// and the same parents here keep their identity, so a stack handed over from it keeps its
+// passwords.
+export const centralServer = new ComponentResource('bes:tamanu:CentralServer', 'central');
+
 for (const server of servers) {
-  dbRoleSecret({ name: `${server}-raw`, namespace, username: 'raw' });
-  dbRoleSecret({ name: `${server}-reporting`, namespace, username: 'reporting' });
+  const parent =
+    server === 'central'
+      ? centralServer
+      : new ComponentResource('bes:tamanu:FacilityServer', server.replace('facility-', ''));
+  dbRoleSecret({ parent, name: `${server}-raw`, namespace, username: 'raw' });
+  dbRoleSecret({ parent, name: `${server}-reporting`, namespace, username: 'reporting' });
 }
 
 // Signing secrets for each server's auth tokens. The rendered config carries a

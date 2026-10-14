@@ -3,9 +3,13 @@ import { domains } from '../config.ts';
 import { namespace } from '../namespace.ts';
 import { setupTtlHibernation } from '../schedule.ts';
 import { application, waitForHealthy } from './application.ts';
+import { migrateFromLegacy } from './migrate.ts';
 import { renderParams } from './params.ts';
 
 await failIfIncorrectCluster();
+
+// A stack from the previous program is handed over before anything else is declared.
+await migrateFromLegacy();
 
 // The stub creates what cannot be rendered: secret values, and anything that
 // needs the live cluster or the clock. Everything else is rendered by
@@ -17,7 +21,8 @@ await import('./secrets.ts');
 
 setupTtlHibernation(namespace);
 
-const app = application(renderParams());
+const { seedParams } = await import('./seed.ts');
+const app = application(renderParams(await seedParams()));
 
 // Resolves once Argo has synced the deployment and it is healthy, and fails the
 // update otherwise, as a failed migration does for the program Argo replaces.

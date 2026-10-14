@@ -1,4 +1,4 @@
-import { type Output, getStack, jsonStringify, runtime } from '@pulumi/pulumi';
+import { type Input, type Output, getStack, jsonStringify, runtime } from '@pulumi/pulumi';
 import { cfg } from '../../../../common/cfg.ts';
 import {
   $network,
@@ -25,7 +25,6 @@ const STUB_ONLY = new Set([
   'deployment',
   'k8s-core',
   'externalNamespace',
-  'deployer',
   'argoNamespace',
   'argoProject',
   'argoWaitMinutes',
@@ -57,7 +56,7 @@ function stackConfig(): Record<string, string> {
 }
 
 /** The renderer's parameter document, as the JSON an Argo plugin receives. */
-export function renderParams(): Output<string> {
+export function renderParams(seed?: { snapshot: Input<string> }): Output<string> {
   return jsonStringify({
     stack: getStack(),
     imageTag,
@@ -73,5 +72,6 @@ export function renderParams(): Output<string> {
       backupsServiceAccountArn: backups.sa,
     },
     billing: { stage, deployment },
+    seed,
   });
 }
