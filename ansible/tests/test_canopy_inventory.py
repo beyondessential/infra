@@ -426,6 +426,25 @@ class WhatCanopyMaySet(PluginTestCase):
         central = json.loads(result.stdout)["_meta"]["hostvars"]["kamaka-prod-central"]
         self.assertEqual(plain(central["canopy_intent"]), "configure")
 
+    def test_the_clone_rank_marks_a_clone(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["rank"] = "clone"
+        body["vars"]["tamanu_clone"] = False
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka", rank="clone"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        central = json.loads(result.stdout)["_meta"]["hostvars"]["kamaka-prod-central"]
+        self.assertIs(plain(central["tamanu_clone"]), True)
+
+    def test_other_ranks_are_not_clones(self):
+        body = json.loads(json.dumps(INVENTORY))
+        body["vars"]["tamanu_clone"] = True
+        with StubCanopy(body=json.dumps(body)) as canopy:
+            result = self.run_inventory(self.source(group="kamaka", rank="production"), canopy.url)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        central = json.loads(result.stdout)["_meta"]["hostvars"]["kamaka-prod-central"]
+        self.assertIs(plain(central["tamanu_clone"]), False)
+
     def test_the_cache_is_read_back_under_the_same_rule(self):
         body = json.loads(json.dumps(INVENTORY))
         body["hosts"][0]["vars"]["ansible_ssh_common_args"] = "-o ProxyCommand=echo"

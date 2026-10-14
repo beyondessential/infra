@@ -92,16 +92,34 @@
     group: root
     mode: "0755"
 
-- name: Install postgres backup definitions
+- name: Install postgres config backup definition
   become: true
   ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "/etc/bestool/backups/{{ item }}"
+    src: postgres-config.toml
+    dest: /etc/bestool/backups/postgres-config.toml
     owner: root
     group: root
     mode: "0644"
-  loop:
-    - tamanu-postgres.toml
-    - postgres-config.toml
   notify:
     - Reload bestool-alertd
+
+- name: Install tamanu-postgres backup definition
+  become: true
+  ansible.builtin.template:
+    src: tamanu-postgres.toml.j2
+    dest: /etc/bestool/backups/tamanu-postgres.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload bestool-alertd
+
+- name: Install the clone identity scrub
+  become: true
+  ansible.builtin.copy:
+    src: forget-server-identity.sql
+    dest: /etc/bestool/forget-server-identity.sql
+    owner: root
+    group: root
+    mode: "0644"
+  when: tamanu_clone
