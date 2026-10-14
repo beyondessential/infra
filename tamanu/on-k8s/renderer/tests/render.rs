@@ -189,3 +189,49 @@ fn synthetic_tests_enable_the_random_api_on_the_servers() {
 	let off = tamanu_renderer::render_with(&params(json!({})), &options()).unwrap();
 	assert!(!has(&off, "central-api"));
 }
+
+#[test]
+fn stack_config_as_pulumi_stores_it_renders_the_same_as_typed_config() {
+	let typed = params(json!({
+		"facilities": 3,
+		"facilityNames": ["kule", { "id": "Bravo", "host": "b" }],
+		"patientPortalReplicas": 1,
+		"capacity": "ondemand",
+		"dbExpose": false,
+		"backupsEnabled": false,
+		"redirects": { "old.example.org": "https://new.example.org" },
+	}));
+	// Every value a string, as `pulumi config` holds it, with unset options "null".
+	let strings = params(json!({
+		"facilities": "3",
+		"facilityNames": "[\"kule\", {\"id\": \"Bravo\", \"host\": \"b\"}]",
+		"patientPortalReplicas": "1",
+		"capacity": "ondemand",
+		"dbExpose": "false",
+		"backupsEnabled": "false",
+		"redirects": "{\"old.example.org\": \"https://new.example.org\"}",
+		"timezone": "null",
+		"dbStorage": "null",
+		"syntheticTests": "null",
+	}));
+	assert_eq!(render_yaml(&typed), render_yaml(&strings));
+}
+
+#[test]
+fn keys_the_program_has_but_nothing_renders_are_accepted() {
+	let p = params(json!({ "ttlHours": "24", "ipAllowList": "null", "seedSnapshot": "true" }));
+	tamanu_renderer::render_with(&p, &options()).unwrap();
+}
+
+#[test]
+fn a_value_of_the_wrong_type_is_rejected_with_the_value_in_the_message() {
+	let err = serde_json::from_value::<Params>(json!({
+		"stack": "main",
+		"imageTag": "x",
+		"cluster": { "fullName": "c" },
+		"config": { "facilities": "many" },
+	}))
+	.unwrap_err()
+	.to_string();
+	assert!(err.contains("many"), "{err}");
+}
