@@ -15,7 +15,9 @@ const RENDERER_REPO = cfg.get('rendererRepo') ?? 'https://github.com/beyondessen
 // neither polls for new commits nor re-renders on them; a new plugin image is
 // picked up by a hard refresh.
 const RENDERER_REF = '14ad80a52dfac3bfb5fb8367eea004029a2a26b0';
-const RENDERER_PATH = cfg.get('rendererPath') ?? 'tamanu/on-k8s/renderer';
+// The repo root exists in every commit, unlike the renderer's directory, which
+// has moved since the pinned commit.
+const RENDERER_PATH = cfg.get('rendererPath') ?? '.';
 const PLUGIN = 'infra-argo-tamanu-renderer-v1';
 const WAIT_MINUTES = cfg.getNumber('argoWaitMinutes') ?? 30;
 const POLL_SECONDS = 5;
@@ -84,12 +86,18 @@ export function application(params: Input<string>): k8s.apiextensions.CustomReso
 interface ApplicationStatus {
   sync?: { status?: string; revision?: string };
   health?: { status?: string };
-  operationState?: { phase?: string; message?: string };
+  operationState?: { phase?: string; message?: string; finishedAt?: string };
+  conditions?: { type?: string; message?: string }[];
 }
 
+// Allowance for the clock here differing from the cluster's.
+const CLOCK_SKEW_MS = 15_000;
+
 /**
- * Resolves when the Application is synced and healthy. Fails when its last
- * sync operation failed, or when it has not settled within the wait.
+ * Resolves when the Application is synced and healthy. Fails when a sync
+ * operation finished failing after the wait began, or when it has not settled
+ * within the wait. An operation that failed before the wait began is the
+ * previous deploy's, which the controller replaces once it notices the update.
  *
  * Skipped during a preview, since the Application does not exist yet.
  */
@@ -99,8 +107,10 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
   }
   return all([app.metadata.name, app.metadata.namespace]).apply(async ([name, ns]) => {
     const api = k8sConfig().makeApiClient(CustomObjectsApi);
-    const deadline = Date.now() + WAIT_MINUTES * 60_000;
+    const begun = Date.now();
+    const deadline = begun + WAIT_MINUTES * 60_000;
     let last = '';
+    let problem = '';
     while (Date.now() < deadline) {
       const live = (await api.getNamespacedCustomObject({
         group: 'argoproj.io',
@@ -110,9 +120,16 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
         name,
       })) as { status?: ApplicationStatus };
       const status = live.status ?? {};
-      const phase = status.operationState?.phase;
-      if (phase === 'Failed' || phase === 'Error') {
-        throw new Error(`Argo CD sync ${phase}: ${status.operationState?.message ?? 'no message'}`);
+      const op = status.operationState;
+      const finished = op?.finishedAt ? Date.parse(op.finishedAt) : 0;
+      if ((op?.phase === 'Failed' || op?.phase === 'Error') && finished > begun - CLOCK_SKEW_MS) {
+        throw new Error(`Argo CD sync ${op.phase}: ${op.message ?? 'no message'}`);
+      }
+      const comparison =
+        status.conditions?.find((c) => c.type === 'ComparisonError')?.message ?? '';
+      if (comparison !== problem) {
+        if (comparison) log.warn(`Application ${name}: ${comparison}`);
+        problem = comparison;
       }
       const now = `${status.sync?.status ?? 'Unknown'}/${status.health?.status ?? 'Unknown'}`;
       if (now !== last) {
@@ -124,6 +141,8 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
       }
       await new Promise((resolve) => setTimeout(resolve, POLL_SECONDS * 1000));
     }
-    throw new Error(`Application ${name} was ${last} after ${WAIT_MINUTES} minutes`);
+    throw new Error(
+      `Application ${name} was ${last} after ${WAIT_MINUTES} minutes${problem ? `: ${problem}` : ''}`,
+    );
   });
 }
