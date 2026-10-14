@@ -335,11 +335,16 @@ fn a_seed_snapshot_restores_central_and_tops_it_up_after_the_sync() {
 			.is_none(),
 		"only central is restored"
 	);
-	let job = find(&out, "Job", "central-seed-top-up");
-	assert_eq!(
-		job["metadata"]["annotations"]["argocd.argoproj.io/hook"],
-		"PostSync"
-	);
+	let job = out
+		.iter()
+		.find(|v| {
+			v["kind"] == "Job"
+				&& v["metadata"]["name"]
+					.as_str()
+					.is_some_and(|n| n.starts_with("central-seed-top-up-"))
+		})
+		.expect("a seed top-up Job");
+	assert!(job["metadata"]["annotations"]["argocd.argoproj.io/hook"].is_null());
 }
 
 #[test]
@@ -358,8 +363,9 @@ fn without_a_seed_snapshot_the_database_starts_empty() {
 			.get("recovery")
 			.is_none()
 	);
-	assert!(
-		out.iter()
-			.all(|v| v["metadata"]["name"] != "central-seed-top-up")
-	);
+	assert!(out.iter().all(|v| {
+		!v["metadata"]["name"]
+			.as_str()
+			.is_some_and(|n| n.starts_with("central-seed-top-up"))
+	}));
 }

@@ -4,6 +4,7 @@ use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 use crate::config::Config;
 use crate::pod::env;
@@ -18,10 +19,21 @@ const ROUNDS: u32 = 3;
 /// stacks keep whatever data the restored snapshot came with.
 const MIN_VERSION: &str = "2.65.0-0";
 
+fn job_name(image_tag: &str) -> String {
+	let digest = Sha256::digest(image_tag.as_bytes());
+	let suffix: String = digest[..4].iter().map(|b| format!("{b:02x}")).collect();
+	format!("central-seed-top-up-{suffix}")
+}
+
 /// A seed snapshot holds only the data types its own version's generator knew
 /// about, so anything added since has no rows until this runs against the
-/// restored database. It runs after the sync, once the servers are up, like the
-/// workloads did beside it.
+/// restored database.
+///
+/// Each run adds more fake records, so it must run once per image and not on
+/// every sync. The Job is named by the image tag and is an ordinary resource:
+/// an unchanged image leaves it alone, and a new one creates a new Job and
+/// prunes the old. It must not be given a time to live, or Argo would create it
+/// again once it was cleaned up.
 pub fn seed_top_up(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Option<Value>> {
 	if !cfg.seed_snapshot || !cfg.at_least_version(MIN_VERSION) {
 		return Ok(None);
@@ -40,7 +52,7 @@ pub fn seed_top_up(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Resul
 
 	let job = Job {
 		metadata: ObjectMeta {
-			name: Some("central-seed-top-up".into()),
+			name: Some(job_name(&cfg.image_tag)),
 			namespace: Some(cfg.namespace.clone()),
 			..Default::default()
 		},
@@ -54,7 +66,10 @@ pub fn seed_top_up(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Resul
 		}),
 		..Default::default()
 	};
-	Ok(Some(waves::post_sync_hook(serde_json::to_value(job)?)))
+	Ok(Some(waves::in_wave(
+		serde_json::to_value(job)?,
+		waves::WORKLOADS,
+	)))
 }
 
 #[cfg(test)]
@@ -97,10 +112,15 @@ mod tests {
 				.iter()
 				.any(|e| e["name"] == "TAMANU_ALLOW_FAKE_DATA" && e["value"] == "true")
 		);
-		assert_eq!(
-			job["metadata"]["annotations"]["argocd.argoproj.io/hook"],
-			"PostSync"
-		);
+		assert!(job["metadata"]["annotations"]["argocd.argoproj.io/hook"].is_null());
+		assert!(job["spec"].get("ttlSecondsAfterFinished").is_none());
+	}
+
+	#[test]
+	fn is_named_by_the_image_so_it_runs_once_per_image() {
+		assert_eq!(job_name("sha-aaa"), job_name("sha-aaa"));
+		assert_ne!(job_name("sha-aaa"), job_name("sha-bbb"));
+		assert!(job_name("sha-aaa").starts_with("central-seed-top-up-"));
 	}
 
 	#[test]
