@@ -59,7 +59,6 @@ const release = new k8s.helm.v3.Release(
       },
       dex: { enabled: false },
       notifications: { enabled: false },
-      applicationSet: { enabled: false },
       configs: {
         cm: {
           // Annotation tracking keeps Argo's bookkeeping off labels, which
