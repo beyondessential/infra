@@ -269,3 +269,35 @@ fn services_and_routes_are_never_in_the_base_wave() {
 		.collect();
 	assert!(early.is_empty(), "not in the workloads wave: {early:#?}");
 }
+
+#[test]
+fn synthetic_tests_run_an_artillery_deployment_aimed_at_every_server() {
+	let on = tamanu_renderer::render_with(
+		&params(json!({ "syntheticTests": true, "facilities": 2 })),
+		&options(),
+	)
+	.unwrap();
+	let deployment = find(&on, "Deployment", "synthetic-tests");
+	let env = &deployment["spec"]["template"]["spec"]["containers"][0]["env"];
+	let value = |name: &str| {
+		env.as_array()
+			.unwrap()
+			.iter()
+			.find(|e| e["name"] == name)
+			.unwrap()["value"]
+			.as_str()
+			.unwrap()
+			.to_owned()
+	};
+	insta::assert_debug_snapshot!((
+		value("CENTRAL_TARGETS"),
+		value("FACILITY_TARGETS"),
+		deployment["spec"]["template"]["spec"]["containers"][0]["image"].clone(),
+	));
+
+	let off = tamanu_renderer::render_with(&params(json!({})), &options()).unwrap();
+	assert!(
+		off.iter()
+			.all(|v| v["metadata"]["name"] != "synthetic-tests")
+	);
+}

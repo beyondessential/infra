@@ -20,6 +20,7 @@ pub mod postgres;
 pub mod redirect;
 pub mod scheduling;
 pub mod service_account;
+pub mod synthetic;
 pub mod waves;
 pub mod web;
 
@@ -94,6 +95,7 @@ pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 	);
 
 	out.extend(central::render(&cfg)?);
+	out.extend(synthetic::synthetic_tests(&cfg)?);
 	out.extend(facility::render(&cfg)?);
 
 	out.extend(config_map::render(

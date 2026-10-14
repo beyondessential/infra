@@ -1,0 +1,9 @@
+---
+source: tests/render.rs
+expression: "(value(\"CENTRAL_TARGETS\"), value(\"FACILITY_TARGETS\"),\ndeployment[\"spec\"][\"template\"][\"spec\"][\"containers\"][0][\"image\"].clone(),)"
+---
+(
+    "https://central.main.cd.tamanu.app",
+    "https://facility-1.main.cd.tamanu.app,https://facility-2.main.cd.tamanu.app",
+    String("ghcr.io/beyondessential/tamanu-synthetic-tests:sha-a25d1d40354fd2d38442bce75328310ca37abae9"),
+)

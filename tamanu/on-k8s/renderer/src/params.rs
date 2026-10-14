@@ -174,8 +174,8 @@ pub struct StackConfig {
 	pub barman_role_arn: Option<String>,
 	#[serde(default, deserialize_with = "lenient_string")]
 	pub barman_bucket: Option<String>,
-	/// Marks the servers to serve the synthetic tests' random-record API. The
-	/// synthetic tests Deployment itself is not rendered.
+	/// Marks the servers to serve the synthetic tests' random-record API, and
+	/// runs the synthetic tests Deployment.
 	#[serde(default, deserialize_with = "lenient")]
 	pub synthetic_tests: Option<bool>,
 
