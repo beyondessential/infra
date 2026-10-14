@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { argoNamespace } from '../../common/k8s/argo.ts';
 import { cfg } from '../../common/k8s/coreRef.ts';
 import { ARGO_CD_VERSION } from '../versions.ts';
 
@@ -8,13 +9,13 @@ import { ARGO_CD_VERSION } from '../versions.ts';
 // A stack that needs a config management plugin adds its own sidecar with
 // common/k8s/argoPlugin.ts, so none are listed here.
 
-const namespaceName = cfg.get('argoNamespace') ?? 'argocd';
+const namespaceName = argoNamespace;
 
 // Installs a different chart than the pinned one, to start from an older release
 // and exercise an upgrade. Remove the key to return to the pin.
 const chartVersion = cfg.get('argoVersion') ?? ARGO_CD_VERSION;
 
-const namespace = new k8s.core.v1.Namespace('argocd', { metadata: { name: namespaceName } });
+const namespace = new k8s.core.v1.Namespace('argocd-system', { metadata: { name: namespaceName } });
 
 // A CNPG Cluster has no built-in health check, so without this Argo treats it
 // as healthy the moment it is created, and sync waves that wait on health do not

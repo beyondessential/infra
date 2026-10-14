@@ -2,11 +2,12 @@ import { type Input, type Output, all, log, output, runtime } from '@pulumi/pulu
 import * as k8s from '@pulumi/kubernetes';
 import { CustomObjectsApi } from '@kubernetes/client-node';
 import { cfg } from '../../../../common/cfg.ts';
+import { argoNamespace } from '../../../../common/k8s/argo.ts';
 import { k8sConfig } from '../../../../common/k8s/client.ts';
 import { facilityList } from '../config.ts';
 import { namespaceName } from '../namespace.ts';
 
-const ARGO_NAMESPACE = cfg.get('argoNamespace') ?? 'argocd';
+const ARGO_NAMESPACE = argoNamespace;
 const ARGO_PROJECT = cfg.get('argoProject') ?? 'tamanu';
 const RENDERER_REPO = cfg.get('rendererRepo') ?? 'https://github.com/beyondessential/infra';
 const RENDERER_REF = cfg.get('rendererRef') ?? 'main';

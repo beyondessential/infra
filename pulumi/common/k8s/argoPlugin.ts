@@ -1,6 +1,7 @@
 import { AppsV1Api } from '@kubernetes/client-node';
 import { type Input, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
+import { argoNamespace } from './argo.ts';
 import { k8sClient } from './client.ts';
 
 // Adds a config management plugin to the cluster's Argo CD repo server, from
@@ -52,7 +53,7 @@ async function findRepoServer(namespace: string): Promise<string> {
 export function argoPlugin({
   name,
   image,
-  namespace = 'argocd',
+  namespace = argoNamespace,
 }: ArgoPluginArgs): k8s.apps.v1.DeploymentPatch {
   // A sidecar must not share /tmp with the repo server, or with another plugin.
   const tmp = `cmp-tmp-${name}`;
