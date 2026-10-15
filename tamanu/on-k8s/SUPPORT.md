@@ -145,6 +145,8 @@ Hook Jobs are replaced on the next sync, so read the logs before anything trigge
 
 With `ttlHours` set, a schedule scales the workloads to zero and hibernates the databases once the time is up. Every `pulumi up` sets a new expiry and wakes it, so a push to the branch brings it back. Argo CD ignores the annotations that do this.
 
+To wake one without an update, open its Application in the Argo CD UI, find the `wake` CronJob (search for `wake`, or filter by kind), and run its "Create Job" action. The CronJob is suspended and only ever runs this way. It does not start a new time to live, so the deployment then stays up until the next update. From the command line, `kubectl -n tamanu-<stack> create job --from=cronjob/wake wake-now` does the same.
+
 ### Teardown is stuck
 
 Destroying the stub deletes the Application, which deletes everything it created before the namespace is removed. If it hangs, find what is blocking:
