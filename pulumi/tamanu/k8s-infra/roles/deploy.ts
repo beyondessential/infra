@@ -124,13 +124,6 @@ const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
       resources: ['clienttrafficpolicies'],
       verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
     },
-    // Moving a deployment to Argo CD releases each certificate from the Gateway that owns it,
-    // so that deleting the Gateway keeps the issued certificate.
-    {
-      apiGroups: ['cert-manager.io'],
-      resources: ['certificates'],
-      verbs: ['get', 'list', 'watch', 'patch'],
-    },
     // Namespace-scoped VolumeSnapshots in the deploy namespace, used as the
     // local handle for CNPG's volumeSnapshot recovery bootstrap.
     {

@@ -1,10 +1,4 @@
-import {
-  CoreV1Api,
-  CustomObjectsApi,
-  type KubernetesObject,
-  PatchStrategy,
-  setHeaderOptions,
-} from '@kubernetes/client-node';
+import { CoreV1Api, CustomObjectsApi, type KubernetesObject } from '@kubernetes/client-node';
 import { log, runtime } from '@pulumi/pulumi';
 import { argoNamespace } from '../../../../common/k8s/argo.ts';
 import { k8sClient } from '../../../../common/k8s/client.ts';
@@ -15,6 +9,9 @@ import { namespaceName } from '../namespace.ts';
 // place. This hands them over to Argo CD: the objects with stable names are adopted by
 // Argo, and the ones with generated names, which Argo cannot adopt, are removed so that it
 // can create its own.
+//
+// A Gateway's certificate goes with it, but the issued TLS Secret has no owner and stays, so
+// the Certificate that cert-manager creates for the new Gateway finds it.
 
 const AUTONAMED = 'pulumi.com/autonamed';
 const TRACKING = 'argocd.argoproj.io/tracking-id';
@@ -33,7 +30,6 @@ interface Kind {
 
 const POSTGRES = { group: 'postgresql.cnpg.io', version: 'v1', plural: 'clusters' };
 const GATEWAYS = { group: 'gateway.networking.k8s.io', version: 'v1', plural: 'gateways' };
-const CERTIFICATES = { group: 'cert-manager.io', version: 'v1', plural: 'certificates' };
 
 // What Argo renders under new names. Services and ConfigMaps are handled separately, being
 // in the core API group.
@@ -130,27 +126,6 @@ async function copyConfig(): Promise<void> {
   }
 }
 
-// cert-manager owns each certificate through the Gateway that asked for it, so deleting the
-// Gateway would delete the certificate and its issued secret. Releasing it keeps the secret
-// for the Gateway Argo creates under the same name.
-async function releaseCertificates(): Promise<void> {
-  const gateways = new Set((await list(GATEWAYS)).filter(autonamed).map((g) => g.metadata?.uid));
-  for (const cert of await list(CERTIFICATES)) {
-    const owners = cert.metadata?.ownerReferences ?? [];
-    if (!owners.some((o) => gateways.has(o.uid))) continue;
-    log.info(`Releasing certificate ${cert.metadata?.name}`);
-    await custom.patchNamespacedCustomObject(
-      {
-        ...CERTIFICATES,
-        namespace: namespaceName,
-        name: cert.metadata!.name!,
-        body: { metadata: { ownerReferences: null } },
-      },
-      setHeaderOptions('Content-Type', PatchStrategy.MergePatch),
-    );
-  }
-}
-
 async function removeReplaced(): Promise<void> {
   for (const kind of REPLACED) {
     for (const object of (await list(kind)).filter(autonamed)) {
@@ -221,7 +196,6 @@ export async function migrateFromLegacy(): Promise<'new' | 'migrated' | 'migrati
 
   log.info(`Handing ${namespaceName} over to Argo CD`);
   await copyConfig();
-  await releaseCertificates();
   await removeReplaced();
   await waitForRemoval();
   return 'migrated';
