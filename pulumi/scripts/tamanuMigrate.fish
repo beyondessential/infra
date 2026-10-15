@@ -1,0 +1,220 @@
+#!/usr/bin/env fish
+# Move tamanu/on-k8s stacks from the previous Pulumi program to Argo CD, in the two
+# releases described in .workhorse/working-docs/p1/working-doc.md:
+#
+#   r1  mark every Pulumi-owned resource retain-on-delete, and leave a marker in the
+#       namespace. State only; nothing changes in the cluster.
+#   r2  hand the stack over to Argo CD. Requires the marker.
+#
+# Each stack is classified from the cluster first:
+#   none      no namespace or no database cluster yet
+#   argo      already has an Argo CD Application
+#   unmarked  deployed by the previous program, no marker (needs r1)
+#   marked    deployed by the previous program, with the marker (needs r2)
+#
+# By default this only prints what each stack is and what it would do. Nothing is
+# written to the cluster or to Pulumi state unless --apply is given. Stacks on another
+# cluster are always skipped. Demos, `main`
+# and release stacks are left out of an --apply run unless --all is given or they
+# are named.
+#
+# The program runs from a throwaway checkout of the phase's branch, so the working
+# tree is not touched, and each stack's config is refreshed from the backend
+# first, as Tamanu CD would have it.
+#
+# Usage:
+#   tamanuMigrate.fish PHASE [--apply] [--preview] [--all] [--ref REF] [STACK...]
+#   tamanuMigrate.fish r1                   # plan, every stack
+#   tamanuMigrate.fish r1 --preview x y     # also run `pulumi preview` for stacks x and y
+#   tamanuMigrate.fish r1 --apply           # run r1 on the pull request stacks
+#   tamanuMigrate.fish r2 --apply --all     # run r2 on every stack on the cluster, release and main included
+#
+# Needs kubectl access to the cluster that runs the deployments (--cluster, default
+# tamanu-internal-main), and Pulumi access.
+# It runs `pulumi up`, so read it through before running it with --apply.
+
+set -l pulumi_root (realpath (status dirname)/..)
+set -l repo_root (git -C $pulumi_root rev-parse --show-toplevel)
+set -l project_dir tamanu/on-k8s
+set -l org bes
+set -l project tamanu-on-k8s
+
+argparse a/apply p/preview all 'ref=' 'cluster=' -- $argv
+or exit 2
+
+set -l phase $argv[1]
+set -l named $argv[2..-1]
+if not contains -- "$phase" r1 r2
+    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [--cluster NAME] [STACK...]" >&2
+    exit 2
+end
+
+set -l ref origin/p1-$phase
+set -q _flag_ref; and set ref $_flag_ref
+
+# Only stacks on this cluster are looked at: the checks use the current kubectl context, and
+# Argo CD must be installed on the cluster a stack runs on. A stack on any other cluster is
+# skipped, even if it is named.
+set -l cluster tamanu-internal-main
+set -q _flag_cluster; and set cluster $_flag_cluster
+
+git -C $repo_root fetch --quiet origin
+or begin
+    echo "could not fetch origin" >&2
+    exit 1
+end
+
+# A remote-tracking ref, or failing that the branch of the same name, such as a local one.
+set -l sha (git -C $repo_root rev-parse --verify -q $ref^{commit})
+if test -z "$sha"
+    set sha (git -C $repo_root rev-parse --verify -q (string replace -r '^origin/' '' $ref)^{commit})
+end
+if test -z "$sha"
+    echo "no such ref: $ref" >&2
+    exit 1
+end
+
+# The phase's code is exported to a temporary directory, not checked out as a git worktree,
+# so nothing is registered in the repository (which may be a colocated jj repository) and a
+# run that is interrupted leaves only a directory in /tmp behind.
+set -l tmp (mktemp -d)
+set -l wt $tmp/checkout
+# Logs outlive the run, unlike the exported code.
+set -l logs (mktemp -d -t tamanuMigrate-logs.XXXXXX)
+mkdir -p $wt
+git -C $repo_root archive $sha | tar -x -C $wt
+or begin
+    echo "could not export $ref" >&2
+    rm -rf $tmp
+    exit 1
+end
+function __tamanuMigrate_cleanup --on-event fish_exit --inherit-variable tmp
+    rm -rf $tmp
+end
+# Each phase's code has its own dependencies, which this checkout's node_modules may lack.
+echo "installing dependencies for $ref"
+npm ci --prefix $wt/pulumi --ignore-scripts --no-audit --no-fund >$logs/npm-ci.log 2>&1
+or begin
+    echo "npm ci failed, see $logs/npm-ci.log" >&2
+    exit 1
+end
+set -l dir $wt/pulumi/$project_dir
+
+set -l stacks (pulumi -C $dir stack ls --json | jq -r '.[].name')
+if test (count $named) -gt 0
+    for name in $named
+        if not contains -- $name $stacks
+            echo "no such stack: $name" >&2
+            exit 2
+        end
+    end
+    set stacks $named
+end
+
+# Stacks that need a person's judgement rather than a sweep.
+function __is_careful -a stack
+    string match -qr -- '(^main$|-demo$|^release-)' $stack
+end
+
+function __classify -a ns
+    if not kubectl get ns $ns >/dev/null 2>&1
+        echo none
+        return
+    end
+    if kubectl -n argocd-system get applications.argoproj.io $ns >/dev/null 2>&1
+        echo argo
+        return
+    end
+    # Deployed by the previous program: a database cluster that Argo does not track, or any
+    # object with a name Pulumi generated (the stub's own TTL objects aside).
+    set -l tracking (kubectl -n $ns get clusters.postgresql.cnpg.io central-db -o json 2>/dev/null \
+        | jq -r '.metadata.annotations["argocd.argoproj.io/tracking-id"] // "legacy"')
+    set -l generated (kubectl -n $ns get deploy,job,pdb,svc,cm,gateways.gateway.networking.k8s.io,httproutes.gateway.networking.k8s.io -o json 2>/dev/null \
+        | jq '[.items[] | select(.metadata.annotations["pulumi.com/autonamed"] == "true" and (.metadata.name | startswith("ttl-") | not))] | length')
+    if test "$tracking" != legacy; and test "$generated" = 0
+        echo none
+        return
+    end
+    set -l marker (kubectl -n $ns get cm migration -o jsonpath='{.data.phase}' 2>/dev/null)
+    if test "$marker" = retained
+        echo marked
+    else
+        echo unmarked
+    end
+end
+
+set -l wanted unmarked
+test $phase = r2; and set wanted marked
+
+set -l failed
+set -l done_count 0
+printf '%-52s %-10s %s\n' STACK STATE ACTION
+for stack in $stacks
+    set -l full $org/$project/$stack
+    pulumi -C $dir config refresh -s $full >/dev/null 2>&1
+    or begin
+        printf '%-52s %-10s %s\n' $stack ? "config refresh failed"
+        set -a failed $stack
+        continue
+    end
+    set -l stack_cluster (pulumi -C $dir config get k8s-core -s $full 2>/dev/null | string split -f 3 /)
+    if test "$stack_cluster" != "$cluster"
+        printf '%-52s %-10s %s\n' $stack other "skip (runs on $stack_cluster)"
+        continue
+    end
+    set -l ns (pulumi -C $dir config get namespace -s $full 2>/dev/null)
+    test -n "$ns"; or set ns tamanu-$stack
+    set -l state (__classify $ns)
+
+    set -l action skip
+    if test $state = $wanted
+        set action run
+        if __is_careful $stack; and test (count $named) -eq 0; and not set -q _flag_all
+            set action "left out (demo, main or release: name it or use --all)"
+        end
+    else if test $state = unmarked; and test $phase = r2
+        set action "needs r1 first"
+    end
+    # An update wakes a hibernated deployment and starts its TTL again, so it sleeps again once
+    # that runs out. Stacks are updated one at a time, so they wake one at a time.
+    set -l asleep (kubectl -n $ns get clusters.postgresql.cnpg.io central-db -o jsonpath='{.metadata.annotations.cnpg\.io/hibernation}' 2>/dev/null)
+    if test "$action" = run; and test "$asleep" = on
+        set action "run (hibernated: will wake until its TTL runs out)"
+    end
+    printf '%-52s %-10s %s\n' $stack $state "$action"
+
+    string match -q 'run*' -- $action; or continue
+
+    if set -q _flag_preview
+        pulumi -C $dir preview -s $full --refresh --diff >$logs/preview-$stack.log 2>&1
+        or begin
+            echo "  preview failed, see $logs/preview-$stack.log, which ends:" >&2
+            tail -n 25 $logs/preview-$stack.log | sed 's/^/    /' >&2
+            set -a failed $stack
+            continue
+        end
+        echo "  preview ok, log in $logs/preview-$stack.log"
+        # What it would change, apart from the marker: anything else is pending config that the
+        # update would apply along with this one.
+        sed -n '/^Resources:/,$p' $logs/preview-$stack.log | string trim | string join ' ' | sed 's/^/  /'
+    end
+
+    if set -q _flag_apply
+        pulumi -C $dir up -s $full --refresh --yes 2>&1 | tee $logs/up-$stack.log
+        or begin
+            echo "  up failed for $stack, stopping; log in $logs/up-$stack.log" >&2
+            set -a failed $stack
+            break
+        end
+        set done_count (math $done_count + 1)
+    end
+end
+
+echo
+if set -q _flag_apply
+    echo "$done_count stacks updated"
+end
+if test (count $failed) -gt 0
+    echo "failed: $failed" >&2
+    exit 1
+end
