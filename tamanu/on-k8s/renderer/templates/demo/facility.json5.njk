@@ -22,7 +22,10 @@
     secret: '{{ 40 | randomstring }}',
   },
   errors: {
-    enabled: true,
+    // Bugsnag crashes on init in current Tamanu images (a @bugsnag/node
+    // circular-JSON bug in its config-error path), taking down every server
+    // process. Keep disabled on demos until the upstream image is fixed.
+    enabled: false,
   },
   proxy: {
     trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
