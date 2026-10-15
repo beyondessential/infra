@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 import { argoNamespace } from '../../common/k8s/argo.ts';
-import { cfg, clusterFullName } from '../../common/k8s/coreRef.ts';
+import { cfg, clusterFullName, tailscaleProxyDefaultTags } from '../../common/k8s/coreRef.ts';
 import { ARGO_CD_VERSION } from '../versions.ts';
 
 // The Argo CD controller, shared by anything on the cluster that wants GitOps.
@@ -132,6 +132,11 @@ new k8s.apiextensions.CustomResource(
 // The UI and API, reached over Tailscale only. Who may reach them is set by the grants on
 // the tag, in the tailnet policy. The operator's tag owners must include the tag below.
 const tailscaleName = cfg.get('argoTailscaleName') ?? `argocd-${clusterFullName}`;
+// Each cluster's Tailscale operator owns its own tags, and k8s-core publishes them. The first
+// of the proxy tags is the cluster's own (`tag:k8s`, `tag:k8s-demo`), and the tailnet policy
+// names a service's tag after it, such as `tag:k8s-argo` and `tag:k8s-demo-argo`.
+const [clusterTag] = tailscaleProxyDefaultTags.length ? tailscaleProxyDefaultTags : ['tag:k8s'];
+const tailscaleTags = `${clusterTag},${clusterTag}-argo`;
 new k8s.networking.v1.Ingress(
   'argo-cd-tailscale',
   {
@@ -139,7 +144,7 @@ new k8s.networking.v1.Ingress(
       namespace: namespaceName,
       annotations: {
         'tailscale.com/hostname': tailscaleName,
-        'tailscale.com/tags': 'tag:k8s,tag:k8s-argo',
+        'tailscale.com/tags': tailscaleTags,
       },
     },
     spec: {
