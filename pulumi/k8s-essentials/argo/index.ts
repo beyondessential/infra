@@ -19,21 +19,36 @@ const namespace = new k8s.core.v1.Namespace('argocd-system', { metadata: { name:
 
 // A CNPG Cluster has no built-in health check, so without this Argo treats it
 // as healthy the moment it is created, and sync waves that wait on health do not
-// wait for the database. A hibernated cluster is treated as healthy so the
-// schedule's hibernation does not hold a sync.
+// wait for the database. A hibernated cluster, which the schedule marks with an annotation,
+// is treated as healthy so that hibernation does not hold a sync.
+//
+// This reads the conditions and compares whole strings. The Lua here has no `string`
+// library, so a script that searches or lowercases the phase fails with an error for
+// any cluster that is not healthy, and Argo then cannot compute the application's
+// health at all.
 const CNPG_CLUSTER_HEALTH = `
 local hs = {}
-if obj.status ~= nil and obj.status.phase ~= nil then
-  hs.message = obj.status.phase
-  if obj.status.phase == "Cluster in healthy state" or string.find(string.lower(obj.status.phase), "hibernat") then
-    hs.status = "Healthy"
-  else
-    hs.status = "Progressing"
-  end
+local status = obj.status
+local annotations = obj.metadata.annotations
+if annotations ~= nil and annotations["cnpg.io/hibernation"] == "on" then
+  hs.status = "Healthy"
+  hs.message = "Hibernated"
   return hs
+end
+if status ~= nil and status.conditions ~= nil then
+  for _, condition in ipairs(status.conditions) do
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = status.phase or "Ready"
+      return hs
+    end
+  end
 end
 hs.status = "Progressing"
 hs.message = "Waiting for the cluster"
+if status ~= nil and status.phase ~= nil then
+  hs.message = status.phase
+end
 return hs
 `.trim();
 
