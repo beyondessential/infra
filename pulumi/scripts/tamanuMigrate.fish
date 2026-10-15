@@ -49,7 +49,9 @@ if not contains -- "$phase" r1 r2
     exit 2
 end
 
-set -l ref origin/p1-$phase
+# r1 runs from the branch that is kept for stragglers; r2 is what main has.
+set -l ref origin/p1-r1
+test $phase = r2; and set ref origin/main
 set -q _flag_ref; and set ref $_flag_ref
 
 # Only stacks on this cluster are looked at: the checks use the current kubectl context, and
