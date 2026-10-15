@@ -64,16 +64,29 @@ or begin
     exit 1
 end
 
+# A remote-tracking ref, or failing that the branch of the same name, such as a local one.
+set -l sha (git -C $repo_root rev-parse --verify -q $ref^{commit})
+if test -z "$sha"
+    set sha (git -C $repo_root rev-parse --verify -q (string replace -r '^origin/' '' $ref)^{commit})
+end
+if test -z "$sha"
+    echo "no such ref: $ref" >&2
+    exit 1
+end
+
+# The phase's code is exported to a temporary directory, not checked out as a git worktree,
+# so nothing is registered in the repository (which may be a colocated jj repository) and a
+# run that is interrupted leaves only a directory in /tmp behind.
 set -l tmp (mktemp -d)
 set -l wt $tmp/checkout
-git -C $repo_root worktree add --quiet --detach $wt $ref
+mkdir -p $wt
+git -C $repo_root archive $sha | tar -x -C $wt
 or begin
-    echo "could not check out $ref" >&2
+    echo "could not export $ref" >&2
     rm -rf $tmp
     exit 1
 end
-function __tamanuMigrate_cleanup --on-event fish_exit --inherit-variable repo_root --inherit-variable wt --inherit-variable tmp
-    git -C $repo_root worktree remove --force $wt 2>/dev/null
+function __tamanuMigrate_cleanup --on-event fish_exit --inherit-variable tmp
     rm -rf $tmp
 end
 ln -s $pulumi_root/node_modules $wt/pulumi/node_modules
