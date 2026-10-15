@@ -9,6 +9,7 @@
 # Each stack is classified from the cluster first:
 #   none      no namespace or no database cluster yet
 #   argo      already has an Argo CD Application
+#   hibernated  deployed by the previous program, and hibernated by its TTL (left out)
 #   unmarked  deployed by the previous program, no marker (needs r1)
 #   marked    deployed by the previous program, with the marker (needs r2)
 #
@@ -39,13 +40,13 @@ set -l project_dir tamanu/on-k8s
 set -l org bes
 set -l project tamanu-on-k8s
 
-argparse a/apply p/preview all 'ref=' 'cluster=' -- $argv
+argparse a/apply p/preview all wake 'ref=' 'cluster=' -- $argv
 or exit 2
 
 set -l phase $argv[1]
 set -l named $argv[2..-1]
 if not contains -- "$phase" r1 r2
-    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [--cluster NAME] [STACK...]" >&2
+    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--wake] [--ref REF] [--cluster NAME] [STACK...]" >&2
     exit 2
 end
 
@@ -108,6 +109,13 @@ function __classify -a ns
         echo none
         return
     end
+    # Hibernated by its TTL. An update wakes a deployment and starts its TTL again, so
+    # sweeping every expired pull request deployment would bring them all back at once.
+    set -l hibernated (kubectl -n $ns get clusters.postgresql.cnpg.io central-db -o jsonpath='{.metadata.annotations.cnpg\.io/hibernation}' 2>/dev/null)
+    if test "$hibernated" = on; and not set -q _flag_wake
+        echo hibernated
+        return
+    end
     set -l marker (kubectl -n $ns get cm migration -o jsonpath='{.data.phase}' 2>/dev/null)
     if test "$marker" = retained
         echo marked
@@ -147,6 +155,8 @@ for stack in $stacks
         end
     else if test $state = unmarked; and test $phase = r2
         set action "needs r1 first"
+    else if test $state = hibernated
+        set action "left out (hibernated: an update would wake it; --wake to include)"
     end
     printf '%-52s %-10s %s\n' $stack $state "$action"
 
