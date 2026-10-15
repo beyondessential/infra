@@ -179,6 +179,10 @@ The config ConfigMaps can be edited with `kubectl edit`. Argo CD leaves the cont
 
 The auth secrets in `config-secrets-<server>` are created once and kept in Pulumi state. Changing or recreating them signs everyone out, since sessions and refresh tokens are signed with them.
 
+### The program refuses because Argo CD is not installed
+
+The error names the namespace and says Argo CD is not installed on the cluster it runs on. Nothing was changed. Install Argo CD, the renderer plugin and the `tamanu` project on that cluster first. Deployments on the demo cluster fall under this until then.
+
 ### A deployment from the previous program is refused
 
 The error says the namespace "is not marked for the move to Argo CD". A deployment made by the previous Pulumi program is handed over to Argo CD in two steps, and the first has not been run for this one. The error names the ops ref and the line to add to run it. After that step, run the normal deploy again.
