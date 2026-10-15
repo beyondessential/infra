@@ -79,6 +79,8 @@ end
 # run that is interrupted leaves only a directory in /tmp behind.
 set -l tmp (mktemp -d)
 set -l wt $tmp/checkout
+# Logs outlive the run, unlike the exported code.
+set -l logs (mktemp -d -t tamanuMigrate-logs.XXXXXX)
 mkdir -p $wt
 git -C $repo_root archive $sha | tar -x -C $wt
 or begin
@@ -89,7 +91,13 @@ end
 function __tamanuMigrate_cleanup --on-event fish_exit --inherit-variable tmp
     rm -rf $tmp
 end
-ln -s $pulumi_root/node_modules $wt/pulumi/node_modules
+# Each phase's code has its own dependencies, which this checkout's node_modules may lack.
+echo "installing dependencies for $ref"
+npm ci --prefix $wt/pulumi --ignore-scripts --no-audit --no-fund >$logs/npm-ci.log 2>&1
+or begin
+    echo "npm ci failed, see $logs/npm-ci.log" >&2
+    exit 1
+end
 set -l dir $wt/pulumi/$project_dir
 
 set -l stacks (pulumi -C $dir stack ls --json | jq -r '.[].name')
@@ -172,19 +180,23 @@ for stack in $stacks
     string match -q 'run*' -- $action; or continue
 
     if set -q _flag_preview
-        pulumi -C $dir preview -s $full --refresh --diff >$tmp/preview-$stack.log 2>&1
+        pulumi -C $dir preview -s $full --refresh --diff >$logs/preview-$stack.log 2>&1
         or begin
-            echo "  preview failed, see $tmp/preview-$stack.log" >&2
+            echo "  preview failed, see $logs/preview-$stack.log, which ends:" >&2
+            tail -n 25 $logs/preview-$stack.log | sed 's/^/    /' >&2
             set -a failed $stack
             continue
         end
-        echo "  preview ok"
+        echo "  preview ok, log in $logs/preview-$stack.log"
+        # What it would change, apart from the marker: anything else is pending config that the
+        # update would apply along with this one.
+        sed -n '/^Resources:/,$p' $logs/preview-$stack.log | string trim | string join ' ' | sed 's/^/  /'
     end
 
     if set -q _flag_apply
-        pulumi -C $dir up -s $full --refresh --yes
+        pulumi -C $dir up -s $full --refresh --yes 2>&1 | tee $logs/up-$stack.log
         or begin
-            echo "  up failed for $stack, stopping" >&2
+            echo "  up failed for $stack, stopping; log in $logs/up-$stack.log" >&2
             set -a failed $stack
             break
         end
