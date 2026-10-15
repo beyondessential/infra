@@ -206,8 +206,8 @@ export async function migrateFromLegacy(): Promise<'new' | 'migrated' | 'migrati
   if (!(await isMarked())) {
     throw new Error(
       `${namespaceName} was deployed by the previous program and is not marked for the move to ` +
-        `Argo CD. Run one update with the ops ref set to p1-r1 first (for a pull request, add ` +
-        `%opsref=p1-r1 to its Deploy line), then go back to the default ref.`,
+        `Argo CD. Run one update of the stack from the p1-r1 branch first (for a pull request ` +
+        `deployment, add %opsref=p1-r1 to its Deploy line), then go back to the default ref.`,
     );
   }
   if (runtime.isDryRun()) return 'migrating';

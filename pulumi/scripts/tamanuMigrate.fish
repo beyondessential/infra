@@ -28,6 +28,7 @@
 #   tamanuMigrate.fish r1 --preview x y     # also run `pulumi preview` for stacks x and y
 #   tamanuMigrate.fish r1 --apply           # run r1 on the pull request stacks
 #   tamanuMigrate.fish r2 --apply --all     # run r2 on every stack on the cluster, release and main included
+#   tamanuMigrate.fish r1 --cluster shared-demos-demo --context demo   # another cluster
 #
 # Needs kubectl access to the cluster that runs the deployments (--cluster, default
 # tamanu-internal-main), and Pulumi access.
@@ -39,13 +40,13 @@ set -l project_dir tamanu/on-k8s
 set -l org bes
 set -l project tamanu-on-k8s
 
-argparse a/apply p/preview all 'ref=' 'cluster=' -- $argv
+argparse a/apply p/preview all 'ref=' 'cluster=' 'context=' -- $argv
 or exit 2
 
 set -l phase $argv[1]
 set -l named $argv[2..-1]
 if not contains -- "$phase" r1 r2
-    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [--cluster NAME] [STACK...]" >&2
+    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [--cluster NAME] [--context NAME] [STACK...]" >&2
     exit 2
 end
 
@@ -59,6 +60,25 @@ set -q _flag_ref; and set ref $_flag_ref
 # skipped, even if it is named.
 set -l cluster tamanu-internal-main
 set -q _flag_cluster; and set cluster $_flag_cluster
+
+# The programs and the checks both use kubectl's current context, so a cluster other than the
+# default one needs it named. It is set in a private copy of the kubeconfig, which leaves the
+# current context of the real one alone.
+if set -q _flag_context
+    set -l kubeconfig (mktemp -t tamanuMigrate-kubeconfig.XXXXXX)
+    kubectl config view --raw >$kubeconfig
+    chmod 600 $kubeconfig
+    set -gx KUBECONFIG $kubeconfig
+    kubectl config use-context $_flag_context >/dev/null
+    or begin
+        echo "no such kubectl context: $_flag_context" >&2
+        rm -f $kubeconfig
+        exit 1
+    end
+    function __tamanuMigrate_kubeconfig_cleanup --on-event fish_exit --inherit-variable kubeconfig
+        rm -f $kubeconfig
+    end
+end
 
 git -C $repo_root fetch --quiet origin
 or begin

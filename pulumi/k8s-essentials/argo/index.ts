@@ -132,6 +132,9 @@ new k8s.apiextensions.CustomResource(
 // The UI and API, reached over Tailscale only. Who may reach them is set by the grants on
 // the tag, in the tailnet policy. The operator's tag owners must include the tag below.
 const tailscaleName = cfg.get('argoTailscaleName') ?? `argocd-${clusterFullName}`;
+// Each cluster's Tailscale operator owns its own tags, so the demo cluster sets this to
+// `tag:k8s-demo,tag:k8s-demo-argo`.
+const tailscaleTags = cfg.get('argoTailscaleTags') ?? 'tag:k8s,tag:k8s-argo';
 new k8s.networking.v1.Ingress(
   'argo-cd-tailscale',
   {
@@ -139,7 +142,7 @@ new k8s.networking.v1.Ingress(
       namespace: namespaceName,
       annotations: {
         'tailscale.com/hostname': tailscaleName,
-        'tailscale.com/tags': 'tag:k8s,tag:k8s-argo',
+        'tailscale.com/tags': tailscaleTags,
       },
     },
     spec: {
