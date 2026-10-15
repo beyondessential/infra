@@ -1,3 +1,4 @@
+import './retain.ts';
 import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
 import { CentralServer } from './central/CentralServer.ts';
 import { FacilityServer } from './facility/FacilityServer.ts';
@@ -16,7 +17,8 @@ import {
 import { findSnapshotSource } from './central/seedSnapshot.ts';
 import { ingress } from './common/ingress.ts';
 import { redirectSites } from './common/redirect.ts';
-import { namespace } from './namespace.ts';
+import { namespace, namespaceName } from './namespace.ts';
+import { markRetained } from './retain.ts';
 import { setupTtlHibernation } from './schedule.ts';
 await failIfIncorrectCluster();
 
@@ -79,3 +81,5 @@ export const urls = Object.fromEntries(
     `https://${value}`,
   ]),
 );
+
+markRetained(namespaceName);
