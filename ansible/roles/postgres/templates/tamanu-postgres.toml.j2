@@ -1,0 +1,25 @@
+type = "tamanu-postgres"
+
+[postgresql]
+cluster = "main"
+{% if tamanu_clone %}
+
+# A clone is restored from another server's backup: keep Tamanu down until the
+# restored database has forgotten that server, so it never syncs or sends as it.
+[[pre_restore]]
+command = ["/usr/bin/bestool", "tamanu", "stop"]
+
+[[post_restore]]
+command = ["/usr/sbin/runuser", "-u", "postgres", "--", "/usr/bin/psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "tamanu", "-f", "/etc/bestool/forget-server-identity.sql"]
+
+# Nothing encrypted with the old key survives the scrub, so a fresh one is safe.
+[[post_restore]]
+command = ["/bin/sh", "-c", "if podman secret exists tamanu-config-key; then podman secret rm tamanu-config-key; fi && dd if=/dev/urandom bs=32 count=1 status=none | podman secret create tamanu-config-key -"]
+
+[[post_restore]]
+command = ["/usr/bin/bestool", "tamanu", "start"]
+
+# After start, so a failed setup leaves Tamanu up and unsynced rather than down.
+[[post_restore]]
+command = ["/bin/sh", "-c", "[ ! -e /etc/bestool/clone-setup.sh ] || exec /etc/bestool/clone-setup.sh"]
+{% endif %}

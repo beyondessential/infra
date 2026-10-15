@@ -69,6 +69,18 @@
     group: root
     mode: "0644"
   register: tamanu_secrets_def
+  when: not tamanu_clone
+  notify:
+    - Reload bestool-alertd
+
+# A clone keeps its own key: restoring the source's would let the copy read the
+# source's credentials.
+- name: Remove tamanu-secrets backup definition from a clone
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool/backups/tamanu-secrets.toml
+    state: absent
+  when: tamanu_clone
   notify:
     - Reload bestool-alertd
 
@@ -87,6 +99,7 @@
   changed_when: tamanu_secrets_backup.rc == 0
   failed_when: false
   when:
+    - not tamanu_clone
     - tamanu_secrets_def is changed
     - tamanu_postgres_def.stat.exists
 

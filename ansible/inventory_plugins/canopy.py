@@ -39,6 +39,7 @@ description:
   - Only machines carrying C(managed_by_ansible) are served. Canopy holds every machine in an environment,
     including the ones this repo does not configure, so membership is opt-in rather than everything canopy knows.
   - C(canopy_intent) carries the intent the inventory was read with, so a play can refuse to run under the wrong one.
+  - C(tamanu_clone) is true for a deployment at canopy's C(clone) rank, whose restores come from another server's backups.
   - Of ansible's own variables canopy may set only C(ansible_host), C(ansible_user), C(ansible_port),
     C(ansible_python_interpreter) and C(ansible_timeout). The rest, and C(canopy_intent), are left out with a
     warning, since they decide how the controller connects and what it runs.
@@ -124,8 +125,8 @@ ALLOWED_ANSIBLE_VARS = frozenset(
     {"ansible_host", "ansible_user", "ansible_port", "ansible_python_interpreter", "ansible_timeout"}
 )
 
-# The plugin sets canopy_intent at group scope, where a host-level tag would beat it.
-RESERVED_VARS = frozenset({"canopy_intent"})
+# The plugin sets these at group scope, where a host-level tag would beat them.
+RESERVED_VARS = frozenset({"canopy_intent", "tamanu_clone"})
 
 
 def canopy_may_set(key, where):
@@ -284,6 +285,7 @@ class InventoryModule(BaseInventoryPlugin):
             if VALID_VAR_NAME.match(key) and canopy_may_set(key, "the environment"):
                 inventory.set_variable("all", key, value)
         inventory.set_variable("all", "canopy_intent", self.get_option("intent"))
+        inventory.set_variable("all", "tamanu_clone", data.get("rank") == "clone")
 
         # Canopy holds every application in the environment, this repo
         # configures a subset, and a play that reached the rest would act on

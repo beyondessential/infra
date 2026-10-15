@@ -1,0 +1,24 @@
+#!/bin/sh
+set -u
+cd /
+status=0
+# The scrub removes the settings key, which only the upgrade steps create again.
+version=$(grep TAMANU_VERSION= /etc/tamanu/env | cut -d= -f2)
+/usr/bin/podman run --rm \
+  -v "/etc/tamanu/$version:/config" \
+  -v /var/run/postgresql:/var/run/postgresql \
+  --env-file /etc/tamanu/env \
+  --secret tamanu-config-key,mode=0400 \
+  "ghcr.io/beyondessential/tamanu-central:$version" \
+  migrate || status=1
+# A restore replaces users with the source's, so put back each clone facility's account.
+for sql in /etc/bestool/clone-sync/*.sql; do
+  [ -e "$sql" ] || continue
+  if [ "$(wc -c 2>/dev/null < "${sql%.sql}.password" || echo 0)" -lt 64 ]; then
+    echo "no full password beside $sql, not setting that account up" >&2
+    status=1
+    continue
+  fi
+  /usr/sbin/runuser -u postgres -- /usr/bin/psql -X -q -v ON_ERROR_STOP=1 -d {{ tamanu_db_name | quote }} -f "$sql" || status=1
+done
+exit $status
