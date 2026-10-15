@@ -102,6 +102,12 @@ set -l dir $wt/pulumi/$project_dir
 
 set -l stacks (pulumi -C $dir stack ls --json | jq -r '.[].name')
 if test (count $named) -gt 0
+    for name in $named
+        if not contains -- $name $stacks
+            echo "no such stack: $name" >&2
+            exit 2
+        end
+    end
     set stacks $named
 end
 
