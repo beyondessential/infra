@@ -28,6 +28,10 @@ pub fn reporting_db_secret(server: &str) -> String {
 	format!("{server}-reporting-db")
 }
 
+/// The service account the TTL schedule's Jobs run as, made by the stub. It may
+/// patch the deployments and database clusters of its namespace.
+pub const TTL_SERVICE_ACCOUNT: &str = "tamanu-ttl";
+
 /// The app service account, which carries the IAM role annotation when the
 /// `serviceAccount` config is set.
 pub const SERVICE_ACCOUNT: &str = "app-sa";

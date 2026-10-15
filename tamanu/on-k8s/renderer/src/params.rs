@@ -199,8 +199,11 @@ pub struct StackConfig {
 
 	// Keys the program reads that nothing here renders: the Pulumi stub acts on
 	// them, or they only matter to the program this one replaces.
-	#[serde(default)]
-	pub ttl_hours: Option<IgnoredAny>,
+	/// How long the deployment stays up after an update before it hibernates; zero
+	/// for no limit. The schedule itself belongs to the stub. Here it only decides
+	/// whether a deployment can be woken from the Argo CD UI.
+	#[serde(default, deserialize_with = "lenient")]
+	pub ttl_hours: Option<u32>,
 	#[serde(default)]
 	pub ip_allow_list: Option<IgnoredAny>,
 }

@@ -99,6 +99,8 @@ pub struct Config {
 	pub architecture: Architecture,
 	pub capacity: Capacity,
 	pub synthetic_tests: bool,
+	/// Whether a TTL schedule hibernates the deployment.
+	pub has_ttl: bool,
 	/// Whether to top the database up with generated data after a deploy.
 	pub seed_snapshot: bool,
 	/// The VolumeSnapshot the central database is restored from, if one was found.
@@ -238,6 +240,7 @@ impl Config {
 			architecture,
 			capacity,
 			synthetic_tests: c.synthetic_tests.unwrap_or(false),
+			has_ttl: c.ttl_hours.unwrap_or(0) > 0,
 			seed_snapshot,
 			seed_snapshot_name: p.seed.as_ref().map(|s| s.snapshot.clone()),
 			timezone: c

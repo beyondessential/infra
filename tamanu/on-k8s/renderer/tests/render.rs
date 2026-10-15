@@ -369,3 +369,47 @@ fn without_a_seed_snapshot_the_database_starts_empty() {
 			.is_some_and(|n| n.starts_with("central-seed-top-up"))
 	}));
 }
+
+#[test]
+fn a_deployment_with_a_ttl_has_a_suspended_cronjob_that_wakes_it() {
+	let out =
+		tamanu_renderer::render_with(&params(json!({ "ttlHours": "4" })), &options()).unwrap();
+	let wake = find(&out, "CronJob", "wake");
+	assert_eq!(wake["spec"]["suspend"], true);
+	let pod = &wake["spec"]["jobTemplate"]["spec"]["template"]["spec"];
+	assert_eq!(pod["serviceAccountName"], "tamanu-ttl");
+	assert_eq!(
+		pod["containers"]
+			.as_array()
+			.unwrap()
+			.iter()
+			.map(|c| c["args"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|a| a.as_str().unwrap())
+				.collect::<Vec<_>>()
+				.join(" "))
+			.collect::<Vec<_>>(),
+		vec![
+			"annotate deployment --all downscaler/force-downtime- --overwrite -n tamanu-main",
+			"annotate cluster.postgresql.cnpg.io --all cnpg.io/hibernation=off --overwrite -n tamanu-main",
+		]
+	);
+	assert_eq!(
+		wake["metadata"]["annotations"]["argocd.argoproj.io/sync-wave"],
+		"3"
+	);
+}
+
+#[test]
+fn a_deployment_without_a_ttl_has_no_wake_cronjob() {
+	for config in [
+		json!({}),
+		json!({ "ttlHours": "0" }),
+		json!({ "ttlHours": "null" }),
+	] {
+		let out = tamanu_renderer::render_with(&params(config), &options()).unwrap();
+		assert!(out.iter().all(|v| v["kind"] != "CronJob"));
+	}
+}
