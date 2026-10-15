@@ -92,6 +92,8 @@ const release = new k8s.helm.v3.Release(
           'policy.default': 'role:tamanu',
           'policy.csv': [
             'p, role:tamanu, applications, *, tamanu/*, allow',
+            // Waking a hibernated deployment: "Create Job" on its suspended `wake` CronJob.
+            'p, role:tamanu, applications, action/batch/CronJob/create-job, tamanu/*, allow',
             'p, role:tamanu, logs, get, tamanu/*, allow',
             'p, role:tamanu, projects, get, tamanu, allow',
           ].join('\n'),

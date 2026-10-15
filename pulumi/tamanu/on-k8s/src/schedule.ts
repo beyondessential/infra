@@ -34,8 +34,10 @@ export function setupTtlHibernation(namespace: Output<string>): void {
   const expiresAtUnix = Math.floor(expiresAt.getTime() / 1000);
   const labels = { 'app.kubernetes.io/name': 'tamanu-ttl' };
 
+  // The name is fixed because infra-argo-tamanu-renderer's wake CronJob, which is rendered
+  // and so cannot ask the stub for it, runs as this service account.
   const sa = new k8s.core.v1.ServiceAccount('tamanu-ttl', {
-    metadata: { namespace, labels },
+    metadata: { name: 'tamanu-ttl', namespace, labels },
   });
 
   const role = new k8s.rbac.v1.Role('tamanu-ttl', {
