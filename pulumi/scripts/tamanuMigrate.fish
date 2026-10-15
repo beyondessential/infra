@@ -13,7 +13,8 @@
 #   marked    deployed by the previous program, with the marker (needs r2)
 #
 # By default this only prints what each stack is and what it would do. Nothing is
-# written to the cluster or to Pulumi state unless --apply is given. Demos, `main`
+# written to the cluster or to Pulumi state unless --apply is given. Stacks on another
+# cluster are always skipped. Demos, `main`
 # and release stacks are left out of an --apply run unless --all is given or they
 # are named.
 #
@@ -26,9 +27,10 @@
 #   tamanuMigrate.fish r1                   # plan, every stack
 #   tamanuMigrate.fish r1 --preview x y     # also run `pulumi preview` for stacks x and y
 #   tamanuMigrate.fish r1 --apply           # run r1 on the pull request stacks
-#   tamanuMigrate.fish r2 --apply --all     # run r2 on every stack, demos included
+#   tamanuMigrate.fish r2 --apply --all     # run r2 on every stack on the cluster, release and main included
 #
-# Needs kubectl access to the cluster that runs the deployments, and Pulumi access.
+# Needs kubectl access to the cluster that runs the deployments (--cluster, default
+# tamanu-internal-main), and Pulumi access.
 # It runs `pulumi up`, so read it through before running it with --apply.
 
 set -l pulumi_root (realpath (status dirname)/..)
@@ -37,18 +39,24 @@ set -l project_dir tamanu/on-k8s
 set -l org bes
 set -l project tamanu-on-k8s
 
-argparse a/apply p/preview all 'ref=' -- $argv
+argparse a/apply p/preview all 'ref=' 'cluster=' -- $argv
 or exit 2
 
 set -l phase $argv[1]
 set -l named $argv[2..-1]
 if not contains -- "$phase" r1 r2
-    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [STACK...]" >&2
+    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [--cluster NAME] [STACK...]" >&2
     exit 2
 end
 
 set -l ref origin/p1-$phase
 set -q _flag_ref; and set ref $_flag_ref
+
+# Only stacks on this cluster are looked at: the checks use the current kubectl context, and
+# Argo CD must be installed on the cluster a stack runs on. A stack on any other cluster is
+# skipped, even if it is named.
+set -l cluster tamanu-internal-main
+set -q _flag_cluster; and set cluster $_flag_cluster
 
 git -C $repo_root fetch --quiet origin
 or begin
@@ -120,6 +128,11 @@ for stack in $stacks
     or begin
         printf '%-52s %-10s %s\n' $stack ? "config refresh failed"
         set -a failed $stack
+        continue
+    end
+    set -l stack_cluster (pulumi -C $dir config get k8s-core -s $full 2>/dev/null | string split -f 3 /)
+    if test "$stack_cluster" != "$cluster"
+        printf '%-52s %-10s %s\n' $stack other "skip (runs on $stack_cluster)"
         continue
     end
     set -l ns (pulumi -C $dir config get namespace -s $full 2>/dev/null)

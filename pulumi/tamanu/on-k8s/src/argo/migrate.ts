@@ -1,4 +1,9 @@
-import { CoreV1Api, CustomObjectsApi, type KubernetesObject } from '@kubernetes/client-node';
+import {
+  ApisApi,
+  CoreV1Api,
+  CustomObjectsApi,
+  type KubernetesObject,
+} from '@kubernetes/client-node';
 import { log, runtime } from '@pulumi/pulumi';
 import { argoNamespace } from '../../../../common/k8s/argo.ts';
 import { k8sClient } from '../../../../common/k8s/client.ts';
@@ -20,6 +25,7 @@ const MARKER = 'migration';
 const WAIT_MINUTES = 10;
 
 const core = k8sClient(CoreV1Api);
+const discovery = k8sClient(ApisApi);
 const custom = k8sClient(CustomObjectsApi);
 
 interface Kind {
@@ -65,6 +71,17 @@ async function list(kind: Kind): Promise<KubernetesObject[]> {
 // The stub's own TTL machinery is autonamed too, and stays.
 const autonamed = (o: KubernetesObject) =>
   o.metadata?.annotations?.[AUTONAMED] === 'true' && !o.metadata.name?.startsWith('ttl-');
+
+// Handing a stack over deletes what Pulumi created before Argo CD creates its own, so a
+// cluster without Argo CD must be refused before anything is touched.
+async function assertArgoInstalled(): Promise<void> {
+  const { groups } = await discovery.getAPIVersions();
+  if (!groups.some((group) => group.name === 'argoproj.io')) {
+    throw new Error(
+      `Argo CD is not installed on the cluster that ${namespaceName} runs on, so it cannot be deployed there`,
+    );
+  }
+}
 
 async function isMigrated(): Promise<boolean> {
   const app = await orNothing(
@@ -182,6 +199,7 @@ async function waitForRemoval(): Promise<void> {
  * During a preview it only checks.
  */
 export async function migrateFromLegacy(): Promise<'new' | 'migrated' | 'migrating'> {
+  await assertArgoInstalled();
   if (await isMigrated()) return 'migrated';
   if (!(await hasLegacyObjects())) return 'new';
 
