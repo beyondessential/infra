@@ -1,0 +1,60 @@
+[alias]
+  tree = log --graph --pretty=oneline --abbrev-commit
+  up = pull --rebase --autostash
+[advice]
+  skippedCherryPicks = false
+[help]
+  autocorrect = prompt
+[ui]
+  color = auto
+[color]
+  ui = auto
+  status = auto
+  branch = auto
+  diff = auto
+[status]
+  relativePaths = true
+[push]
+  default = simple
+  followTags = true
+  autoSetupRemote = true
+[fetch]
+  prune = true
+  pruneTags = true
+  all = true
+[pull]
+  rebase = true
+  autoStash = true
+[transfer]
+  fsckobjects = true
+[branch]
+  sort = -committerdate
+[tag]
+  sort = version:refname
+[commit]
+  verbose = true
+[diff]
+  algorithm = histogram
+  compactionHeuristic = true
+  colorMoved = true
+  renames = true
+  mnemonicPrefix = true
+[color "diff"]
+  old = red
+[merge]
+  conflictstyle = zdiff3
+[delta]
+  navigate = true
+[hub]
+  protocol = ssh
+[rebase]
+  updateRefs = true
+  autoSquash = true
+  autoStash = true
+[rerere]
+  enabled = true
+  autoupdate = true
+[grep]
+  patternType = perl
+[column]
+  ui = auto
