@@ -20,8 +20,8 @@ jobs:
   check:
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
       # postinstall runs tsc, so this typechecks every stack.
       - run: npm ci
         working-directory: pulumi
@@ -31,8 +31,8 @@ jobs:
   policies:
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
       # Separate npm project with its own deps, excluded from the root tsconfig.
       - run: npm ci
         working-directory: pulumi/policies
