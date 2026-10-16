@@ -36,4 +36,24 @@ specs (
             }
         )
     }
+    {
+        name tamanu-renderer
+        include (docs/spec/tamanu/*.md)
+        impls (
+            {
+                name main
+                include (
+                    pulumi/tamanu/on-k8s/src/**/*.ts
+                    pulumi/tamanu/k8s-infra/**/*.ts
+                    pulumi/common/k8s/argoPlugin.ts
+                )
+                exclude (
+                    pulumi/tamanu/on-k8s/src/**/*.test.ts
+                )
+                test_include (
+                    pulumi/tamanu/on-k8s/src/**/*.test.ts
+                )
+            }
+        )
+    }
 )
