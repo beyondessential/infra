@@ -56,7 +56,7 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 
 - [x] `beyondessential/tailscale` PR #46: `tag:infra-gha-renderer-promote`, and a grant on each cluster's operator that impersonates the group `tailscale:gha:renderer-promote`. Needs merging.
 - [ ] Manual, in the Tailscale admin: an OIDC trust for this repo's promotion workflow on each cluster, granting that tag. The workflow's `TS_TAGS` variable must name it.
-- [ ] GitHub environments `tamanu-internal-main` and `shared-demos-demo` on this repo, each with `TS_OAUTH_CLIENT_ID`, `TS_TAGS` and `TS_K8S_OPERATOR_HOSTNAME`.
+- [x] GitHub environments `tamanu-internal-main` and `shared-demos-demo` on this repo, each with `TS_OAUTH_CLIENT_ID`, `TS_TAGS` and `TS_K8S_OPERATOR_HOSTNAME`.
 - [ ] `pulumi config rm argoRenderImageTag` on each cluster's `k8s-infra` stack, after step 3 is applied.
 
 ## 7. Docs and spec coverage
