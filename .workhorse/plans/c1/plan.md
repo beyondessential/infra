@@ -31,7 +31,7 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 - [ ] `pulumi/common/k8s/argoPlugin.ts`: add a `config` input holding the plugin config document. Create a ConfigMap from it and mount it at `/home/argocd/cmp-server/config/plugin.yaml` with `subPath`, through an extra volume named from the plugin name like `cmp-tmp-<name>`. Update the `image` doc comment, which currently says the config is baked in (`r[plugin.config-supplied]`).
 - [ ] Same file: set `imagePullPolicy: 'Always'` on the sidecar (`r[plugin.pull]`).
 - [ ] `pulumi/tamanu/k8s-infra/argo/index.ts`: two `argoPlugin` calls, stable (container `infra-argo-tamanu-renderer`, tag `stable`) and canary (container `infra-argo-tamanu-renderer-canary`, tag `canary`), each with a generated `ConfigManagementPlugin` document whose `metadata.name` is its container name and `spec.version` is `v1` (`r[plugin.per-channel]`). Drop `cfg.require('argoRenderImageTag')`.
-- [ ] Same file: a Role and RoleBinding in the Argo namespace for the group `tailscale:renderer-promote`. Applications: `get`, `list`, `patch`. Deployments: `get`, `watch`, `patch`, restricted by `resourceNames` to the repo-server Deployment, whose name `findRepoServer` already resolves and the `DeploymentPatch` exposes. Nothing else (`r[access.promotion-identity]`).
+- [ ] Same file: a Role and RoleBinding in the Argo namespace for the group `tailscale:gha:renderer-promote`. Applications: `get`, `list`, `patch`. Deployments: `get`, `watch`, `patch`, restricted by `resourceNames` to the repo-server Deployment, whose name `findRepoServer` already resolves and the `DeploymentPatch` exposes. Nothing else (`r[access.promotion-identity]`).
 
 ## 4. Renderer image and CD
 
@@ -54,7 +54,8 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 
 ## 6. External and manual
 
-- [ ] `beyondessential/tailscale`: a tag for the promotion workflow, a grant to each cluster's operator that impersonates the group `tailscale:renderer-promote`, and an OIDC trust for this repo's promotion workflow on each cluster.
+- [x] `beyondessential/tailscale` PR #46: `tag:infra-gha-renderer-promote`, and a grant on each cluster's operator that impersonates the group `tailscale:gha:renderer-promote`. Needs merging.
+- [ ] Manual, in the Tailscale admin: an OIDC trust for this repo's promotion workflow on each cluster, granting that tag. The workflow's `TS_TAGS` variable must name it.
 - [ ] GitHub environments `tamanu-internal-main` and `shared-demos-demo` on this repo, each with `TS_OAUTH_CLIENT_ID`, `TS_TAGS` and `TS_K8S_OPERATOR_HOSTNAME`.
 - [ ] `pulumi config rm argoRenderImageTag` on each cluster's `k8s-infra` stack, after step 3 is applied.
 
