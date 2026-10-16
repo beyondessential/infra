@@ -37,11 +37,11 @@ were clean.
 
 Client IP: nginx believed client-supplied `X-Forwarded-For` because of an out-of-band
 `use-forwarded-headers: true` on its ConfigMap; `k8s-essentials` now sets it `false`, so
-nginx uses the PROXY protocol address (`k[lb.nginx.real-ip]`). Applied and verified on
+nginx uses the PROXY protocol address (see [Migration rules](#migration-rules)). Applied and verified on
 2026-10-16: a request with a forged `X-Forwarded-For` is logged with the real address by
 both nginx and canopy, and canopy's `req.ip` shows real public addresses. Envoy cannot
 use the PROXY protocol alongside HTTP/3, and its IPv6 targets see IPv4 clients as the
-NLB's address; that gap is accepted (`k[envoy.real-ip+2]`), since canopy does not rely
+NLB's address; that gap is accepted ([K8SING](../spec/kubernetes/ingress.md#envoy-proxy)), since canopy does not rely
 on the client IP.
 
 Known hole until `drain`: the nginx path's backend trusts `mtls-certificate`, which a
@@ -63,8 +63,8 @@ Next: the enrolled-device test, then step 4.
 
 `tamanu-meta-prod/meta` is the last nginx-class Ingress in the fleet. Nothing else on the
 main cluster uses `ingressClassName: nginx`, and the demo cluster has none at all. So
-this workload is the whole remaining blocker on `k[migration.cleanup]` in
-`docs/spec/kubernetes/ingress.md`, and finishing it retires ingress-nginx entirely.
+this workload is the whole remaining blocker on the cleanup rule under
+[Migration rules](#migration-rules), and finishing it retires ingress-nginx entirely.
 
 The Envoy side is already half-built and live. `pulumi/canopy/src/servers.ts` creates a
 Gateway with listeners on `gw.meta.tamanu.app` and `gw.meta.tamanu.io`, which has been
@@ -168,10 +168,9 @@ parity work.
 ## Spec changes
 
 `docs/spec/kubernetes/ingress.md` needs three edits, landing before the implementation
-per the repo's spec-first rule (`git add` the spec, `tracey bump`, then update the
-annotated sites individually rather than mass-editing rule ids):
+per the repo's spec-first rule (edit the spec, then update the code that cites it):
 
-- `k[envoy.mtls-passthrough]` requires the client-certificate forwarding be validated
+- The client certificate requirements ([K8SING](../spec/kubernetes/ingress.md#client-certificates)) require the client-certificate forwarding be validated
   against Envoy Gateway's `BackendTLSPolicy`. That is the wrong mechanism —
   `BackendTLSPolicy` configures TLS *to the upstream*. The requirement is about
   `ClientTrafficPolicy`: `clientValidation.mode: Request` to request a certificate without
@@ -181,9 +180,23 @@ annotated sites individually rather than mass-editing rule ids):
 - A new item for the staging hostnames: while the migration is in progress, the Gateway
   must serve the canopy public server on a `gw.`-prefixed alias of each configured
   domain, with the same policy configuration as the eventual primary path.
-- `k[envoy.body-size]` should name the mechanism (`requestBuffer` plus a sized connection
-  buffer) rather than only the 50m figure, and `k[envoy.timeouts]` should state the 60s
-  parity target for the meta workload.
+- The body size requirement ([K8SING](../spec/kubernetes/ingress.md#envoy-proxy)) should name the mechanism (`requestBuffer` plus a sized connection
+  buffer) rather than only the 50m figure, and the meta workload should state a 60s
+  request timeout for parity with nginx.
+
+## Gap: TCP 80 redirect
+
+The ingress spec ([K8SING](../spec/kubernetes/ingress.md#gateway)) requires a Gateway listener on TCP 80 that redirects every request to HTTPS.
+The Envoy NLB created in `pulumi/k8s-essentials/envoyGateway.ts` forwards only TCP 443 and UDP 443 (a `TCP_UDP` listener on one target group), so a request to port 80 never reaches the Gateway.
+The nginx NLB handles port 80 today, which is why the gap is invisible until the hostnames move.
+
+To close it before `drain` or `primary`:
+
+- add TCP 80 to the Envoy service and NLB, and a target group for it;
+- add the redirect listener to the Gateway and confirm it answers on the `gw.` aliases;
+- check HTTP requests to a migrated hostname get a redirect to HTTPS, not a connection failure.
+
+The ingress spec states the end state, so it stays as is.
 
 ## Implementation
 
@@ -288,9 +301,7 @@ Once `primary` has held, remove:
 - `pulumi/canopy/src/ca.ts` in its entirety, along with its import in `servers.ts`. It
   exists only to satisfy the nginx `auth-tls-secret` annotation, and deleting the
   Certificate takes the `ca-root` secret with it;
-- the `nginx` IngressClass expectations in the spec (`k[ingress-class.nginx]`,
-  `k[lb.nginx]`, and the migration section, which becomes history rather than a
-  requirement);
+- the rules under [Migration rules](#migration-rules) once they have been carried out;
 - `--source=ingress` at `pulumi/k8s-core/externalDns.ts:150` and the corresponding
   ClusterRole rule granting access to Ingress resources.
 
@@ -310,3 +321,24 @@ other workloads.
 5. `drain`; wait out several TTLs and nginx traffic.
 6. `primary`.
 7. Retire ingress-nginx, `ca.ts`, and the `--source=ingress` argument.
+
+## Migration rules
+
+These rules held while ingress-nginx and the Gateway served traffic side by side.
+They were removed from the ingress spec, which describes the end state, and apply until the cleanup below is done.
+
+- An NLB fronts the ingress-nginx controller, handling TCP 80 and TCP 443.
+  It is separate from the Envoy NLB and shares no target groups with it.
+- ingress-nginx takes the client IP from the PROXY protocol header sent by its NLB, and does not take it from an `X-Forwarded-For` header supplied by the client.
+- An IngressClass named `nginx`, backed by ingress-nginx, exists.
+  It is removed once every workload has moved to an HTTPRoute.
+- external-dns watches both the `ingress` and `gateway-httproute` sources.
+  The `ingress` source is removed once every Ingress resource is gone.
+- Workloads move from Ingress to HTTPRoute one at a time, each validated before the next begins.
+  Tamanu on-k8s goes first, because it exercises timeout configuration, and tamanu-meta goes last, because it carries mTLS and the highest risk.
+- While a workload moves, the Gateway serves it on a `gw.`-prefixed alias of each of its domains, with the routing, timeout, body-size and client-certificate configuration of its eventual primary path.
+  Serving the primary domains on the Gateway is separable from advertising them in DNS.
+- While a workload authenticating by client certificate is served by both paths, each path reaches a backend that trusts only the client-certificate header that path's proxy sets, and both paths can authenticate clients at once.
+- When a workload's domains move, DNS is pointed at the Gateway while ingress-nginx still serves them, and ingress-nginx keeps serving them until the change has propagated.
+  No domain is unclaimed by both paths in DNS at any point.
+- Cleanup, once every workload has moved: remove the ingress-nginx Helm release, the nginx NLB, the `--source=ingress` argument of external-dns and its ClusterRole rule.

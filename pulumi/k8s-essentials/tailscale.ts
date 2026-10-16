@@ -99,7 +99,7 @@ if (tailscaleEnabled) {
   // again, and that should pick up the new hostname defined here.
   const exitNodeName = cfg.get('tailscaleExitNodeName');
   if (exitNodeName) {
-    // k[capacity.exit-node-dedicated]
+    // spec: K8SNOD#exit-node
     // Pin the exit node onto the dedicated `tailscale-exit` Karpenter pool
     // (k8s-core) and give it real resource requests. The operator otherwise
     // requests almost nothing (1m/1Mi), which would let Karpenter under-

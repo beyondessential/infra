@@ -6,7 +6,7 @@ use tracing::{error, info, warn};
 
 use crate::{snapshot, util};
 
-// s[gc.schedule]
+// spec: PGS#snapshot-garbage-collection
 pub async fn run_loop(client: Client, namespace: &str) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
     loop {
@@ -18,7 +18,7 @@ pub async fn run_loop(client: Client, namespace: &str) {
 }
 
 async fn run_once(client: &Client, namespace: &str) -> anyhow::Result<()> {
-    // s[gc.scope]
+    // spec: PGS#snapshot-garbage-collection
     let snapshots = snapshot::list_managed_snapshots(client, namespace).await?;
     if snapshots.is_empty() {
         return Ok(());
@@ -33,7 +33,7 @@ async fn run_once(client: &Client, namespace: &str) -> anyhow::Result<()> {
             .clone()
             .unwrap_or_default();
 
-        // s[gc.version-parse]
+        // spec: PGS#snapshot-garbage-collection
         let version_str = match annotations.get(util::ANNOTATION_FOR_VERSION) {
             Some(v) => v,
             None => continue,
@@ -81,7 +81,7 @@ struct SnapshotInfo {
 fn compute_retained(snapshots: &[SnapshotInfo]) -> Vec<String> {
     let mut retained = Vec::new();
 
-    // s[gc.dedup-version]
+    // spec: PGS#snapshot-garbage-collection
     let mut by_version: HashMap<String, Vec<&SnapshotInfo>> = HashMap::new();
     for snap in snapshots {
         by_version
@@ -98,7 +98,7 @@ fn compute_retained(snapshots: &[SnapshotInfo]) -> Vec<String> {
         }
     }
 
-    // s[gc.dedup-minor]
+    // spec: PGS#snapshot-garbage-collection
     let mut by_minor: HashMap<(u64, u64), Vec<&SnapshotInfo>> = HashMap::new();
     for snap in &version_winners {
         by_minor
@@ -115,7 +115,7 @@ fn compute_retained(snapshots: &[SnapshotInfo]) -> Vec<String> {
         }
     }
 
-    // s[gc.retain-minors]
+    // spec: PGS#snapshot-garbage-collection
     minor_winners.sort_by(|a, b| b.version.cmp(&a.version));
     let kept: Vec<&SnapshotInfo> = minor_winners.into_iter().take(10).collect();
 

@@ -16,7 +16,7 @@ Workhorse keeps this section, the skills, and the reference docs current automat
 
 - This repository is public. Never commit secrets or credentials, and keep client-identifying names out of code, comments, commits and PRs beyond the deployment names already present. Stack config (`Pulumi.<stack>.yaml`) is gitignored and must stay so: values go in via `pulumi config set` (`--secret` for secrets), never in source.
 - If you write a script, always remind the user to carefully review the script before running it.
-- Spec items in docs/spec must describe **what** the system requires, not **how** the code achieves it. Keep internal implementation details out of spec text. Acceptable: interface contracts that external actors or other components depend on.
+- When writing or changing specs in `docs/spec/` or plans in `docs/plans/` or `.workhorse/plans/`, follow the spec and plan rules in [.workhorse/rules.md](.workhorse/rules.md). Run `node scripts/check-spec-links.mjs` after editing specs or `spec:` citations.
 - Assume these tools are available, you can use them all the time instead of more standard tools like grep etc:
   - rg
   - jq

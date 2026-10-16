@@ -34,7 +34,7 @@ const inheritedTags = Object.fromEntries(
   Object.entries(tags).filter(([k]) => !restrictedTagPrefixes.some((p) => k.startsWith(p))),
 );
 
-// k[imds.v2-required] k[imds.ipv6]
+// spec: K8SNOD#instance-metadata
 const commonMetadataOptions = {
   httpEndpoint: 'enabled',
   httpProtocolIPv6: 'enabled',
@@ -42,7 +42,7 @@ const commonMetadataOptions = {
   httpTokens: 'required',
 };
 
-// k[storage.encryption]
+// spec: K8SNOD#node-storage
 function ebs(volumeSize: string) {
   return [
     {
@@ -56,12 +56,14 @@ function ebs(volumeSize: string) {
   ];
 }
 
-// k[storage.workload-disk-size]
+// spec: K8SNOD#node-storage
 // Size against measured steady-state node fs usage with ~2x headroom; the
 // kubelet image GC high threshold (85%) is the ceiling to stay clear of.
 const workloadDiskGi = cfg.getNumber('workloadDiskGi') ?? 60;
 
-// k[placement.workload-subnets] k[storage.workload-disk-size] k[capacity.workload-pod-density]
+// spec: K8SNOD#placement
+// spec: K8SNOD#node-storage
+// spec: K8SNOD#workload-capacity
 // Pods take IPv6 addresses from delegated prefixes, so network interfaces don't
 // bound pod density; without an explicit limit Karpenter applies the
 // interface-derived one (58 on an xlarge), which fills nodes on pod count well
@@ -91,7 +93,9 @@ export const workloadNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
-// k[capacity.db-replica-pool] k[placement.workload-subnets] k[storage.workload-disk-size]
+// spec: K8SNOD#database-pools
+// spec: K8SNOD#placement
+// spec: K8SNOD#node-storage
 // Workload-tier class for the dedicated database replica pool. Each node holds
 // one replica plus the daemonsets, so max-pods is capped low: the kubelet
 // memory reservation scales with it, and on a 16 GiB node the difference is
@@ -122,7 +126,9 @@ export const dbReplicaNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
-// k[capacity.db-critical-pool] k[placement.workload-subnets] k[storage.workload-disk-size]
+// spec: K8SNOD#database-pools
+// spec: K8SNOD#placement
+// spec: K8SNOD#node-storage
 // Class for the critical database pool: one instance per node, so max-pods is
 // capped low to keep the kubelet's memory reservation small, and a distinct
 // Purpose tag attributes these instances as critical database capacity.
@@ -151,7 +157,8 @@ export const dbCriticalNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
-// k[placement.ingress-subnets] k[storage.system-ingress-disk-size]
+// spec: K8SNOD#placement
+// spec: K8SNOD#node-storage
 export const ingressNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-ingress',
   {
@@ -176,7 +183,8 @@ export const ingressNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
-// k[placement.workload-subnets] k[storage.system-ingress-disk-size]
+// spec: K8SNOD#placement
+// spec: K8SNOD#node-storage
 export const systemNodeClass = new k8s.apiextensions.CustomResource(
   'nodeclass-system',
   {
@@ -201,7 +209,8 @@ export const systemNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
-// k[placement.exit-node-subnets] k[capacity.exit-node-dedicated]
+// spec: K8SNOD#placement
+// spec: K8SNOD#exit-node
 // Dedicated class for the Tailscale exit node so it runs isolated on its own
 // tainted node: it is a live network path, and sharing a node would let
 // workload compute contention degrade routing for connected clients.

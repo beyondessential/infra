@@ -59,7 +59,7 @@ function createBootstrapNodegroups(): Output<aws.eks.Nodegroup[]> {
     100,
   ).map((i) => i.instance_type);
 
-  // k[placement.workload-subnets] k[placement.ingress-subnets]
+  // spec: K8SNOD#placement
   return all([$network.workloadSubnetIds, $network.natSubnetIds]).apply(
     ([workloadSubnets, natSubnets]) => [
       ...makeBootstrapNodegroups('system', workloadSubnets.slice(0, azLimit), {
@@ -94,7 +94,7 @@ function makeBootstrapNodegroups(
       ? new aws.ec2.LaunchTemplate(`${groupName}-az${az}-lt`, {
           launchTemplateName: `${groupName}-az${az}`,
           launchTemplateData: {
-            // k[imds.v2-required] k[imds.ipv6]
+            // spec: K8SNOD#instance-metadata
             metadataOptions: {
               httpEndpoint: 'enabled',
               httpTokens: 'required',
@@ -103,7 +103,7 @@ function makeBootstrapNodegroups(
             },
             monitoring: { enabled: true },
             creditSpecification: { cpuCredits: 'unlimited' },
-            // k[storage.system-ingress-disk-size] k[storage.encryption]
+            // spec: K8SNOD#node-storage
             blockDeviceMappings: [
               {
                 deviceName: '/dev/xvdb',
@@ -142,14 +142,14 @@ function makeBootstrapNodegroups(
               ),
             }
           : undefined,
-        // k[interruption.health-events]
+        // spec: K8SNOD#interruption-and-consolidation
         nodeRepairConfig: { enabled: true },
         // Initial desired comes from the bootstrap flag; `ignoreChanges` below
         // protects manual scaling (both bootstrap-completion and incident
         // recovery) from being clobbered by later `pulumi up` runs.
         scalingConfig: { minSize: 0, desiredSize: bootstrap ? 1 : 0, maxSize: 1 },
         updateConfig: { maxUnavailable: 1 },
-        // k[node.label.purpose+2] k[node.label.schedule] k[node.label.arch] k[node.label.group]
+        // spec: K8SNOD#node-identity
         // Karpenter's controller has a DoNotSchedule topology spread on
         // `karpenter.sh/capacity-type` — without the label here, the
         // controller pods can't schedule on bootstrap nodes and the whole

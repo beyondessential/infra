@@ -26,7 +26,7 @@ export const STUB_ONLY = new Set([
  * The stack's config as strings, minus what the stub keeps for itself. `all` is every config
  * value Pulumi holds, keyed `project:name`; `secrets` is the set of those keys that are secret.
  */
-// r[impl params.channel-not-forwarded]
+// spec: TRO#parameters
 export function selectStackConfig(
   all: Readonly<Record<string, string>>,
   project: string,
@@ -88,7 +88,7 @@ function toStable(params: RenderParams): RenderParams {
 }
 
 /** The parameters in the shape the channel's renderer accepts. */
-// r[impl params.per-channel-shape]
+// spec: TRO#parameters
 export function forChannel(channel: Channel, params: RenderParams): RenderParams {
   return channel === 'stable' ? toStable(params) : params;
 }

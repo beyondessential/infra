@@ -16,8 +16,8 @@ export const RENDERER_IMAGE = 'ghcr.io/beyondessential/infra-argo-tamanu-rendere
  * Which channel a deployment's stack config asks for. CD writes an unset option as the string
  * "null", which means the same as no value at all.
  */
-// r[impl channel.default]
-// r[impl channel.unknown]
+// spec: TRO#channels
+// spec: TRO#channels
 export function parseChannel(value: string | null | undefined): Channel {
   if (value == null || value === '' || value === 'null') return 'stable';
   if ((CHANNELS as readonly string[]).includes(value)) return value as Channel;
@@ -30,8 +30,8 @@ export function parseChannel(value: string | null | undefined): Channel {
  * The plugin's own name, which is also its sidecar's container name. Stable keeps the name that
  * Applications created before channels existed refer to.
  */
-// r[impl channel.stable-continuity]
-// r[impl plugin.per-channel]
+// spec: TRO#plugins
+// spec: TRO#plugins
 export function pluginBaseName(channel: Channel): string {
   return channel === 'stable'
     ? 'infra-argo-tamanu-renderer'
@@ -44,7 +44,7 @@ export function pluginName(channel: Channel): string {
 }
 
 /** The image the channel's sidecar runs. The tag is the channel's name and moves on promotion. */
-// r[impl channel.tags]
+// spec: TRO#channels
 export function rendererImage(channel: Channel): string {
   return `${RENDERER_IMAGE}:${channel}`;
 }
@@ -58,7 +58,7 @@ export const UNKNOWN_CONFIG_KEYS_ENV = 'RENDERER_UNKNOWN_CONFIG_KEYS';
  * keeps its deployments rendering; canary is built with the sender, so a key it does not know is
  * a mistake, and it rejects them.
  */
-// r[impl params.unknown-config-keys]
+// spec: TRO#parameters
 export function unknownConfigKeys(channel: Channel): 'ignore' | 'reject' {
   return channel === 'stable' ? 'ignore' : 'reject';
 }

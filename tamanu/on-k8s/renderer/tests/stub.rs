@@ -12,7 +12,7 @@ fn options() -> Options {
 	}
 }
 
-// r[verify params.checked-per-channel]
+// spec: TRO#parameters
 #[test]
 fn canary_params_from_the_stub_render() {
 	let raw = include_str!("fixtures/stub/canary.json");

@@ -1,179 +1,148 @@
+---
+id: PGS
+---
+
 # pgsnap
 
-pgsnap is a Kubernetes operator that automates the creation and lifecycle
-management of PostgreSQL volume snapshots. It watches for annotated Jobs,
-provisions ephemeral CNPG clusters for them, snapshots the resulting data
-volume, and garbage-collects old snapshots.
+pgsnap is a Kubernetes operator that creates PostgreSQL volume snapshots for Jobs and removes old snapshots.
 
-The operator runs in a single namespace and only manages resources within it.
+## Borrowed terms
+
+| term | meaning |
+|---|---|
+| CNPG Cluster | A CloudNativePG `Cluster` resource ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). |
+| VolumeSnapshot, VolumeSnapshotClass | The Kubernetes resources that request a snapshot of a volume and select how it is taken ([Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/)). |
+| `readyToUse` | The `VolumeSnapshot` status field that is true once the snapshot can be restored from ([Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/)). |
+| suspended Job | A Job whose `spec.suspend` is true, so that it creates no pods ([Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/#suspending-a-job)). |
+| owner reference | The metadata that makes Kubernetes delete an object when its owner is deleted ([Kubernetes owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/)). |
+| semver | A version in the form `major.minor.patch`, with its precedence rules ([Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)). |
+| minor | The `major.minor` part of a semver version. |
+
+## Scope
+
+pgsnap MUST watch and manage resources only in the namespace it is deployed to.
 
 ## Annotation contract
 
-s[annotation.prefix]
-All pgsnap annotations use the prefix `pgsnap.bes.au/`.
+All pgsnap annotations and labels MUST use the prefix `pgsnap.bes.au/`.
 
-s[annotation.create]
-A Job with the label `pgsnap.bes.au/create: "true"` signals pgsnap to
-manage its lifecycle: provision a database, inject connection details, wait
-for completion, snapshot, and clean up. This is a label (not an annotation)
-because Kubernetes watch selectors only support labels.
+A Job MUST carry the label `pgsnap.bes.au/create: "true"` for pgsnap to manage it.
 
-s[annotation.size]
-The annotation `pgsnap.bes.au/size` specifies the PVC storage size for the
-ephemeral CNPG cluster. Defaults to `20Gi` if absent.
+> [!NOTE]
+> This is a label and not an annotation because Kubernetes watch selectors select on labels only.
 
-s[annotation.cpu]
-The annotation `pgsnap.bes.au/cpu` specifies the CPU request and limit for
-the ephemeral CNPG cluster's PostgreSQL container. Defaults to `250m` if
-absent.
+A Job MAY carry the annotations in the following table.
 
-s[annotation.memory]
-The annotation `pgsnap.bes.au/memory` specifies the memory request and
-limit for the ephemeral CNPG cluster's PostgreSQL container. Defaults to
-`1Gi` if absent.
+| annotation | meaning | default |
+|---|---|---|
+| `pgsnap.bes.au/size` | The storage size of the [ephemeral cluster](overview.md#ephemeral-cluster). | `20Gi` |
+| `pgsnap.bes.au/cpu` | The CPU request and limit of the PostgreSQL container of the ephemeral cluster. | `250m` |
+| `pgsnap.bes.au/memory` | The memory request and limit of the PostgreSQL container of the ephemeral cluster. | `1Gi` |
+| `pgsnap.bes.au/for-version` | The semver version of the application whose data the snapshot holds. | none |
+| `pgsnap.bes.au/from-snapshot` | The existing snapshot the database is restored from, instead of starting empty. | none |
+| `pgsnap.bes.au/snapshot` | Whether a VolumeSnapshot is produced, where `false` suppresses it. | `true` |
 
-s[annotation.from-snapshot]
-The annotation `pgsnap.bes.au/from-snapshot` names an existing snapshot the
-Job's database is restored from instead of starting empty, either as a
-snapshot name, an exact `for-version`, or `previous`. `previous` means the
-newest snapshot whose `for-version` is below the Job's own minor, so the
-Job's migrations meet data they have not been applied to. Where several
-snapshots carry the requested `for-version`, the most recently created one
-is chosen. A Job whose requested source cannot be resolved never runs: the
-operator marks it failed, creates no database for it, and deletes it, since a
-Job that never starts is reaped by neither its own deadline nor its TTL.
+pgsnap MUST record its progress on the Job in the annotations in the following table.
 
-s[annotation.snapshot]
-The annotation `pgsnap.bes.au/snapshot: "false"` runs the Job and cleans up
-after it without producing a VolumeSnapshot. A Job that only reads or
-migrates a restored database wants no artefact of its own.
+| annotation | meaning |
+|---|---|
+| `pgsnap.bes.au/phase` | One of `new`, `cluster-creating`, `job-running`, `snapshot-waiting`, `complete` and `failed`. |
+| `pgsnap.bes.au/cluster-name` | The name of the ephemeral cluster, `pgsnap-<job-name>` unless the annotation was already present. |
+| `pgsnap.bes.au/snapshot-name` | The name of the VolumeSnapshot, `pgsnap-<job-name>-<UTC time as yyyymmddhhmmss>`. |
 
-s[annotation.passthrough]
-All `pgsnap.bes.au/*` annotations on the Job except `/create`, `/size`,
-`/cpu`, and `/memory` are copied to the resulting VolumeSnapshot.
+### Source snapshot
 
-s[annotation.created-at]
-The operator adds `pgsnap.bes.au/created-at` to the VolumeSnapshot with the
-UTC datetime at snapshot creation time.
+The value of `pgsnap.bes.au/from-snapshot` MUST be the name of a snapshot, an exact `for-version`, or `previous`.
 
-## Snapshot creation workflow
+Only a snapshot that is ready to use MAY be selected as the source.
 
-s[create.scheduling]
-When a Job with `pgsnap.bes.au/create: "true"` is created, the operator
-must prevent it from running until the database is ready. The Job must be
-created with `spec.suspend: true`. The operator unsuspends it once the
-database is accepting connections and the connection Secret exists.
+Where several snapshots carry the requested `for-version`, pgsnap MUST select the most recently created.
 
-s[create.cluster]
-The operator creates a CNPG Cluster with a single instance, using the
-storage size from `pgsnap.bes.au/size` (default `20Gi`), CPU from
-`pgsnap.bes.au/cpu` (default `250m`), and memory from `pgsnap.bes.au/memory`
-(default `1Gi`). The cluster is ephemeral and owned by the operator's
-workflow for this Job.
+Where the value is `previous`, pgsnap MUST select the snapshot with the highest `for-version` among those whose minor is lower than the minor of the Job's own `for-version`.
 
-s[create.cluster.postgres-major]
-The ephemeral cluster runs the same PostgreSQL major version as the
-clusters its snapshots are restored into. A snapshot is a physical data
-directory, so PostgreSQL refuses to start on one written by a different
-major version.
+> [!NOTE]
+> The Job's migrations then meet data they have not been applied to.
+> A snapshot of the same minor is skipped even at a lower patch, because a snapshot of a release branch already carries its migrations.
 
-s[create.cluster.ready]
-The operator waits for the CNPG Cluster's read-write service endpoint to
-have at least one ready address before proceeding.
+Where the value is `previous` and the Job's own `for-version` is not a valid semver version, the source MUST be treated as unresolvable.
 
-s[create.cluster.from-snapshot]
-Where the Job asks for `pgsnap.bes.au/from-snapshot`, the ephemeral Cluster
-is bootstrapped from that snapshot rather than initialised empty. The
-restored database carries its own roles, so the connection details the
-operator hands the Job are the Cluster's superuser rather than a freshly
-minted application user.
+Where the requested source cannot be resolved, pgsnap MUST mark the Job `failed`, MUST NOT create an ephemeral cluster for it, and MUST delete the Job.
 
-s[create.secret]
-The operator creates a Secret named `pgsnap-<job-name>` containing the
-database connection details: `DB_HOST`, `DB_PORT`, `DB_NAME`,
-`DB_USERNAME`, and `DB_PASSWORD` (read from the CNPG-generated app user
-Secret). The Job's pod template must reference this Secret via `envFrom`
-to receive the connection details.
+> [!NOTE]
+> A Job that never starts is reaped by neither its own deadline nor its time-to-live.
+> A client waiting on the Job observes either the phase `failed` or the disappearance of the Job.
 
-s[create.unsuspend]
-Once the database is ready and the connection Secret exists, the operator
-sets `spec.suspend` to `false`, allowing the Job to be scheduled.
+### Passthrough annotations
 
-s[create.wait-completion]
-The operator watches the Job until it reaches a terminal state (succeeded
-or failed).
+A [passthrough annotation](overview.md#passthrough-annotation) of a Job is every annotation with the pgsnap prefix other than `create`, `size`, `cpu`, `memory`, `phase`, `cluster-name`, `snapshot-name`, `from-snapshot` and `snapshot`.
 
-s[create.snapshot]
-After the Job succeeds, the operator creates a VolumeSnapshot of the CNPG
-Cluster's PVC using the `ebs-retain` VolumeSnapshotClass.
+pgsnap MUST copy every passthrough annotation of a Job to the VolumeSnapshot it produces.
 
-s[create.snapshot.suppressed]
-Where the Job sets `pgsnap.bes.au/snapshot` to `false`, no VolumeSnapshot is
-created and the operator proceeds straight to cleanup once the Job finishes.
+pgsnap MUST add the annotation `pgsnap.bes.au/created-at`, holding the UTC time of snapshot creation, to the VolumeSnapshot.
 
-s[create.snapshot.labels]
-The VolumeSnapshot is labelled with `pgsnap.bes.au/managed: "true"` so the
-garbage collector can identify pgsnap-managed snapshots.
+## Snapshot creation
 
-s[create.snapshot.annotations]
-The VolumeSnapshot carries all passthrough annotations from the Job, plus
-`pgsnap.bes.au/created-at`.
+A Job managed by pgsnap MUST be created suspended.
 
-s[create.snapshot.ready]
-The operator waits for the VolumeSnapshot's `status.readyToUse` to become
-`true` before considering creation complete.
+pgsnap MUST unsuspend the Job only once the database accepts connections and the connection Secret exists.
 
-s[create.cleanup]
-After the snapshot is ready (or if the Job fails), the operator deletes the
-ephemeral CNPG Cluster. The VolumeSnapshot persists independently. The
-ephemeral CNPG Cluster and connection Secret are also `ownerReferenced` to
-the Job so that any leftover from interrupted runs is garbage-collected by
-Kubernetes when the Job itself is removed (e.g. by `ttlSecondsAfterFinished`).
+pgsnap MUST create the ephemeral cluster with a single instance, and with the storage size, CPU and memory given by the Job's annotations.
 
-s[create.failure]
-If the Job fails, the operator still cleans up the CNPG Cluster but does
-not create a snapshot.
+The ephemeral cluster MUST run the same PostgreSQL major version as the clusters its snapshots are restored into.
+
+> [!NOTE]
+> A snapshot is a physical data directory, and PostgreSQL refuses to start on one written by a different major version.
+
+pgsnap MUST wait until the read-write service of the ephemeral cluster has at least one ready address before it proceeds.
+
+Where the Job requests a source snapshot, pgsnap MUST bootstrap the ephemeral cluster from that snapshot.
+
+The connection details pgsnap hands to a Job restored from a snapshot MUST be those of the superuser of the cluster.
+
+> [!NOTE]
+> A restored database carries its own roles, so there is no application user to mint.
+
+pgsnap MUST create a Secret named `pgsnap-<job-name>` with the keys `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME` and `DB_PASSWORD`.
+
+The pod template of the Job MUST reference that Secret through `envFrom`.
+
+pgsnap MUST watch the Job until it succeeds or fails.
+
+After the Job succeeds, pgsnap MUST create a VolumeSnapshot of the PVC of the ephemeral cluster, using the `ebs-retain` VolumeSnapshotClass, unless the Job sets `pgsnap.bes.au/snapshot` to `false`.
+
+pgsnap MUST label the VolumeSnapshot `pgsnap.bes.au/managed: "true"`.
+
+pgsnap MUST NOT consider creation complete until the `readyToUse` field of the VolumeSnapshot is true.
+
+After the VolumeSnapshot is ready to use, or after the Job fails, or once the Job finishes with no snapshot requested, pgsnap MUST delete the ephemeral cluster.
+
+The VolumeSnapshot MUST persist independently of the ephemeral cluster.
+
+If the Job fails, pgsnap MUST NOT create a VolumeSnapshot.
+
+The ephemeral cluster and the connection Secret MUST carry an owner reference to the Job.
+
+> [!NOTE]
+> Anything left by an interrupted run is then deleted by Kubernetes when the Job is removed, for example by `ttlSecondsAfterFinished`.
 
 ## Snapshot garbage collection
 
-s[gc.schedule]
-The garbage collector runs every 5 minutes.
+The garbage collector SHOULD run every five minutes.
 
-s[gc.scope]
-The garbage collector considers all VolumeSnapshots in its namespace with
-the label `pgsnap.bes.au/managed: "true"`.
+The garbage collector MUST consider the VolumeSnapshots in its namespace that carry the label `pgsnap.bes.au/managed: "true"`.
 
-s[gc.version-parse]
-The `pgsnap.bes.au/for-version` annotation is parsed as semver. Snapshots
-without a valid semver `for-version` are ignored by the garbage collector.
+The garbage collector MUST ignore a snapshot whose `for-version` is absent or is not a valid semver version.
 
-s[gc.dedup-version]
-If two or more snapshots share the same `for-version`, only the one with
-the latest `pgsnap.bes.au/created-at` is retained.
+For snapshots sharing one `for-version`, the garbage collector MUST retain only the one with the latest `created-at`.
 
-s[gc.dedup-minor]
-If two or more snapshots share the same major.minor version, only the one
-with the highest patch version is retained (after the per-version dedup).
+For the remaining snapshots sharing one minor, the garbage collector MUST retain only the one with the highest patch version.
 
-s[gc.retain-minors]
-Only snapshots for the 10 most recent minor versions are retained. All
-snapshots for older minor versions are deleted.
+The garbage collector MUST retain only the snapshots of the ten highest minors.
 
-s[gc.delete]
-Snapshots not retained by any of the above rules are deleted.
+The garbage collector MUST delete every snapshot it does not ignore and does not retain.
 
-## Operator runtime
+## Operation
 
-s[runtime.namespace]
-The operator watches and manages resources only in the namespace it is
-deployed to.
+pgsnap MUST expose the HTTP endpoints `/livez` and `/readyz` for Kubernetes probes.
 
-s[runtime.binary]
-The operator is a single Rust binary.
-
-s[runtime.health]
-The operator exposes `/livez` and `/readyz` HTTP endpoints for Kubernetes
-probes.
-
-s[runtime.metrics]
-The operator exposes a `/metrics` endpoint in Prometheus format.
+pgsnap MUST expose its metrics at `/metrics` in the [Prometheus exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/).

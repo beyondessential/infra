@@ -1,180 +1,114 @@
+---
+id: K8SING
+---
+
 # Kubernetes ingress
 
-This spec covers how traffic enters the cluster from external sources, covering
-both the stable long-term state and the transition away from ingress-nginx to
-Envoy Gateway.
+## Borrowed terms
 
-## Load balancers
+| term | meaning |
+|---|---|
+| NLB | An AWS Network Load Balancer ([Network Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html)). |
+| PROXY protocol | The header a load balancer prepends to a TCP connection to convey the client address ([PROXY protocol specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)). |
+| IngressClass | The Kubernetes resource that binds Ingress resources to a controller ([Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class)). |
+| GatewayClass, Gateway, listener, HTTPRoute | The resources of the Kubernetes Gateway API ([Gateway API](https://gateway-api.sigs.k8s.io/)). |
+| ClusterIssuer | A cert-manager resource that issues certificates for the whole cluster ([cert-manager](https://cert-manager.io/docs/)). |
+| DNS-01 | The ACME challenge that proves control of a name by a DNS record ([RFC 8555 section 8.4](https://www.rfc-editor.org/rfc/rfc8555#section-8.4)). |
+| ALIAS record | A Route 53 record that resolves to an AWS resource and is valid at a zone apex ([Choosing between alias and non-alias records](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-choosing-alias-non-alias.html)). |
+| HTTP/3 | HTTP over QUIC ([RFC 9114](https://www.rfc-editor.org/rfc/rfc9114), [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000)). |
+| `x-forwarded-client-cert` | The request header in which a proxy conveys a client certificate to a backend ([Envoy HTTP headers](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert)). |
 
-k[lb.nginx]
-During the migration period, an NLB must exist fronting the ingress-nginx
-controller, handling TCP 80 and TCP 443.
+## Load balancing
 
-k[lb.nginx.real-ip]
-ingress-nginx must take the client IP from the PROXY protocol header sent by its
-NLB, and must not take it from an `X-Forwarded-For` header supplied by the client.
+An NLB MUST front the Envoy Gateway proxy pods, handling TCP 443 and UDP 443.
 
-k[lb.envoy]
-An NLB must exist fronting the Envoy Gateway proxy pods, handling TCP 443 and
-UDP 443. The UDP 443 listener enables HTTP/3 (QUIC).
+The NLB MUST forward UDP 443 so that clients can reach the Gateway over HTTP/3.
 
-k[lb.envoy.separate]
-The Envoy NLB must be separate from the nginx NLB. They must not share target
-groups.
+## Ingress classes
 
-## Ingress classes (migration period)
+An IngressClass named `tailscale`, backed by the Tailscale operator, MUST exist.
 
-k[ingress-class.nginx]
-An IngressClass named `nginx` backed by ingress-nginx must exist during the
-migration period. It is deprecated and must be removed once all workloads have
-migrated to Envoy Gateway HTTPRoutes.
+> [!NOTE]
+> The class serves internal tailnet access.
 
-k[ingress-class.tailscale]
-An IngressClass named `tailscale` backed by the Tailscale operator must exist.
-It is used for internal tailnet access and is not subject to the nginx
-deprecation.
+## Gateway
 
-## Gateway API
+A GatewayClass named `envoy`, referencing the Envoy Gateway controller, MUST exist.
 
-k[gateway.class]
-A GatewayClass named `envoy` must exist, referencing the Envoy Gateway
-controller.
+A Gateway of that class MUST have a listener on TCP 443 that terminates TLS.
 
-k[gateway.listener.https]
-A Gateway using the `envoy` GatewayClass must have a listener on TCP 443 with
-TLS termination. TLS certificates are provisioned by cert-manager via DNS-01
-and stored as Kubernetes Secrets.
+A Gateway of that class MUST have a listener on UDP 443 for HTTP/3, using the same TLS configuration as the TCP 443 listener.
 
-k[gateway.listener.quic]
-The same Gateway must have a listener on UDP 443 for HTTP/3 (QUIC), using the
-same TLS configuration as the HTTPS listener.
+A Gateway of that class MUST have a listener on TCP 80 that redirects every request to HTTPS.
 
-k[gateway.listener.http-redirect]
-The Gateway must have a listener on TCP 80 that redirects all requests to
-HTTPS.
+The Gateway MUST terminate TLS and forward requests to backend services as plain HTTP.
 
-## TLS
+## Certificates
 
-k[tls.cert-manager]
-All TLS certificates must be provisioned by cert-manager using the
-`letsencrypt` ClusterIssuer, with DNS-01 challenge resolution via Route53.
-This applies to both the nginx (migration period) and Envoy Gateway paths.
-
-k[tls.termination]
-TLS must be terminated at the ingress layer (nginx or Envoy Gateway). Backend
-services receive plain HTTP.
+A TLS certificate MUST be provisioned by cert-manager, using the `letsencrypt` ClusterIssuer and the DNS-01 challenge resolved through Route 53.
 
 ## DNS
 
-k[dns.external-dns]
-external-dns must manage DNS records for all ingress traffic automatically.
-Manual DNS record management for cluster workloads is not permitted.
+external-dns MUST manage the DNS records for all ingress traffic.
 
-k[dns.external-dns.sources]
-external-dns must watch both `ingress` and `gateway-httproute` sources during
-the migration period. Once all Ingress resources have been removed,
-the `ingress` source must be removed.
+external-dns MUST watch the `gateway-httproute` source.
 
-k[dns.external-dns.zones]
-The Route53 hosted zones managed by external-dns must be explicitly enumerated
-in the k8s-core Pulumi config (`externalDnsZones`). The IAM policy for
-external-dns must be derived from the same config, granting
-`route53:ChangeResourceRecordSets` on those zones only.
+The Route 53 hosted zones that external-dns manages MUST be an explicit list.
 
-k[dns.apex+2]
-For zone apex hostnames, external-dns must create Route53
-ALIAS records pointing at the NLB rather than CNAMEs, which are not valid at
-the zone apex.
+The permission external-dns holds to change records MUST be limited to the zones in that list.
 
-## Envoy Gateway configuration
+For a hostname at a zone apex, external-dns MUST create a Route 53 ALIAS record pointing at the NLB.
 
-k[envoy.proxy.affinity]
-The Envoy proxy pods must be scheduled on nodes with
-`bes.node.purpose=ingress`, mirroring the nginx controller node affinity.
+> [!NOTE]
+> A CNAME is not valid at a zone apex.
 
-k[envoy.proxy.redundancy]
-The Envoy proxy pods must have a pod anti-affinity rule preventing co-location
-of multiple replicas in the same availability zone.
+## Envoy proxy
 
-k[envoy.http3]
-HTTP/3 support must be enabled on the Envoy Gateway. If first-class Gateway API
-config fields are insufficient, an `EnvoyPatchPolicy` may be used as an escape
-hatch to configure the QUIC listener directly.
+The Envoy proxy pods MUST be scheduled on nodes with `bes.node.purpose=ingress`.
 
-k[envoy.proxy-protocol+2]
-The Envoy Gateway must not use the PROXY protocol. It cannot be combined with
-HTTP/3 on a listener, and HTTP/3 takes precedence.
+The Envoy proxy pods MUST NOT place more than one replica in the same availability zone.
 
-k[envoy.real-ip+2]
-Backends must receive the original client IP for clients connecting over IPv6.
-Clients connecting over IPv4 reach the Gateway with the load balancer's address,
-because the proxy pods are IPv6 targets; backends must not depend on the client
-IP of those requests.
+HTTP/3 MUST be enabled on the Gateway.
 
-k[envoy.body-size+2]
-The Gateway must reject requests whose body exceeds 50 MiB.
+The Gateway MUST NOT use the PROXY protocol.
 
-k[envoy.timeouts+2]
-Routes must be able to specify a per-route request timeout. A route that does not
-specify one must not be left on the Gateway's own default: every workload states
-its timeout explicitly, and a workload that relied on an ingress default before
-migrating must state the equivalent 60 second timeout.
+> [!NOTE]
+> The PROXY protocol cannot be combined with HTTP/3 on a listener, and HTTP/3 takes precedence.
 
-k[envoy.mtls-passthrough+2]
-The Gateway must request a client TLS certificate during the handshake for
-listeners serving tamanu-meta, and must accept the connection whether or not one
-is presented.
+Backends MUST receive the original client IP of requests from IPv6 clients.
 
-k[envoy.mtls-unverified]
-Client certificates presented to those listeners are self-signed and must not be
-verified against a trust anchor. The Gateway must not reject a certificate that
-chains to nothing, and must not require a certificate authority to be configured
-in order to request one. Authentication is performed by the backend, which pins
-the certificate's subject public key.
+A backend MUST NOT rely on the client IP of a request from an IPv4 client.
 
-k[envoy.mtls-header]
-The Gateway must forward the presented client certificate to the backend in the
-`x-forwarded-client-cert` header, carrying the full certificate, and must
-overwrite any such header supplied by the client.
+> [!NOTE]
+> A request from an IPv4 client reaches the Gateway with the address of the load balancer, because the proxy pods are IPv6 targets.
 
-k[envoy.mtls-foreign-headers]
-The Gateway must remove the `mtls-certificate` and `ssl-client-cert` headers from
-requests to tamanu-meta. A backend that trusts either of them must only ever see
-a value set by the proxy that terminated the client's TLS connection.
+The Gateway MUST reject a request whose body exceeds 50 MiB.
 
-## Migration
+A route MUST specify a request timeout.
 
-k[migration.per-app]
-Workloads must be migrated from Ingress to HTTPRoute one at a time. Each
-workload must be validated after migration before the next begins.
+> [!NOTE]
+> A route that does not specify one would be left on the default timeout of the Gateway.
 
-k[migration.order+2]
-The migration order must be: tamanu on-k8s first (timeout config), then
-tamanu-meta last (mTLS, highest risk).
+## Client certificates
 
-k[migration.staging-alias]
-While a workload is migrating, the Gateway must serve it on a `gw.`-prefixed alias
-of each of its domains, in addition to whatever serves the domains themselves. The
-alias must carry the same routing, timeout, body-size and client-certificate
-configuration as the workload's eventual primary path, so that behaviour can be
-exercised without moving a production hostname. Serving the primary domains on the
-Gateway must be separable from advertising them in DNS, so the Gateway can be fully
-configured for a hostname before traffic is directed at it.
+[tamanu-meta](../overview.md#tamanu-meta) clients authenticate by presenting a self-signed TLS client certificate.
 
-k[migration.cert-header-split]
-While a workload that authenticates by client certificate is served by both
-ingress-nginx and the Gateway, each path must reach a backend that trusts only the
-client-certificate header that path's proxy sets. Both paths must be able to
-authenticate clients at the same time, so that moving a hostname between them
-does not interrupt authentication.
+For a listener serving tamanu-meta, the Gateway MUST request a client certificate during the TLS handshake.
 
-k[migration.drain]
-When a workload's domains move from ingress-nginx to the Gateway, DNS for them
-must be pointed at the Gateway while ingress-nginx is still serving them, and
-ingress-nginx must keep serving them until the change has propagated. At no
-point during the move may a domain go unclaimed by both paths in DNS.
+For a listener serving tamanu-meta, the Gateway MUST accept the connection whether or not a client certificate is presented.
 
-k[migration.cleanup]
-Once all workloads have been migrated, the following must be removed: the
-ingress-nginx Helm release, the nginx NLB, and the `--source=ingress`
-argument and corresponding ClusterRole rule from external-dns.
+The Gateway MUST NOT verify a presented client certificate against a trust anchor.
+
+The Gateway MUST NOT require a certificate authority to be configured in order to request a client certificate.
+
+> [!NOTE]
+> The backend performs authentication, by pinning the subject public key of the certificate.
+
+The Gateway MUST forward a presented client certificate to the backend in the `x-forwarded-client-cert` header, carrying the full certificate.
+
+The Gateway MUST overwrite any `x-forwarded-client-cert` header that a client supplies.
+
+The Gateway MUST remove the `mtls-certificate` and `ssl-client-cert` headers from requests to tamanu-meta.
+
+> [!NOTE]
+> A backend that trusts either of those headers then only ever sees a value set by the proxy that terminated the TLS connection of the client.

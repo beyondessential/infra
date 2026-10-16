@@ -17,7 +17,7 @@ pub struct ClusterSpec<'a> {
     pub from_snapshot: Option<&'a str>,
 }
 
-// s[create.cluster] s[create.cluster.postgres-major] s[create.cluster.from-snapshot]
+// spec: PGS#snapshot-creation
 pub async fn create_cluster(
     client: &Client,
     namespace: &str,
@@ -104,7 +104,7 @@ pub async fn create_cluster(
     Ok(())
 }
 
-// s[create.cluster.ready]
+// spec: PGS#snapshot-creation
 pub async fn is_cluster_ready(
     client: &Client,
     namespace: &str,
@@ -127,7 +127,7 @@ pub async fn is_cluster_ready(
     }
 }
 
-// s[create.secret] s[create.cluster.from-snapshot]
+// spec: PGS#snapshot-creation
 pub async fn create_connection_secret(
     client: &Client,
     namespace: &str,
@@ -222,7 +222,7 @@ fn cnpg_cluster_resource() -> kube::discovery::ApiResource {
     }
 }
 
-// s[create.cleanup]
+// spec: PGS#snapshot-creation
 // blockOwnerDeletion=false: don't hold the Job alive on the dependent's account.
 // controller=false: this Job is not the reconciling controller for the resource.
 fn job_owner_ref(owner: &JobOwner<'_>) -> serde_json::Value {

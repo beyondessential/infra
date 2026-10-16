@@ -19,7 +19,7 @@ failed=$(
     paste -sd' '
 )
 
-# r[impl promotion.partial]
+# spec: TRO#promotion
 {
   echo "### Promotion of $channel did not reach: $failed"
   echo

@@ -7,7 +7,7 @@ use tracing::info;
 
 use crate::util;
 
-// s[create.snapshot] s[create.snapshot.labels] s[create.snapshot.annotations]
+// spec: PGS#snapshot-creation
 pub async fn create_snapshot(
     client: &Client,
     namespace: &str,
@@ -26,7 +26,7 @@ pub async fn create_snapshot(
         return Ok(());
     }
 
-    // s[annotation.created-at]
+    // spec: PGS#passthrough-annotations
     let mut snap_annotations = annotations;
     snap_annotations.insert(
         util::ANNOTATION_CREATED_AT.to_string(),
@@ -59,7 +59,7 @@ pub async fn create_snapshot(
     Ok(())
 }
 
-// s[create.snapshot.ready]
+// spec: PGS#snapshot-creation
 pub async fn is_snapshot_ready(
     client: &Client,
     namespace: &str,
@@ -126,7 +126,7 @@ pub struct ReadySnapshot {
     pub created_at: Option<String>,
 }
 
-// s[annotation.from-snapshot]
+// spec: PGS#source-snapshot
 // Resolve which existing snapshot a Job bootstraps its database from.
 pub async fn resolve_source(
     client: &Client,

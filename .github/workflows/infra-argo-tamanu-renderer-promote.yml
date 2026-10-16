@@ -45,7 +45,7 @@ on:
 
 # One promotion at a time: both channels are served by the same repo server on each cluster, so
 # promotions that overlap would restart it under each other.
-# r[impl promotion.serialised]
+# spec: TRO#promotion
 concurrency:
   group: renderer-promotion
   cancel-in-progress: false
@@ -83,7 +83,7 @@ jobs:
             fi
           done
           # The clusters a promotion applies to: by default, every one that runs Tamanu deployments.
-          # r[impl promotion.clusters]
+          # spec: TRO#promotion
           echo "clusters=$(jq -cn --arg c "$CLUSTERS" '$c | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   retag:

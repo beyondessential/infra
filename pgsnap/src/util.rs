@@ -23,10 +23,10 @@ pub const DEFAULT_CPU: &str = "250m";
 pub const DEFAULT_MEMORY: &str = "1Gi";
 pub const SNAPSHOT_CLASS: &str = "ebs-retain";
 
-// s[annotation.from-snapshot]
+// spec: PGS#source-snapshot
 pub const FROM_SNAPSHOT_PREVIOUS: &str = "previous";
 
-// s[annotation.passthrough]
+// spec: PGS#passthrough-annotations
 pub const EXCLUDED_ANNOTATIONS: &[&str] = &[
     ANNOTATION_CREATE,
     ANNOTATION_SIZE,
