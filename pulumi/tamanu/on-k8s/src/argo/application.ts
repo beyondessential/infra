@@ -4,7 +4,8 @@ import { CustomObjectsApi } from '@kubernetes/client-node';
 import { cfg } from '../../../../common/cfg.ts';
 import { argoNamespace } from '../../../../common/k8s/argo.ts';
 import { k8sConfig } from '../../../../common/k8s/client.ts';
-import { facilityList } from '../config.ts';
+import { appVersion, configTemplate, domains, facilityList } from '../config.ts';
+import { imageTag } from '../image.ts';
 import { namespaceName } from '../namespace.ts';
 
 const ARGO_NAMESPACE = argoNamespace;
@@ -53,6 +54,32 @@ function ignoreDifferences() {
   ];
 }
 
+// A label value is at most 63 characters, starts and ends with a letter or digit, and holds
+// only letters, digits, dashes, underscores and dots.
+function labelValue(value: string): string {
+  return value
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .slice(0, 63)
+    .replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+}
+
+// What the Argo CD UI can filter and group Applications by.
+const LABELS = {
+  // Pull request, release, branch or demo deployment, as Tamanu CD and the demos set it.
+  'bes.tamanu/template': labelValue(configTemplate),
+  // The Tamanu version, or the image tag where the stack has none.
+  'bes.tamanu/version': labelValue(appVersion ?? imageTag),
+};
+
+// Argo CD shows these as links on the Application, so the deployment's addresses are one
+// click from its page. The title is the part after the slash.
+const LINKS = Object.fromEntries(
+  Object.entries(domains).map(([name, host]) => [
+    `link.argocd.argoproj.io/${name === 'patientPortal' ? 'portal' : name}`,
+    `https://${host}`,
+  ]),
+);
+
 export function application(params: Input<string>): k8s.apiextensions.CustomResource {
   return new k8s.apiextensions.CustomResource('tamanu-application', {
     apiVersion: 'argoproj.io/v1alpha1',
@@ -60,7 +87,9 @@ export function application(params: Input<string>): k8s.apiextensions.CustomReso
     metadata: {
       name: namespaceName,
       namespace: ARGO_NAMESPACE,
+      labels: LABELS,
       annotations: {
+        ...LINKS,
         // Custom resources gain fields from their CRD defaults and webhooks
         // that the render does not set, which a client-side diff reports as
         // drift forever. Diffing on the server accounts for them.
