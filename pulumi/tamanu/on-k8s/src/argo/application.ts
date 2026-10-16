@@ -24,7 +24,7 @@ const RENDERER_PATH = cfg.get('rendererPath') ?? '.';
 // The channel's plugin, which is what renders the deployment: the stable one keeps the name
 // Applications have always used, so those render without being redeployed. Naming another
 // channel's plugin is all a channel switch is: the spec changes, so Argo CD renders it afresh.
-// r[impl channel.switch]
+// spec: TRO#channels
 const PLUGIN = pluginName(channel);
 const WAIT_MINUTES = cfg.getNumber('argoWaitMinutes') ?? 30;
 const POLL_SECONDS = 5;
@@ -76,7 +76,7 @@ const LABELS = {
   // Pull request, release, branch or demo deployment, as Tamanu CD and the demos set it.
   'bes.tamanu/template': labelValue(configTemplate),
   // Which renderer channel renders it.
-  // r[impl params.channel-label]
+  // spec: TRO#parameters
   'bes.tamanu/renderer-channel': channel,
 };
 

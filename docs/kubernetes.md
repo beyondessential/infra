@@ -75,7 +75,7 @@ NodePools are defined in `karpenter/pools.ts`, cut three ways: **purpose** × **
 | `workload-arm-ondemand` | workload | on-demand | arm64 | 30 |
 | `workload-x86-ondemand` | workload | on-demand | amd64 | 10 |
 
-Higher weight wins when multiple pools satisfy a pod's requirements. The `system-arm` on-demand pool is unconditional — it provides a stable fallback for the Karpenter controller and other cluster-critical pods even when the spot pool is exhausted (see `k[capacity.system-stable-fallback]`).
+Higher weight wins when multiple pools satisfy a pod's requirements. The `system-arm` on-demand pool is unconditional — it provides a stable fallback for the Karpenter controller and other cluster-critical pods even when the spot pool is exhausted (see [K8SNOD](spec/kubernetes/nodes.md#system-capacity)).
 
 Every node carries `bes.node.group`, `bes.node.purpose`, `bes.node.schedule`, `bes.node.arch` labels — pod affinities target these. Spot nodes carry the `spotInstance=true:PreferNoSchedule` taint.
 

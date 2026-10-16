@@ -38,12 +38,12 @@ const violationsFor = (resources: any[]): string[] => {
   return violations;
 };
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('the shipped storage class satisfies the rule', () => {
   deepEqual(violationsFor([storageClass(SOUND_PARAMETERS)]), []);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('a storage class with no subPathPattern is rejected', () => {
   const violations = violationsFor([
     storageClass({ ...SOUND_PARAMETERS, subPathPattern: undefined }),
@@ -52,14 +52,14 @@ test('a storage class with no subPathPattern is rejected', () => {
   match(violations[0], /filesystem root/);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('a subPathPattern at the root is rejected', () => {
   const violations = violationsFor([storageClass({ ...SOUND_PARAMETERS, subPathPattern: '/' })]);
   equal(violations.length, 2);
   match(violations.join('\n'), /shallower than two segments/);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('a subPathPattern shared by every claim is rejected', () => {
   const violations = violationsFor([
     storageClass({ ...SOUND_PARAMETERS, subPathPattern: '/shared/blobs' }),
@@ -68,7 +68,7 @@ test('a subPathPattern shared by every claim is rejected', () => {
   match(violations[0], /does not vary by \.PVC\.name/);
 });
 
-// k[verify volumes.shared-reclaim]
+// spec: K8SVOL#reclaim
 test('a storage class that lets a rebuilt claim adopt a directory is rejected', () => {
   const violations = violationsFor([
     storageClass({ ...SOUND_PARAMETERS, ensureUniqueDirectory: 'false' }),
@@ -77,7 +77,7 @@ test('a storage class that lets a rebuilt claim adopt a directory is rejected', 
   match(violations[0], /ensureUniqueDirectory/);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('directory provisioning is rejected in favour of access points', () => {
   const violations = violationsFor([
     storageClass({ ...SOUND_PARAMETERS, provisioningMode: 'efs-directory' }),
@@ -86,19 +86,19 @@ test('directory provisioning is rejected in favour of access points', () => {
   match(violations[0], /efs-directory/);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('a persistent volume naming an access point is accepted', () => {
   deepEqual(violationsFor([volume('fs-0abc::fsap-0def')]), []);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('a persistent volume naming the whole filesystem is rejected', () => {
   const violations = violationsFor([volume('fs-0abc')]);
   equal(violations.length, 1);
   match(violations[0], /names no access point/);
 });
 
-// k[verify volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 test('a persistent volume with no handle is rejected', () => {
   const violations = violationsFor([volume()]);
   equal(violations.length, 1);

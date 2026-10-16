@@ -18,7 +18,7 @@ import { withBootstrap } from '../nodes/groups.ts';
 //     unconditionally present in pools.ts — Karpenter always has somewhere
 //     to provision either capacity type when a controller pod is pending.
 
-// k[interruption.spot-handling] k[interruption.health-events]
+// spec: K8SNOD#interruption-and-consolidation
 // SQS queue receiving spot interruption notices, rebalance recommendations,
 // instance state changes, and AWS Health events. Karpenter cordons + drains
 // nodes proactively when these arrive.

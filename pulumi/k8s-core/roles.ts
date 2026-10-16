@@ -22,7 +22,7 @@ export const controlPlaneRole = new awsClassic.iam.Role('control-plane', {
   tags,
 });
 
-// k[capacity.spot-slr]
+// spec: K8SNOD#spot-capacity
 // Account-level prerequisite for spot capacity: CreateFleet cannot launch spot
 // instances until this role exists, and the node role is not permitted to
 // create it implicitly. Pre-existing roles in older accounts must be imported

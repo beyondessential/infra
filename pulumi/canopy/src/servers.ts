@@ -62,7 +62,7 @@ const publicService = (name: string, task: string) =>
 
 // The backend trusts exactly one client-certificate header, so nginx and the
 // Gateway each front their own public-server: the Gateway's trusts XFCC, nginx's
-// the header nginx sets (k[migration.cert-header-split]).
+// the header nginx sets (plan: docs/plans/canopy-envoy-migration.md#migration-rules).
 const envoyPublicSvc = publicService('public-server-envoy', 'public-envoy');
 
 const gateway = Gateway('http', {
@@ -97,8 +97,7 @@ const gateway = Gateway('http', {
       // `mode` requires Envoy Gateway 1.8 or newer. Its predecessor, `optional`,
       // could not express this: with no CA referenced Envoy never asked for a
       // certificate at all, and referencing one would have made it reject the
-      // self-signed certificates it was sent (k[envoy.mtls-passthrough+2],
-      // k[envoy.mtls-unverified]).
+      // self-signed certificates it was sent (spec: K8SING#client-certificates).
       clientValidation: {
         mode: 'Request',
       },
@@ -112,7 +111,7 @@ const gateway = Gateway('http', {
       // Rewrite the x-forwarded-client-cert (XFCC) header with the client
       // certificate presented during the TLS handshake (if any).
       // The Cert field carries the full URL-encoded PEM certificate.
-      // k[envoy.mtls-header]
+      // spec: K8SING#client-certificates
       xForwardedClientCert: {
         mode: 'SanitizeSet',
         certDetailsToAdd: ['Cert'],
@@ -121,7 +120,7 @@ const gateway = Gateway('http', {
   },
 });
 
-// k[envoy.body-size+2]
+// spec: K8SING#envoy-proxy
 BackendTrafficPolicy('http', {
   metadata: { namespace },
   spec: {
@@ -140,7 +139,7 @@ BackendTrafficPolicy('http', {
 
 // external-dns skips a resource whose controller annotation names another
 // controller, which separates serving a hostname from advertising it in DNS
-// (k[migration.staging-alias], k[migration.drain]).
+// (plan: docs/plans/canopy-envoy-migration.md#migration-rules).
 const externalDnsIgnored = { 'external-dns.alpha.kubernetes.io/controller': 'none' };
 
 const gatewayRoute = (name: string, hostnames: string[], advertised: boolean) =>
@@ -173,7 +172,7 @@ const gatewayRoute = (name: string, hostnames: string[], advertised: boolean) =>
           ],
           // XFCC is overwritten by the Gateway, but these pass through untouched,
           // and a backend trusting the nginx path would believe them.
-          // k[envoy.mtls-foreign-headers]
+          // spec: K8SING#client-certificates
           filters: [
             {
               type: HTTPRouteFilterType.RequestHeaderModifier,
@@ -182,7 +181,7 @@ const gatewayRoute = (name: string, hostnames: string[], advertised: boolean) =>
               },
             },
           ],
-          // k[envoy.timeouts+2]
+          // spec: K8SING#envoy-proxy
           timeouts: {
             request: requestTimeout,
           },
@@ -238,7 +237,7 @@ function publicServer(name: string, task: string, certHeader: 'mtls' | 'xfcc') {
                   name: 'STATUS_PAGE_URL',
                   value: `https://${tailscaleHostname}.${TAILNET_DOMAIN}/`,
                 },
-                // k[migration.cert-header-split]
+                // plan: docs/plans/canopy-envoy-migration.md#migration-rules
                 {
                   name: 'CANOPY_DEVICE_AUTH_CERT_HEADER',
                   value: certHeader,
@@ -298,7 +297,7 @@ publicServer('public-server-envoy', 'public-envoy', 'xfcc');
 // Deprecated: superseded by the Gateway above, unadvertised at `drain` and
 // removed at `primary`. Its auth-tls-secret names a CA only because ingress-nginx
 // will not request or forward a client certificate without one named; the
-// certificates it forwards do not chain to it (k[envoy.mtls-unverified]).
+// certificates it forwards do not chain to it (spec: K8SING#client-certificates).
 if (nginxIngressEnabled) {
   const publicSvc = publicService('public-server', 'public');
   publicServer('public-server', 'public', 'mtls');

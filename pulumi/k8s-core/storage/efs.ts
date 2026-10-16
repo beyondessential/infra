@@ -16,7 +16,7 @@ const efsRole = eksServiceAccount('eks-efs-csi', {
   managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy'],
 });
 
-// k[volumes.shared-reclaim]
+// spec: K8SVOL#reclaim
 // Deletes a released claim's content along with its access point, so a cluster
 // of short-lived deployments does not accumulate directories nothing can reach.
 // Per-cluster and off by default because the driver deletes whatever root a
@@ -45,7 +45,7 @@ const addonEfs = addAddon(
   { dependsOn: withBootstrap() },
 );
 
-// k[volumes.shared-reclaim-visible]
+// spec: K8SVOL#reclaim
 // The addon takes a key its schema does not carry and drops it rather than
 // refusing it, so the request is no evidence: what the controller was started
 // with is. Read that back instead of trusting the config.
@@ -70,7 +70,7 @@ if (reclaimOnRelease) {
     });
 }
 
-// k[volumes.shared-encryption]
+// spec: K8SVOL#protection
 const filesystem = new awsClassic.efs.FileSystem('efs-shared', {
   encrypted: true,
   // Elastic bills throughput per request, which suits a store that is idle
@@ -90,7 +90,7 @@ const filesystem = new awsClassic.efs.FileSystem('efs-shared', {
   },
 });
 
-// k[volumes.shared-network-confinement+2]
+// spec: K8SVOL#protection
 const securityGroup = new awsClassic.ec2.SecurityGroup(
   'efs-shared',
   {
@@ -113,7 +113,7 @@ const securityGroup = new awsClassic.ec2.SecurityGroup(
   { parent: filesystem },
 );
 
-// k[volumes.shared-zone-reach]
+// spec: K8SVOL#multi-node-access
 // One mount target per AZ is the EFS limit, and the workload subnets are one
 // per zone. A zone without one has no route to the filesystem.
 $network.workloadSubnetIds.apply((subnetIds) =>
@@ -131,7 +131,8 @@ $network.workloadSubnetIds.apply((subnetIds) =>
   ),
 );
 
-// k[volumes.shared-multi-node+3] k[volumes.shared-isolation+2]
+// spec: K8SVOL#multi-node-access
+// spec: K8SVOL#isolation
 new k8s.storage.v1.StorageClass(
   'efs',
   {

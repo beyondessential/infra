@@ -31,14 +31,14 @@ esac
 # Allowance for this clock differing from the cluster's.
 skew=15
 
-# r[impl promotion.restart]
+# spec: TRO#promotion
 # A refresh answered by the old repo server stores the old render again under the same cache
 # key, so the new one has to be serving before anything is refreshed.
 echo "Restarting $server in $ns"
 kubectl -n "$ns" rollout restart "deploy/$server"
 kubectl -n "$ns" rollout status "deploy/$server" --timeout="${wait_minutes}m"
 
-# r[impl promotion.refresh]
+# spec: TRO#promotion
 # Only Applications rendered by this channel's plugin are refreshed. The others keep serving
 # the render they have cached.
 mapfile -t apps < <(
@@ -60,7 +60,7 @@ for app in "${apps[@]}"; do
   kubectl -n "$ns" annotate "applications.argoproj.io/$app" argocd.argoproj.io/refresh=hard --overwrite
 done
 
-# r[impl promotion.outcome]
+# spec: TRO#promotion
 # An Application is done once Argo CD has taken the annotation off and compared it again. It
 # has failed if the comparison reported an error, or if a sync that ran since the refresh
 # failed. Health is not waited for: a sync that runs migrations can outlast any wait.

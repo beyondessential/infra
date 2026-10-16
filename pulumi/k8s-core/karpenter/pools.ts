@@ -25,7 +25,8 @@ import {
 // managed nodegroups. The helpers price-cap spot against on-demand and exclude
 // burstable types from large workload pools.
 
-// k[capacity.spot-price-cap] k[capacity.no-burstable-large] k[capacity.workload-node-floor+3]
+// spec: K8SNOD#spot-capacity
+// spec: K8SNOD#workload-capacity
 // Spot pools cast a wide net: lots of (instance-type, AZ) offerings so a per-AZ
 // capacity drought in one family doesn't strand pods. Floor matches the spec
 // minimum (4 vCPU / 8 GiB) and the price cap is sized to admit the 2xlarge
@@ -34,7 +35,7 @@ import {
 // The x families are admitted here as more capacity for memory-heavy pods,
 // down to 2 vCPU / 32 GiB: pod-dense clusters strand most node memory on 4 vCPU
 // x8g.xlarge nodes, and x8g.large costs well under half as much per hour.
-// k[capacity.spot-interruption-cap]
+// spec: K8SNOD#spot-capacity
 // Types the Spot Instance Advisor puts above 10% monthly interruption are
 // dropped: observed reclaim rates run far above the advisor's figures, but
 // still rank the same way.
@@ -78,7 +79,7 @@ const workloadX86Spot = upToMonthly(
   150,
 ).map((i) => i.instance_type);
 
-// k[capacity.workload-node-floor+3]
+// spec: K8SNOD#workload-capacity
 // On-demand fallback pools offer exactly one node shape, family-diverse: a
 // uniform shape can't fragment into many small nodes during spot droughts.
 const workloadArmOndemand = upToMonthly(
@@ -120,7 +121,7 @@ const systemArmSpot = upToMonthly(
   100,
 ).map((i) => i.instance_type);
 
-// k[lifecycle.disruption-budgets]
+// spec: K8SNOD#interruption-and-consolidation
 // Budgets cap how many nodes Karpenter can disrupt at once for consolidation,
 // drift, or empty-cleanup. `schedule` + `duration` create freeze windows
 // (cron + duration); leaving them off makes the budget always-on.
@@ -183,7 +184,7 @@ function pool(name: string, args: PoolArgs) {
       spec: {
         template: {
           metadata: {
-            // k[node.label.purpose+2] k[node.label.schedule] k[node.label.arch] k[node.label.group]
+            // spec: K8SNOD#node-identity
             labels: {
               'bes.node.purpose': purpose,
               'bes.node.schedule': schedule === 'mixed' ? 'spot' : schedule,
@@ -207,7 +208,7 @@ function pool(name: string, args: PoolArgs) {
               { key: 'karpenter.sh/capacity-type', operator: 'In', values: capacityTypes },
               { key: 'node.kubernetes.io/instance-type', operator: 'In', values: instanceTypes },
             ],
-            // k[node.taint.spot]
+            // spec: K8SNOD#node-identity
             taints: [
               ...(spotTaint
                 ? [{ key: 'spotInstance', value: 'true', effect: 'PreferNoSchedule' }]
@@ -217,7 +218,7 @@ function pool(name: string, args: PoolArgs) {
           },
         },
         limits,
-        // k[lifecycle.consolidation]
+        // spec: K8SNOD#interruption-and-consolidation
         disruption: { consolidationPolicy, consolidateAfter, ...(budgets ? { budgets } : {}) },
         weight,
       },
@@ -226,7 +227,7 @@ function pool(name: string, args: PoolArgs) {
   );
 }
 
-// k[lifecycle.spot-consolidation-delay]
+// spec: K8SNOD#interruption-and-consolidation
 // Long enough for the pool to settle after a reclaim, short against node
 // lifetimes of a few hours: every pod change restarts the timer.
 const SPOT_WORKLOAD_CONSOLIDATE_AFTER = '30m';
@@ -234,7 +235,7 @@ const SPOT_WORKLOAD_CONSOLIDATE_AFTER = '30m';
 // Weights mirror autoscaler.ts:271 priority-expander order:
 // arm-spot-large=80 > spot-large=60 > ingress-arm=50 > system-arm=40 > arm=30 > others=10
 
-// k[capacity.workload-spot-preferred]
+// spec: K8SNOD#workload-capacity
 pool('workload-arm-spot', {
   purpose: 'workload',
   schedule: 'spot',
@@ -283,7 +284,9 @@ pool('workload-x86-ondemand', {
   weight: 10,
 });
 
-// k[capacity.db-replica-pool] k[capacity.workload-node-floor+3] k[node.taint.spot]
+// spec: K8SNOD#database-pools
+// spec: K8SNOD#workload-capacity
+// spec: K8SNOD#node-identity
 // Dedicated pool for restored database replicas (pgro opts its pods in via its
 // ConfigMap nodeSelector and tolerations). Replica demand is memory-heavy and
 // near-idle on CPU, so the shapes are 1:8 and 1:16 Graviton sized for one
@@ -308,7 +311,7 @@ pool('db-replica', {
   weight: 10,
 });
 
-// k[capacity.db-critical-pool]
+// spec: K8SNOD#database-pools
 // On-demand only, so nothing reclaims a database out from under production.
 // Expiry is forceful and ignores budgets, so nodes never expire; they are
 // replaced only on drift (new AMIs, config changes), one at a time, in a
@@ -349,7 +352,7 @@ pool('ingress-arm', {
   budgets: [{ nodes: '1' }],
 });
 
-// k[capacity.system-stable-fallback]
+// spec: K8SNOD#system-capacity
 // On-demand system pool — always present. Acts as the stable fallback for the
 // autoscaler controller; if a spot pool is also enabled (below), this one
 // catches anything spot can't satisfy.
@@ -386,7 +389,7 @@ pool('system-arm-spot', {
   weight: 45,
 });
 
-// k[capacity.exit-node-dedicated]
+// spec: K8SNOD#exit-node
 // Dedicated single-node pool for the Tailscale exit node. On-demand only — it's
 // a live network path, so a spot reclaim would blip routing for connected
 // clients. Pinned to the smallest burstable arm shapes that fit the exit node

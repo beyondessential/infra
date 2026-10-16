@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 
-// The promotion is a pair of workflows, which Tracey cannot read, so what the spec asks of them
+// The promotion is a pair of workflows, which a code citation cannot cover, so what the spec asks of them
 // is checked here from their structure.
 
 function workflow(name: string) {
@@ -19,13 +19,13 @@ const promote = workflow('infra-argo-tamanu-renderer-promote.yml');
 const cd = workflow('infra-argo-tamanu-renderer-cd.yml');
 const CLUSTERS = ['tamanu-internal-main', 'shared-demos-demo'];
 
-// r[verify promotion.serialised]
+// spec: TRO#promotion
 test('promotions run one at a time and are never cancelled by the next', () => {
   assert.ok(promote.concurrency?.group);
   assert.equal(promote.concurrency['cancel-in-progress'], false);
 });
 
-// r[verify promotion.canary]
+// spec: TRO#promotion
 test('every build from main is promoted to canary once it has been built', () => {
   const job = cd.jobs['promote-canary'];
   assert.deepEqual(job.needs, ['build-image']);
@@ -35,7 +35,7 @@ test('every build from main is promoted to canary once it has been built', () =>
   assert.equal(job.with.sha, '${{ github.sha }}');
 });
 
-// r[verify promotion.stable]
+// spec: TRO#promotion
 test('stable moves only when someone runs the workflow and names the commit', () => {
   assert.ok(promote.on.workflow_dispatch);
   const inputs = promote.on.workflow_dispatch.inputs ?? {};
@@ -44,7 +44,7 @@ test('stable moves only when someone runs the workflow and names the commit', ()
   assert.equal(JSON.stringify(cd.on).includes('stable'), false);
 });
 
-// r[verify promotion.clusters]
+// spec: TRO#promotion
 test('a promotion applies to every cluster that runs Tamanu deployments by default', () => {
   for (const trigger of [promote.on.workflow_dispatch, promote.on.workflow_call]) {
     assert.deepEqual(String(trigger.inputs?.clusters?.default).split(' ').sort(), [...CLUSTERS].sort());
@@ -54,14 +54,14 @@ test('a promotion applies to every cluster that runs Tamanu deployments by defau
   assert.match(refresh.strategy.matrix.cluster, /plan\.outputs\.clusters/);
 });
 
-// r[verify promotion.partial]
+// spec: TRO#promotion
 test('a cluster that fails does not stop the others, and the failures are reported', () => {
   assert.equal(promote.jobs.refresh.strategy['fail-fast'], false);
   assert.deepEqual(promote.jobs.report.needs, ['refresh']);
   assert.equal(promote.on.workflow_dispatch.inputs?.retag?.default, true);
 });
 
-// r[verify promotion.from-build]
+// spec: TRO#promotion
 test('the tag is moved by the script that refuses a build that does not exist', () => {
   const steps: { run?: string }[] = promote.jobs.retag.steps;
   assert.ok(steps.some((step) => step.run?.includes('tools/retag-channel.sh')));
@@ -72,7 +72,7 @@ test('the tag is moved by the script that refuses a build that does not exist', 
   assert.ok(script.indexOf('imagetools inspect') < script.indexOf('imagetools create'));
 });
 
-// r[verify promotion.restart]
+// spec: TRO#promotion
 test('the repo server is restarted and has rolled out before anything is refreshed', () => {
   const script = readFileSync(
     new URL('../../tamanu/on-k8s/renderer/tools/refresh-channel.sh', import.meta.url),

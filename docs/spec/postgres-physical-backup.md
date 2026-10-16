@@ -1,382 +1,162 @@
-# PostgreSQL physical backup (bestool)
+---
+id: PPB
+---
 
-A cross-platform `bestool` command that produces reliable, restorable Kopia
-backups of a PostgreSQL cluster's data directory, on Windows and Linux
-(btrfs and ext4). It replaces the Ansible `kopia-backup-postgres-*` scripts
-(`ansible/roles/postgres/files/`) and the naive "let Kopia VSS-snapshot
-the live directory" approach on Windows, behind one tested binary that
-integrates with the Canopy backup control plane.
+# PostgreSQL physical backup
 
-This is the **physical** backup (a restorable file-level image of the
-cluster). It is distinct from the existing `bestool tamanu backup`, which is
-a **logical** `pg_dump` (a `.dump` file, table-exclusions, encrypt/split) and
-stays as-is.
+A physical backup is a restorable file-level image of a PostgreSQL cluster's data directory, stored in a Kopia repository.
+The backup MUST run on Windows and on Linux.
 
-## The core problem: today's backups restore dirty, not clean
+> [!NOTE]
+> The evidence behind these requirements is in [the restore failure analysis](../postgres-physical-backup-diagnosis.md).
 
-Neither current method is bestool — Linux uses the Ansible scripts, Windows
-points Kopia at the live directory directly. Both nonetheless end up
-restoring through `pg_resetwal -f` + a forced full REINDEX, which is the
-direct cause of "partially corrupted, mostly indexes" — but for two
-different upstream reasons.
+## Borrowed terms
 
-**Linux (Ansible scripts).** They take the btrfs snapshot *between*
-`pg_backup_start` and `pg_backup_stop` and write the start-only `backup_label`
-returned by `pg_backup_stop` **into** the snapshot. `pg_backup_stop` emits its
-`XLOG_BACKUP_END` WAL record *after* the snapshot instant, into the live
-`pg_wal`, so the frozen copy lacks it. PostgreSQL requires a
-`backup_label`-driven restore to reach the backup-end point — "you cannot use
-a base backup to recover to a time when that backup was in progress" — so
-recovery fails with **`WAL ends before end of online backup`**. The btrfs
-snapshot is itself atomic and would have restored cleanly as crash recovery;
-the `backup_label` is precisely what breaks it.
+| term | meaning |
+|---|---|
+| crash recovery | PostgreSQL's replay of the WAL on startup after an unclean shutdown ([PostgreSQL file system level backup](https://www.postgresql.org/docs/current/backup-file.html)). |
+| `backup_label` | The file `pg_backup_stop` returns, which makes a restore recover to the end of the backup ([PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html)). |
+| `pg_basebackup` | The PostgreSQL tool that takes a base backup of a running cluster ([pg_basebackup](https://www.postgresql.org/docs/current/app-pgbasebackup.html)). |
+| tablespace | A directory outside the data directory that holds cluster files, linked from `pg_tblspc` ([PostgreSQL file system level backup](https://www.postgresql.org/docs/current/backup-file.html)). |
+| Kopia | The snapshot repository the backup is stored in ([Kopia documentation](https://kopia.io/docs/)). |
+| VSS | The Windows Volume Shadow Copy Service, which takes shadow copies of volumes, singly or as a set ([Volume Shadow Copy Service](https://learn.microsoft.com/en-us/windows-server/storage/file-server/volume-shadow-copy-service)). |
+| thin LV | An LVM logical volume whose segment type is `thin` ([lvmthin](https://man7.org/linux/man-pages/man7/lvmthin.7.html)). |
 
-**Windows (Kopia-direct, no bestool today).** No `pg_backup_start` and no
-`backup_label` at all — Kopia is pointed at the live data directory with VSS
-meant to supply the point-in-time copy. The failure here is a **non-atomic
-capture**: if VSS does not actually engage (silent fallback to reading live
-files), or `pg_wal`/tablespaces sit on a volume the shadow copy does not
-include, Kopia reads files at inconsistent instants. The result is torn
-WAL/pages, and recovery hits **`invalid record length`** /
-**`could not locate required checkpoint record`**.
+## Strategy
 
-**Both land in the same place.** `pgro`'s restore Job
-(`pgro/src/controllers/restore/builders.rs`) runs `postgres --single`, greps
-for *all* of those signatures (`WAL ends before end of online backup|invalid
-record length at|database system was interrupted while in recovery|could not
-locate required checkpoint record`), and on any hit runs **`pg_resetwal -f`**,
-which *bypasses WAL replay* and forces the cluster up at whatever the snapshot
-captured. Skipping recovery leaves in-flight index updates as torn pages
-("unexpected zero page at block N"), so the Job `touch`es `needs-reindex-all`
-and **REINDEXes every database** before marking the replica ready. It "works
-most of the time" only because `pg_resetwal` + REINDEX usually salvages the
-cluster; when a torn page lands in the heap or catalog, or discarded WAL
-mattered, it doesn't.
+A backup MUST use the strategy that the following table gives for its platform and storage.
 
-**The fix is producer-side and differs by platform.** Linux must stop writing
-the `backup_label` (its snapshot is already atomic → clean crash recovery);
-Windows must guarantee a genuinely atomic capture (a real VSS set over every
-cluster volume) instead of reading the live directory. Both then restore as
-clean crash recovery, and `pgro` never needs `pg_resetwal`.
-
-### Field evidence (Windows restores)
-
-Observed symptoms, in increasing severity, all consistent with a non-atomic
-capture recovered via `pg_resetwal`:
-
-- B-tree corruption on `logs.changes` (`changes_version_idx`); fixed by
-  `REINDEX TABLE logs.changes`.
-- B-tree corruption on `notes` (`notes_pkey1`): *"heap tid from index tuple
-  points past end of heap page"*; fixed by `REINDEX TABLE notes`. The index
-  references heap rows the heap file does not contain — the index was captured
-  at a later instant than its heap (temporal skew between two files).
-- A migration (`updateEncountersTableSetPatientIdNotNull`) failing with FK
-  violation `encounters_patient_id_fkey1`: orphaned `encounters` rows whose
-  `patient_id` is absent from `patients`.
-
-The first two are index-vs-heap skew and `REINDEX`-recoverable. The third is
-**heap-vs-heap skew** across two tables — impossible in a live cluster (the FK
-forbids it), **not** fixable by `REINDEX` (no patient row exists to point at),
-and therefore unrecoverable data corruption. It is the clearest proof that the
-files in the backup are not from a single instant. Two corollaries:
-
-1. Even a perfectly atomic snapshot would corrupt this way if recovered via
-   `pg_resetwal`: heap pages lag the WAL, and `pg_resetwal` discards the WAL
-   that crash recovery would have replayed to reconcile them. The fix must
-   yield a snapshot whose crash recovery **succeeds**, so `pg_resetwal` is
-   never reached.
-2. `REINDEX` silently masks the index-level symptoms, so most index damage is
-   never noticed; heap-level skew surfaces only when something happens to
-   validate it (a constraint, a migration). "Works most of the time" describes
-   the *detected* failure rate, not the actual one — restores that appear to
-   succeed may carry undetected heap inconsistency.
-
-These are not collation/locale corruption (a known, separate btree-corruption
-cause that `pgro` already repairs): the affected indexes are non-text
-(`_version_idx`, a `_pkey`), and "heap tid points past end of heap page" is a
-structural skew error, not an ordering error.
-
-## Two correct strategies, by filesystem capability
-
-PostgreSQL's file-system-backup docs bless the clean path directly: a frozen
-snapshot of a running data directory restores by crash recovery — "it will
-think the previous server instance crashed and will replay the WAL log… (and
-be sure to include the WAL files in your backup)… You can perform a
-`CHECKPOINT` before taking the snapshot to reduce recovery time." No
-`pg_backup_start`/`pg_backup_stop`, no `backup_label`. The catch: the
-snapshot **must be atomic** across every volume the cluster occupies.
-
-So the strategy splits on whether the platform can take a **cheap** atomic
-snapshot. "Cheap" matters: a thick (classic) LVM snapshot *is* atomic, but it
-copies-on-first-write for its whole lifetime, degrading live-DB write
-throughput (~2–6×) for as long as Kopia takes to read the data dir, and its
-fixed CoW area silently invalidates the snapshot if it overflows. That cost is
-not worth paying when `pg_basebackup` is available, so thick LVM is treated as
-"no usable snapshot" and routed to Strategy B.
-
-| Platform / FS | Cheap atomic snapshot? | Strategy |
+| platform | storage | strategy |
 |---|---|---|
-| Windows | Yes — VSS shadow-copy set | `s[snap.*]` crash-consistent snapshot |
-| Linux btrfs | Yes — subvolume snapshot | `s[snap.*]` crash-consistent snapshot |
-| Linux thin LVM | Yes — thin snapshot (pool CoW, no read-copy) | `s[snap.*]` crash-consistent snapshot |
-| Linux thick LVM | Atomic but **costly** (write amplification) | `s[base.*]` `pg_basebackup` |
-| Linux bare ext4/xfs (no LVM) | No | `s[base.*]` `pg_basebackup` |
+| Windows | any | [snapshot strategy](overview.md#snapshot-strategy) over a VSS shadow-copy set |
+| Linux | btrfs | snapshot strategy over subvolume snapshots |
+| Linux | thin LV | snapshot strategy over a thin snapshot |
+| Linux | thick LV | [base backup strategy](overview.md#base-backup-strategy) |
+| Linux | no volume manager | base backup strategy |
 
-For the snapshot-capable cases the design is uniform; only the snapshot
-primitive differs (VSS / btrfs / thin LVM). Everything else — a thick LV, or a
-plain partition with no volume manager — has no *cheap* atomic-snapshot
-primitive and takes the WAL-complete `pg_basebackup` path.
+A volume MUST be treated as a thin LV only if its LVM segment type is `thin`.
 
-### Strategy A — crash-consistent snapshot (Windows VSS, btrfs, thin LVM)
+Where the storage cannot be identified, the backup MUST use the base backup strategy.
 
-s[snap.checkpoint]
-Open a libpq connection and issue an explicit `CHECKPOINT` immediately before
-snapshotting, to bound WAL replay on restore. This is an optimisation, not a
-correctness requirement.
+The strategy MAY be overridden by configuration.
 
-s[snap.no-backup-api]
-Do **not** call `pg_backup_start`/`pg_backup_stop` and do **not** write a
-`backup_label`. The atomic snapshot is self-contained and restores as crash
-recovery. This is the single most important change from the current scripts:
-writing a start-only `backup_label` is what forces `pg_resetwal` downstream.
+> [!NOTE]
+> A thick LVM snapshot is atomic, but it copies on first write for its whole lifetime, which slows writes to the live database while the snapshot is read, and its fixed copy-on-write area invalidates the snapshot if it overflows.
+> It is therefore treated as storage without a cheap atomic snapshot.
 
-s[snap.atomic-set]
-Take a **single atomic snapshot covering every volume** the cluster occupies
-(see `s[common.volumes]`). On Windows this is one VSS snapshot **set** (VSS
-supports atomic multi-volume sets); on btrfs, snapshot every involved
-subvolume. Thin LVM cannot atomically snapshot multiple LVs in one operation,
-and btrfs multi-subvolume snapshots are likewise not a single atomic act, so
-when the cluster spans more than one volume/subvolume on those backends, route
-to Strategy B (`pg_basebackup`) rather than take non-simultaneous snapshots.
-If volumes that must be captured together cannot be, abort loudly
-(`s[goal.loud-failure]`) — a non-simultaneous multi-volume snapshot is exactly
-the corruption case PostgreSQL warns about. (The common single-volume Tamanu
-layout — data and `pg_wal` on one filesystem — is the easy path.)
+## Snapshot strategy
 
-s[snap.include-wal]
-`pg_wal` **must** be inside the snapshot set. Never exclude it, never ignore
-it in Kopia (`s[common.ignore]`). Without it there is no WAL to replay and the
-restore cannot reach consistency.
+The backup SHOULD issue a `CHECKPOINT` immediately before it takes the snapshot.
 
-s[snap.frozen-source]
-Expose the snapshot read-only and point Kopia at the data directory **within
-the frozen snapshot**, never at the live directory. (Windows shadow copies
-are read-only; that is fine here because no `backup_label` needs writing into
-them.)
+A failed `CHECKPOINT` MUST NOT fail the backup.
 
-### Strategy B — `pg_basebackup` base backup (thick LVM, or no volume manager)
+> [!NOTE]
+> The checkpoint bounds the WAL replayed on restore.
+> The snapshot is crash-consistent without it.
 
-s[base.rationale]
-When there is no cheap atomic snapshot — a plain partition, or a thick LV
-whose snapshot would be too costly — a file-level copy of the live directory
-is inherently torn and needs WAL spanning the copy to become consistent.
-`pg_basebackup --wal-method=stream` produces a correct base backup with that
-WAL **and the backup-end record** bundled in — so it restores as clean crash
-recovery, with no `pg_resetwal` and no forced REINDEX. This is the right tool
-when Strategy A is unavailable.
+The backup MUST NOT call `pg_backup_start` or `pg_backup_stop`, and MUST NOT write a `backup_label`.
 
-s[base.flow]
-Run `pg_basebackup -D <staging> --wal-method=stream --checkpoint=fast` into a
-staging directory, then Kopia-snapshot the staging directory. Restore is
-crash recovery from the bundled WAL.
+> [!NOTE]
+> A restore driven by `backup_label` must recover to the end of the backup.
+> The backup-end WAL record is written after the snapshot instant, into the live `pg_wal`, so the frozen copy lacks it and recovery fails with `WAL ends before end of online backup`.
 
-s[base.cost]
-This streams a full copy each run (Kopia still dedupes the result in the
-repo, but local staging needs roughly the cluster size in free space and a
-full read each run). It is strictly heavier than a CoW snapshot. The preferred
-long-term fix is to move these hosts onto btrfs and use `s[snap.*]`;
-`pg_basebackup` is the correct path until then. We control no thick-LVM/bare
-hosts today — the controlled fleet is btrfs — so Strategy B exists for
-**externally-provisioned** hosts (typically Ubuntu Server's default install,
-which is thick LVM, not thin).
+The backup MUST take a single atomic snapshot that covers every volume the cluster occupies.
 
-## Common behaviour (all strategies)
+On Windows the snapshot MUST be one VSS shadow-copy set.
 
-s[common.volumes]
-Resolve PGDATA via the Tamanu config and enumerate **every** volume the
-cluster occupies: the data directory, `pg_wal` (follow it if it is a
-junction/symlink to another volume — Windows installs are known to relocate
-`pg_wal`, per the empty-`pg_wal` handling in `pgro`'s restore script), and
-every tablespace under `pg_tblspc`. Strategy A must snapshot all of them
-together; Strategy B's `pg_basebackup` handles this inherently.
+Where a cluster occupies more than one volume on a backend that cannot snapshot them simultaneously, the backup MUST use the base backup strategy.
 
-s[common.tablespaces]
-Tablespaces are absolute symlinks under `pg_tblspc` pointing at the live
-volume. For Strategy A, record the tablespace OID → snapshot-volume mapping
-so restore can relink correctly; for the common single-tablespace Tamanu
-install `pg_tblspc` is empty and this is a no-op.
+> [!NOTE]
+> Thin LVM cannot snapshot several logical volumes in one operation, and btrfs snapshots of several subvolumes are not one atomic act.
+> Snapshots taken one after another capture files at different instants, which is the corruption PostgreSQL warns about.
 
-s[common.stable-source]
-Kopia must see a **stable** source path across runs (a fixed mount/junction),
-so snapshot history, incremental dedup, and retention attribute to one
-source. A per-run path makes every backup a fresh single-snapshot source with
-no history — the exact regression just fixed in the Ansible btrfs script.
+The snapshot MUST include `pg_wal`.
 
-s[common.ignore]
-Ignore only transient files: `postmaster.pid`, `*.log`, `pg_stat_tmp/*`,
-`lost+found`. **Never** ignore `pg_wal`, `pg_xact`, `pg_control`, `global`, or
-any tablespace.
+The backup MUST NOT exclude `pg_wal`, whether by omitting it from the snapshot or by ignoring it in Kopia.
 
-s[common.metadata]
-Record backup metadata — PG major version, control-file checkpoint LSN,
-snapshot timestamp, strategy used, volume/tablespace mapping, cluster size —
-as Kopia snapshot tags/description (and/or a sidecar object). This drives
-observability and lets the external verifier drive a restore. It does **not**
-need to be written into a read-only snapshot.
+The backup MUST expose the snapshot read-only and MUST read the data directory from within the frozen snapshot.
 
-## Canopy integration
+The backup MUST NOT read the live data directory.
 
-This command is the device-side **producer** for the Canopy backup control
-plane (see `pgro/docs/canopy-backup-integration.md` and the canopy repo's
-`docs/plans/backup-credentials.md`). Canopy tracks three signals: *backed up*
-(1), *persisted* (2), *restorable* (3); this command produces 1 and 2, `pgro`
-produces 3.
+## Base backup strategy
 
-s[canopy.type]
-Snapshots are the **`tamanu-postgres`** type — the same type `pgro` restores
-and reports on. Tag snapshots with the canopy type so `pgro` can filter the
-repo to its snapshots.
+The backup MUST run `pg_basebackup` with `--wal-method=stream` into a staging directory, and then store the staging directory in Kopia.
 
-s[canopy.source-model]
-Use Canopy's source/attribution model — the `canopy@<server-id>:<path>` Kopia
-source identity and `canopy-run` tagging — so snapshots join against canopy's
-`backup_repo_snapshots` / `backup_runs` and `pgro`'s `snapshot_id`
-cross-reference. (`s[common.stable-source]` is what makes this attribution
-stable.)
+> [!NOTE]
+> A file-level copy of a live directory is torn, and needs the WAL that spans the copy to become consistent.
+> Streaming bundles that WAL and the backup-end record into the base backup, so the backup restores by crash recovery.
+> Staging needs free space of about the size of the cluster.
 
-s[canopy.credentials]
-Obtain the Kopia repository connection (short-lived, per-group S3 credentials
-+ target + repo password) from Canopy via the device credential-process flow,
-rather than long-lived static keys. This reuses bestool's existing
-`canopy`/`kopia` plumbing.
+The backup MUST delete the staging directory when the run ends.
 
-s[canopy.report]
-Report backup outcome (signals 1/2) to Canopy on completion, consistent with
-the control-plane contract. Restorability (signal 3) is `pgro`'s job, not
-this command's.
+## Common behaviour
+
+The backup MUST identify the data directory of the cluster and every volume the cluster occupies: the data directory, `pg_wal` including where it is a symlink or junction to another volume, and every tablespace under `pg_tblspc`.
+
+For a snapshot of a cluster with tablespaces, the backup MUST record the mapping from each tablespace OID to its snapshot volume, so that a restore can relink the tablespace.
+
+Kopia MUST see the same source path on every run.
+
+> [!NOTE]
+> A different path per run makes every backup a new source with no snapshot history, no incremental deduplication and no retention.
+
+The backup MUST ignore nothing other than `postmaster.pid`, `*.log`, `pg_stat_tmp/*` and `lost+found`.
+
+The backup MUST NOT ignore `pg_wal`, `pg_xact`, `pg_control`, `global` or any tablespace.
+
+The backup MUST tag the Kopia snapshot with `pg-version`, `pg-cluster` and `pg-strategy`, holding the PostgreSQL version, the cluster name and the strategy used.
 
 ## Restore
 
-s[restore.crash-recovery]
-Restore for all strategies is plain crash recovery: lay the snapshot/base
-backup down as the data directory, start PostgreSQL, let it replay `pg_wal`.
-No `recovery.signal`, no `restore_command`, no `backup_label`.
+A backup MUST restore by crash recovery alone: the snapshot or base backup is laid down as the data directory, PostgreSQL is started, and it replays `pg_wal`.
 
-s[restore.consumer]
-`pgro` is the restore/verification consumer. Once this command ships clean
-crash-consistent backups, `pgro`'s `pg_resetwal -f` + forced-REINDEX path
-(`builders.rs`) should stop triggering for `tamanu-postgres` snapshots and
-become a true last-resort fallback. That change is tracked on the `pgro` side;
-this spec's job is to stop *producing* the dirty snapshots that force it.
+A restore MUST NOT need `recovery.signal`, `restore_command` or a `backup_label`.
 
-## Reliability and lifecycle
+A restore MUST NOT need `pg_resetwal` or a forced reindex of every database.
 
-s[life.loud-failure]
-Any inability to obtain an atomic snapshot (VSS failure, missing elevation,
-a multi-volume layout that cannot be captured together) must fail the backup
-non-zero and never silently fall back to copying the live directory — silent
-live-file fallback is the likely current Windows corruption cause.
+Every backup MUST be self-contained: restorable on its own, with all the WAL it needs included.
 
-s[life.reaper]
-On startup, before creating a new snapshot, sweep leftovers from a previously
-crashed run — VSS shadow copies / btrfs `@…-kopia-*` subvolumes / LVM
-snapshots and their exposed mounts. A hard reboot mid-run skips cleanup, and
-leaked snapshots fill the volume. (The Ansible btrfs script gained this; the
-command must have it on every platform.)
+## Canopy integration
 
-s[life.cleanup]
-On success or failure, release the snapshot/shadow-copy set, remove exposed
-mounts/junctions, and (Strategy B) delete the staging directory.
+The backup is the producer for [Canopy](overview.md#canopy) of the backup signals *backed up* and *persisted*.
+[pgro](overview.md#pgro) reports the signal *restorable*.
 
-s[life.single-run]
-Prevent overlapping runs with a lock; a run that overruns its schedule must
-not have another start on top of it.
+The backup MUST tag its Kopia snapshots with the Canopy backup type `tamanu-postgres`.
 
-s[life.elevation]
-On Windows the command needs Administrator rights for VSS; on Linux it needs
-the privileges for the snapshot primitive (root/CAP_SYS_ADMIN for btrfs/LVM).
-Detect insufficient privilege and fail clearly per `s[life.loud-failure]`.
+> [!NOTE]
+> pgro finds its snapshots by filtering the repository on that type.
 
-s[life.scheduling]
-Runs on a schedule (Windows Task Scheduler / systemd timer) at low I/O and
-CPU priority, at a configurable interval. 6-hour RPO (the current Linux timer)
-is acceptable; there is no point-in-time recovery and each backup is
-self-contained.
+The backup MUST attribute its snapshots using Canopy's source model: a Kopia source identity of the form `canopy@<server-id>:<path>`, and the `canopy-run` tag.
 
-## Command surface
+The backup MUST obtain its Kopia repository connection from Canopy through the device credential-process flow, and MUST NOT use long-lived static keys.
 
-s[cmd.placement]
-A new subcommand alongside the logical `bestool tamanu backup` — e.g.
-`bestool tamanu physical-backup` (final name TBD; it must not collide with or
-change the existing logical `backup`). It discovers PGDATA and the DB
-connection from the Tamanu config like the existing command does.
+> [!NOTE]
+> The connection is the short-lived per-group S3 credentials, the target and the repository password.
 
-s[cmd.strategy-detect]
-Detect the storage backend and pick the strategy automatically, with an
-override flag for testing. The decision walks from the data directory down to
-the backing block device:
+The backup MUST report its outcome to Canopy when it completes.
 
-1. **Windows** → Strategy A (VSS).
-2. Filesystem is **btrfs** (`findmnt -no FSTYPE` / `statfs`) → Strategy A
-   (subvolume snapshot).
-3. Backing device is an **LVM thin LV** → Strategy A (thin snapshot). Resolve
-   the mount's source device, then check its LVM segment type — e.g.
-   `lvs --noheadings -o segtype <dev>` reports `thin` for a thin LV (and it
-   has a `pool_lv`), vs `linear`/`striped` for a thick LV. Only `thin`
-   qualifies.
-4. **Anything else** — thick LV, or a plain partition with no LVM at all →
-   Strategy B (`pg_basebackup`).
+## Reliability
 
-This is a strict superset of the Ansible `backup.yml` btrfs-vs-ext4 detection;
-the new work is distinguishing thin from thick LVM (step 3). If detection is
-ambiguous, prefer Strategy B — it is always correct, just heavier.
+If an atomic snapshot cannot be obtained, for example because VSS fails, privileges are missing, or the layout cannot be captured together, the backup MUST NOT copy the live data directory.
 
-## Verification
+In that case the backup MAY use the base backup strategy, and MUST report why the snapshot was not used.
 
-Backup verification is **out of scope** for this command — it is done
-off-host by `pgro` (signal 3), exercising the whole pipeline. This command's
-job is to make those verifications pass cleanly. It emits restore metadata
-(`s[common.metadata]`) so the verifier can drive a restore unambiguously.
+A backup that cannot produce either an atomic snapshot or a base backup MUST exit with a non-zero status.
 
-## Goals
+Before it creates a snapshot, the backup MUST remove the leftovers of a crashed earlier run: VSS shadow copies, btrfs snapshot subvolumes, LVM snapshots, and their exposed mounts and junctions.
 
-s[goal.clean-restore]
-Backups must restore as clean crash recovery, without `pg_resetwal` and
-without a forced full REINDEX.
+> [!NOTE]
+> A hard reboot mid-run skips cleanup, and leaked snapshots fill the volume.
 
-s[goal.atomic]
-Strategy A backups come from an atomic, point-in-time snapshot covering every
-cluster volume; never from the live data directory.
+When a run ends, whether it succeeded or failed, the backup MUST release its snapshot or shadow-copy set and remove its exposed mounts and junctions.
 
-s[goal.self-contained]
-Each backup is self-contained — restorable on its own, with all needed WAL
-included — matching the current no-PITR / RPO-equals-interval model.
+A backup MUST NOT start while another backup of the same type is running on the host.
 
-s[goal.loud-failure]
-Never silently degrade to an unsafe copy; fail loudly instead.
+A backup that lacks the privileges its strategy needs MUST say which privilege is missing.
 
-s[goal.canopy]
-Integrate with Canopy as the `tamanu-postgres` producer (signals 1/2), using
-short-lived per-group credentials.
+> [!NOTE]
+> VSS needs Administrator on Windows, and btrfs and LVM snapshots need root or `CAP_SYS_ADMIN` on Linux.
 
-## Open questions
+The backup MUST run on a schedule at a configurable interval.
 
-- **Command name/placement** under `bestool tamanu` (`physical-backup` vs
-  `snapshot` vs a `--physical` mode), and whether it shares code with the
-  `kopia` action group.
-- **Windows volume layout in practice**: how often is `pg_wal` relocated to a
-  separate volume, and are tablespaces ever used? Determines how much
-  multi-volume VSS-set handling is exercised vs. defensive. (`pgro` already
-  handles a missing `pg_wal` on restore, implying it does happen.)
-- **Strategy B fleet**: the controlled fleet is already btrfs; Strategy B
-  exists only for externally-provisioned hosts whose storage we don't dictate
-  (assumed Ubuntu-default thick LVM). Confirm the thin-vs-thick LVM detection
-  (`s[cmd.strategy-detect]` step 3) against a real such host, since that's the
-  one new branch and the assumption ("probably thick") should be verified, not
-  trusted.
-- **Credential lifetime vs. backup duration**: Canopy's short-lived creds —
-  does a long `pg_basebackup`/snapshot upload outlive them? (`pgro` flags the
-  1-hour chained-AssumeRole cap as its hardest problem for long restores; the
-  producer side should check the same for long uploads.)
-- **Coexistence with the Ansible scripts** during rollout: the command and
-  the scripts must not both drive backups on the same host.
+The backup SHOULD run at low I/O and CPU priority.

@@ -23,7 +23,7 @@ function instance(instance_type: string, spotInterruptMax?: number): RegionInsta
   };
 }
 
-// k[verify capacity.spot-interruption-cap]
+// spec: K8SNOD#spot-capacity
 test('spot types above the interruption ceiling or without data are dropped', () => {
   const kept = spotInterruptAtMost(
     [instance('a', 5), instance('b', 10), instance('c', 15), instance('d', 100), instance('e')],
@@ -36,7 +36,7 @@ test('spot types above the interruption ceiling or without data are dropped', ()
   );
 });
 
-// k[verify capacity.spot-interruption-cap]
+// spec: K8SNOD#spot-capacity
 test('advisor bands parse to their upper bound', () => {
   const bands = new Set(
     instancesForRegion('ap-southeast-2', { highMemory: true })
@@ -47,7 +47,7 @@ test('advisor bands parse to their upper bound', () => {
   for (const b of bands) assert.ok([5, 10, 15, 20, 100].includes(b!), `unexpected band ${b}`);
 });
 
-// k[verify capacity.workload-node-floor]
+// spec: K8SNOD#workload-capacity
 test('memory-dense shapes down to 2 vCPU / 32 GiB are admitted, nothing else below the floor', () => {
   const types = memoryDenseSizedAtLeast('ap-southeast-2', 'arm64', 2, 32).map(
     (i) => i.instance_type,

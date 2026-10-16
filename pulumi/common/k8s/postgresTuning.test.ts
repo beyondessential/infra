@@ -5,9 +5,9 @@ import { derivePostgresParameters, parseQuantityToBytes } from './postgresTuning
 const MiB = 1024;
 const GiB = 1024 * MiB;
 
-// k[verify postgres.tuning.basis] k[verify postgres.tuning.scales]
-// k[verify postgres.tuning.shared-buffers] k[verify postgres.tuning.effective-cache-size]
-// k[verify postgres.tuning.work-mem]
+// spec: K8SPGC#tuning-basis
+// spec: K8SPGC#memory-parameters
+// spec: K8SPGC#memory-parameters
 test('memory parameters scale with the basis', () => {
   const sizes = [
     { memory: '750Mi', maxConnections: 100, sharedBuffers: 187 * MiB + 512, workMem: 4 * MiB },
@@ -25,14 +25,15 @@ test('memory parameters scale with the basis', () => {
 });
 
 // A quarter of the basis, and three quarters for the planner hint.
-// k[verify postgres.tuning.shared-buffers] k[verify postgres.tuning.effective-cache-size]
+// spec: K8SPGC#memory-parameters
 test('shared_buffers is a quarter of the basis and cache size three quarters', () => {
   const p = derivePostgresParameters({ memory: '4Gi', storage: '10Gi', maxConnections: 100 });
   assert.equal(p.shared_buffers, `${1 * GiB}kB`);
   assert.equal(p.effective_cache_size, `${3 * GiB}kB`);
 });
 
-// k[verify postgres.tuning.maintenance-work-mem] k[verify postgres.tuning.no-regression]
+// spec: K8SPGC#memory-parameters
+// spec: K8SPGC#tuning-basis
 test('maintenance_work_mem is a sixteenth of the basis but never below the stock default', () => {
   // A sixteenth of 750Mi is 48MB, under PostgreSQL's 64MB default.
   const small = derivePostgresParameters({ memory: '750Mi', storage: '10Gi', maxConnections: 100 });
@@ -46,7 +47,8 @@ test('maintenance_work_mem is a sixteenth of the basis but never below the stock
   assert.equal(huge.maintenance_work_mem, `${8 * GiB}kB`);
 });
 
-// k[verify postgres.tuning.work-mem] k[verify postgres.tuning.no-regression]
+// spec: K8SPGC#memory-parameters
+// spec: K8SPGC#tuning-basis
 test('work_mem divides remaining memory across connections, floored at 4MB', () => {
   // (8Gi - 2Gi) / ((200 + 8) * 3) = 10082kB, comfortably above the floor.
   const roomy = derivePostgresParameters({ memory: '8Gi', storage: '10Gi', maxConnections: 200 });
@@ -61,7 +63,7 @@ test('work_mem divides remaining memory across connections, floored at 4MB', () 
   assert.equal(crowded.work_mem, `${4 * MiB}kB`);
 });
 
-// k[verify postgres.tuning.wal-buffers]
+// spec: K8SPGC#memory-parameters
 test('wal_buffers is 3% of shared_buffers, bounded and snapped near the cap', () => {
   // 3% of 187.5MiB = 5760kB, well inside the bounds.
   const below = derivePostgresParameters({ memory: '750Mi', storage: '10Gi', maxConnections: 100 });
@@ -80,7 +82,7 @@ test('wal_buffers is 3% of shared_buffers, bounded and snapped near the cap', ()
   assert.equal(capped.wal_buffers, `${16 * MiB}kB`);
 });
 
-// k[verify postgres.tuning.autovacuum-work-mem]
+// spec: K8SPGC#memory-parameters
 test('autovacuum_work_mem is only capped once maintenance_work_mem reaches 2GB', () => {
   const under = derivePostgresParameters({ memory: '8Gi', storage: '10Gi', maxConnections: 100 });
   assert.equal(under.autovacuum_work_mem, undefined);
@@ -90,13 +92,13 @@ test('autovacuum_work_mem is only capped once maintenance_work_mem reaches 2GB',
   assert.equal(at.autovacuum_work_mem, `${2 * GiB}kB`);
 });
 
-// k[verify postgres.tuning.temp-file-limit]
+// spec: K8SPGC#storage-derived-limits
 test('temp_file_limit is a quarter of the volume', () => {
   const p = derivePostgresParameters({ memory: '750Mi', storage: '60Gi', maxConnections: 100 });
   assert.equal(p.temp_file_limit, `${15 * GiB}kB`);
 });
 
-// k[verify postgres.wal.slot-keep-size]
+// spec: K8SPGC#storage-derived-limits
 test('max_slot_wal_keep_size is 30% of the volume, floored at 1GB', () => {
   const large = derivePostgresParameters({ memory: '750Mi', storage: '60Gi', maxConnections: 100 });
   assert.equal(large.max_slot_wal_keep_size, `${18 * GiB}kB`);
@@ -106,8 +108,8 @@ test('max_slot_wal_keep_size is 30% of the volume, floored at 1GB', () => {
   assert.equal(small.max_slot_wal_keep_size, `${1 * GiB}kB`);
 });
 
-// k[verify postgres.tuning.ssd-costs] k[verify postgres.tuning.jit-off]
-// k[verify postgres.tuning.wal-compression]
+// spec: K8SPGC#workload-parameters
+// spec: K8SPGC#workload-parameters
 test('workload assumptions are fixed regardless of size', () => {
   for (const memory of ['750Mi', '8Gi']) {
     const p = derivePostgresParameters({ memory, storage: '10Gi', maxConnections: 100 });
@@ -118,8 +120,8 @@ test('workload assumptions are fixed regardless of size', () => {
   }
 });
 
-// k[verify postgres.tuning.no-cpu-derivation] k[verify postgres.tuning.no-huge-pages]
-// k[verify postgres.tuning.no-io-uring]
+// spec: K8SPGC#parameters-not-derived
+// spec: K8SPGC#parameters-not-derived
 test('parameters that must be left alone are not emitted', () => {
   const p = derivePostgresParameters({ memory: '32Gi', storage: '60Gi', maxConnections: 200 });
   for (const parameter of [
@@ -150,7 +152,7 @@ test('quantities are parsed by their declared unit', () => {
   assert.throws(() => parseQuantityToBytes('5Xi'), /unknown unit/);
 });
 
-// k[verify postgres.client-check] k[verify postgres.log-lock-waits]
+// spec: K8SPGC#connection-hygiene
 test('backends check for departed clients and log lock waits', () => {
   const p = derivePostgresParameters({ memory: '750Mi', storage: '5Gi', maxConnections: 100 });
   assert.equal(p.client_connection_check_interval, '10s');

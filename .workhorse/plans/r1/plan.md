@@ -2,39 +2,27 @@
 
 ## Settled
 
-- Specs stay in `docs/spec/`. Voice rules: spec-voice skill `style.md`.
-- Root spec `docs/spec/overview.md` (id `OVR`): requirements notation, external documents, terminology. No spec index.
-- Ids, no prefix: `PGS` pgsnap, `PPB` postgres-physical-backup, `ING` kubernetes/ingress, `K8SNOD` nodes, `K8SPGC` postgres, `K8SVOL` volumes, `TRO` tamanu/renderer-rollout. The requested `K8S-NOD` form breaks the 2 to 6 alphanumeric rule in `.agents/docs/spec-format.md`, so hyphens are dropped.
-- Citations: `// spec: ID#heading-slug`, topic-section grain (`##` per topic). Per-requirement tracey ids and `+N` revisions are dropped. Remove `.config/tracey/config.styx`, `tracey` mentions, and the tracey skill reference.
-- Ingress spec describes the end state (Envoy Gateway) only. nginx and migration rules move to `docs/plans/canopy-envoy-migration.md`.
-- postgres-physical-backup stays, cut to the producer contract. Diagnosis and field evidence go to a docs write-up. Open questions are re-evaluated; still-open ones become cards in the bestool repo.
-
-## Conventions from the pilot (nodes)
-
-- Value sets and label shapes in tables; one normative sentence per row-implied rule.
-- Scope requirements to the pool class that carries them (`general workload pool`) instead of stating an exemption.
-- Keyword calls: MUST for reliability, security, product commitments; SHOULD for cost-only optimisations (spot price cap, consolidation, spot-first).
-- Rationale survives only as a `> [!NOTE]` where cutting it would let a re-implementer build a bad variant.
-- Coined terms in overview glossary with `Defined in`; borrowed terms in a per-spec `## Borrowed terms` table.
+- Specs stay in `docs/spec/`. House rules are in `.workhorse/rules.md`.
+- Root spec `docs/spec/overview.md` (`OVR`): requirements notation, external documents, terminology. No spec index.
+- Ids, no hyphens: `PGS`, `PPB`, `K8SING`, `K8SNOD`, `K8SPGC`, `K8SVOL`, `TRO`.
+- Citations are `spec: ID#section` at topic grain. Tracey ids, `+N` revisions and `.config/tracey` are gone.
+- Ingress spec describes the end state only. nginx and migration rules live in `docs/plans/canopy-envoy-migration.md#migration-rules`.
+- Physical backup spec is cut to the producer contract. Analysis moved to `docs/postgres-physical-backup-diagnosis.md`. Open questions went to bestool card X3.
 
 ## Gaps and divergences
 
-- Open: `bes.node.schedule` for a `mixed` pool (db-replica) is set to `spot` in code, though nodes may be on-demand. Spec says it reflects the backing capacity type. Code diverges.
-- Open: replica pool "low spot interruption" had no threshold. Spec now applies the 10% limit; code uses a hand-picked list (`x8g.medium`, `x8g.large`, `r6g.large`) that has not been checked against it.
-- Resolved from code: critical pool window is 14:00 to 16:00 UTC; exit node instance tag is `bes.node.purpose=tailscale-exit`; burstable exclusion applies to every `workload` pool, not only "large" ones (original undefined "large").
-- Resolved: exit node isolation excepts daemonsets (code comment says daemonsets ride every node).
+- Code behind spec: `bes.node.schedule` is `spot` for the mixed replica pool even where nodes are on-demand.
+- Unchecked: the replica pool's hand-picked instance types against the 10% interruption limit the spec now applies.
+- Spec behind code (resolved to code): pgsnap excludes `phase`, `cluster-name`, `snapshot-name`, `from-snapshot` and `snapshot` from passthrough; `for-version` was undefined and is now in the contract; physical backup falls back to base backup when a snapshot fails.
+- New in spec from code: new claims start empty (EFS unique directory); a deployment warns when reclaim is enabled but not performed; channel label key and ten-minute promotion limit.
+- Open: the Gateway has a TCP 80 redirect listener but the Envoy NLB serves only 443 TCP and UDP.
+- Open: external-dns watches only `gateway-httproute` in the spec; the Tailscale IngressClass may still need the `ingress` source.
+- Open: huge pages and `io_uring` rules lost their premises (nothing provisioned, measured read IOPS). The huge pages rule is now conditional on node support.
 
 ## Rollout
 
-- [x] Pilot: `overview.md`, `kubernetes/nodes.md`
-- [ ] Voice sign-off
-- [ ] Terminology sweep across all specs
-- [ ] Ids and citations sweep (code, workflows, plan docs, `docs/kubernetes.md`)
-- [ ] `kubernetes/volumes.md`
-- [ ] `kubernetes/postgres.md`
-- [ ] `kubernetes/ingress.md` (+ move migration rules to the plan doc)
-- [ ] `tamanu/renderer-rollout.md`
-- [ ] `pgsnap.md`
-- [ ] `postgres-physical-backup.md` (+ write-up, bestool cards)
-- [ ] Link and anchor checker in CI
-- [ ] Remove tracey config and references
+- [x] Overview, nodes, volumes, postgres, ingress, renderer rollout, pgsnap, physical backup
+- [x] Citation sweep (41 files), tracey removal
+- [x] `scripts/check-spec-links.mjs` and `.github/workflows/spec-check.yml`
+- [ ] Review by the user
+- [ ] Run the TypeScript and Rust tests (not run: no installed dependencies)

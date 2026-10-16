@@ -17,7 +17,6 @@ use prometheus::{Encoder, TextEncoder};
 use tokio::signal;
 use tracing::{error, info};
 
-// s[runtime.binary]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     rustls::crypto::ring::default_provider()
@@ -41,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
         namespace: namespace.clone(),
     });
 
-    // s[runtime.health] s[runtime.metrics]
+    // spec: PGS#operation
     let health_ctx = ctx.clone();
     let health_server = tokio::spawn(async move {
         let app = Router::new()
@@ -79,14 +78,14 @@ async fn main() -> anyhow::Result<()> {
         axum::serve(listener, app).await.unwrap();
     });
 
-    // s[gc.schedule]
+    // spec: PGS#snapshot-garbage-collection
     let gc_client = client.clone();
     let gc_ns = namespace.clone();
     let gc_task = tokio::spawn(async move {
         gc::run_loop(gc_client, &gc_ns).await;
     });
 
-    // s[create.scheduling]
+    // spec: PGS#snapshot-creation
     // Jobs must carry label pgsnap.bes.au/create=true for the controller to pick them up.
     // Annotations cannot be used for watch selection in Kubernetes.
     let jobs: Api<Job> = Api::namespaced(client.clone(), &namespace);

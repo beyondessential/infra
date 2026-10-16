@@ -21,13 +21,13 @@ if ! [[ "$commit" =~ ^[0-9a-f]{7,40}$ ]]; then
 fi
 source_tag="sha-${commit:0:7}"
 
-# r[impl promotion.from-build]
+# spec: TRO#promotion
 # The build has to exist: a promotion never builds, so what stable serves is what canary served.
 if ! docker buildx imagetools inspect "$image:$source_tag" > /dev/null; then
   echo "There is no build of the renderer tagged $source_tag, so there is nothing to promote" >&2
   exit 1
 fi
 
-# r[impl channel.tags]
+# spec: TRO#channels
 docker buildx imagetools create --tag "$image:$channel" "$image:$source_tag"
 docker buildx imagetools inspect "$image:$channel"

@@ -61,7 +61,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
     let name = job.name_any();
     let annotations = job.annotations();
 
-    // s[create.cleanup]
+    // spec: PGS#snapshot-creation
     // The Job's uid stamps ownerReferences on the Cluster + Secret so kube
     // GC cascades their deletion if the Job is removed (TTL or manual)
     // before the reconciler has cleaned up.
@@ -98,7 +98,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
 
     let from_snapshot = annotations.get(util::ANNOTATION_FROM_SNAPSHOT).cloned();
 
-    // s[annotation.snapshot]
+    // spec: PGS#annotation-contract
     let wants_snapshot = annotations
         .get(util::ANNOTATION_SNAPSHOT)
         .map(|s| s != "false")
@@ -108,7 +108,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
         Phase::New => {
             info!(job = %name, "starting pgsnap workflow");
 
-            // s[annotation.from-snapshot]
+            // spec: PGS#source-snapshot
             let source = match &from_snapshot {
                 Some(requested) => {
                     let for_version = annotations
@@ -144,7 +144,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                 None => None,
             };
 
-            // s[create.cluster]
+            // spec: PGS#snapshot-creation
             cnpg::create_cluster(
                 &ctx.client,
                 &ctx.namespace,
@@ -169,14 +169,14 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
         }
 
         Phase::ClusterCreating => {
-            // s[create.cluster.ready]
+            // spec: PGS#snapshot-creation
             if !cnpg::is_cluster_ready(&ctx.client, &ctx.namespace, &cluster_name).await? {
                 return Ok(Action::requeue(Duration::from_secs(10)));
             }
 
             info!(job = %name, "CNPG Cluster ready");
 
-            // s[create.secret]
+            // spec: PGS#snapshot-creation
             cnpg::create_connection_secret(
                 &ctx.client,
                 &ctx.namespace,
@@ -187,7 +187,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
             )
             .await?;
 
-            // s[create.unsuspend]
+            // spec: PGS#snapshot-creation
             unsuspend_job(&ctx.client, &ctx.namespace, &name).await?;
 
             set_annotations(&ctx.client, &ctx.namespace, &name, &[
@@ -199,13 +199,13 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
         }
 
         Phase::JobRunning => {
-            // s[create.wait-completion]
+            // spec: PGS#snapshot-creation
             let status = job.status.as_ref();
             let succeeded = status.and_then(|s| s.succeeded).unwrap_or(0) > 0;
             let failed = status.and_then(|s| s.failed).unwrap_or(0) > 0;
 
             if succeeded {
-                // s[create.snapshot.suppressed]
+                // spec: PGS#snapshot-creation
                 if !wants_snapshot {
                     info!(job = %name, "job succeeded, no snapshot asked for, cleaning up");
                     cnpg::delete_cluster(&ctx.client, &ctx.namespace, &cluster_name).await?;
@@ -223,7 +223,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                 let snapshot_name = util::snapshot_name_for_job(&name);
                 let passthrough = util::passthrough_annotations(annotations);
 
-                // s[create.snapshot]
+                // spec: PGS#snapshot-creation
                 snapshot::create_snapshot(
                     &ctx.client,
                     &ctx.namespace,
@@ -243,7 +243,7 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
             }
 
             if failed {
-                // s[create.failure]
+                // spec: PGS#snapshot-creation
                 warn!(job = %name, "job failed, cleaning up");
                 cnpg::delete_cluster(&ctx.client, &ctx.namespace, &cluster_name).await?;
 
@@ -267,14 +267,14 @@ pub async fn reconcile(job: Arc<Job>, ctx: Arc<Context>) -> Result<Action, Error
                 }
             };
 
-            // s[create.snapshot.ready]
+            // spec: PGS#snapshot-creation
             if !snapshot::is_snapshot_ready(&ctx.client, &ctx.namespace, &snapshot_name).await? {
                 return Ok(Action::requeue(Duration::from_secs(10)));
             }
 
             info!(job = %name, snapshot = %snapshot_name, "snapshot ready");
 
-            // s[create.cleanup]
+            // spec: PGS#snapshot-creation
             cnpg::delete_cluster(&ctx.client, &ctx.namespace, &cluster_name).await?;
 
             set_annotations(&ctx.client, &ctx.namespace, &name, &[

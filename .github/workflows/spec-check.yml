@@ -1,0 +1,29 @@
+name: Spec Check
+
+on:
+  pull_request:
+    paths:
+      - "docs/spec/**"
+      - "docs/plans/**"
+      - "scripts/check-spec-links.mjs"
+      - ".github/workflows/spec-check.yml"
+      - "**/*.ts"
+      - "**/*.rs"
+      - "**/*.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    name: Links and citations
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      - name: Check spec links and citations
+        run: node scripts/check-spec-links.mjs

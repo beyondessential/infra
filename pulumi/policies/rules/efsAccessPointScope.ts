@@ -12,7 +12,7 @@ function segments(pattern: string): string[] {
   return pattern.split('/').filter((segment) => segment.length > 0);
 }
 
-// k[volumes.shared-isolation+2]
+// spec: K8SVOL#isolation
 export const efsAccessPointScoped: StackValidationPolicy = {
   name: 'efs-access-point-scoped',
   description:

@@ -147,14 +147,14 @@ export function runPostgres({
           major: majorVersion,
         },
         instances: replicas,
-        // k[postgres.disruption.opt-out]
+        // spec: K8SPGC#scheduling-and-disruption
         enablePDB: disruptionBudgets,
         // Maintain the <name>-db-superuser secret: the reporting-grants Job and
         // the postgres URLs in <name>-db-url read it, and CNPG only creates it
         // when superuser access is enabled (off by default since CNPG 1.21).
         enableSuperuserAccess: true,
         primaryUpdateStrategy: 'unsupervised',
-        // k[postgres.primary-update.switchover]
+        // spec: K8SPGC#scheduling-and-disruption
         // The operator rejects any single update that changes both the image
         // and postgres parameters under this method; split such changes.
         primaryUpdateMethod: 'switchover',
@@ -176,7 +176,7 @@ export function runPostgres({
         postgresql: {
           // Derived from the memory request above and the volume size, so a
           // cluster given more resources gets parameters to match.
-          // k[postgres.tuning.basis]
+          // spec: K8SPGC#tuning-basis
           parameters: all([memoryRequest, storage, maxConnections]).apply(
             ([memory, volume, connections]) =>
               derivePostgresParameters({
@@ -210,7 +210,7 @@ export function runPostgres({
                 },
               }
             : {},
-        // k[postgres.placement.dedicated+2] k[postgres.placement.on-demand+2]
+        // spec: K8SPGC#scheduling-and-disruption
         affinity: {
           nodeSelector: {
             'bes.node.purpose': 'workload',
@@ -283,7 +283,7 @@ export function runPostgres({
         },
         spec: {
           retentionPolicy: `${barmanBackup.retentionDays}d`,
-          // k[postgres.backup-sidecar.requests]
+          // spec: K8SPGC#scheduling-and-disruption
           instanceSidecarConfiguration: {
             resources: {
               requests: { cpu: '10m', memory: '128Mi' },
@@ -362,7 +362,7 @@ export function runPostgres({
     );
   }
 
-  // k[postgres.readiness]
+  // spec: K8SPGC#scheduling-and-disruption
   // Keyed on the cluster resource's id, which resolves only once Pulumi's create or
   // update of it succeeded: an existing cluster still serves from before a rejected
   // update, and dependents would otherwise start against it and wait on a superuser
