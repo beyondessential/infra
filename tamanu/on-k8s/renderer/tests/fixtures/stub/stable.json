@@ -1,0 +1,27 @@
+{
+  "stack": "main",
+  "imageTag": "sha-a25d1d40354fd2d38442bce75328310ca37abae9",
+  "appVersion": "2.67.0",
+  "config": {
+    "nodeEnv": "staging",
+    "facilities": "2",
+    "patientPortalReplicas": "1"
+  },
+  "cluster": {
+    "fullName": "tamanu-internal-main",
+    "dnsZoneDomains": [
+      "tamanu.app"
+    ],
+    "tailscaleProxyDefaultTags": [
+      "tag:k8s-proxy"
+    ],
+    "networkV4Cidr": "10.20.0.0/16",
+    "networkV6Cidr": "2406:da1c:1234:5600::/56",
+    "backupsBucket": "example-backups",
+    "backupsServiceAccountArn": "arn:aws:iam::123456789012:role/example-backups"
+  },
+  "billing": {
+    "stage": "staging",
+    "deployment": "main"
+  }
+}

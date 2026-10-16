@@ -36,6 +36,14 @@ The renderer is pure: the same parameters and the same renderer image always giv
 4. Argo CD syncs in waves (below). Each wave starts only when the previous one is healthy.
 5. The stub waits for the Application to be Synced and Healthy, and fails the `up` if a sync fails or it takes longer than `argoWaitMinutes` (30 by default).
 
+### Renderer channels
+
+The renderer image is published under two tags, `canary` and `stable`, and the repo server runs a plugin for each from the same image. A deployment is rendered by one of them: `stable` unless its stack config sets `rendererChannel` to `canary` (Tamanu CD sets it from the `channel` option). Applications from before channels existed are rendered by `stable`.
+
+Every build of the renderer from `main` is promoted to `canary` by its CD. `stable` moves when someone runs the `infra-argo-tamanu-renderer promote` workflow with the commit to promote. Either way the promotion restarts the repo server on each cluster, waits for it, then hard-refreshes the Applications rendered by that channel, so the change shows up without anyone touching Argo CD. Applications on the other channel are left alone.
+
+To try a renderer change on a deployment, give it the `canary` channel and redeploy. To go back, redeploy without the option; the Application is rendered by `stable` again without a refresh.
+
 ### Sync order
 
 | Wave | Contents |
@@ -82,7 +90,7 @@ infra-argo-tamanu-renderer --params params.json --format yaml | less
 
 Argo CD's own UI shows the same tree, the waves and each Job. Reach it as set up for the cluster.
 
-Each Application carries the labels `bes.tamanu/app-version` and `bes.tamanu/template` (the config template: `pr`, `rc`, `basic` or `demo`), which the UI can filter and group by and `kubectl -n argocd-system get app -l bes.tamanu/template=demo` can select. It also carries a link to each of the deployment's addresses.
+Each Application carries the labels `bes.tamanu/app-version`, `bes.tamanu/renderer-channel` (`stable` or `canary`) and `bes.tamanu/template` (the config template: `pr`, `rc`, `basic` or `demo`), which the UI can filter and group by and `kubectl -n argocd-system get app -l bes.tamanu/template=demo` can select. It also carries a link to each of the deployment's addresses.
 
 ## Common problems
 
@@ -115,7 +123,15 @@ The render failed, so nothing is applied. Read `status.conditions` for the messa
 
 ### A renderer change does not show up
 
-The render is cached by Argo CD on the source revision and the parameters. The Application's revision is pinned, so a new renderer image gives the same cache key and the old render is kept.
+The render is cached by Argo CD on the source revision and the parameters. The Application's revision is pinned, so a new renderer image gives the same cache key and the old render is kept. Promoting the channel clears this for every Application on it. If the change was promoted and one Application still has the old render, look at the promotion run: it fails when a cluster was not reached, and names it.
+
+To repeat the refresh for a cluster by hand, with `kubectl` pointing at it:
+
+```sh
+tamanu/on-k8s/renderer/tools/refresh-channel.sh stable   # or canary
+```
+
+For a single Application:
 
 ```sh
 kubectl -n argocd-system annotate app tamanu-<stack> argocd.argoproj.io/refresh=hard --overwrite

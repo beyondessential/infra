@@ -2,11 +2,13 @@ import { type Input, type Output, all, log, output, runtime } from '@pulumi/pulu
 import * as k8s from '@pulumi/kubernetes';
 import { CustomObjectsApi } from '@kubernetes/client-node';
 import { cfg } from '../../../../common/cfg.ts';
+import { pluginName } from '../../../../common/tamanuRenderer.ts';
 import { argoNamespace } from '../../../../common/k8s/argo.ts';
 import { k8sConfig } from '../../../../common/k8s/client.ts';
 import { configTemplate, domains, facilityList } from '../config.ts';
 import { namespaceName } from '../namespace.ts';
 import { appVersion } from '../version.ts';
+import { channel } from './channel.ts';
 
 const ARGO_NAMESPACE = argoNamespace;
 const ARGO_PROJECT = cfg.get('argoProject') ?? 'tamanu';
@@ -19,7 +21,11 @@ const RENDERER_REF = '14ad80a52dfac3bfb5fb8367eea004029a2a26b0';
 // The repo root exists in every commit, unlike the renderer's directory, which
 // has moved since the pinned commit.
 const RENDERER_PATH = cfg.get('rendererPath') ?? '.';
-const PLUGIN = 'infra-argo-tamanu-renderer-v1';
+// The channel's plugin, which is what renders the deployment: the stable one keeps the name
+// Applications have always used, so those render without being redeployed. Naming another
+// channel's plugin is all a channel switch is: the spec changes, so Argo CD renders it afresh.
+// r[impl channel.switch]
+const PLUGIN = pluginName(channel);
 const WAIT_MINUTES = cfg.getNumber('argoWaitMinutes') ?? 30;
 const POLL_SECONDS = 5;
 
@@ -69,6 +75,9 @@ const LABELS = {
   'bes.tamanu/app-version': labelValue(appVersion),
   // Pull request, release, branch or demo deployment, as Tamanu CD and the demos set it.
   'bes.tamanu/template': labelValue(configTemplate),
+  // Which renderer channel renders it.
+  // r[impl params.channel-label]
+  'bes.tamanu/renderer-channel': channel,
 };
 
 // Argo CD shows these as links on the Application, so the deployment's addresses are one
