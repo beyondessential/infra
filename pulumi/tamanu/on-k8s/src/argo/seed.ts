@@ -1,7 +1,8 @@
 import type { Output } from '@pulumi/pulumi';
 import { cloneSeedSnapshot, findSnapshotSource } from '../central/seedSnapshot.ts';
-import { appVersion, seedFromPreviousMinor, seedSnapshot } from '../config.ts';
+import { seedFromPreviousMinor, seedSnapshot } from '../config.ts';
 import { namespace } from '../namespace.ts';
+import { appVersion } from '../version.ts';
 import { centralServer } from './secrets.ts';
 
 /**
