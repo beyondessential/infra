@@ -44,10 +44,6 @@ if (cfg.getBoolean('postgresEnabled') ?? true) {
   await import('./postgres/cnpg.ts');
 }
 
-if (cfg.getBoolean('tinkerEnabled') ?? false) {
-  await import('./tinker/index.ts');
-}
-
 if (cfg.getBoolean('hncEnabled') ?? true) {
   await import('./hnc/crds.ts');
   await import('./hnc/roles.ts');

@@ -112,7 +112,6 @@ Requires `externalDnsZones` map. In production:
 externalDnsZones:
   internal.tamanu.io: Z0565335834ZM6R45IL3
   ops.tamanu.io:      Z07118832KOZ96U06G6JA
-  tinker.bes.au:      Z02941574WQLL9SO2WKV
   tamanu.io:          Z05012672E70S3FGQA4S8
   tamanu.app:         Z084154625CG4H1J31NQ9
   tama.nu:            Z07184902ZUVH7N7UFIUJ
@@ -153,7 +152,6 @@ After `failIfIncorrectCluster()`:
 [optional]  nginx ingress
 [optional]  CloudNativePG
 [optional]  PGRO (postgres restore)
-[optional]  tinker
 [optional]  HNC (CRDs, roles, manager, webhooks)
 ```
 
@@ -167,7 +165,6 @@ Under the `k8s-essentials:` config namespace.
 | `nginxEnabled` | `true` | NGINX Ingress v4.15.1. Disable when using Envoy exclusively. |
 | `postgresEnabled` | `true` | CNPG v0.27.1. |
 | `postgresRestoreEnabled` | `false` | PGRO. CRDs must be applied separately first. |
-| `tinkerEnabled` | `false` | In-development; most submodules commented out. |
 | `hncEnabled` | `true` | HNC controller + webhooks. |
 | `tailscaleClientId`, `tailscaleClientSecret` | — | Required to actually enrol the Tailscale operator. |
 | `tailscaleProxyDefaultTags` | `[tag:k8s, tag:k8s-proxy]` | Tags applied to Tailscale-exposed service proxies. |
@@ -222,15 +219,11 @@ Caveats:
 - The HNC source is pure Go, no CGO, no asm, no `runtime.GOARCH` checks — verified by inspection. So no source patches are needed for arm64; the upstream image is amd64 purely because the upstream CI never emitted multi-arch tags.
 - Long-term direction is to migrate off HNC entirely; see `hnc-to-kyverno-migration-plan.md`.
 
-### 2.9 Tinker (`tinker/`)
-
-Experimental. Only `role.ts` is enabled today; the rest is commented out.
-
-### 2.10 RBAC (`roles/`)
+### 2.9 RBAC (`roles/`)
 
 `oncall.ts` and `data-engineer.ts` — cluster RBAC for those teams, authenticated via Tailscale group claims.
 
-### 2.11 Versions (`versions.ts`)
+### 2.10 Versions (`versions.ts`)
 
 | Component | Pin |
 |---|---|
@@ -244,9 +237,9 @@ Experimental. Only `role.ts` is enabled today; the rest is commented out.
 
 (PGRO tag set via per-stack config.)
 
-### 2.12 Real stack configs
+### 2.11 Real stack configs
 
-**`Pulumi.tamanu-internal-main.yaml`** — full feature set: `hncEnabled: true`, Tailscale on (with `tailscaleExitNodeName: vpn-exit-sydney`), Tinker on, Envoy Gateway on. `kubernetes:cluster` pointing at the Tailscale MagicDNS hostname so Pulumi itself connects via Tailscale.
+**`Pulumi.tamanu-internal-main.yaml`** — full feature set: `hncEnabled: true`, Tailscale on (with `tailscaleExitNodeName: vpn-exit-sydney`), Envoy Gateway on. `kubernetes:cluster` pointing at the Tailscale MagicDNS hostname so Pulumi itself connects via Tailscale.
 
 **`Pulumi.data-internal-data.yaml`** — `hncEnabled: false`, `nginxEnabled: false`, `postgresRestoreEnabled: true`, custom Tailscale tags (`tag:k8s-data-*`), `pgro:imageTag: 0.3.4`.
 

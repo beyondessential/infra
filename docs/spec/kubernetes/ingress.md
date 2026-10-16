@@ -81,13 +81,8 @@ in the k8s-core Pulumi config (`externalDnsZones`). The IAM policy for
 external-dns must be derived from the same config, granting
 `route53:ChangeResourceRecordSets` on those zones only.
 
-k[dns.tinker-zone]
-The subdomain `tinker.bes.au` must be delegated as its own Route53 hosted zone,
-with NS records in the parent `bes.au` zone. This zone must be included in
-`externalDnsZones`.
-
-k[dns.apex]
-For zone apex hostnames (e.g. `tinker.bes.au`), external-dns must create Route53
+k[dns.apex+2]
+For zone apex hostnames, external-dns must create Route53
 ALIAS records pointing at the NLB rather than CNAMEs, which are not valid at
 the zone apex.
 
@@ -153,10 +148,9 @@ k[migration.per-app]
 Workloads must be migrated from Ingress to HTTPRoute one at a time. Each
 workload must be validated after migration before the next begins.
 
-k[migration.order]
-The migration order must be: tinker first (simplest, wildcard host, single
-backend), then tamanu on-k8s (timeout config), then tamanu-meta last (mTLS,
-highest risk).
+k[migration.order+2]
+The migration order must be: tamanu on-k8s first (timeout config), then
+tamanu-meta last (mTLS, highest risk).
 
 k[migration.staging-alias]
 While a workload is migrating, the Gateway must serve it on a `gw.`-prefixed alias
