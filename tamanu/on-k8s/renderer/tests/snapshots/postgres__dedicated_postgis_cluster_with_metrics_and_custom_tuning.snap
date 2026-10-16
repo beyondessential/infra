@@ -34,12 +34,7 @@ spec:
   bootstrap:
     initdb:
       postInitApplicationSQL:
-      - |-
-        CREATE ROLE raw LOGIN;
-        CREATE ROLE reporting LOGIN;
-        GRANT USAGE ON SCHEMA public TO raw;
-        GRANT SELECT ON ALL TABLES IN SCHEMA public TO raw;
-        ALTER ROLE app CREATEROLE;
+      - ALTER ROLE app CREATEROLE;
   enablePDB: false
   enableSuperuserAccess: true
   env:
@@ -56,16 +51,6 @@ spec:
       billing.product: tamanu
       billing.stage: test
   instances: 2
-  managed:
-    roles:
-    - login: true
-      name: raw
-      passwordSecret:
-        name: central-raw-db
-    - login: true
-      name: reporting
-      passwordSecret:
-        name: central-reporting-db
   postgresql:
     parameters:
       client_connection_check_interval: 10s

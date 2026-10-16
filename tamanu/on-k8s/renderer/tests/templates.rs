@@ -85,3 +85,32 @@ fn the_built_in_templates_are_the_ones_on_disk() {
 		assert_eq!(built_in, on_disk, "template {name}");
 	}
 }
+
+#[test]
+fn central_report_schemas_config_is_only_for_versions_that_read_it() {
+	for name in ["basic", "nofeatures", "pr", "rc"] {
+		for (app_version, present) in [("2.59.0", true), ("2.60.0", false)] {
+			let p: Params = serde_json::from_value(json!({
+				"stack": "main",
+				"imageTag": "sha-abc",
+				"appVersion": app_version,
+				"cluster": { "fullName": "c" },
+				"config": { "configTemplate": name },
+			}))
+			.unwrap();
+			let out = tamanu_renderer::render_with(&p, &Options::default()).unwrap();
+			let central = out
+				.iter()
+				.find(|r| r["kind"] == "ConfigMap" && r["metadata"]["name"] == "config-central")
+				.unwrap();
+			let text = central["data"]["local.json5"].as_str().unwrap_or_else(|| {
+				panic!("template {name}: no central config in {}", central["data"])
+			});
+			assert_eq!(
+				text.contains("reportSchemas"),
+				present,
+				"{name} {app_version}"
+			);
+		}
+	}
+}

@@ -85,26 +85,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -225,26 +205,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -377,26 +337,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -532,26 +472,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -687,26 +607,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -861,26 +761,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -1062,26 +942,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: facility-1-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: facility-1-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:

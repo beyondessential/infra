@@ -179,11 +179,7 @@ impl Config {
 			patient_portal: format!("portal.{domain_base}"),
 		};
 
-		let release_version = p
-			.app_version
-			.as_deref()
-			.and_then(parse_semver)
-			.or_else(|| parse_semver(&p.image_tag));
+		let release_version = p.app_version.as_deref().and_then(parse_semver);
 
 		let mut expose_tags = p.cluster.tailscale_proxy_default_tags.clone();
 		expose_tags.extend(["tag:server".to_owned(), "tag:server-tamanu".to_owned()]);
@@ -278,12 +274,28 @@ impl Config {
 
 	/// Whether the deployed Tamanu is at least `version`. An unresolvable version
 	/// reads as too old: gating the other way would put a subcommand the image
-	/// does not have into a Job.
+	/// does not have into a Job. The version comes only from the `appVersion`
+	/// parameter, which the stub reads from the image; the image tag says nothing
+	/// reliable about it.
 	pub fn at_least_version(&self, version: &str) -> bool {
 		match (&self.release_version, parse_semver(version)) {
 			(Some(release), Some(wanted)) => *release >= wanted,
 			_ => false,
 		}
+	}
+}
+
+/// The first Tamanu release that creates and manages its own `tamanu_raw` and
+/// `tamanu_reporting` roles, and no longer reads the `raw` and `reporting` roles
+/// or the `DB_RAW_*` and `DB_REPORTING_*` variables that carried their logins.
+const TAMANU_MANAGES_REPORT_ROLES: &str = "2.60.0-0";
+
+impl Config {
+	/// Whether the deployment still needs the `raw` and `reporting` database
+	/// roles, their password Secrets and the variables that read them. An
+	/// unresolvable version reads as too old, so they are kept.
+	pub fn has_legacy_report_roles(&self) -> bool {
+		!self.at_least_version(TAMANU_MANAGES_REPORT_ROLES)
 	}
 }
 
@@ -462,9 +474,25 @@ mod tests {
 		assert!(cfg.at_least_version("2.65.0-0"));
 
 		p.app_version = None;
-		p.image_tag = "v2.64.0".into();
+		p.image_tag = "v2.70.0".into();
 		let cfg = Config::derive(&p).unwrap();
 		assert!(!cfg.at_least_version("2.65.0-0"));
+	}
+
+	#[test]
+	fn legacy_report_roles_end_at_2_60() {
+		let mut p = params("sha-abcdef");
+		for (version, legacy) in [
+			(None, true),
+			(Some("2.59.9"), true),
+			(Some("2.60.0-beta.1"), false),
+			(Some("2.60.0"), false),
+			(Some("2.67.0"), false),
+		] {
+			p.app_version = version.map(Into::into);
+			let cfg = Config::derive(&p).unwrap();
+			assert_eq!(cfg.has_legacy_report_roles(), legacy, "{version:?}");
+		}
 	}
 
 	#[test]

@@ -24,7 +24,7 @@ use crate::names;
 use crate::pod::spot_toleration;
 use crate::waves;
 
-pub use reporting::{reporting_grants, reporting_roles};
+pub use reporting::{legacy_report_schemas_env, reporting_grants, reporting_roles};
 
 pub const DEFAULT_POSTGRES_VERSION: u32 = 18;
 const DEFAULT_MEMORY_REQUEST: &str = "750Mi";
@@ -351,10 +351,12 @@ fn cluster(
 		json!({ "requests": { "memory": memory, "cpu": "10m" } }),
 	);
 	spec.insert("postgresql".into(), json!({ "parameters": parameters }));
-	spec.insert(
-		"managed".into(),
-		json!({ "roles": args.roles.iter().map(managed_role).collect::<Vec<_>>() }),
-	);
+	if !args.roles.is_empty() {
+		spec.insert(
+			"managed".into(),
+			json!({ "roles": args.roles.iter().map(managed_role).collect::<Vec<_>>() }),
+		);
+	}
 	spec.insert(
 		"bootstrap".into(),
 		if let Some(snapshot) = &args.seed_snapshot {
@@ -510,7 +512,7 @@ mod tests {
 	}
 
 	fn args(cfg: &Config, name: &str) -> PgArgs {
-		let (roles, sql) = reporting_roles(name);
+		let (roles, sql) = reporting_roles(cfg, name);
 		PgArgs::from_config(cfg, name, 2, roles, sql).unwrap()
 	}
 

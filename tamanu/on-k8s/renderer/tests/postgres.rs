@@ -24,7 +24,7 @@ fn cfg(extra_config: Value) -> Config {
 }
 
 fn args(cfg: &Config, server: &str, replicas: u32) -> PgArgs {
-	let (roles, sql) = reporting_roles(server);
+	let (roles, sql) = reporting_roles(cfg, server);
 	PgArgs::from_config(cfg, server, replicas, roles, sql).unwrap()
 }
 

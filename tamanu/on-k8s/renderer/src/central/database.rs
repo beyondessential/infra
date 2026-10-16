@@ -9,7 +9,7 @@ use crate::postgres::{self, PgArgs, run_postgres};
 use super::SERVER;
 
 pub fn render(cfg: &Config) -> Result<Vec<Value>> {
-	let (roles, init_sql) = postgres::reporting_roles(SERVER);
+	let (roles, init_sql) = postgres::reporting_roles(cfg, SERVER);
 	let mut out = run_postgres(cfg, pg_args(cfg, roles, init_sql)?)?;
 	out.push(postgres::reporting_grants(cfg, SERVER)?);
 	Ok(out)
@@ -30,17 +30,36 @@ mod tests {
 	use serde_json::json;
 
 	use super::*;
-	use crate::central::test_support::cfg;
+	use crate::central::test_support::{cfg, cfg_at};
 
 	#[test]
 	fn the_cluster_is_named_and_sized_for_central() {
 		let cfg = cfg(json!({ "dbStorage": "10Gi", "centralDbReplicas": 3 }));
-		let (roles, init_sql) = postgres::reporting_roles(SERVER);
+		let (roles, init_sql) = postgres::reporting_roles(&cfg, SERVER);
 		let args = pg_args(&cfg, roles, init_sql).unwrap();
 		assert_eq!(args.name, "central");
 		assert_eq!(args.replicas, 3);
 		assert_eq!(args.storage, "10Gi");
-		assert_eq!(args.roles.len(), 2);
 		assert!(args.init_sql.contains("ALTER ROLE app CREATEROLE"));
+	}
+
+	#[test]
+	fn the_legacy_roles_are_managed_only_before_2_60() {
+		let old = cfg_at(Some("2.59.0"));
+		assert!(old.has_legacy_report_roles());
+		let out = render(&old).unwrap();
+		assert_eq!(
+			out[0]["spec"]["managed"]["roles"].as_array().unwrap().len(),
+			2
+		);
+
+		let new = cfg_at(Some("2.60.0"));
+		assert!(!new.has_legacy_report_roles());
+		let out = render(&new).unwrap();
+		assert!(out[0]["spec"].get("managed").is_none());
+		assert!(
+			out.iter()
+				.any(|r| r["metadata"]["name"] == "central-reporting-grants")
+		);
 	}
 }

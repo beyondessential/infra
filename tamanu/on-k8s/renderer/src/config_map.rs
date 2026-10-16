@@ -221,7 +221,11 @@ pub fn render(
 	let (template, text) = templates.render(
 		cfg,
 		Kind::Central,
-		json!({ "fqdn": cfg.domains.central, "timezone": cfg.timezone }),
+		json!({
+			"fqdn": cfg.domains.central,
+			"timezone": cfg.timezone,
+			"legacyReportRoles": cfg.has_legacy_report_roles(),
+		}),
 	)?;
 	out.push(config_map(
 		cfg,

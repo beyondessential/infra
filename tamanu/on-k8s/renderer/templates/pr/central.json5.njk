@@ -119,6 +119,8 @@
       labTestCategoryIds: ['labTestCategory-COVID', 'labTestCategory-COVIDRAT'],
     },
   },
+  {% if legacyReportRoles %}
+  // Pre-2.60 images read the report roles from config; newer images manage their own.
   reportSchemas: {
     enabled: true,
     connections: {
@@ -132,5 +134,6 @@
       },
     },
   },
+  {% endif %}
 }
 

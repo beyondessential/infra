@@ -141,6 +141,23 @@ pub(crate) mod test_support {
 	use crate::config::Config;
 	use crate::params::Params;
 
+	/// The default test deployment, with the given Tamanu version in place of 2.67.0.
+	pub fn cfg_at(version: Option<&str>) -> Config {
+		let p: Params = serde_json::from_value(json!({
+			"stack": "main",
+			"imageTag": "sha-a25d1d40354fd2d38442bce75328310ca37abae9",
+			"appVersion": version,
+			"cluster": {
+				"fullName": "example-main",
+				"networkV4Cidr": "10.0.0.0/16",
+				"networkV6Cidr": "fd00::/48",
+				"tailscaleProxyDefaultTags": ["tag:k8s", "tag:k8s-proxy"],
+			},
+		}))
+		.unwrap();
+		Config::derive(&p).unwrap()
+	}
+
 	pub fn cfg_with(cluster: Value, config: Value) -> Config {
 		let mut cl = json!({
 			"fullName": "example-main",

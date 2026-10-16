@@ -138,26 +138,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -347,26 +327,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -530,26 +490,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -713,26 +653,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -1124,26 +1044,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
@@ -1296,26 +1196,6 @@ spec:
             secretKeyRef:
               key: apiKey
               name: bugsnag
-        - name: DB_RAW_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-raw-db
-        - name: DB_RAW_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-raw-db
-        - name: DB_REPORTING_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: central-reporting-db
-        - name: DB_REPORTING_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: central-reporting-db
         - name: AUTH_SECRET
           valueFrom:
             secretKeyRef:
