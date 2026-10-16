@@ -28,7 +28,7 @@ jobs:
     name: Test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Configure toolchain
         run: |
@@ -66,7 +66,7 @@ jobs:
             runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Configure toolchain
         run: |
@@ -88,7 +88,7 @@ jobs:
           mkdir -p artifacts/${{ matrix.arch }}
           cp tamanu/on-k8s/renderer/target/${{ matrix.target }}/release/infra-argo-tamanu-renderer artifacts/${{ matrix.arch }}/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binaries-${{ matrix.arch }}
           path: artifacts/${{ matrix.arch }}/
@@ -99,19 +99,19 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build-binaries]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Login to ghcr.io
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
       - name: Download AMD64 binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: binaries-amd64
           path: tamanu/on-k8s/renderer/.build-context/amd64/
 
       - name: Download ARM64 binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: binaries-arm64
           path: tamanu/on-k8s/renderer/.build-context/arm64/
@@ -120,9 +120,9 @@ jobs:
         run: cp tamanu/on-k8s/renderer/cmp/plugin.yaml tamanu/on-k8s/renderer/.build-context/plugin.yaml
 
       - name: Setup buildkit
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v6
         id: meta
         with:
           images: ghcr.io/beyondessential/infra-argo-tamanu-renderer
@@ -137,7 +137,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: tamanu/on-k8s/renderer/.build-context
           file: tamanu/on-k8s/renderer/Containerfile

@@ -1,0 +1,63 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The stack packages under pulumi/ declare no dependencies of their own;
+  # everything is installed from these two projects.
+  - package-ecosystem: npm
+    directory: /pulumi
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(pulumi)"
+    groups:
+      pulumi:
+        patterns: ["@pulumi/*"]
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /pulumi/policies
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(pulumi-policies)"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: uv
+    directory: /ansible
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ansible)"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /tamanu/on-k8s/renderer
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(infra-argo-tamanu-renderer)"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /tamanu/on-k8s/renderer
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(infra-argo-tamanu-renderer)"
