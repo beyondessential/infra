@@ -145,3 +145,18 @@ jobs:
           push: true
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
+
+  # r[impl promotion.canary]
+  promote-canary:
+    name: Promote to canary
+    needs: [build-image]
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/infra-argo-tamanu-renderer-promote.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      actions: read
+    with:
+      channel: canary
+      sha: ${{ github.sha }}

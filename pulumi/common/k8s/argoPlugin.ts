@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { AppsV1Api } from '@kubernetes/client-node';
 import { type Input, output } from '@pulumi/pulumi';
 import * as k8s from '@pulumi/kubernetes';
@@ -18,11 +19,22 @@ const REPO_SERVER = 'app.kubernetes.io/part-of=argocd,app.kubernetes.io/componen
 const VAR_FILES = 'var-files';
 const PLUGINS = 'plugins';
 
+// Where the repo server's plugin sidecars read their config from.
+const CONFIG_DIR = '/home/argocd/cmp-server/config';
+const CONFIG_FILE = 'plugin.yaml';
+
 export interface ArgoPluginArgs {
   /** The plugin's name, which is also its container's. */
   name: string;
-  /** An image with the plugin config baked in at /home/argocd/cmp-server/config/plugin.yaml. */
+  /** The plugin's image. It is pulled every time the sidecar starts, so a tag may move. */
   image: Input<string>;
+  /**
+   * The plugin's config, a `ConfigManagementPlugin` document. It is supplied to the sidecar
+   * rather than carried in the image, so that several plugins can share one image.
+   */
+  config: string;
+  /** Environment for the plugin's process, which the sidecar's image reads. */
+  env?: Record<string, string>;
   /** Where Argo CD is installed. */
   namespace?: string;
 }
@@ -53,10 +65,19 @@ async function findRepoServer(namespace: string): Promise<string> {
 export function argoPlugin({
   name,
   image,
+  config,
+  env = {},
   namespace = argoNamespace,
 }: ArgoPluginArgs): k8s.apps.v1.DeploymentPatch {
   // A sidecar must not share /tmp with the repo server, or with another plugin.
   const tmp = `cmp-tmp-${name}`;
+  const configVolume = `cmp-config-${name}`;
+
+  // r[impl plugin.config-supplied]
+  const configMap = new k8s.core.v1.ConfigMap(`argo-plugin-${name}`, {
+    metadata: { namespace },
+    data: { [CONFIG_FILE]: config },
+  });
 
   return new k8s.apps.v1.DeploymentPatch(`argo-plugin-${name}`, {
     metadata: {
@@ -66,13 +87,27 @@ export function argoPlugin({
     },
     spec: {
       template: {
+        metadata: {
+          // A file mounted from a ConfigMap by `subPath` is never updated in a running
+          // container, so a change to the config has to replace the pod.
+          annotations: {
+            [`bes.au/cmp-config-${name}`]: createHash('sha256').update(config).digest('hex'),
+          },
+        },
         spec: {
-          volumes: [{ name: tmp, emptyDir: {} }],
+          volumes: [
+            { name: tmp, emptyDir: {} },
+            { name: configVolume, configMap: { name: configMap.metadata.name } },
+          ],
           containers: [
             {
               name,
               image,
+              // r[impl plugin.pull]
+              // A tag that moves is otherwise served from whatever the node last pulled.
+              imagePullPolicy: 'Always',
               command: ['/var/run/argocd/argocd-cmp-server'],
+              env: Object.entries(env).map(([name, value]) => ({ name, value })),
               securityContext: { runAsNonRoot: true, runAsUser: 999 },
               resources: {
                 requests: { cpu: '10m', memory: '32Mi' },
@@ -82,6 +117,7 @@ export function argoPlugin({
                 { mountPath: '/var/run/argocd', name: VAR_FILES },
                 { mountPath: '/home/argocd/cmp-server/plugins', name: PLUGINS },
                 { mountPath: '/tmp', name: tmp },
+                { mountPath: `${CONFIG_DIR}/${CONFIG_FILE}`, name: configVolume, subPath: CONFIG_FILE },
               ],
             },
           ],

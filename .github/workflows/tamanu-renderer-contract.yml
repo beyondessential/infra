@@ -1,0 +1,68 @@
+name: Tamanu renderer contract
+
+# What the stub in pulumi/tamanu/on-k8s sends a channel has to be accepted by the renderer that
+# channel serves. Canary's is built from the same change and checked by the renderer's own tests
+# (tests/stub.rs). Stable's is whatever was last promoted, so it is checked here, against the
+# published image. docs/spec/tamanu/renderer-rollout.md, params.checked-per-channel.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pulumi/tamanu/on-k8s/**"
+      - "tamanu/on-k8s/renderer/tests/fixtures/stub/**"
+      - ".github/workflows/tamanu-renderer-contract.yml"
+  pull_request:
+    paths:
+      - "pulumi/tamanu/on-k8s/**"
+      - "tamanu/on-k8s/renderer/tests/fixtures/stub/**"
+      - ".github/workflows/tamanu-renderer-contract.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  stable:
+    name: Stable renderer accepts the stub's parameters
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # Stable has no image until the first stable promotion, so there is nothing to check
+      # against before it. Only a missing tag skips the check: any other answer from the
+      # registry fails it. The image is public, as the clusters pull it without credentials.
+      - name: Find the stable renderer
+        id: stable
+        run: |
+          repo=beyondessential/infra-argo-tamanu-renderer
+          token=$(curl -fsS "https://ghcr.io/token?scope=repository:$repo:pull" | jq -r .token)
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/$repo/manifests/stable")
+          case "$status" in
+            200) echo "exists=true" >> "$GITHUB_OUTPUT" ;;
+            404)
+              echo "::warning::There is no stable renderer yet, so the stable parameters are not checked. Promote a build to stable to start checking them."
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *) echo "::error::The registry answered $status for the stable renderer"; exit 1 ;;
+          esac
+
+      - name: Login to ghcr.io
+        if: steps.stable.outputs.exists == 'true'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      # r[impl params.checked-per-channel]
+      - name: Render the stable parameters with the stable image
+        if: steps.stable.outputs.exists == 'true'
+        run: |
+          docker run --rm \
+            -v "$PWD/tamanu/on-k8s/renderer/tests/fixtures/stub:/fixtures:ro" \
+            ghcr.io/beyondessential/infra-argo-tamanu-renderer:stable \
+            infra-argo-tamanu-renderer --params /fixtures/stable.json --format yaml > /dev/null

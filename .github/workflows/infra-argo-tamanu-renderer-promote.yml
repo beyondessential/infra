@@ -1,0 +1,162 @@
+name: infra-argo-tamanu-renderer promote
+
+# Moves a renderer channel tag to a build that already exists, then makes each cluster's Argo CD
+# render the Applications on that channel with it. docs/spec/tamanu/renderer-rollout.md says what
+# this must do. Canary is promoted by the renderer's CD on every build from main; stable is
+# promoted by running this by hand with the commit to promote.
+#
+# To repeat a promotion for the clusters it did not reach, run it again with the same channel and
+# commit, `clusters` set to those, and `retag` off.
+
+on:
+  workflow_call:
+    inputs:
+      channel:
+        type: string
+        required: true
+      sha:
+        type: string
+        required: true
+      clusters:
+        type: string
+        default: tamanu-internal-main shared-demos-demo
+      retag:
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel to promote
+        type: choice
+        options: [stable, canary]
+        required: true
+      sha:
+        description: Commit of the build to promote, full or at least seven characters
+        type: string
+        required: true
+      clusters:
+        description: Clusters to refresh, separated by spaces
+        type: string
+        default: tamanu-internal-main shared-demos-demo
+      retag:
+        description: Move the channel tag. Turn off to repeat for clusters the tag already reached
+        type: boolean
+        default: true
+
+# One promotion at a time: both channels are served by the same repo server on each cluster, so
+# promotions that overlap would restart it under each other.
+# r[impl promotion.serialised]
+concurrency:
+  group: renderer-promotion
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/beyondessential/infra-argo-tamanu-renderer
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    outputs:
+      clusters: ${{ steps.plan.outputs.clusters }}
+    steps:
+      - name: Check the inputs
+        id: plan
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          SHA: ${{ inputs.sha }}
+          CLUSTERS: ${{ inputs.clusters }}
+        run: |
+          case "$CHANNEL" in
+            stable | canary) ;;
+            *) echo "::error::unknown channel '$CHANNEL', use stable or canary"; exit 1 ;;
+          esac
+          if ! [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "::error::'$SHA' is not a commit"; exit 1
+          fi
+          for cluster in $CLUSTERS; do
+            if ! [[ "$cluster" =~ ^[a-z0-9-]+$ ]]; then
+              echo "::error::'$cluster' is not a cluster name"; exit 1
+            fi
+          done
+          # The clusters a promotion applies to: by default, every one that runs Tamanu deployments.
+          # r[impl promotion.clusters]
+          echo "clusters=$(jq -cn --arg c "$CLUSTERS" '$c | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+
+  retag:
+    name: Move the ${{ inputs.channel }} tag
+    needs: [plan]
+    if: inputs.retag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Login to ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      - name: Move the tag
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          SHA: ${{ inputs.sha }}
+        run: tamanu/on-k8s/renderer/tools/retag-channel.sh "$CHANNEL" "$SHA"
+
+  refresh:
+    name: Refresh ${{ matrix.cluster }}
+    needs: [plan, retag]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.retag.result == 'success' || needs.retag.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    environment: ${{ matrix.cluster }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        cluster: ${{ fromJson(needs.plan.outputs.clusters) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ vars.TS_OAUTH_CLIENT_ID }}
+          audience: api.tailscale.com/${{ vars.TS_OAUTH_CLIENT_ID }}
+          tags: ${{ vars.TS_TAGS }}
+
+      - name: Configure kubeconfig
+        env:
+          OPERATOR: ${{ vars.TS_K8S_OPERATOR_HOSTNAME }}
+        run: |
+          sudo tailscale set --operator=$USER
+          tailscale configure kubeconfig "$OPERATOR"
+
+      - name: Log the identity the API server sees
+        run: kubectl auth whoami -o yaml || true
+
+      - name: Restart the repo server and refresh the ${{ inputs.channel }} Applications
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: tamanu/on-k8s/renderer/tools/refresh-channel.sh "$CHANNEL"
+
+  report:
+    name: Report
+    needs: [refresh]
+    if: ${{ always() && needs.refresh.result == 'failure' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Name the clusters not reached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: ${{ inputs.channel }}
+          SHA: ${{ inputs.sha }}
+        run: tamanu/on-k8s/renderer/tools/unreached-clusters.sh "$CHANNEL" "$SHA"

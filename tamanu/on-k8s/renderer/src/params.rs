@@ -111,7 +111,7 @@ pub enum FacilityEntry {
 
 /// Stack config as the program reads it. Defaults live in [`crate::config`].
 #[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct StackConfig {
 	#[serde(default, deserialize_with = "lenient_string")]
 	pub namespace: Option<String>,
@@ -206,4 +206,18 @@ pub struct StackConfig {
 	pub ttl_hours: Option<u32>,
 	#[serde(default)]
 	pub ip_allow_list: Option<IgnoredAny>,
+
+	/// Keys this renderer does not know. A sender that is ahead of the renderer, such as CD
+	/// adding an option, produces them; whether they are an error is the renderer's
+	/// [`crate::UnknownConfigKeys`] setting, so that a key mistyped in a stack's config is
+	/// still found by the channel that rejects them.
+	#[serde(flatten)]
+	pub unknown: BTreeMap<String, serde_json::Value>,
+}
+
+impl StackConfig {
+	/// The names of the keys this renderer does not know, in order.
+	pub fn unknown_keys(&self) -> Vec<&str> {
+		self.unknown.keys().map(String::as_str).collect()
+	}
 }

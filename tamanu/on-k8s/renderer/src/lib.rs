@@ -33,11 +33,24 @@ use serde_json::Value;
 use crate::config::Config;
 use crate::params::Params;
 
+/// What to do with a stack config key the renderer does not know.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
+pub enum UnknownConfigKeys {
+	/// Refuse to render, naming the keys. Finds a mistyped key.
+	#[default]
+	Reject,
+	/// Render without them. Keeps a deployment rendering when the sender is ahead of the
+	/// renderer.
+	Ignore,
+}
+
 /// Inputs to rendering that are not part of the deployment's parameters.
 #[derive(Debug, Clone, Default)]
 pub struct Options {
 	/// Read config templates from this directory instead of the ones built in.
 	pub templates: Option<PathBuf>,
+	/// What to do with a stack config key the renderer does not know.
+	pub unknown_config_keys: UnknownConfigKeys,
 }
 
 impl Options {
@@ -56,6 +69,10 @@ pub fn render(params: &Params) -> Result<Vec<Value>> {
 }
 
 pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
+	let unknown = params.config.unknown_keys();
+	if !unknown.is_empty() && options.unknown_config_keys == UnknownConfigKeys::Reject {
+		anyhow::bail!("unknown config key(s): {}", unknown.join(", "));
+	}
 	let mut cfg = Config::derive(params)?;
 	let templates = options.templates();
 	cfg.provisioning = Some(config_map::provisioning(&cfg, &templates)?.0);

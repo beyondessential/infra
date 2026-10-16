@@ -79,6 +79,7 @@ fn the_built_in_templates_are_the_ones_on_disk() {
 			&p,
 			&Options {
 				templates: Some(templates_dir()),
+				..Options::default()
 			},
 		)
 		.unwrap();
