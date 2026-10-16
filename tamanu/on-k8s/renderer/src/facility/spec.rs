@@ -13,6 +13,7 @@ use crate::config::Config;
 use crate::crypto;
 use crate::names;
 use crate::pod::{ContainerArgs, ImageType, app_memory_limit, env, env_secret};
+use crate::postgres;
 use crate::scheduling::workload_scheduling;
 
 /// Builds the pod spec for each process of one facility. The processes differ
@@ -119,8 +120,6 @@ impl<'a> PodFactory<'a> {
 		let cfg = self.cfg;
 		let server = self.server;
 		let app_db = names::db_app_secret(server);
-		let raw = names::raw_db_secret(server);
-		let reporting = names::reporting_db_secret(server);
 
 		let mut env = crypto::envs();
 		env.extend([
@@ -144,49 +143,47 @@ impl<'a> PodFactory<'a> {
 			env_secret("DB_USERNAME", &app_db, "username"),
 			env_secret("DB_NAME", &app_db, "username"),
 			env_secret("BUGSNAG_API_KEY", "bugsnag", "apiKey"),
-			env_secret("DB_RAW_USERNAME", &raw, "username"),
-			env_secret("DB_RAW_PASSWORD", &raw, "password"),
-			env_secret("DB_REPORTING_USERNAME", &reporting, "username"),
-			env_secret("DB_REPORTING_PASSWORD", &reporting, "password"),
-			env_secret(
-				"AUTH_SECRET",
-				&names::config_secrets(server),
-				names::AUTH_SECRET_KEY,
-			),
 		]);
+		if cfg.has_legacy_report_roles() {
+			let raw = names::raw_db_secret(server);
+			let reporting = names::reporting_db_secret(server);
+			env.extend([
+				env_secret("DB_RAW_USERNAME", &raw, "username"),
+				env_secret("DB_RAW_PASSWORD", &raw, "password"),
+				env_secret("DB_REPORTING_USERNAME", &reporting, "username"),
+				env_secret("DB_REPORTING_PASSWORD", &reporting, "password"),
+			]);
+		}
+		env.push(env_secret(
+			"AUTH_SECRET",
+			&names::config_secrets(server),
+			names::AUTH_SECRET_KEY,
+		));
 		env
 	}
 }
 
 /// The `custom-environment-variables.json` the facility server reads: which
 /// config keys come from which environment variables.
-pub fn config_from_env() -> Value {
-	json!({
+pub fn config_from_env(cfg: &Config) -> Value {
+	let mut env = json!({
 		"auth": { "secret": "AUTH_SECRET" },
 		"db": {
 			"host": "DB_HOST",
 			"username": "DB_USERNAME",
 			"password": "DB_PASSWORD",
 			"name": "DB_NAME",
-			"reportSchemas": {
-				"connections": {
-					"raw": {
-						"username": "DB_RAW_USERNAME",
-						"password": "DB_RAW_PASSWORD",
-					},
-					"reporting": {
-						"username": "DB_REPORTING_USERNAME",
-						"password": "DB_REPORTING_PASSWORD",
-					},
-				},
-			},
 		},
 		"errors": { "apiKey": "BUGSNAG_API_KEY" },
 		"crypto": {
 			"keyFile": "CRYPTO_KEY_FILE",
 			"settingsPsk": "CRYPTO_SETTINGS_PSK",
 		},
-	})
+	});
+	if cfg.has_legacy_report_roles() {
+		env["db"]["reportSchemas"] = postgres::legacy_report_schemas_env();
+	}
+	env
 }
 
 #[cfg(test)]
@@ -198,9 +195,14 @@ mod tests {
 	use crate::params::Params;
 
 	fn cfg(image_tag: &str) -> Config {
+		cfg_at(image_tag, None)
+	}
+
+	fn cfg_at(image_tag: &str, version: Option<&str>) -> Config {
 		let p: Params = serde_json::from_value(json!({
 			"stack": "main",
 			"imageTag": image_tag,
+			"appVersion": version,
 			"cluster": {
 				"fullName": "tamanu-internal-main",
 				"networkV4Cidr": "10.0.0.0/16",
@@ -230,6 +232,27 @@ mod tests {
 		assert!(!names.contains(&"REVISION"));
 		let trusted = vars.iter().find(|e| e.name == "PROXY_TRUSTED").unwrap();
 		assert_eq!(trusted.value.as_deref(), Some("loopback, 10.0.0.0/16"));
+	}
+
+	#[test]
+	fn the_legacy_role_logins_are_carried_only_before_2_60() {
+		let logins = |version| {
+			let cfg = cfg_at("sha-0123456789abcdef", version);
+			let vars = PodFactory::new(&cfg, "facility-1", None)
+				.build(PodArgs::default())
+				.containers[0]
+				.env
+				.clone()
+				.unwrap();
+			(
+				names(&vars).iter().any(|n| n.starts_with("DB_RAW_")),
+				names(&vars).contains(&"AUTH_SECRET"),
+				config_from_env(&cfg)["db"].get("reportSchemas").is_some(),
+			)
+		};
+		assert_eq!(logins(None), (true, true, true));
+		assert_eq!(logins(Some("2.59.9")), (true, true, true));
+		assert_eq!(logins(Some("2.60.0")), (false, true, false));
 	}
 
 	#[test]

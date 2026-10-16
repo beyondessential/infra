@@ -44,7 +44,7 @@ fn server_name(index: usize) -> String {
 
 /// A facility's database cluster with its reporting roles and grants.
 pub fn database(cfg: &Config, server: &str) -> Result<Vec<Value>> {
-	let (roles, init_sql) = postgres::reporting_roles(server);
+	let (roles, init_sql) = postgres::reporting_roles(cfg, server);
 	let mut out = postgres::run_postgres(cfg, pg_args(cfg, server, roles, init_sql)?)?;
 	out.push(postgres::reporting_grants(cfg, server)?);
 	Ok(out)
@@ -177,7 +177,7 @@ mod tests {
 	#[test]
 	fn each_facility_gets_its_own_cluster_sized_from_facility_replicas() {
 		let cfg = cfg(json!({ "facilities": 2, "facilityDbReplicas": 3, "centralDbReplicas": 2 }));
-		let (roles, init_sql) = postgres::reporting_roles("facility-2");
+		let (roles, init_sql) = postgres::reporting_roles(&cfg, "facility-2");
 		let args = pg_args(&cfg, "facility-2", roles, init_sql).unwrap();
 		assert_eq!(args.name, "facility-2");
 		assert_eq!(args.replicas, 3);

@@ -6,7 +6,7 @@ use anyhow::Result;
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::{Container, PodSpec, PodTemplateSpec};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::config::Config;
 use crate::names;
@@ -17,6 +17,11 @@ use crate::waves;
 /// The managed roles and init SQL for a server's cluster. The passwords are in
 /// the Secrets [`names::raw_db_secret`] and [`names::reporting_db_secret`].
 ///
+/// Tamanu before 2.60 logs in to the `raw` and `reporting` roles with the
+/// passwords the stub generates; later releases create and manage their own
+/// `tamanu_raw` and `tamanu_reporting` roles and read neither, so for them there
+/// are no managed roles and the stub creates no Secrets.
+///
 /// `app` must not be a managed role: CNPG forces every attribute of a managed
 /// role back to the manifest and revokes memberships not listed in `inRoles`,
 /// which strips the ADMIN OPTION grants [`reporting_grants`] applies (and
@@ -25,9 +30,11 @@ use crate::waves;
 ///
 /// The init SQL runs before the app migrates, so the reporting schema does not
 /// exist yet. The ALTER grants `app` CREATEROLE at first bootstrap; the grants
-/// Job covers existing clusters on each deploy. `raw` and `reporting` are
-/// legacy and unused by Tamanu.
-pub fn reporting_roles(server: &str) -> (Vec<ManagedRole>, String) {
+/// Job covers existing clusters on each deploy.
+pub fn reporting_roles(cfg: &Config, server: &str) -> (Vec<ManagedRole>, String) {
+	if !cfg.has_legacy_report_roles() {
+		return (Vec::new(), "ALTER ROLE app CREATEROLE;".into());
+	}
 	let roles = vec![
 		ManagedRole {
 			name: "raw".into(),
@@ -49,6 +56,23 @@ pub fn reporting_roles(server: &str) -> (Vec<ManagedRole>, String) {
 	]
 	.join("\n");
 	(roles, init_sql)
+}
+
+/// The `db.reportSchemas` entry of `custom-environment-variables.json`, which
+/// takes the legacy roles' logins from the variables the pods carry for them.
+pub fn legacy_report_schemas_env() -> Value {
+	json!({
+		"connections": {
+			"raw": {
+				"username": "DB_RAW_USERNAME",
+				"password": "DB_RAW_PASSWORD",
+			},
+			"reporting": {
+				"username": "DB_REPORTING_USERNAME",
+				"password": "DB_REPORTING_PASSWORD",
+			},
+		},
+	})
 }
 
 /// Tamanu's app role self-manages the `tamanu_reporting` and `tamanu_raw` roles,
@@ -130,11 +154,25 @@ pub fn reporting_grants(cfg: &Config, server: &str) -> Result<Value> {
 
 #[cfg(test)]
 mod tests {
+	use serde_json::json;
+
 	use super::*;
+	use crate::params::Params;
+
+	fn cfg(version: Option<&str>) -> Config {
+		let p: Params = serde_json::from_value(json!({
+			"stack": "main",
+			"imageTag": "sha-abc",
+			"appVersion": version,
+			"cluster": { "fullName": "tamanu-internal-main" },
+		}))
+		.unwrap();
+		Config::derive(&p).unwrap()
+	}
 
 	#[test]
 	fn roles_reference_the_stub_secrets() {
-		let (roles, sql) = reporting_roles("facility-1");
+		let (roles, sql) = reporting_roles(&cfg(Some("2.59.3")), "facility-1");
 		assert_eq!(roles.len(), 2);
 		assert_eq!(roles[0].name, "raw");
 		assert_eq!(roles[0].password_secret, "facility-1-raw-db");
@@ -143,5 +181,18 @@ mod tests {
 		assert!(sql.starts_with("CREATE ROLE raw LOGIN;\n"));
 		assert!(sql.ends_with("ALTER ROLE app CREATEROLE;"));
 		assert!(!sql.contains("  "));
+	}
+
+	#[test]
+	fn an_unknown_version_keeps_the_roles() {
+		let (roles, _) = reporting_roles(&cfg(None), "central");
+		assert_eq!(roles.len(), 2);
+	}
+
+	#[test]
+	fn tamanu_2_60_has_no_roles_but_app_keeps_createrole() {
+		let (roles, sql) = reporting_roles(&cfg(Some("2.60.0")), "facility-1");
+		assert!(roles.is_empty());
+		assert_eq!(sql, "ALTER ROLE app CREATEROLE;");
 	}
 }

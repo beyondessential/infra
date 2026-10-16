@@ -103,8 +103,8 @@ pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 	out.extend(config_map::render(
 		&cfg,
 		&templates,
-		&central::config_from_env(),
-		&facility::config_from_env(),
+		&central::config_from_env(&cfg),
+		&facility::config_from_env(&cfg),
 	)?);
 
 	out.sort_by_cached_key(sort_key);

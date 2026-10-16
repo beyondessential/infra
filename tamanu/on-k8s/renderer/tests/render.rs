@@ -89,6 +89,38 @@ fn no_secret_resources_in_output() {
 	);
 }
 
+#[test]
+fn legacy_report_role_secrets_are_referenced_only_before_2_60() {
+	let at = |version: Option<&str>| {
+		let mut p = params(json!({ "facilities": 2 }));
+		p.app_version = version.map(Into::into);
+		tamanu_renderer::to_yaml(&tamanu_renderer::render_with(&p, &options()).unwrap()).unwrap()
+	};
+	for version in [None, Some("2.59.9")] {
+		let yaml = at(version);
+		for server in ["central", "facility-1", "facility-2"] {
+			assert!(
+				yaml.contains(&format!("{server}-raw-db")),
+				"{version:?} {server}"
+			);
+			assert!(
+				yaml.contains(&format!("{server}-reporting-db")),
+				"{version:?} {server}"
+			);
+		}
+		assert!(yaml.contains("DB_RAW_USERNAME"), "{version:?}");
+	}
+	for version in ["2.60.0", "2.67.0"] {
+		let yaml = at(Some(version));
+		assert!(!yaml.contains("-raw-db"), "{version}");
+		assert!(!yaml.contains("-reporting-db"), "{version}");
+		assert!(!yaml.contains("DB_RAW_"), "{version}");
+		assert!(!yaml.contains("DB_REPORTING_"), "{version}");
+		assert!(yaml.contains("central-reporting-grants"), "{version}");
+		assert!(yaml.contains("facility-2-reporting-grants"), "{version}");
+	}
+}
+
 fn find<'a>(out: &'a [Value], kind: &str, name: &str) -> &'a Value {
 	out.iter()
 		.find(|v| v["kind"] == kind && v["metadata"]["name"] == name)

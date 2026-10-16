@@ -13,6 +13,7 @@ use crate::blob_store::BlobStore;
 use crate::config::Config;
 use crate::meta::{Labels, app_labels, app_selector, cost_labels};
 use crate::pod::{ContainerArgs, ImageType, app_memory_limit, env, env_secret};
+use crate::postgres;
 use crate::scheduling::workload_scheduling;
 use crate::{crypto, names, waves};
 
@@ -140,8 +141,6 @@ impl<'a> PodSpecFactory<'a> {
 		let secret_ref = env_secret;
 		let auth = names::config_secrets(server);
 		let app_db = names::db_app_secret(server);
-		let raw = names::raw_db_secret(server);
-		let reporting = names::reporting_db_secret(server);
 
 		let mut out = extra;
 		out.extend(crypto::envs());
@@ -169,10 +168,18 @@ impl<'a> PodSpecFactory<'a> {
 			secret_ref("MAILGUN_DOMAIN", "mailgun", "domain"),
 			secret_ref("MAILGUN_FROM", "mailgun", "from"),
 			secret_ref("BUGSNAG_API_KEY", "bugsnag", "apiKey"),
-			secret_ref("DB_RAW_USERNAME", &raw, "username"),
-			secret_ref("DB_RAW_PASSWORD", &raw, "password"),
-			secret_ref("DB_REPORTING_USERNAME", &reporting, "username"),
-			secret_ref("DB_REPORTING_PASSWORD", &reporting, "password"),
+		]);
+		if cfg.has_legacy_report_roles() {
+			let raw = names::raw_db_secret(server);
+			let reporting = names::reporting_db_secret(server);
+			out.extend([
+				secret_ref("DB_RAW_USERNAME", &raw, "username"),
+				secret_ref("DB_RAW_PASSWORD", &raw, "password"),
+				secret_ref("DB_REPORTING_USERNAME", &reporting, "username"),
+				secret_ref("DB_REPORTING_PASSWORD", &reporting, "password"),
+			]);
+		}
+		out.extend([
 			secret_ref("AUTH_SECRET", &auth, names::AUTH_SECRET_KEY),
 			secret_ref("AUTH_REFRESH_SECRET", &auth, names::AUTH_REFRESH_SECRET_KEY),
 		]);
@@ -228,8 +235,8 @@ pub fn deployment(
 
 /// The `custom-environment-variables.json` the server reads: which config keys
 /// come from which environment variables.
-pub fn config_from_env() -> Value {
-	json!({
+pub fn config_from_env(cfg: &Config) -> Value {
+	let mut env = json!({
 		"auth": {
 			"secret": "AUTH_SECRET",
 			"refreshSecret": "AUTH_REFRESH_SECRET",
@@ -239,18 +246,6 @@ pub fn config_from_env() -> Value {
 			"username": "DB_USERNAME",
 			"password": "DB_PASSWORD",
 			"name": "DB_NAME",
-			"reportSchemas": {
-				"connections": {
-					"raw": {
-						"username": "DB_RAW_USERNAME",
-						"password": "DB_RAW_PASSWORD",
-					},
-					"reporting": {
-						"username": "DB_REPORTING_USERNAME",
-						"password": "DB_REPORTING_PASSWORD",
-					},
-				},
-			},
 		},
 		// Kept for pre-2.61 builds; post-2.61 reads TZ directly. Remove with the
 		// other legacy config keys once nothing older deploys from ops main.
@@ -272,7 +267,11 @@ pub fn config_from_env() -> Value {
 			"keyFile": "CRYPTO_KEY_FILE",
 			"settingsPsk": "CRYPTO_SETTINGS_PSK",
 		},
-	})
+	});
+	if cfg.has_legacy_report_roles() {
+		env["db"]["reportSchemas"] = postgres::legacy_report_schemas_env();
+	}
+	env
 }
 
 #[cfg(test)]
@@ -322,10 +321,6 @@ mod tests {
 				"MAILGUN_DOMAIN",
 				"MAILGUN_FROM",
 				"BUGSNAG_API_KEY",
-				"DB_RAW_USERNAME",
-				"DB_RAW_PASSWORD",
-				"DB_REPORTING_USERNAME",
-				"DB_REPORTING_PASSWORD",
 				"AUTH_SECRET",
 				"AUTH_REFRESH_SECRET",
 			]
@@ -334,6 +329,33 @@ mod tests {
 		assert_eq!(env[4]["value"], "loopback, 10.0.0.0/16, fd00::/48");
 		assert_eq!(env[7]["value"], "a25d1d4035");
 		assert_eq!(env[9]["value"], "central-db-rw");
+	}
+
+	#[test]
+	fn the_legacy_role_logins_are_carried_only_before_2_60() {
+		let names_at = |version| {
+			let cfg = crate::central::test_support::cfg_at(version);
+			let pods = PodSpecFactory::new(&cfg, None);
+			let pod =
+				serde_json::to_value(pods.pod_spec(PodArgs::new("server", ["serve"]))).unwrap();
+			env_names(&pod)
+				.iter()
+				.map(|n| n.to_string())
+				.collect::<Vec<_>>()
+		};
+		let has = |names: &[String], n: &str| names.iter().any(|x| x == n);
+		for version in [Some("2.59.9"), None] {
+			let names = names_at(version);
+			assert!(has(&names, "DB_RAW_PASSWORD"), "{version:?}");
+			assert!(has(&names, "DB_REPORTING_USERNAME"), "{version:?}");
+		}
+		let names = names_at(Some("2.60.0"));
+		assert!(
+			!names
+				.iter()
+				.any(|n| n.starts_with("DB_RAW_") || n.starts_with("DB_REPORTING_"))
+		);
+		assert!(has(&names, "AUTH_SECRET"));
 	}
 
 	#[test]
@@ -395,10 +417,16 @@ mod tests {
 	#[test]
 	fn config_from_env_matches_what_the_pulumi_program_sent() {
 		let sent = r#"{"db":{"host":"DB_HOST","username":"DB_USERNAME","password":"DB_PASSWORD","name":"DB_NAME","reportSchemas":{"connections":{"raw":{"username":"DB_RAW_USERNAME","password":"DB_RAW_PASSWORD"},"reporting":{"username":"DB_REPORTING_USERNAME","password":"DB_REPORTING_PASSWORD"}}}},"countryTimeZone":"TZ","localisation":{"timeZone":"TZ"},"tupaiaApiClient":{"auth":{"username":"TUPAIA_API_USERNAME","password":"TUPAIA_API_PASSWORD"}},"mailgun":{"apiKey":"MAILGUN_API_KEY","domain":"MAILGUN_DOMAIN","from":"MAILGUN_FROM"},"errors":{"apiKey":"BUGSNAG_API_KEY"},"crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"}}"#;
-		let mut got = config_from_env();
+		let mut got = config_from_env(&crate::central::test_support::cfg_at(Some("2.59.0")));
 		let auth = got.as_object_mut().unwrap().remove("auth").unwrap();
 		assert_eq!(got, serde_json::from_str::<Value>(sent).unwrap());
 		assert_eq!(auth["secret"], "AUTH_SECRET");
 		assert_eq!(auth["refreshSecret"], "AUTH_REFRESH_SECRET");
+	}
+
+	#[test]
+	fn config_from_env_has_no_report_schemas_from_2_60() {
+		let got = config_from_env(&crate::central::test_support::cfg_at(Some("2.60.0")));
+		assert!(got["db"].get("reportSchemas").is_none());
 	}
 }
