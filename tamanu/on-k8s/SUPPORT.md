@@ -82,7 +82,7 @@ infra-argo-tamanu-renderer --params params.json --format yaml | less
 
 Argo CD's own UI shows the same tree, the waves and each Job. Reach it as set up for the cluster.
 
-Each Application carries the labels `bes.tamanu/template` (the config template: `pr`, `rc`, `basic` or `demo`) and `bes.tamanu/version`, which the UI can filter and group by and `kubectl -n argocd-system get app -l bes.tamanu/template=demo` can select. It also carries a link to each of the deployment's addresses.
+Each Application carries the labels `bes.tamanu/app-version` and `bes.tamanu/template` (the config template: `pr`, `rc`, `basic` or `demo`), which the UI can filter and group by and `kubectl -n argocd-system get app -l bes.tamanu/template=demo` can select. It also carries a link to each of the deployment's addresses.
 
 ## Common problems
 
