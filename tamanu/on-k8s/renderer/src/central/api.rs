@@ -60,6 +60,7 @@ pub fn api(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Vec<Va
 			..Default::default()
 		}],
 		// Wait up to 60 seconds for the server to start...
+		// spec: TDR#server-health
 		startup_probe: Some(Probe {
 			period_seconds: Some(1),
 			failure_threshold: Some(60),

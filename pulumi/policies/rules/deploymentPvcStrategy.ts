@@ -17,6 +17,7 @@ function claimNamesMountedBy(deployment: any): string[] {
 
 // Claims declared in this stack that more than one node can mount at once, and
 // so can be rolled through without a multi-attach wait.
+// spec: GRD#deployment-rollout-strategy
 function sharedClaimNames(resources: PolicyResource[]): Set<string> {
   const shared = new Set<string>();
   for (const resource of resources) {
@@ -34,6 +35,7 @@ function sharedClaimNames(resources: PolicyResource[]): Set<string> {
   return shared;
 }
 
+// spec: GRD#deployment-rollout-strategy
 export const deploymentPvcNeedsRecreate: StackValidationPolicy = {
   name: 'deployment-pvc-needs-recreate',
   description:

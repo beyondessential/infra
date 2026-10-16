@@ -149,6 +149,7 @@ const privateRole = eksServiceAccount('canopy-private', {
   ],
 });
 
+// spec: CTLS#zone-access
 // canopy-domains: the pod that writes the records Canopy manages — addresses for
 // the names servers register, and the TXT challenge that proves control of a name
 // to a certificate authority.

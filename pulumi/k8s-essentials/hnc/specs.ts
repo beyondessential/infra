@@ -89,6 +89,7 @@ export function hncSpec(args: string[], podSpreadSelector?: { [key: string]: str
           '--metrics-addr=:8080',
           '--max-reconciles=10',
           '--apiserver-qps-throttle=50',
+          // spec: K8SNSP#hierarchy-controller
           '--excluded-namespace=kube-system',
           '--excluded-namespace=kube-public',
           '--excluded-namespace=hnc-system',

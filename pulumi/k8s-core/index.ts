@@ -13,6 +13,7 @@ import {
 export const arn = cluster.arn;
 export const endpoint = cluster.endpoint;
 export const ca = cluster.certificateAuthorityData;
+// spec: K8SBAK#backup-bucket
 export const backupsBucket = backupsBucketObj.bucket;
 export const backupsServiceAccountArn = backupsRole.arn;
 export const oidcProviderArn = oidcProvider.arn;

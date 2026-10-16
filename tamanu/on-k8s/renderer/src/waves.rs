@@ -8,6 +8,7 @@
 use serde_json::{Value, json};
 
 /// Config, service accounts and the database cluster.
+// spec: TDR#sync-order
 pub const BASE: i32 = 0;
 /// Reporting grants and the migrator, which need a healthy database.
 pub const MIGRATE: i32 = 1;
@@ -44,6 +45,7 @@ pub fn in_wave(mut resource: Value, wave: i32) -> Value {
 
 /// A resource that runs as part of the sync, in `wave`, and is deleted before
 /// the next run creates it again.
+// spec: TDR#hook-jobs
 pub fn hook(resource: Value, wave: i32) -> Value {
 	let mut resource = in_wave(resource, wave);
 	annotate(&mut resource, "argocd.argoproj.io/hook", "Sync");

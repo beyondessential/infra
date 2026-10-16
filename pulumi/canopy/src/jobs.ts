@@ -123,6 +123,7 @@ new k8s.apps.v1.Deployment(
           ['domains'],
           // Absent means no account to order with: addresses carry on and
           // certificates wait, which the pod reports once at startup.
+          // spec: CTLS#certificate-authority-account
           { env: acmeEnv },
           { serviceAccountName: canopyDomainsSa, pooled: true },
         ),

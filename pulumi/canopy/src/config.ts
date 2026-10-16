@@ -100,6 +100,8 @@ if (!['amd64', 'arm64'].includes(architecture)) {
 export const dbExpose = cfg.getBoolean('dbExpose') ?? false;
 export const publicServerVersionsSecret = cfg.requireSecret('publicServerVersionsSecret');
 
+// spec: CTLS#certificate-authority-account
+// spec: CTLS#staging-and-production
 /**
  * Canopy's account at the certificate authority: a PKCS#8 PEM private key.
  *

@@ -70,6 +70,7 @@ if (domain) {
   //
   // Gated on the ref: a stack that has not been pointed at Canopy gets no role,
   // and its zone stays reachable only by the stack's own identities.
+  // spec: CTLS#zone-access
   if (canopyInfra) {
     const canopyDomainsRoleArn = new CrossStack(canopyInfra).get<string>('canopyDomainsRoleArn');
     const tags = nativeTags(configTags, { Purpose: 'canopy-dns', ManagedBy: 'pulumi' });
@@ -116,6 +117,7 @@ if (domain) {
 }
 
 export const zoneId = zone?.id;
+// spec: CTLS#zone-delegation
 export const zoneNS = zone?.nameServers;
 export const zoneMgmtPolicy = policy?.policyArn;
 

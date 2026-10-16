@@ -208,6 +208,7 @@ pub fn deployment(
 		spec: Some(DeploymentSpec {
 			replicas: Some(replicas as i32),
 			// Avoids double-running scheduled tasks.
+			// spec: TDR#update-strategy
 			strategy: recreate.then(|| DeploymentStrategy {
 				type_: Some("Recreate".into()),
 				rolling_update: None,

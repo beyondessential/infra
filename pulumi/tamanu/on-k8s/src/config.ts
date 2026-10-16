@@ -104,6 +104,7 @@ export const seedFromPreviousMinor: boolean = configTemplate === 'rc';
 // namespace is suspended (kube-downscaler scales workloads to zero) and the
 // CNPG databases are hibernated. Pushing to the branch — or otherwise
 // re-running pulumi up — restores the deployment.
+// spec: TSD#time-to-live
 export const ttlHours = cfg.getNumber('ttlHours') ?? 0;
 if (!Number.isInteger(ttlHours) || ttlHours < 0) {
   throw new Error(`ttlHours must be a non-negative integer, got: ${ttlHours}`);

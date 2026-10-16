@@ -55,6 +55,7 @@ new k8s.apiextensions.CustomResource('argo-project-tamanu', {
   kind: 'AppProject',
   metadata: { name: 'tamanu', namespace: namespaceName },
   spec: {
+    // spec: K8SNSP#argo-cd-access
     description: 'Tamanu deployments rendered by infra-argo-tamanu-renderer',
     sourceRepos: [RENDER_REPO],
     destinations: [

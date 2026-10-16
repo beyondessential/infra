@@ -14,7 +14,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 
 | document | what it covers |
 |---|---|
-| [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | The DNS-01 challenge of ACME. Used by [K8SING](kubernetes/ingress.md). |
+| [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | The ACME directory, account lookup by key and the DNS-01 challenge. Used by [K8SING](kubernetes/ingress.md) and [CTLS](canopy/tls-issuance.md). |
 | [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) and [RFC 9114](https://www.rfc-editor.org/rfc/rfc9114) | QUIC and HTTP/3. Used by [K8SING](kubernetes/ingress.md). |
 | [PROXY protocol specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) | The header that conveys a client address through a load balancer. Used by [K8SING](kubernetes/ingress.md). |
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | GatewayClass, Gateway, listeners and HTTPRoute. Used by [K8SING](kubernetes/ingress.md). |
@@ -28,14 +28,14 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Spot Instance Advisor](https://aws.amazon.com/ec2/spot/instance-advisor/) | The published interruption frequency of each instance type. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Service-linked role for Spot Instance requests](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/service-linked-roles-spot-instance-requests.html) | The `AWSServiceRoleForEC2Spot` role. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/) | Consolidation and drift. Used by [K8SNOD](kubernetes/nodes.md). |
-| [Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) | PodDisruptionBudgets. Used by [K8SNOD](kubernetes/nodes.md) and [K8SPGC](kubernetes/postgres.md). |
-| [Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) | Taints, tolerations and their effects. Used by [K8SNOD](kubernetes/nodes.md). |
+| [Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) | PodDisruptionBudgets. Used by [K8SNOD](kubernetes/nodes.md), [K8SPGC](kubernetes/postgres.md) and [TDR](tamanu/deployment-rollout.md). |
+| [Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) | Taints, tolerations and their effects. Used by [K8SNOD](kubernetes/nodes.md) and [TDR](tamanu/deployment-rollout.md). |
 | [Kubernetes garbage collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/) | The kubelet's image garbage collection thresholds. Used by [K8SNOD](kubernetes/nodes.md). |
-| [Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and [storage classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) | Claims and storage classes. Used by [K8SVOL](kubernetes/volumes.md). |
-| [CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/) | The `Cluster` resource, instance pods and switchover. Used by [K8SPGC](kubernetes/postgres.md) and [PGS](pgsnap.md). |
+| [Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and [storage classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) | Claims, access modes and storage classes. Used by [K8SVOL](kubernetes/volumes.md) and [GRD](policies/guardrails.md). |
+| [CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/) | The `Cluster` resource, instance pods, switchover and scheduled backups. Used by [K8SPGC](kubernetes/postgres.md), [PGS](pgsnap.md) and [K8SBAK](kubernetes/database-backups.md). |
 | [PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html) | The server parameters that [K8SPGC](kubernetes/postgres.md) sets. |
 | [pgtune](https://github.com/le0pard/pgtune) | The tuning algorithm that [K8SPGC](kubernetes/postgres.md) follows. |
-| [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) | Applications, config management plugins, the repo server and hard refresh. Used by [TRO](tamanu/renderer-rollout.md). |
+| [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) | Applications, projects, RBAC, config management plugins, the repo server, hard refresh, sync waves, hooks, health, automated sync, ignored differences and resource actions. Used by [TRO](tamanu/renderer-rollout.md), [TDR](tamanu/deployment-rollout.md), [TSD](tamanu/scaledown.md) and [K8SNSP](kubernetes/namespaces.md). |
 | [Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) | VolumeSnapshot and VolumeSnapshotClass. Used by [PGS](pgsnap.md). |
 | [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) and [owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) | Suspended Jobs and owner references. Used by [PGS](pgsnap.md). |
 | [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) | Version syntax and precedence. Used by [PGS](pgsnap.md). |
@@ -44,6 +44,31 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kopia documentation](https://kopia.io/docs/) | The snapshot repository. Used by [PPB](postgres-physical-backup.md). |
 | [Volume Shadow Copy Service](https://learn.microsoft.com/en-us/windows-server/storage/file-server/volume-shadow-copy-service) | Windows shadow copies. Used by [PPB](postgres-physical-backup.md). |
 | [lvmthin](https://man7.org/linux/man-pages/man7/lvmthin.7.html) | LVM thin provisioning. Used by [PPB](postgres-physical-backup.md). |
+| [RFC 2986](https://www.rfc-editor.org/rfc/rfc2986) | PKCS #10 certification requests. Used by [CTLS](canopy/tls-issuance.md). |
+| [RFC 5958](https://www.rfc-editor.org/rfc/rfc5958) | PKCS #8 private-key syntax. Used by [CTLS](canopy/tls-issuance.md). |
+| [RFC 8446](https://www.rfc-editor.org/rfc/rfc8446) | TLS 1.3, including client authentication. Used by [CTLS](canopy/tls-issuance.md). |
+| [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md). |
+| [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) | Route 53 hosted zones. Used by [CTLS](canopy/tls-issuance.md). |
+| [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) and [IAM roles terms and concepts](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html) | Role assumption and trust policies. Used by [CTLS](canopy/tls-issuance.md). |
+| [Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) | Route 53 record-set condition keys. Used by [CTLS](canopy/tls-issuance.md). |
+| [Let's Encrypt rate limits](https://letsencrypt.org/docs/rate-limits/) and [staging environment](https://letsencrypt.org/docs/staging-environment/) | The registered-domain allowance and the untrusted-root staging authority. Used by [CTLS](canopy/tls-issuance.md). |
+| [Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/) and [resource names](https://www.pulumi.com/docs/iac/concepts/resources/names/) | Policy packs, enforcement levels and URNs. Used by [GRD](policies/guardrails.md). |
+| [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) | Deployment strategy and rollout. Used by [GRD](policies/guardrails.md), [TDR](tamanu/deployment-rollout.md) and [TSD](tamanu/scaledown.md). |
+| [Amazon EFS access points](https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html) and [EFS CSI driver parameters](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md) | Access points and the storage class parameters of the EFS driver. Used by [GRD](policies/guardrails.md). |
+| [GuardDuty and AWS Organizations](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_organizations.html) | The GuardDuty delegated administrator. Used by [GRD](policies/guardrails.md). |
+| [Kubernetes node affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/) and [topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) | Pod placement. Used by [TDR](tamanu/deployment-rollout.md). |
+| [Kubernetes probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) | Liveness, readiness and startup probes. Used by [TDR](tamanu/deployment-rollout.md). |
+| [Kubernetes CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) | Suspended CronJobs. Used by [TSD](tamanu/scaledown.md). |
+| [CloudNativePG declarative hibernation](https://cloudnative-pg.io/documentation/current/declarative_hibernation/) | Hibernating a database cluster. Used by [TSD](tamanu/scaledown.md). |
+| [py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler) | The downscaler, forced downtime and exclusion. Used by [TSD](tamanu/scaledown.md). |
+| [Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/) and [retention](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/) | Object stores and the recovery window. Used by [K8SBAK](kubernetes/database-backups.md). |
+| [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving and base backups. Used by [K8SBAK](kubernetes/database-backups.md). |
+| [Amazon S3 versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html), [delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html), [lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) and [aborting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) | Versions, delete markers and lifecycle rules. Used by [K8SBAK](kubernetes/database-backups.md). |
+| [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) | Pod access to AWS through a service account. Used by [K8SBAK](kubernetes/database-backups.md). |
+| [Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) | Roles, bindings and groups. Used by [K8SNSP](kubernetes/namespaces.md). |
+| [Tailscale Kubernetes operator API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), [grants](https://tailscale.com/kb/1324/grants) and [workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation) | Authenticated access to the API server over the tailnet. Used by [K8SNSP](kubernetes/namespaces.md). |
+| [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) | Mapping IAM principals to Kubernetes permissions. Used by [K8SNSP](kubernetes/namespaces.md). |
+| [HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md) and [how-to](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md) | Namespace trees, subnamespace anchors and propagation. Used by [K8SNSP](kubernetes/namespaces.md). |
 
 ## Terminology
 
@@ -61,6 +86,21 @@ Defined by this gloss alone.
 
 The system that creates Tamanu deployments and chooses the channel each one asks for.
 Defined by this gloss alone.
+
+### Deployer
+
+The identity, in the access group `tailscale:tamanu-deploy`, that creates and changes the objects of a Tamanu deployment.
+Defined in [K8SNSP](kubernetes/namespaces.md#deployer-limits).
+
+### Canopy DNS identity
+
+The identity in Canopy's own account under which the Canopy workload that writes DNS records runs.
+Defined in [CTLS](canopy/tls-issuance.md#zone-access).
+
+### Stub
+
+The per-deployment program that creates what the renderer cannot render, and the Application that applies the render.
+Defined in [TDR](tamanu/deployment-rollout.md#application).
 
 ### Node pool
 
@@ -141,3 +181,78 @@ Defined in [PPB](postgres-physical-backup.md#snapshot-strategy).
 
 Backing up a PostgreSQL cluster with `pg_basebackup` into a staging directory.
 Defined in [PPB](postgres-physical-backup.md#base-backup-strategy).
+
+### Core
+
+The foundational infrastructure of one AWS account, which owns the account's public DNS zone.
+Defined in [CTLS](canopy/tls-issuance.md#managed-zones).
+
+### Managed zone
+
+A DNS zone in which Canopy may write records.
+Defined in [CTLS](canopy/tls-issuance.md#managed-zones).
+
+### Zone role
+
+The role a core creates for Canopy to assume in order to write records in that core's zone.
+Defined in [CTLS](canopy/tls-issuance.md#zone-access).
+
+### Group
+
+The set of servers and applications that Canopy administers as one customer unit.
+Defined in [CTLS](canopy/tls-issuance.md#domain-claims).
+
+### Domain claim
+
+A group's exclusive control of a domain name and every name beneath it.
+Defined in [CTLS](canopy/tls-issuance.md#domain-claims).
+
+### TLS grant
+
+The per-application setting that permits Canopy to issue certificates to the servers of that application.
+Defined in [CTLS](canopy/tls-issuance.md#domain-claims).
+
+### Backup bucket
+
+The S3 bucket that holds the archives of PostgreSQL databases.
+Defined in [K8SBAK](kubernetes/database-backups.md#backup-bucket).
+
+### Backup role
+
+The IAM role through which the instance pods of PostgreSQL databases reach a backup bucket.
+Defined in [K8SBAK](kubernetes/database-backups.md#backup-role).
+
+### Super namespace
+
+The root namespace of a hierarchy, from which role bindings propagate to every descendant.
+Defined in [K8SNSP](kubernetes/namespaces.md#namespace-tree).
+
+### Deployment namespace
+
+A namespace that holds one Tamanu deployment and is a child of the super namespace.
+Defined in [K8SNSP](kubernetes/namespaces.md#deployment-namespaces).
+
+### Access group
+
+A Kubernetes group, named with the prefix `tailscale:`, that the tailnet policy assigns to a caller of the API server proxy.
+Defined in [K8SNSP](kubernetes/namespaces.md#access-groups).
+
+### Tamanu deployment
+
+The central server, facility servers and patient portal of one namespace, with their databases, applied by one Argo CD Application.
+Defined in [TDR](tamanu/deployment-rollout.md#application).
+
+### Time to live
+
+The number of hours a deployment stays up after its latest update before it is hibernated.
+Defined in [TSD](tamanu/scaledown.md#time-to-live).
+
+### Hibernation
+
+Scaling a deployment's Deployments to zero and hibernating its database clusters, with their volumes kept.
+Defined in [TSD](tamanu/scaledown.md#hibernation).
+
+### Wake
+
+Reversing the hibernation of a deployment.
+Defined in [TSD](tamanu/scaledown.md#waking).

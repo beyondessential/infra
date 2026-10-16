@@ -16,6 +16,7 @@ import { type CoreZone, dnsZoneList } from './dns-zone-list.ts';
  */
 const zoneStacks: string[] = cfg.getObject('dnsZoneStacks') ?? [];
 
+// spec: CTLS#managed-zones
 const zones: Output<CoreZone>[] = zoneStacks.map((stack) => {
   const core = new CrossStack(stack);
   const zone = core.zone();

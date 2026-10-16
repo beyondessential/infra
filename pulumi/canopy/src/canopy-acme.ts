@@ -21,6 +21,7 @@ import { acmeAccountKey, acmeContact, acmeDirectory } from './config.ts';
  * the contact as well. Empty where no key is configured, which Canopy reports
  * once at startup and treats as a deployment that issues nothing.
  */
+// spec: CTLS#certificate-authority-account
 export const acmeEnv: Input<k8s.types.input.core.v1.EnvVar>[] = [
   ...(acmeAccountKey ? [{ name: 'CANOPY_ACME_ACCOUNT_KEY', value: acmeAccountKey }] : []),
   ...(acmeDirectory ? [{ name: 'CANOPY_ACME_DIRECTORY', value: acmeDirectory }] : []),

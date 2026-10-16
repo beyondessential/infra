@@ -5,6 +5,7 @@ export const GUARDDUTY_OWNER_PROJECT = 'security-monitoring';
 // urn:pulumi:<stack>::<project>::<type>::<name>
 export const projectFromUrn = (urn: string): string | undefined => urn.split('::')[1];
 
+// spec: GRD#guardduty-ownership
 export const guarddutySingleOwner: ResourceValidationPolicy = {
   name: 'guardduty-single-owner',
   description: `Only the ${GUARDDUTY_OWNER_PROJECT} project may declare GuardDuty resources. The delegated administrator, detector and organization configuration are singletons per region, and Pulumi has no cross-stack ownership check: a second stack importing them shares them silently, then disassociates every member account when it is destroyed.`,

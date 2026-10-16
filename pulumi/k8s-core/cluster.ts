@@ -19,6 +19,7 @@ export const cluster = new aws.eks.Cluster(
     name: stackName,
     resourcesVpcConfig: {
       subnetIds: $network.subnetIds,
+      // spec: K8SNSP#direct-access
       endpointPrivateAccess: true,
       endpointPublicAccess: true,
     },

@@ -81,6 +81,7 @@ export function spec(
           // private-server answers which zones are claimable into, public-server
           // gates a server's name entitlements on them, and the monitor reports a
           // group domain no configured zone covers.
+          // spec: CTLS#managed-zones
           ...(dnsZones ? [{ name: 'CANOPY_DNS_ZONES', value: dnsZones }] : []),
           ...(extraEnv ?? []),
         ]),

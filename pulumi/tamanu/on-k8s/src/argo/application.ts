@@ -31,6 +31,7 @@ const POLL_SECONDS = 5;
 
 // Fields that something other than Argo changes on live objects, or that are
 // edited by hand and kept between deploys.
+// spec: TDR#ignored-differences
 function ignoreDifferences() {
   const configMaps = [
     'provisioning',
@@ -89,6 +90,7 @@ const LINKS = Object.fromEntries(
   ]),
 );
 
+// spec: TDR#application
 export function application(params: Input<string>): k8s.apiextensions.CustomResource {
   return new k8s.apiextensions.CustomResource('tamanu-application', {
     apiVersion: 'argoproj.io/v1alpha1',
@@ -145,6 +147,7 @@ const CLOCK_SKEW_MS = 15_000;
  *
  * Skipped during a preview, since the Application does not exist yet.
  */
+// spec: TDR#update-completion
 export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<string> {
   if (runtime.isDryRun()) {
     return output('preview');

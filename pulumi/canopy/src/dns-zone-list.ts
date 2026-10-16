@@ -26,6 +26,7 @@ export interface CoreZone {
  * reported as the group's domain being uncovered rather than as the missing
  * plumbing it is.
  */
+// spec: CTLS#managed-zones
 export function dnsZoneList(canopyAccount: string, zones: CoreZone[]): string {
   return zones
     .map(({ stack, account, apex, id, roleArn }) => {

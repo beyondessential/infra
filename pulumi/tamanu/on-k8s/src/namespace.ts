@@ -20,6 +20,7 @@ function setupNamespace(): Output<string> {
     // Namespace created externally via SubnamespaceAnchor in tamanu-super.
     // Use get() to reference it without managing its lifecycle, and patch
     // just the annotations we own.
+    // spec: K8SNSP#deployment-namespaces
     const ns = k8s.core.v1.Namespace.get(`tamanu-${normalizedStack}`, name);
 
     new k8s.core.v1.NamespacePatch(

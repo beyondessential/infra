@@ -43,6 +43,7 @@ impl ServerType {
 		}
 	}
 
+	// spec: TDR#update-strategy
 	fn strategy(self) -> &'static str {
 		match self {
 			Self::Api => "RollingUpdate",
@@ -165,6 +166,7 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 				..Default::default()
 			}],
 			// Wait up to 60 seconds for the server to start...
+			// spec: TDR#server-health
 			startup_probe: Some(Probe {
 				period_seconds: Some(1),
 				failure_threshold: Some(60),

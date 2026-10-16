@@ -5,6 +5,7 @@ import { CAN_RUN_ON_SPOT } from '../common/k8s/tolerations.ts';
 import { RUN_ON_SPOT } from '../common/k8s/affinities.ts';
 import { TAILSCALE_VERSION } from './versions.ts';
 
+// spec: K8SNSP#tailscale-operator
 const tailscaleEnabled = cfg.getBoolean('tailscaleEnabled') ?? false;
 if (tailscaleEnabled) {
   const tailscaleClientId = cfg.require('tailscaleClientId');
@@ -86,6 +87,7 @@ if (tailscaleEnabled) {
       oauth: tailscaleClientSecret
         ? { clientId: tailscaleClientId, clientSecret: tailscaleClientSecret }
         : { clientId: tailscaleClientId, audience: tailscaleAudience },
+      // spec: K8SNSP#cluster-endpoint-access
       apiServerProxyConfig: {
         mode: 'true',
       },
