@@ -24,5 +24,5 @@
 - [x] Overview, nodes, volumes, postgres, ingress, renderer rollout, pgsnap, physical backup
 - [x] Citation sweep (41 files), tracey removal
 - [x] `scripts/check-spec-links.mjs` and `.github/workflows/spec-check.yml`
-- [ ] Review by the user
-- [ ] Run the TypeScript and Rust tests (not run: no installed dependencies)
+- [x] Review by the user
+- [x] Run the TypeScript and Rust tests (not run: no installed dependencies)
