@@ -89,7 +89,6 @@ export const seedSnapshot: boolean =
   _seedSnapshotRaw != null && _seedSnapshotRaw !== 'null'
     ? (cfg.getBoolean('seedSnapshot') ?? false)
     : false;
-export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
 export const configTemplate = cfg.get('configTemplate') ?? 'basic';
 

@@ -9,6 +9,7 @@ import {
 } from '../../../../common/k8s/coreRef.ts';
 import { deployment, stage } from '../config.ts';
 import { imageTag } from '../image.ts';
+import { appVersion } from '../version.ts';
 
 // The input contract with infra-argo-tamanu-renderer (its params.rs). The stub
 // passes the stack's config through as Pulumi holds it, every value a string,
@@ -32,12 +33,6 @@ const STUB_ONLY = new Set([
   'rendererPath',
 ]);
 
-// CD writes an unset option as the string "null".
-function raw(key: string): string | undefined {
-  const value = cfg.get(key);
-  return value == null || value === 'null' ? undefined : value;
-}
-
 function stackConfig(): Record<string, string> {
   const project = `${cfg.name}:`;
   const secrets = new Set<string>(JSON.parse(process.env.PULUMI_CONFIG_SECRET_KEYS ?? '[]'));
@@ -60,7 +55,7 @@ export function renderParams(seed?: { snapshot: Input<string> }): Output<string>
   return jsonStringify({
     stack: getStack(),
     imageTag,
-    appVersion: raw('appVersion'),
+    appVersion,
     config: stackConfig(),
     cluster: {
       fullName: clusterFullName,

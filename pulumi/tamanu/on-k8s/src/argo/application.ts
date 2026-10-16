@@ -4,9 +4,9 @@ import { CustomObjectsApi } from '@kubernetes/client-node';
 import { cfg } from '../../../../common/cfg.ts';
 import { argoNamespace } from '../../../../common/k8s/argo.ts';
 import { k8sConfig } from '../../../../common/k8s/client.ts';
-import { appVersion, configTemplate, domains, facilityList } from '../config.ts';
-import { imageTag } from '../image.ts';
+import { configTemplate, domains, facilityList } from '../config.ts';
 import { namespaceName } from '../namespace.ts';
+import { appVersion } from '../version.ts';
 
 const ARGO_NAMESPACE = argoNamespace;
 const ARGO_PROJECT = cfg.get('argoProject') ?? 'tamanu';
@@ -66,8 +66,7 @@ function labelValue(value: string): string {
 // What the Argo CD UI can filter and group Applications by. The UI lists labels by name, so
 // the version's sorts before the template's.
 const LABELS = {
-  // The Tamanu version, or the image tag where the stack has none.
-  'bes.tamanu/app-version': labelValue(appVersion ?? imageTag),
+  'bes.tamanu/app-version': labelValue(appVersion),
   // Pull request, release, branch or demo deployment, as Tamanu CD and the demos set it.
   'bes.tamanu/template': labelValue(configTemplate),
 };
