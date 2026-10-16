@@ -31,6 +31,9 @@ const STUB_ONLY = new Set([
   'argoWaitMinutes',
   'rendererRepo',
   'rendererPath',
+  // Which renderer channel renders the deployment. Tamanu CD writes it on every deploy, and the
+  // renderer rejects it as unknown.
+  'rendererChannel',
 ]);
 
 function stackConfig(): Record<string, string> {
