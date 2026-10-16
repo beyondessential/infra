@@ -13,10 +13,10 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 - The wait's bound defaults to 10 minutes, set by one workflow env var.
 - Today the stub and the renderer agree on one params shape, so the stable adapter starts as the identity. The step builds the seam that lets the shapes diverge later, and the first real divergence adds the first real adapter.
 
-## 1. Prerequisite, before #tamanu/S10 merges
+## 1. Prerequisite: S10 makes every deploy write `rendererChannel`
 
 - [x] `pulumi/tamanu/on-k8s/src/argo/params.ts`: add `rendererChannel` to `STUB_ONLY` (`r[params.channel-not-forwarded]`). S10 makes every Tamanu CD deploy write that key, and the renderer rejects unknown config keys.
-- [ ] Land it as its own small PR, merged before S10. The change is on this branch (`STUB_ONLY` in `paramsDocument.ts`); it has to be split out into its own PR for this.
+- [x] Ships with this branch (`STUB_ONLY` in `paramsDocument.ts`); S10 has already merged, so it is needed as soon as this merges.
 
 ## 2. Stub: channel selection and params per channel
 
@@ -67,7 +67,7 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 
 ## Rollout order
 
-1. Prerequisite PR (section 1), merged before S10.
+1. Section 1 ships with the rest.
 2. Section 6 external changes.
 3. Promote the current renderer build to both `stable` and `canary` by hand, so both tags exist before any sidecar names them.
 4. Sections 2 and 3 merged, then `k8s-infra` applied on `tamanu-internal-main` and `shared-demos-demo` by the user. Existing Applications keep rendering through the unchanged stable plugin name.
