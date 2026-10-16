@@ -1,0 +1,59 @@
+---
+# Reporting DB auth, mid-transition to self-managed roles: the legacy ansible-owned
+# `reporting`/`raw` roles (below) plus the grants Tamanu needs to provision its own
+# `tamanu_reporting`/`tamanu_raw` roles at startup (TAM-6862). The legacy pair is
+# superseded once a server runs that Tamanu — kept only for old servers/rollbacks.
+- name: Add reporting database users
+  loop:
+    - reporting
+    - raw
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ item }}"
+    password: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'postgres' + item, chars=['ascii_letters', 'digits'])
+      }}"
+
+# TODO: When all deployed Tamanus are managing their own
+# reporting/raw users, stop creating our own.
+- name: Allow reporting users access to postgres
+  loop:
+    - reporting
+    - raw
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ item }}"
+    databases: tamanu
+    method: scram-sha-256
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
+  notify: Reload postgres
+
+# Tamanu creates and manages its own tamanu_reporting/tamanu_raw roles at
+# startup; it needs CREATEROLE to do so and pg_hba entries to log in as them.
+- name: Allow tamanu to create its reporting roles
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    login_db: tamanu
+    query: 'ALTER ROLE "{{ tamanu_db_user }}" WITH CREATEROLE;'
+
+- name: Allow Tamanu-managed reporting roles access to postgres
+  loop:
+    - tamanu_reporting
+    - tamanu_raw
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ item }}"
+    databases: tamanu
+    method: scram-sha-256
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
+  notify: Reload postgres
+
+# Tamanu authenticates as these roles at startup, so the pg_hba entries have to be
+# live before a later play starts it, not at the end-of-play handler flush.
+- name: Apply the reporting pg_hba entries
+  ansible.builtin.meta: flush_handlers

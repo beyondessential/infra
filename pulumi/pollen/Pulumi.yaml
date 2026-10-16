@@ -1,0 +1,6 @@
+name: pollen
+description: Pollen — guided technical walkthrough for new Tamanu deployments
+runtime:
+  name: nodejs
+  options:
+    typescript: false

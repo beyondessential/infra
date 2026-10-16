@@ -1,0 +1,5 @@
+{
+  "name": "@tamanu/on-k8s",
+  "type": "module",
+  "main": "src/index.ts"
+}

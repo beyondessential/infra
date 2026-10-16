@@ -1,0 +1,14 @@
+---
+- name: Install crun
+  ansible.builtin.include_tasks: crun.yml
+- name: Install netavark
+  ansible.builtin.include_tasks: netavark.yml
+- name: Install and configure podman
+  ansible.builtin.include_tasks: podman.yml
+- name: Configure podman network
+  ansible.builtin.include_tasks: network.yml
+  tags: [podman-network]
+- name: Mark podman as configured
+  ansible.builtin.set_fact:
+    podman_configured: true
+    podman_version: "{{ podman_version }}"

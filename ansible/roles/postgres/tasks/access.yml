@@ -1,0 +1,96 @@
+---
+- name: Check if tailscale is available (IPv4)
+  ansible.builtin.command: tailscale ip -4
+  register: tailscale_ipv4
+  changed_when: false
+  failed_when: false
+
+- name: Get tailscale IPv6 address
+  ansible.builtin.command: tailscale ip -6
+  register: tailscale_ipv6
+  changed_when: false
+  failed_when: false
+  when: tailscale_ipv4.rc == 0
+
+- name: Set postgres listen_addresses
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/current/main/postgresql.conf
+    line: "listen_addresses = '{{ ('localhost,' ~ tailscale_ipv4.stdout | trim ~ ',' ~ tailscale_ipv6.stdout | trim) if tailscale_ipv4.rc == 0 else 'localhost' }}'"
+    regexp: "^#?listen_addresses\\s*="
+  register: listen_addresses_result
+
+- name: Restart postgres for listen_addresses change
+  ansible.builtin.debug:
+    msg: "listen_addresses changed, restarting postgres"
+  changed_when: true
+  notify: Restart postgres
+  when:
+    - listen_addresses_result is changed
+    - tailscale_name is defined
+    - "'prod' not in tailscale_name"
+
+- name: Warn about pending postgres restart on prod
+  ansible.builtin.debug:
+    msg: >-
+      listen_addresses was changed but postgres was NOT restarted automatically
+      because this is a prod server ({{ tailscale_name | default('unknown') }}).
+      Schedule a manual restart of postgresql to apply the change.
+  when:
+    - listen_addresses_result is changed
+    - tailscale_name is defined
+    - "'prod' in tailscale_name"
+
+# TODO: PKI
+# - name: Allow postgres TLS connections
+#   become: true
+#   ansible.builtin.lineinfile:
+#     path: /etc/postgresql/current/main/postgresql.conf
+#     line: "ssl = on"
+#     regexp: "^#?ssl\\s*="
+#   notify: Reload postgres
+
+# Default cipher suites still allow various old cipher suites; we can
+# reasonably exclude everything before the TLS 1.2 era.
+- name: Restrict cipher suites for postgres TLS connections
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/current/main/postgresql.conf
+    line: "ssl_ciphers = 'HIGH:!SSLv3:!TLSv1'"
+    regexp: "^#?ssl_ciphers\\s*="
+  notify: Reload postgres
+
+# lineinfile (postgresql.conf) settings are machine-local
+# postgresql_alter_system settings are saved in backups
+
+- name: Raise password hashing iterations
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: scram_iterations
+    value: "50000"
+
+# bestool/Canopy backs up postgres as the superuser over the local socket (peer
+# auth, no password), issuing a CHECKPOINT for the snapshot path and falling
+# back to pg_basebackup over the replication protocol when a volume snapshot
+# isn't possible. The stock Debian pg_hba carries both lines; assert them so the
+# backup (and its fallback) work even on a trimmed pg_hba.
+- name: Ensure local peer auth for the postgres superuser
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    databases: all
+    users: postgres
+    method: peer
+  notify: Reload postgres
+
+- name: Ensure local replication peer auth (pg_basebackup fallback)
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    databases: replication
+    users: all
+    method: peer
+  notify: Reload postgres

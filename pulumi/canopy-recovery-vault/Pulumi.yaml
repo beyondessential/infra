@@ -1,0 +1,3 @@
+name: canopy-recovery-vault
+description: COMPLIANCE-locked Canopy secret recovery vault (write-only, separate account)
+runtime: nodejs

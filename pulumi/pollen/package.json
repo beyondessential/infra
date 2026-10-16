@@ -1,0 +1,5 @@
+{
+  "name": "@bes/pollen",
+  "type": "module",
+  "main": "src/index.ts"
+}

@@ -1,0 +1,7 @@
+---
+argument_specs:
+  main:
+    description: |
+      Upgrade (or start) the Open mSupply server on a facility server.
+      Run msupply-install first to update the version and pull the new image.
+    options: {}

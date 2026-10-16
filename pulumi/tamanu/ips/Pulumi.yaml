@@ -1,0 +1,6 @@
+name: tamanu-ips
+description: For an individual deployment of a Tamanu International Patient Summary
+runtime:
+  name: nodejs
+  options:
+    typescript: false

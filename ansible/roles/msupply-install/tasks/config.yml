@@ -1,0 +1,52 @@
+---
+- name: Create msupply config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/msupply
+    state: directory
+    mode: "0770"
+    owner: msupply
+    group: msupply
+
+- name: Write msupply env file
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/msupply/env
+    mode: "0660"
+    owner: msupply
+    group: msupply
+    content: |
+      # Controlled by Ansible; manual changes will be overwritten
+      MSUPPLY_VERSION={{ msupply_tag }}
+
+- name: Write msupply local.yaml
+  become: true
+  ansible.builtin.template:
+    dest: /etc/msupply/local.yaml
+    src: local.yaml.j2
+    mode: "0660"
+    owner: msupply
+    group: msupply
+
+- name: Permit Caddy to fetch certificates from alertd
+  when: msupply_hostname is defined
+  ansible.builtin.include_role:
+    name: bestool
+    tasks_from: caddy-certificates
+
+- name: Add mSupply Caddy server
+  when: msupply_hostname is defined
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/servers/msupply
+    src: caddy/msupply.j2
+    mode: "0644"
+  notify: Reload caddy
+
+- name: Remove mSupply Caddy server
+  when: msupply_hostname is not defined
+  become: true
+  ansible.builtin.file:
+    path: /etc/caddy/servers/msupply
+    state: absent
+  notify: Reload caddy

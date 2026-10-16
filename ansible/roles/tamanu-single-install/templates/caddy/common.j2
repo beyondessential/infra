@@ -1,0 +1,86 @@
+{# Shared by the tamanu and patient-portal vhosts. Both front the same central
+   API upstream, so everything from logging through the /api reverse proxy is
+   identical between them; each server file adds only its own frontend proxy
+   and the bits that genuinely differ.
+
+   Lives in snippets/ because caddy resolves snippet definitions strictly in
+   parse order, and the packaged Caddyfile imports snippets/ before servers/. #}
+{# Imported by each https site serving Tamanu, and not by the tailscale one, whose
+   own tls block asks tailscaled. alertd answers for a name with a Canopy-issued
+   chain or declines it, and a decline falls through to the global cert_issuer;
+   the daemon being unreachable or refusing caddy fails the handshake instead,
+   which is why this stays empty until bestool/tasks/caddy-certificates.yml has
+   found a daemon that serves the endpoint and admitted caddy to it. #}
+(canopy_certificate) {
+{% if caddy_canopy_certificates_active | default(false) | bool %}
+  tls {
+    get_certificate http http://127.0.0.1:8271/certificate
+  }
+{% endif %}
+}
+
+(tamanu_common) {
+  # one file for both vhosts: every entry carries request.host, and caddy drops
+  # access entries from the default logger once they have an output of their own,
+  # leaving the journal to caddy's runtime events
+  log {
+    output file /var/log/caddy/access.log {
+      roll_size 100MiB
+      roll_keep 10
+    }
+    format json {
+      time_format rfc3339_nano
+    }
+  }
+
+  # excludes upgrade requests: forcing Connection on a 101 breaks the websocket handshake
+  @http11 {
+    protocol http/1.1
+    header !Upgrade
+  }
+  header @http11 >Connection "keep-alive"
+  header @http11 >Keep-Alive "timeout=90"
+
+  @root_only path /
+  header @root_only Cache-Control no-cache
+
+  handle_errors {
+    @custom_err file /resources/errors/{err.status_code}.html
+    handle @custom_err {
+      rewrite * {file_match.relative}
+      file_server
+    }
+  }
+
+  encode zstd gzip
+
+  @api {
+    path /v1/*
+    path /api/*
+  }
+
+  rate_limit @api {
+    log_key
+    zone per_ip {
+      key {remote_host}
+      events 1000
+      window 1s
+    }
+  }
+
+  route /api/login {
+    rate_limit {
+      log_key
+      zone auth_per_ip {
+        key {remote_host}
+        events 10
+        window 1s
+      }
+    }
+  }
+
+  header @api Cache-Control no-store
+  reverse_proxy @api {
+    import upstream_api
+  }
+}

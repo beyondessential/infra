@@ -1,0 +1,32 @@
+---
+tamanu_clone: false
+# A clone whose central is outside its inventory, or below v2.60 (no setupSync), is set up by hand.
+tamanu_clone_auto_setup: >-
+  {{ tamanu_clone
+  and groups['central'] | default([]) | length > 0
+  and tamanu_version | regex_replace('^v', '') is version('2.60.0', '>=') }}
+tamanu_version: "{{ version | default('v2.10.0') }}"
+tamanu_frontend_version: "{{ frontend_version | default(tamanu_version) }}"
+tamanu_db_name: "{{ db_name }}"
+tamanu_db_user: "{{ db_user | default(db_name) }}"
+tamanu_server_type: "{{ type }}"
+tamanu_image_server: "ghcr.io/beyondessential/tamanu-{{ tamanu_server_type }}:{{ tamanu_version }}"
+tamanu_image_frontend: "ghcr.io/beyondessential/tamanu-frontend:{{ tamanu_frontend_version }}"
+tamanu_image_patient_portal: "ghcr.io/beyondessential/tamanu-patient-portal:{{ tamanu_version }}"
+tamanu_default_department: GenericClinic
+tamanu_default_location: GenericClinic
+tamanu_letterhead_title: Tamanu Health
+tamanu_letterhead_subtitle: BES International
+tamanu_country_name: Utopia
+tamanu_country_alpha2: UT
+tamanu_country_alpha3: UTO
+tamanu_ipv6: true
+tamanu_central_hostname: "{{ tamanu_central_canonical_url | urlsplit('hostname') }}"
+tamanu_central_ip: false
+tamanu_caddy_tls: true
+tamanu_caddy_extra_hostnames: []
+tamanu_caddy_extra_hostnames_redirect: true
+tamanu_extra_certs: false # if true, the host's /etc/ssl/certs/ca-certificates.crt will be added to node inside the container
+# tailnet is defined in the `common` role's defaults so it is also visible in the
+# all-hosts play (see roles/common/defaults/main.yml).
+tamanu_tailscale_tls: true

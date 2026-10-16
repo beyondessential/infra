@@ -1,0 +1,18 @@
+[Unit]
+Description=Tamanu frontend
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-frontend:${TAMANU_FRONTEND_VERSION}
+Volume=/etc/tamanu/${TAMANU_VERSION}:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=frontend.tamanu.internal
+NetworkAlias=frontend-%i.tamanu.internal
+NetworkAlias=${TAMANU_FRONTEND_VERSION_DOMAIN}.frontend.tamanu.internal
+NetworkAlias=${TAMANU_FRONTEND_VERSION_DOMAIN}.frontend-%i.tamanu.internal
+Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5

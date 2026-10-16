@@ -1,0 +1,11 @@
+---
+# Raspberry Pi userland tools — provides vcgencmd, which bestool's
+# iti temperature/battery subcommands shell out to. On Ubuntu 26.04
+# vcgencmd lives in raspi-utils-core (Pi 5-era split); on older Ubuntu
+# it was in libraspberrypi-bin. Raspbian preinstalls these.
+- name: Install Raspberry Pi userland tools
+  become: true
+  ansible.builtin.apt:
+    name: raspi-utils-core
+    state: present
+  notify: Update package facts

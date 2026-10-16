@@ -1,0 +1,9 @@
+{
+  "extends": ["@beyondessential/eslint-config-js", "plugin:prettier/recommended"],
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "no-underscore-dangle": "off"
+  }
+}

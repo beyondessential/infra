@@ -1,0 +1,6 @@
+name: core
+description: per AWS Account core setup
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -1,0 +1,13 @@
+# IOWeight requires bfq or io.cost on the underlying block device to take
+# effect; on the default mq-deadline scheduler it is inert. CPUWeight works
+# regardless. Nice / IOSchedulingClass / OOMScoreAdjust are process-level
+# and live in per-service drop-ins, not here.
+
+[Unit]
+Description=Critical workloads (tamanu API, postgres, caddy)
+Before=slices.target
+
+[Slice]
+CPUWeight=200
+IOWeight=200
+MemoryMin=512M

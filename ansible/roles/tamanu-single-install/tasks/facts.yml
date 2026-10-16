@@ -1,0 +1,106 @@
+---
+- name: Fetch PatientPortalFQDN EC2 tag
+  when: tamanu_server_type == 'central'
+  ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
+  vars:
+    ec2_tag_name: PatientPortalFQDN
+
+- name: Set patient portal enabled fact
+  ansible.builtin.set_fact:
+    patient_portal_enabled: "{{ tamanu_server_type == 'central' and ((ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_PatientPortalFQDN is defined)
+      or (patient_portal_fqdn is defined)) }}"
+
+- name: Set patient portal FQDN fact
+  when: patient_portal_enabled
+  ansible.builtin.set_fact:
+    patient_portal_fqdn: "{{ ansible_ec2_tag_PatientPortalFQDN | default(patient_portal_fqdn) }}"
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Set bestool installed version fact
+  when: "'bestool' in ansible_facts.packages"
+  ansible.builtin.set_fact:
+    # Strip any Debian-style revision/build suffix so `is version()` compares
+    # against pure upstream semver.
+    bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"
+
+# 1.21.0 is the first release where the tamanu alert checks are built
+# into bestool itself; alertd no longer loads YAML alert definitions,
+# so this role deploys it without any on-disk alert config.
+- name: Require bestool >= 1.21.0
+  ansible.builtin.assert:
+    that:
+      - bestool_installed_version is defined
+      - bestool_installed_version is version('1.21.0', '>=')
+    fail_msg: >-
+      Tamanu install/upgrade requires bestool >= 1.21.0
+      (found {{ bestool_installed_version | default('none') }}).
+
+# Capture the versions currently in /etc/tamanu/env *before* version.yml
+# overwrites the file. Used by the downgrade checks below. Empty string
+# when the env file is missing (fresh install) or the matching line is
+# absent.
+- name: Read previous tamanu version from env
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    [ -f /etc/tamanu/env ] || exit 0;
+    sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
+  args:
+    executable: /bin/bash
+  register: previous_tamanu_version_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Read previous tamanu frontend version from env
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    [ -f /etc/tamanu/env ] || exit 0;
+    sed -n 's/^TAMANU_FRONTEND_VERSION=//p' /etc/tamanu/env | head -n1
+  args:
+    executable: /bin/bash
+  register: previous_tamanu_frontend_version_cmd
+  changed_when: false
+  check_mode: false
+
+# When the env file has no TAMANU_FRONTEND_VERSION line — pre-split env or
+# hand-removed — fall back to TAMANU_VERSION so the downgrade check has a
+# sensible baseline.
+- name: Set previous-version facts
+  ansible.builtin.set_fact:
+    previous_tamanu_version: "{{ previous_tamanu_version_cmd.stdout | trim }}"
+    previous_tamanu_frontend_version: >-
+      {{ previous_tamanu_frontend_version_cmd.stdout | trim
+         or previous_tamanu_version_cmd.stdout | trim }}
+
+# Only compare when both sides are v-prefixed semver. SHA-pinned versions and
+# fresh installs (empty previous) are skipped.
+- name: Forbid tamanu_version downgrade
+  when:
+    - not (tamanu_allow_downgrade | default(false) | bool)
+    - tamanu_version is string
+    - tamanu_version.startswith('v')
+    - previous_tamanu_version is string
+    - previous_tamanu_version.startswith('v')
+    - tamanu_version[1:] is version(previous_tamanu_version[1:], '<')
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to downgrade tamanu_version from {{ previous_tamanu_version }}
+      to {{ tamanu_version }}. Set tamanu_allow_downgrade=true to override.
+
+- name: Forbid tamanu_frontend_version downgrade
+  when:
+    - not (tamanu_allow_downgrade | default(false) | bool)
+    - tamanu_frontend_version is string
+    - tamanu_frontend_version.startswith('v')
+    - previous_tamanu_frontend_version is string
+    - previous_tamanu_frontend_version.startswith('v')
+    - tamanu_frontend_version[1:] is version(previous_tamanu_frontend_version[1:], '<')
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to downgrade tamanu_frontend_version from
+      {{ previous_tamanu_frontend_version }} to {{ tamanu_frontend_version }}.
+      Set tamanu_allow_downgrade=true to override.

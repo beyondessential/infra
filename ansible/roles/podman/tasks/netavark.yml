@@ -1,0 +1,26 @@
+---
+- name: Check if netavark is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/netavark ] && ! dpkg -S /usr/local/bin/netavark 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: netavark_install_type
+  changed_when: false
+
+- name: Remove old netavark binary (migration only)
+  become: true
+  when: netavark_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/local/bin/netavark
+    state: absent
+
+- name: Install netavark and aardvark-dns  # noqa: package-latest
+  become: true
+  ansible.builtin.apt:
+    name:
+      - aardvark-dns
+      - netavark
+    state: latest
+    update_cache: true

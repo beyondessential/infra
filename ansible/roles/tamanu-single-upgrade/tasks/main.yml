@@ -1,0 +1,175 @@
+---
+- name: Report what this upgrade will do
+  ansible.builtin.debug:
+    msg: >-
+      tamanu_version: {{ previous_tamanu_version | default('(none)') }} -> {{ tamanu_version }};
+      tamanu_frontend_version: {{ previous_tamanu_frontend_version | default('(none)') }} -> {{ tamanu_frontend_version }}
+
+- name: Collect which services are running
+  ansible.builtin.service_facts:
+- name: Print service facts
+  ansible.builtin.debug:
+    msg: "{{ ansible_facts.services | list | select('match', '^tamanu-' + tamanu_server_type + '.*') | reject('match', '.+@[.]service$') }}"
+
+- name: Detect installed bestool version
+  become: true
+  ansible.builtin.command: /usr/bin/bestool --version
+  register: bestool_version_cmd
+  changed_when: false
+  check_mode: false
+
+# --ignore-unmatched (bestool 1.23.0+) makes start/restart skip service names
+# that don't exist on this server type instead of failing. Empty on older
+# bestool, where the explicit server-type gating below is still required.
+- name: Set bestool start/restart flags
+  ansible.builtin.set_fact:
+    bestool_unmatched_arg: >-
+      {{ '--ignore-unmatched'
+         if (bestool_version_cmd.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+')) is version('1.23.0', '>=')
+         else '' }}
+
+# Stops only the kind-scoped API/tasks/sync/fhir services. The trailing
+# dash filters out the legacy `tamanu-facility` singleton (no dash after
+# `facility`) and tamanu-frontend (no kind segment), so the frontend keeps
+# serving traffic while we migrate.
+- name: Stop the API/tasks/sync/fhir services
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu stop tamanu-{{ tamanu_server_type }}-
+  changed_when: true
+
+- name: Stop old singleton patient portal service
+  when: tamanu_server_type == 'central'
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-patientportal
+    state: stopped
+    enabled: false
+  failed_when: false
+  notify: Reload caddy
+
+- name: Mask old singleton patient portal service
+  when: tamanu_server_type == 'central'
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/tamanu-patientportal.service
+    src: /dev/null
+    state: link
+    force: true
+  notify: Reload systemd
+
+- name: Stop old single facility service
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-facility
+    state: stopped
+    enabled: false
+  failed_when: false
+  notify: Reload caddy
+
+- name: Remove old single facility quadlet
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-facility.container
+    state: absent
+  notify: Reload systemd
+
+- name: Mask old single facility service
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/tamanu-facility.service
+    src: /dev/null
+    state: link
+    force: true
+  notify: Reload systemd
+
+- name: Reload caddy
+  ansible.builtin.meta: flush_handlers
+- name: Roll the frontend service
+  when: tamanu_server_type == 'facility'
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu restart {{ bestool_unmatched_arg }} tamanu-frontend
+  changed_when: true
+
+- name: Roll the frontend and patient portal services
+  when: tamanu_server_type == 'central'
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu restart {{ bestool_unmatched_arg }} tamanu-frontend tamanu-patientportal
+  changed_when: true
+
+# cleanup any legacy or experiments; bestool's frontend and patient portal
+# expectations only admit @a/@b, so any other instance has to be cleaned
+# up by hand.
+- name: Stop frontend services that don't need to be running
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$')
+    }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  notify: Reload caddy
+
+- name: Stop patient portal services that don't need to be running
+  when: tamanu_server_type == 'central'
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-patientportal@.*') | reject('match', '^tamanu-patientportal@(a|b)[.]service$') | reject('match',
+    '.+@[.]service$') }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  notify: Reload caddy
+
+- name: Reload caddy
+  ansible.builtin.meta: flush_handlers
+- name: Drop reporting schema if present
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    login_db: "{{ db_name }}"
+    name: reporting
+    state: absent
+    cascade_drop: true
+
+- name: Migrate the database
+  ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
+  changed_when: true
+
+- name: Create reporting schema owned by tamanu
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    login_db: "{{ db_name }}"
+    name: reporting
+    owner: tamanu
+    state: present
+
+# Bring everything that should be Up back up. Idempotent: services already
+# running are left alone, so this also doubles as recovery for a partial
+# previous run that left things stopped.
+- name: Start the standard services
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu start {{ bestool_unmatched_arg }}
+  changed_when: true
+  notify: Reload caddy
+
+- name: Reload caddy
+  ansible.builtin.meta: flush_handlers
+
+# The previous versions are read by tamanu-single-install in the pre phase; a
+# run limited to the go phase doesn't know them, so it leaves images alone.
+- name: Remove superseded Tamanu images
+  when: previous_tamanu_version is defined and previous_tamanu_frontend_version is defined
+  ansible.builtin.include_role:
+    name: tamanu-single-common
+    tasks_from: prune-images
+  vars:
+    tamanu_image_prune_repos: [tamanu-central, tamanu-facility, tamanu-frontend, tamanu-patient-portal]
+    tamanu_image_prune_keep:
+      - "{{ tamanu_version }}"
+      - "{{ tamanu_frontend_version }}"
+      - "{{ previous_tamanu_version }}"
+      - "{{ previous_tamanu_frontend_version }}"

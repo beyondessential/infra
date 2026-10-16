@@ -1,0 +1,82 @@
+{
+  users: {
+    'admin@tamanu.io': {
+      role: 'admin',
+      password: 'admin',
+      displayName: 'Initial Admin',
+    },
+  },
+
+  facilities: {
+    {% for name in facilityNames %}
+    '{{ name }}': {
+      name: 'Test Facility {{ loop.index }}',
+      code: '{{ name }}',
+    },
+    {% endfor %}
+  },
+
+  settings: {
+    global: {
+      features: {
+        patientPlannedMove: true,
+        enablePatientDeaths: true,
+        invoicing: {
+          enabled: true,
+        },
+        covidCertificates: {
+          enableCovidClearanceCertificate: true,
+        },
+        quickPatientGenerator: true,
+        reminderContactModule: {
+          enabled: false,
+        },
+        deviceRegistrationQuota: {
+          enabled: false,
+        },
+        desktopCharting: {
+          enabled: true,
+        },
+        enableVitalEdit: true,
+      },
+      audit: {
+        accesses: {
+          enabled: true,
+        },
+        changes: {
+          enabled: true,
+        },
+      },
+      fhir: {
+        worker: {
+          assumeDroppedAfter: '10 minutes',
+          heartbeat: '1 minute',
+        },
+      },
+      vaccinationReminder: {
+        due: [7, 1, -7],
+      },
+    },
+    central: {
+      disk: {
+        freeSpaceRequired: {
+          gigabytesForUploadingDocuments: 0.1,
+        },
+      },
+    },
+    facilities: {
+      {% for name in facilityNames %}
+      '{{ name }}': {
+        survey: {
+          defaultCodes: {
+            location: 'WaitingArea',
+            department: 'Emergency',
+          }
+        }
+      },
+      {% endfor %}
+    },
+  },
+
+  // No referenceData or programs — data is migrated separately per deployment.
+}

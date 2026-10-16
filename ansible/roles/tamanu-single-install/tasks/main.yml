@@ -1,0 +1,38 @@
+---
+- name: Gather tamanu facts
+  ansible.builtin.include_tasks: facts.yml
+- name: Configure tamanu
+  ansible.builtin.include_tasks: config.yml
+- name: Install tamanu quadlets
+  ansible.builtin.include_tasks: quadlets.yml
+- name: Configure tamanu boot
+  ansible.builtin.include_tasks: boot.yml
+- name: Configure graceful Tamanu roll on postgres restart
+  when: postgresql_installed_version is defined
+  ansible.builtin.include_tasks: postgres-restart-hook.yml
+- name: Configure tamanu database
+  ansible.builtin.include_tasks: database.yml
+- name: Set tamanu version
+  ansible.builtin.include_tasks: version.yml
+- name: Configure tamanu DNS
+  ansible.builtin.include_tasks: dns.yml
+  when: tamanu_server_type != 'central'
+- name: Configure tamanu backup
+  ansible.builtin.include_tasks: backup.yml
+- name: Configure clone sync setup
+  ansible.builtin.include_tasks: clone.yml
+  when: tamanu_clone_auto_setup | bool
+  vars:
+    tamanu_clone_central: "{{ groups['central'] | first }}"
+    tamanu_clone_sync_name: "{{ inventory_hostname | lower | regex_replace('[^a-z0-9-]', '-') }}"
+    tamanu_clone_sync_file: /etc/bestool/clone-sync/{{ tamanu_clone_sync_name }}
+    tamanu_clone_sync_email: clone.{{ tamanu_clone_sync_name }}@sync.tamanu
+- name: Warn that this clone is set up by hand
+  ansible.builtin.debug:
+    msg: >-
+      This clone's facilities are not set up against its central after a refresh
+      (central outside this inventory, or Tamanu below v2.60): set each one up by hand.
+  when: tamanu_clone and not tamanu_clone_auto_setup | bool
+- name: Configure tamanu doctor
+  ansible.builtin.include_tasks: doctor.yml
+  when: bestool_installed_version is defined and bestool_installed_version is version('1.8.0', '>=')

@@ -1,0 +1,32 @@
+---
+- name: Add pgdg apt key
+  become: true
+  ansible.builtin.copy:
+    src: apt.asc
+    dest: /etc/apt/keyrings/pgdg.asc
+    mode: "0644"
+
+- name: Add pgdg repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/apt_postgresql_org_pub_repos_apt.list
+    mode: "0644"
+    content: |
+      deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt {{ ansible_facts['distribution_release'] }}-pgdg main
+  register: pgdg_repo
+
+- name: Refresh apt cache after pgdg repo change  # noqa: no-handler
+  become: true
+  when: pgdg_repo.changed
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Prioritise pgdg repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99-pgdg
+    mode: "0644"
+    content: |
+      Package: *
+      Pin: release o=apt.postgresql.org
+      Pin-Priority: 900

@@ -1,0 +1,8 @@
+---
+- name: Save desired PostgreSQL version before version detection
+  when: postgresql_upgrade_enabled and postgresql_version is defined
+  ansible.builtin.set_fact:
+    postgresql_desired_version: "{{ postgresql_version }}"
+
+- name: Gather PostgreSQL facts
+  ansible.builtin.include_tasks: ../../tasks/gather-postgres-version.yml

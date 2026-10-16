@@ -1,0 +1,31 @@
+---
+argument_specs:
+  main:
+    options:
+      dbname:
+        type: str
+        required: true
+        description: |
+          Name of the database to create.
+
+      create_user:
+        type: bool
+        required: false
+        default: true
+        description: |
+          Create a database user too.
+
+      username:
+        type: str
+        required: false
+        description: |
+          Name of the owner of the database.
+          Defaults to the same as the database name.
+          If create_user is false, this user must already exist.
+
+      unix_socket:
+        type: bool
+        required: false
+        default: true
+        description: |
+          Allow local (unix socket) connections for that database (with password).

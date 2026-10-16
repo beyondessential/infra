@@ -1,0 +1,47 @@
+---
+# Use bfq for block I/O scheduling. bfq is the only scheduler that honours
+# cgroup IOWeight= and IOSchedulingClass=idle, which is what makes the
+# critical/elevated/background slice weights actually bite under disk
+# contention. On default mq-deadline (or none for NVMe), those controls are
+# silent no-ops.
+
+- name: Load bfq module at boot
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/bfq.conf
+    mode: "0644"
+    content: |
+      bfq
+
+- name: Load bfq module now
+  become: true
+  community.general.modprobe:
+    name: bfq
+    state: present
+    persistent: present
+  failed_when: false
+
+- name: Set bfq as I/O scheduler via udev
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/60-io-scheduler.rules
+    mode: "0644"
+    content: |
+      ACTION=="add|change", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ATTR{queue/scheduler}="bfq"
+  register: io_scheduler_rule
+
+- name: Reload udev rules  # noqa: no-handler
+  # Must reload and apply immediately after writing the rule, in order; deferred handlers would run too late.
+  become: true
+  when: io_scheduler_rule.changed
+  ansible.builtin.command:
+    cmd: udevadm control --reload-rules
+  changed_when: true
+
+- name: Apply scheduler change to existing block devices  # noqa: no-handler
+  # Paired with the reload above; must run in order immediately after the rule changes.
+  become: true
+  when: io_scheduler_rule.changed
+  ansible.builtin.command:
+    cmd: udevadm trigger --type=devices --subsystem-match=block --action=change
+  changed_when: true

@@ -1,0 +1,9 @@
+---
+- name: Create msupply data directory
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/msupply
+    state: directory
+    mode: "0770"
+    owner: msupply
+    group: msupply

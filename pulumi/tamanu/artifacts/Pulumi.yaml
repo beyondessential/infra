@@ -1,0 +1,6 @@
+name: tamanu-artifacts
+description: Artifact buckets for Tamanu and Ops
+runtime:
+  name: nodejs
+  options:
+    typescript: false

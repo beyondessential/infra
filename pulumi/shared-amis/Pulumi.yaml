@@ -1,0 +1,6 @@
+name: shared-amis
+description: One-off setup for the account that publishes public shared AMIs
+runtime:
+  name: nodejs
+  options:
+    typescript: false

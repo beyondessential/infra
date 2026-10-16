@@ -1,0 +1,69 @@
+---
+- name: Remove rpi-connect if present
+  become: true
+  ansible.builtin.apt:
+    name: rpi-connect
+    state: absent
+
+- name: Update all packages
+  become: true
+  ansible.builtin.apt:
+    cache_valid_time: 3600
+    clean: true
+    upgrade: dist
+    autoremove: true
+  async: 1000
+  poll: 0
+  register: apt_update
+
+- name: Wait until apt update is finished
+  become: true
+  ansible.builtin.async_status:
+    jid: "{{ apt_update.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 1000
+  delay: 10
+
+- name: Clean up async file
+  become: true
+  failed_when: false
+  ansible.builtin.async_status:
+    jid: "{{ apt_update.ansible_job_id }}"
+    mode: cleanup
+
+- name: Install basic tooling
+  become: true
+  ansible.builtin.apt:
+    name:
+      - acl # required for some become/postgres tasks
+      - apt-transport-https
+      - bash-completion
+      - ca-certificates
+      - curl
+      - gnupg
+      - kopia # bestool/Canopy drive kopia for backups; package owns the kopia user/home
+      - needrestart # restart services when the underlying package updates
+      - python3-psycopg2 # required for ansible postgres modules
+      - software-properties-common
+      - tzdata
+      - xz-utils # for .deb installs via ansible
+  notify: Update package facts
+
+- name: Set apt repo auto-update
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.daily/apt-update
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      exec systemd-run --slice=background.slice --scope --quiet apt update
+
+- name: Set ssh auto-upgrade
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.weekly/apt-upgrade-ssh
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      exec systemd-run --slice=background.slice --scope --quiet apt install -y openssh-server

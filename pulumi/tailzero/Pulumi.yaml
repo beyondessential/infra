@@ -1,0 +1,6 @@
+name: tailzero
+description: Border0 tailzero connector, single-instance on K8S
+runtime:
+  name: nodejs
+  options:
+    typescript: false

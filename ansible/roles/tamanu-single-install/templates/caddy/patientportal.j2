@@ -1,0 +1,26 @@
+(patient_portal_server) {
+  import tamanu_common
+
+  # see the note in servers/tamanu: this glob is relative to servers/
+  import waf*
+
+  reverse_proxy /* {
+    import upstream_patientportal
+  }
+}
+
+{% if tamanu_caddy_tls and not (patient_portal_fqdn | regex_search('\\.local$')) %}
+https://{{ patient_portal_fqdn }} {
+  import canopy_certificate
+  import patient_portal_server
+}
+http://{{ patient_portal_fqdn }} {
+  import bind80
+  redir https://{host}{uri} 308
+}
+{% else %}
+http://{{ patient_portal_fqdn }} {
+  import bind80
+  import patient_portal_server
+}
+{% endif %}

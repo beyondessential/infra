@@ -1,0 +1,14 @@
+---
+- name: Enable systemd accounting
+  become: true
+  loop:
+    - DefaultCPUAccounting
+    - DefaultIOAccounting
+    - DefaultIPAccounting
+    - DefaultMemoryAccounting
+    - DefaultTasksAccounting
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/system.conf
+    line: "{{ item }}=yes"
+    regexp: "^#?{{ item }}="
+  notify: Reload systemd

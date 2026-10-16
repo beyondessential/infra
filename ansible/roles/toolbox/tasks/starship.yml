@@ -1,0 +1,54 @@
+---
+- name: Download starship
+  become: true
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: https://github.com/starship/starship/releases/download/v{{ starship_version }}/starship-{{ ansible_facts['architecture'] }}-unknown-linux-musl.tar.gz
+    dest: /usr/bin
+    mode: a=rx,u=rwx
+  notify: Regenerate starship completions
+
+- name: Install starship for bash
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/bash.bashrc
+    line: 'eval "$(starship init bash)"'
+
+- name: Create fish/conf.d for current user
+  ansible.builtin.file:
+    path: .config
+    state: directory
+    mode: "0755"
+
+- name: Install starship for fish
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/fish/conf.d/starship.fish
+    content: "starship init fish | source"
+    mode: "0644"
+
+- name: Create .config for current user
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.config"
+    state: directory
+    mode: "0755"
+
+- name: Configure starship for current user
+  ansible.builtin.copy:
+    dest: "{{ ansible_facts['env']['HOME'] }}/.config/starship.toml"
+    src: starship.toml
+    mode: "0644"
+
+- name: Create .config for root
+  become: true
+  ansible.builtin.file:
+    path: /root/.config
+    state: directory
+    mode: "0755"
+
+- name: Configure starship for root user
+  become: true
+  ansible.builtin.copy:
+    dest: /root/.config/starship.toml
+    src: starship.toml
+    mode: "0644"

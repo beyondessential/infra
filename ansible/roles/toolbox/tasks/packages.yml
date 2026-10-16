@@ -1,0 +1,26 @@
+---
+- name: Install useful tooling
+  become: true
+  ansible.builtin.apt:
+    name:
+      - btrfs-compsize
+      - conntrack
+      - dnsutils
+      - fish
+      - htop
+      - iftop
+      - iotop
+      - jq
+      - lm-sensors
+      - mosh
+      - nano
+      - neovim
+      - nethogs
+      - ripgrep
+      - tree
+      - uuid
+  notify: Update package facts
+
+# - name: Install dog (DNS client)
+#   community.general.snap:
+#     name: dog

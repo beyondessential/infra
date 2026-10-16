@@ -1,0 +1,6 @@
+name: tamanu-replica
+description: Tamanu replica from backup
+runtime:
+  name: nodejs
+  options:
+    typescript: false

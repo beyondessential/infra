@@ -1,0 +1,47 @@
+---
+- name: Detect installed PostgreSQL version
+  ansible.builtin.include_tasks: detect-version.yml
+- name: Configure pgdg apt repository
+  ansible.builtin.include_tasks: repo.yml
+- name: Run PostgreSQL upgrade tasks
+  ansible.builtin.include_tasks: upgrade.yml
+  when: postgresql_upgrade_enabled | bool
+- name: Set up btrfs subvolume for PostgreSQL
+  ansible.builtin.include_tasks: btrfs-subvolume.yml
+- name: Install PostgreSQL packages
+  ansible.builtin.include_tasks: packages.yml
+- name: Configure psql
+  ansible.builtin.include_tasks: psql.yml
+- name: Configure PostgreSQL access
+  ansible.builtin.include_tasks: access.yml
+- name: Configure bestool-alertd monitoring role
+  ansible.builtin.include_tasks: monitoring-user.yml
+- name: Wire Munin's postgres plugins (when Munin is installed)
+  ansible.builtin.include_tasks: munin-plugins.yml
+- name: Detect filesystem type for PostgreSQL data directory
+  become: true
+  ansible.builtin.command: findmnt -n -o FSTYPE /var/lib/postgresql
+  register: pg_data_fstype
+  changed_when: false
+  failed_when: false
+
+- name: Tune btrfs for PostgreSQL
+  ansible.builtin.include_tasks: btrfs-tune.yml
+  when: pg_data_fstype.stdout | trim == 'btrfs'
+- name: Apply btrfs quota for PostgreSQL
+  ansible.builtin.include_tasks: btrfs-quota.yml
+  when:
+    - pg_data_fstype.stdout | trim == 'btrfs'
+    - postgresql_btrfs_quota_percent is defined
+    - postgresql_btrfs_quota_percent | string | length > 0
+- name: Configure WAL
+  ansible.builtin.include_tasks: wal.yml
+- name: Tune PostgreSQL
+  ansible.builtin.include_tasks: tune.yml
+  when: postgresql_tune_enabled | bool
+- name: Configure PostgreSQL backups
+  ansible.builtin.include_tasks: backup.yml
+- name: Mark PostgreSQL as configured
+  ansible.builtin.set_fact:
+    postgresql_configured: true
+    postgresql_version: "{{ postgresql_version }}"

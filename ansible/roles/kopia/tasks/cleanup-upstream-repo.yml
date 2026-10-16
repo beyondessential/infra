@@ -1,0 +1,26 @@
+---
+# Kopia is installed via the baseline package list, from the bes-tools apt repo
+# (which also owns the kopia user, group and home). Hosts used to pull kopia
+# from the upstream packages.kopia.io apt repo; remove that repo, its keyring
+# and its pin so kopia tracks the bes-tools package instead.
+#
+# Transitional: once every host has converged off the upstream repo, this whole
+# role can be deleted.
+- name: Remove upstream kopia apt repo
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/keyrings/kopia-keyring.gpg
+    - /etc/apt/sources.list.d/kopia.list
+    - /etc/apt/sources.list.d/packages_kopia_io_apt.list
+    - /etc/apt/preferences.d/99-kopia
+  register: kopia_repo_cleanup
+
+- name: Refresh apt cache after removing upstream kopia repo  # noqa: no-handler
+  # Refresh immediately so later apt operations don't reference the removed repo.
+  become: true
+  when: kopia_repo_cleanup.changed
+  ansible.builtin.apt:
+    update_cache: true

@@ -1,0 +1,116 @@
+---
+# bestool-alertd's doctor runs read-only DB checks. Give it a dedicated Postgres
+# role it reaches over the socket via peer auth (pg_ident maps the root OS user
+# the daemon runs as to this role), so there's no password to keep in sync. The
+# role is cluster-wide read-only: pg_read_all_data covers SELECT on every table,
+# pg_monitor the stat views; nothing more.
+#
+# This lives in the postgres role (not the tamanu role) on purpose: the role and
+# its peer auth have no dependency on any application database, so provisioning
+# them here means they exist on every Postgres host regardless of tamanu, and a
+# `--skip-tags app` run still fully sets up alertd's DB access.
+- name: Create read-only monitoring role for bestool-alertd
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ alertd_db_role }}"
+    role_attr_flags: "LOGIN,NOSUPERUSER,NOCREATEDB,NOCREATEROLE,INHERIT"
+    # No password: authentication is peer-only (see pg_hba + pg_ident below).
+
+- name: Grant read-only monitoring roles to the alertd user
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_membership:
+    target_roles: "{{ alertd_db_role }}"
+    groups:
+      - pg_read_all_data
+      - pg_monitor
+    state: present
+
+# databases: all — the role connects both to the postgres maintenance DB
+# (DATABASE_URL, cluster-health checks) and the application DB (TAMANU_DATABASE_URL,
+# schema-aware checks), and to any database on a non-tamanu host. CONNECT is not
+# granted explicitly: it relies on PostgreSQL's default PUBLIC CONNECT, which is
+# what lets a cluster-wide monitor follow the cluster without pre-naming databases.
+- name: Allow the alertd monitoring user peer access to postgres
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: "{{ alertd_db_role }}"
+    databases: all
+    method: peer
+    options: "map=alertd"
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
+  notify: Reload postgres
+
+# pg_ident maps the root OS user (the rootful bestool-alertd daemon) to the
+# monitoring role for the `map=alertd` peer rule above. No module manages
+# pg_ident, so edit the file directly. The former tamanu_monitoring role used
+# the same map name, so this line retargets it in place.
+- name: Map root to the alertd monitoring role (pg_ident)
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/current/main/pg_ident.conf
+    regexp: '^\s*alertd\s+root\s+'
+    line: "alertd  root  {{ alertd_db_role }}"
+    state: present
+  notify: Reload postgres
+
+# --- Migration off the former tamanu-scoped `tamanu_monitoring` role ---
+# Superseded by the cluster-wide role above. The pg_ident map line was reused
+# (retargeted above); here we drop the old role, revoke its explicit CONNECT on
+# the tamanu DB (a granted privilege blocks DROP ROLE), and remove its
+# tamanu-scoped pg_hba line. Everything is guarded so it's a no-op on hosts that
+# never had it (fresh installs, non-tamanu hosts) and idempotent on re-runs.
+- name: Check whether the former tamanu_monitoring role exists
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    query: "SELECT 1 FROM pg_roles WHERE rolname = 'tamanu_monitoring'"
+  register: old_monitoring_role
+  changed_when: false
+
+- name: Check whether the tamanu database exists
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    query: "SELECT 1 FROM pg_database WHERE datname = 'tamanu'"
+  register: tamanu_db_present
+  changed_when: false
+  when: old_monitoring_role.rowcount | default(0) > 0
+
+- name: Revoke the former role's CONNECT on the tamanu database
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    db: tamanu
+    type: database
+    objs: tamanu
+    privs: CONNECT
+    roles: tamanu_monitoring
+    state: absent
+  when:
+    - old_monitoring_role.rowcount | default(0) > 0
+    - tamanu_db_present.rowcount | default(0) > 0
+
+- name: Drop the former tamanu_monitoring role
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: tamanu_monitoring
+    state: absent
+  when: old_monitoring_role.rowcount | default(0) > 0
+
+- name: Remove the former tamanu-scoped monitoring pg_hba line
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: tamanu_monitoring
+    databases: tamanu
+    method: peer
+    options: "map=alertd"
+    address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
+    state: absent
+  notify: Reload postgres

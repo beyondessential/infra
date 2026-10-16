@@ -1,0 +1,83 @@
+---
+- name: Set hostname
+  become: true
+  ansible.builtin.hostname:
+    name: "{{ public_hostname | regex_replace('\\.local$') }}"
+    use: systemd
+
+- name: Add full hostname to /etc/hosts
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "127.0.1.1 {{ public_hostname }}"
+
+# The system hostname has .local stripped, so without a matching entry every
+# `gethostname()`-then-resolve dance (sudo, ssh login, journalctl, …) falls
+# through to DNS and eats a multi-second timeout.
+- name: Add short hostname to /etc/hosts
+  when: public_hostname != (public_hostname | regex_replace('\\.local$'))
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "127.0.1.1 {{ public_hostname | regex_replace('\\.local$') }}"
+
+# Belt-and-braces: nss-myhostname tracks `gethostname()` automatically so a
+# hostname change doesn't re-introduce the multi-second resolution timeout
+# even before the playbook re-runs.
+- name: Install libnss-myhostname
+  become: true
+  ansible.builtin.apt:
+    name: libnss-myhostname
+    state: present
+
+- name: Consult myhostname in nsswitch before mdns/dns fallbacks
+  become: true
+  ansible.builtin.replace:
+    path: /etc/nsswitch.conf
+    regexp: "^(hosts:\\s+files)(?!\\s+myhostname)(\\s+.*)"
+    replace: "\\1 myhostname\\2"
+
+- name: Install resolved
+  become: true
+  ansible.builtin.apt:
+    name:
+      - systemd-resolved
+  notify: Restart systemd-resolved
+
+- name: Create resolved override directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/systemd-resolved.service.d
+    state: directory
+    mode: "0755"
+
+- name: Limit resolved CPU usage
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/systemd-resolved.service.d/90-cpu-limit.conf
+    mode: "0644"
+    content: |
+      [Service]
+      CPUWeight=20
+      CPUQuota=30%
+  notify:
+    - Reload systemd
+    - Restart systemd-resolved
+
+- name: Enable resolved
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: true
+    state: started
+
+# Cloud images (and some Pakistan-region VMs) ship a static regular-file
+# /etc/resolv.conf. The file module refuses to convert a real file to a symlink
+# unless forced, so force it to hand DNS over to resolved's stub on every host.
+- name: Set resolved as DNS
+  become: true
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true

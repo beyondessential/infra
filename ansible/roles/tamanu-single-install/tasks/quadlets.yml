@@ -1,0 +1,173 @@
+---
+- name: Install common container quadlets
+  become: true
+  loop:
+    - tamanu-frontend@.container
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/containers/systemd/{{ item }}
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Install patient portal container quadlet
+  when: patient_portal_enabled
+  become: true
+  ansible.builtin.copy:
+    src: tamanu-patientportal@.container
+    dest: /etc/containers/systemd/tamanu-patientportal@.container
+    mode: "0644"
+  notify: Reload systemd
+
+# Legacy singleton patient portal quadlet — pre-instanced layout. Remove
+# so it can't coexist with tamanu-patientportal@.container.
+- name: Remove old singleton patient portal quadlet
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-patientportal.container
+    state: absent
+  notify: Reload systemd
+
+# Legacy combined FHIR worker quadlet — split into separate resolve and
+# refresh workers. Stop the running service and remove the unit (and any
+# drop-ins) so it can't linger on hosts provisioned before the split.
+- name: Stop old combined FHIR worker service
+  when: tamanu_server_type == 'central'
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-central-fhir-worker.service
+    state: stopped
+  failed_when: false
+
+- name: Remove old combined FHIR worker quadlet
+  when: tamanu_server_type == 'central'
+  become: true
+  loop:
+    - /etc/containers/systemd/tamanu-central-fhir-worker.container
+    - /etc/containers/systemd/tamanu-central-fhir-worker.container.d
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  notify: Reload systemd
+
+- name: Install specific container quadlets
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/containers/systemd/{{ item | basename }}
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Create drop-in directory for quadlets
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-.container.d
+    state: directory
+    mode: "0755"
+
+- name: Mount the tamanu config key secret into containers
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/tamanu-.container.d/crypto-secret.conf
+    mode: "0644"
+    content: |
+      [Container]
+      Secret=tamanu-config-key,mode=0400
+  notify: Reload systemd
+
+- name: Enable IPv6 for quadlets
+  when: tamanu_ipv6 | bool
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Disable IPv6 for quadlets
+  when: not (tamanu_ipv6 | bool)
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/tamanu-.container.d/noipv6.conf
+    mode: "0644"
+    content: |
+      [Container]
+      Sysctl=net.ipv6.conf.all.disable_ipv6=1
+  notify: Reload systemd
+
+- name: Remove old container-specific noipv6.conf files
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d/noipv6.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Install quadlet override for extra_certs
+  when: tamanu_extra_certs | bool
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf
+    mode: "0644"
+    content: |
+      [Container]
+      Volume=/etc/ssl/certs:/host/etc/ssl/certs:ro
+      Environment=NODE_EXTRA_CA_CERTS=/host/etc/ssl/certs/ca-certificates.crt
+  notify: Reload systemd
+
+- name: Uninstall quadlet override for extra_certs
+  when: not (tamanu_extra_certs | bool)
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-.container.d/host-ca-certs.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Remove old container-specific host-ca-certs.conf files
+  become: true
+  with_fileglob: tamanu-{{ tamanu_server_type }}*.container
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item | basename }}.d/host-ca-certs.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Create QoS drop-in directories
+  become: true
+  when: tamanu_server_type == item.server_type
+  loop:
+    - { server_type: central, dir: tamanu-central-api@.container.d }
+    - { server_type: facility, dir: tamanu-facility-api@.container.d }
+    - { server_type: central, dir: tamanu-central-fhir-.container.d }
+    - { server_type: facility, dir: tamanu-facility-sync.container.d }
+  ansible.builtin.file:
+    path: /etc/containers/systemd/{{ item.dir }}
+    state: directory
+    mode: "0755"
+
+- name: Install critical QoS drop-ins
+  become: true
+  when: tamanu_server_type == item.server_type
+  loop:
+    - { server_type: central, dir: tamanu-central-api@.container.d }
+    - { server_type: facility, dir: tamanu-facility-api@.container.d }
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/{{ item.dir }}/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMScoreAdjust=-500
+  notify: Reload systemd
+
+- name: Install elevated QoS drop-ins
+  become: true
+  when: tamanu_server_type == item.server_type
+  loop:
+    - { server_type: central, dir: tamanu-central-fhir-.container.d }
+    - { server_type: facility, dir: tamanu-facility-sync.container.d }
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/{{ item.dir }}/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=elevated.slice
+  notify: Reload systemd

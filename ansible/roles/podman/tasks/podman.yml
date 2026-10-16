@@ -1,0 +1,198 @@
+---
+- name: Check if podman is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/podman ] && ! dpkg -S /usr/local/bin/podman 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: podman_install_type
+  changed_when: false
+
+- name: Remove old podman binaries (migration only)
+  become: true
+  when: podman_install_type.stdout == "custom"
+  loop:
+    - /usr/local/bin/podman
+    - /usr/local/bin/podman-remote
+    - /usr/local/bin/podmansh
+    - /usr/bin/podman
+    - /usr/bin/podman-remote
+    - /usr/bin/podmansh
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  failed_when: false
+
+- name: Install podman from bes-tools repo
+  become: true
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: true
+
+- name: Stat /usr/bin/podman
+  ansible.builtin.stat:
+    path: /usr/bin/podman
+    follow: false
+  register: podman_usr_bin
+
+# Three layouts to support:
+# - "package-owns-usr-bin": current bes-tools podman (ships /usr/bin/podman as
+#   the real binary and /usr/local/bin/podman as a package-owned symlink), or
+#   stock Ubuntu podman on 26.04+ (only /usr/bin/podman). dpkg -L lists
+#   /usr/bin/podman either way.
+# - "package-owns-usr-local-bin": legacy bes-tools podman that only shipped
+#   /usr/local/bin/podman; ansible has to add a /usr/bin/podman symlink for
+#   quadlet compatibility.
+# - "none"/"unknown": shouldn't happen after the apt install above.
+- name: Detect installed podman source
+  ansible.builtin.shell: |
+    set -o pipefail
+    if ! dpkg -s podman >/dev/null 2>&1; then
+      echo "none"
+    elif dpkg -L podman | grep -qx /usr/bin/podman; then
+      echo "package-owns-usr-bin"
+    elif dpkg -L podman | grep -qx /usr/local/bin/podman; then
+      echo "package-owns-usr-local-bin"
+    else
+      echo "unknown"
+    fi
+  args:
+    executable: /bin/bash
+  register: podman_source
+  changed_when: false
+
+# When the package owns /usr/bin/podman it should be a regular file. If it's a
+# symlink, a prior run of this role's quadlet-compat step replaced the real
+# binary with a symlink to /usr/local/bin/podman — harmless on stock 26.04 (just
+# stale), but on current bes-tools it forms a loop with the package-owned
+# /usr/local/bin/podman → /usr/bin/podman symlink, breaking `podman` entirely
+# ("Too many levels of symbolic links"). Either way, reinstall to restore.
+- name: Repair /usr/bin/podman if a prior ansible run replaced it with a symlink
+  become: true
+  when:
+    - podman_source.stdout == "package-owns-usr-bin"
+    - podman_usr_bin.stat.islnk | default(false)
+  block:
+    - name: Remove broken /usr/bin/podman symlink
+      ansible.builtin.file:
+        path: /usr/bin/podman
+        state: absent
+    - name: Reinstall podman to restore /usr/bin/podman  # noqa: command-instead-of-module
+      # The apt module has no reinstall option; only apt-get can force-reinstall
+      # a package whose files are already recorded as installed.
+      ansible.builtin.command:
+        cmd: apt-get install --reinstall -y podman
+      changed_when: true
+
+- name: Make sure podman runs
+  ansible.builtin.command: podman --version
+  changed_when: false
+- name: Stat /usr/local/bin/podman
+  ansible.builtin.stat:
+    path: /usr/local/bin/podman
+    follow: false
+  register: podman_local_bin
+
+# Only needed for the legacy bes-tools layout where /usr/local/bin/podman is the
+# real binary. Current bes-tools and stock both leave /usr/bin/podman as the
+# real file (and current bes-tools owns the /usr/local/bin/podman symlink
+# itself), so a forced symlink here would either be redundant or build the loop
+# the repair step above just undid.
+- name: Create /usr/bin/podman symlink for quadlet compatibility (legacy bes-tools)
+  when:
+    - podman_source.stdout == "package-owns-usr-local-bin"
+    - podman_local_bin.stat.exists
+    - not (podman_local_bin.stat.islnk | default(false))
+  become: true
+  ansible.builtin.file:
+    src: /usr/local/bin/podman
+    dest: /usr/bin/podman
+    state: link
+    force: true
+
+- name: Install containers.conf
+  become: true
+  ansible.builtin.copy:
+    remote_src: true
+    src: /usr/share/containers/containers.conf
+    dest: /etc/containers/containers.conf
+    force: false
+    mode: "0644"
+
+- name: Use netavark for container networking
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    line: network_backend = "netavark"
+    regexp: "^#?network_backend\\s*="
+
+- name: Use nftables for container networking
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    insertafter: "^\\[network\\]"
+    line: firewall_driver = "nftables"
+    regexp: "^#?firewall_driver\\s*="
+
+# Aardvark's own default port is 5533. netavark is meant to pass -p 53 so
+# aardvark binds to the conventional DNS port and containers can query it
+# without a 53→5533 DNAT detour — but with the documented default left
+# commented out, netavark 1.17.0 ends up letting aardvark fall back to 5533.
+# Setting it explicitly forces netavark to actually pass -p 53 along.
+- name: Bind aardvark-dns to port 53
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    insertafter: "^\\[network\\]"
+    line: dns_bind_port = 53
+    regexp: "^#?dns_bind_port\\s*="
+
+- name: Use host timezone by default for containers
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containers/containers.conf
+    line: tz = "local"
+    regexp: "^#?tz\\s*="
+
+# Superseded by podman-images-clean.timer. Its `--all` prune removes the images
+# of stopped quadlet services.
+- name: Remove podman image cron cleanup
+  become: true
+  ansible.builtin.file:
+    path: /etc/cron.daily/podman-image-cleanup
+    state: absent
+
+- name: Make quadlet directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd
+    state: directory
+    mode: "0755"
+
+- name: Add podman images pruning service
+  become: true
+  ansible.builtin.copy:
+    src: podman-images-clean.service
+    dest: /etc/systemd/system/podman-images-clean.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+
+- name: Add podman images pruning timer
+  become: true
+  ansible.builtin.copy:
+    src: podman-images-clean.timer
+    dest: /etc/systemd/system/podman-images-clean.timer
+    mode: "0644"
+  notify:
+    - Reload systemd
+
+- name: Enable podman images pruning timer
+  become: true
+  ansible.builtin.systemd:
+    name: podman-images-clean.timer
+    daemon_reload: true
+    state: started
+    enabled: true

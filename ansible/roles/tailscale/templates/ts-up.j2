@@ -1,0 +1,8 @@
+#!/bin/sh
+
+exec sudo tailscale up \
+  --hostname "{{ tailscale_name }}" \
+  --advertise-tags "{{ tailscale_tags }}" \
+  --operator "{{ ansible_user }}" \
+  --ssh --qr \
+  $*

@@ -1,0 +1,19 @@
+---
+- name: Add issuer config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/caddy/config/issuer
+    src: issuer.j2
+    mode: "0644"
+  notify: Restart caddy
+
+- name: Add metrics config
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/caddy/config/metrics
+    mode: "0644"
+    content: |
+      metrics {
+          per_host
+      }
+  notify: Reload caddy

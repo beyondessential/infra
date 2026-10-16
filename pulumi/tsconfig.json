@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": ["./**/*.ts"],
+  "exclude": ["policies"],
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "module": "nodenext",
+    "target": "esnext",
+    "moduleResolution": "nodenext",
+    "rootDir": ".",
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true
+  }
+}

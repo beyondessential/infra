@@ -1,0 +1,7 @@
+https://{{ tailscale_name }}.{{ tailnet }}.ts.net:{{ munin_tailscale_port }} {
+  bind :: {
+    protocols h1 h2
+  }
+  root * /var/cache/munin/www
+  file_server browse
+}

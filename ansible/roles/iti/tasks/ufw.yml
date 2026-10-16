@@ -1,0 +1,9 @@
+---
+- name: Allow mDNS on iti
+  when: ufw_managed | bool
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "5353"
+    proto: udp
+    comment: mDNS for tamanu-iti.local

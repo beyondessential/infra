@@ -1,0 +1,77 @@
+---
+- name: Sanity check
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check if the tamanu_version is set
+      tags: [pre, go]
+      ansible.builtin.assert:
+        that: tamanu_version is defined
+        msg: "tamanu_version is not defined. Please set it in the inventory file."
+
+    - name: Check the inventory was read as an upgrade
+      tags: [pre, go]
+      ansible.builtin.assert:
+        that: canopy_intent is defined and canopy_intent == 'upgrade'
+        msg: >-
+          canopy_intent is {{ canopy_intent | default('unset') }}, so canopy never
+          checked for an upgrade plan. Read the inventory with CANOPY_INTENT=upgrade.
+
+    # - name: Check tamanu-run works and the version exists before doing anything
+    #   tags: [pre, go]
+    #   ansible.builtin.command: tamanu-run {{ tamanu_version }} help
+
+- name: Central pre-upgrade (if needed)
+  hosts: central
+  roles:
+    - role: postgres-database
+      dbname: tamanu
+      tags: [pre, postgres]
+
+    - role: tamanu-single-install
+      type: central
+      db_name: tamanu
+      tags: [pre, tamanu]
+
+    # Runs after tamanu-single-install so its tamanu-single-common dependency has
+    # set up /etc/bestool first.
+    - role: bestool
+      tags: [pre, bestool]
+
+- name: Facility pre-upgrade  (if needed)
+  hosts: facility
+  roles:
+    - role: postgres-database
+      dbname: tamanu
+      tags: [pre, postgres]
+
+    - role: tamanu-single-install
+      type: facility
+      db_name: tamanu
+      tags: [pre, tamanu]
+
+    # See the central pre-upgrade play above.
+    - role: bestool
+      tags: [pre, bestool]
+
+    - role: msupply-install
+      tags: [pre, msupply]
+
+- name: Central upgrade
+  hosts: central
+  roles:
+    - role: tamanu-single-upgrade
+      type: central
+      db_name: tamanu
+      tags: [go, tamanu]
+
+- name: Facility upgrade
+  hosts: facility
+  roles:
+    - role: tamanu-single-upgrade
+      type: facility
+      db_name: tamanu
+      tags: [go, tamanu]
+
+    - role: msupply-upgrade
+      tags: [go, msupply]

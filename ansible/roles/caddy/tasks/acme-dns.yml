@@ -1,0 +1,30 @@
+---
+- name: Create AWS credentials directory
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/caddy/.aws
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: "0700"
+  when: tamanu_caddy_tls_dns_iam is defined
+
+- name: Configure AWS credentials for ACME DNS
+  become: true
+  diff: false
+  ansible.builtin.template:
+    src: aws-credentials.j2
+    dest: /var/lib/caddy/.aws/credentials
+    owner: caddy
+    group: caddy
+    mode: "0600"
+  when: tamanu_caddy_tls_dns_iam is defined
+  notify: Restart caddy
+
+- name: Remove AWS credentials directory
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/caddy/.aws
+    state: absent
+  when: tamanu_caddy_tls_dns_iam is not defined
+  notify: Restart caddy

@@ -1,0 +1,5 @@
+---
+# `common` provides the shared `Reload systemd` and `Restart bestool-alertd`
+# handlers this role notifies.
+dependencies:
+  - role: common

@@ -1,0 +1,6 @@
+name: agent-slack
+description: AI agent answering queries in our Slack at \#ask-ai
+runtime:
+  name: nodejs
+  options:
+    typescript: false

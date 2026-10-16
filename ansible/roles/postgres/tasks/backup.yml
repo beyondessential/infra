@@ -1,0 +1,125 @@
+---
+# Postgres is backed up by bestool/Canopy: the cluster via the `postgresql`
+# method (tamanu-postgres.toml) and /etc/postgresql via the `simple` method
+# (postgres-config.toml). bestool does its own crash-consistent capture (volume
+# snapshot or pg_basebackup), so the old btrfs/ext4 snapshot scaffolding and the
+# self-driven kopia timers are retired below.
+
+- name: Stop and disable old postgres kopia backup timers
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  failed_when: false
+  loop:
+    - kopia-backup-postgres.timer
+    - kopia-backup-postgres-config.timer
+
+- name: Remove old postgres kopia backup units and script
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/kopia-backup-postgres.timer
+    - /etc/systemd/system/kopia-backup-postgres.service
+    - /etc/systemd/system/kopia-backup-postgres-config.timer
+    - /etc/systemd/system/kopia-backup-postgres-config.service
+    - /var/lib/kopia/backup-postgres.sh
+  notify:
+    - Reload systemd
+
+# The ext4 snapshot method exposed the data directory to kopia through a bindfs
+# mount and a dedicated superuser role for the CHECKPOINT/pg_backup_start dance.
+# bestool's postgresql method handles its own access and capture, so tear all of
+# that down.
+# Best-effort: unmount any leftover mount from a crashed run before removing the
+# mountpoints. FUSE mounts are unreliable in the mounts fact, so just attempt it.
+- name: Unmount leftover ext4-method bindfs mount
+  become: true
+  ansible.builtin.command:
+    cmd: fusermount -u /var/lib/kopia/pgdata
+  changed_when: false
+  failed_when: false
+
+- name: Remove ext4-method kopia pgdata mountpoint
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kopia/pgdata
+    state: absent
+
+- name: Unmount leftover btrfs-method snapshot mount
+  become: true
+  ansible.builtin.command:
+    cmd: umount /var/lib/kopia/mnt-postgres
+  changed_when: false
+  failed_when: false
+
+- name: Remove btrfs-method kopia snapshot mountpoint
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kopia/mnt-postgres
+    state: absent
+
+- name: Remove peer access for the old kopia postgres role
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: local
+    users: kopia
+    databases: postgres
+    method: peer
+    address: ""
+    state: absent
+  notify: Reload postgres
+  failed_when: false
+
+- name: Remove the old kopia postgres role
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: kopia
+    state: absent
+  failed_when: false
+
+- name: Ensure bestool backups directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool/backups
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install postgres config backup definition
+  become: true
+  ansible.builtin.copy:
+    src: postgres-config.toml
+    dest: /etc/bestool/backups/postgres-config.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload bestool-alertd
+
+- name: Install tamanu-postgres backup definition
+  become: true
+  ansible.builtin.template:
+    src: tamanu-postgres.toml.j2
+    dest: /etc/bestool/backups/tamanu-postgres.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload bestool-alertd
+
+- name: Install the clone identity scrub
+  become: true
+  ansible.builtin.copy:
+    src: forget-server-identity.sql
+    dest: /etc/bestool/forget-server-identity.sql
+    owner: root
+    group: root
+    mode: "0644"
+  when: tamanu_clone

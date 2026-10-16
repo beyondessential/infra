@@ -1,0 +1,6 @@
+name: tamanu-infra
+description: Tamanu deployment infrastructure
+runtime:
+  name: nodejs
+  options:
+    typescript: false

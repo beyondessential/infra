@@ -1,0 +1,142 @@
+---
+# The bestool binary itself is installed (and kept up to date) by the toolbox
+# role. This role owns the bestool-alertd daemon and the bits it needs to run.
+
+- name: Gather bestool version
+  ansible.builtin.include_tasks: version.yml
+
+# On tamanu servers tamanu-single-common has already created /etc/bestool as
+# root:tamanu (setgid, group-shared). This is the fallback for any host where
+# that didn't run: a plain root-owned dir is enough for the root-run daemon to
+# write its config. We only create it when missing so we never clobber the
+# group-shared perms set up by tamanu-single-common.
+- name: Check for bestool config directory
+  ansible.builtin.stat:
+    path: /etc/bestool
+  register: bestool_config_dir
+
+- name: Create bestool config directory if absent
+  when: not bestool_config_dir.stat.exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# alertd talks to podman over the rootful API socket (CONTAINER_HOST in the
+# unit) rather than forking a privileged podman, which is what lets the unit
+# drop caps/namespaces/devices. Enabling it here keeps it tied to its only
+# consumer, so it survives runs that skip the podman role.
+- name: Enable podman API socket
+  become: true
+  ansible.builtin.systemd:
+    name: podman.socket
+    daemon_reload: true
+    state: started
+    enabled: true
+
+# bestool 1.26.0 ships its own bestool-alertd.service in the package. From that
+# version on we stop managing the unit file: a self-managed copy under
+# /etc/systemd/system would shadow the packaged unit, so we delete it and inject
+# only the host-specific database URL via a drop-in. Older bestool has no
+# packaged unit, so keep templating the full unit for it (and when the version
+# fact is somehow absent, fall back to templating rather than leave nothing).
+- name: Determine whether bestool ships its own alertd unit
+  ansible.builtin.set_fact:
+    bestool_ships_alertd_unit: "{{ bestool_installed_version is defined and bestool_installed_version is version('1.26.0', '>=') }}"
+
+# The doctor's DB checks connect as a dedicated read-only Postgres role over the
+# socket (peer auth, no password — see the postgres role's monitoring-user.yml).
+# DATABASE_URL points at the always-present maintenance DB for cluster-health
+# checks, so it's set wherever Postgres runs; TAMANU_DATABASE_URL points at the
+# application DB for schema-aware checks and is set only where that DB exists.
+# Computed before the unit is written so both the template (older bestool) and
+# the drop-in (bestool >= 1.26) can read it.
+- name: Compute alertd database URLs
+  ansible.builtin.set_fact:
+    alertd_cluster_database_url: "postgresql://{{ alertd_db_role }}@/{{ alertd_cluster_db }}?host=/var/run/postgresql"
+    alertd_app_database_url: "{{ ('postgresql://' ~ alertd_db_role ~ '@/' ~ alertd_app_db ~ '?host=/var/run/postgresql') if (alertd_app_db | default('') | length > 0) else '' }}"
+
+- name: Install bestool-alertd systemd unit
+  when: not bestool_ships_alertd_unit
+  become: true
+  ansible.builtin.template:
+    src: bestool-alertd.service.j2
+    dest: /etc/systemd/system/bestool-alertd.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart bestool-alertd
+
+- name: Remove self-managed bestool-alertd unit superseded by the package
+  when: bestool_ships_alertd_unit
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-alertd.service
+    state: absent
+  notify:
+    - Reload systemd
+    - Restart bestool-alertd
+
+- name: Create bestool-alertd unit drop-in directory
+  when: bestool_ships_alertd_unit
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-alertd.service.d
+    state: directory
+    mode: "0755"
+
+- name: Drop in bestool-alertd database URLs
+  when: bestool_ships_alertd_unit
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/bestool-alertd.service.d/10-database.conf
+    content: |
+      [Service]
+      Environment=DATABASE_URL={{ alertd_cluster_database_url }}
+      {% if alertd_app_database_url | length > 0 %}
+      Environment=TAMANU_DATABASE_URL={{ alertd_app_database_url }}
+      {% endif %}
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart bestool-alertd
+
+# Lands before the start below, so a daemon first started here already admits
+# Caddy.
+- name: Permit Caddy to fetch certificates
+  ansible.builtin.include_tasks: caddy-certificates.yml
+
+- name: Enable and start bestool-alertd
+  become: true
+  ansible.builtin.systemd:
+    name: bestool-alertd.service
+    state: started
+    enabled: true
+    daemon_reload: true
+
+# The drop-in and the database roles it names come from different ansible roles,
+# so a tag-scoped run can leave them out of step.
+- name: Apply the alertd database configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Check alertd can reach the databases it monitors
+  when: bestool_ships_alertd_unit
+  loop: "{{ [alertd_cluster_database_url, alertd_app_database_url] | select | list }}"
+  become: true
+  environment:
+    TAMANU_DATABASE_URL: "{{ item }}"
+  ansible.builtin.command:
+    argv:
+      - bestool
+      - tamanu
+      - doctor
+      - --check
+      - postgres:connect
+      - --no-daemon
+  changed_when: false
+
+- name: Wire the bestool-alertd Munin plugin (when packaged and Munin present)
+  ansible.builtin.include_tasks: munin-plugin.yml

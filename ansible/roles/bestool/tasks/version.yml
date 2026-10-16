@@ -1,0 +1,13 @@
+---
+# alertd's version-gated ExecStart (see the template) and its certificate
+# delivery need the installed version. On a full tamanu run
+# tamanu-single-install/facts.yml has already set this, but this role must also
+# work when that role is skipped, so gather it here.
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Set bestool installed version fact
+  when: "'bestool' in ansible_facts.packages"
+  ansible.builtin.set_fact:
+    bestool_installed_version: "{{ ansible_facts.packages['bestool'][0].version | regex_replace('[-+~].*$', '') }}"

@@ -1,0 +1,5 @@
+{
+  "name": "@bes/first-officer",
+  "type": "module",
+  "main": "src/index.ts"
+}

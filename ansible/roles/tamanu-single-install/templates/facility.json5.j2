@@ -1,0 +1,31 @@
+{
+  countryTimeZone: "{{ timezone }}",
+  primaryTimeZone: "{{ timezone }}",
+  serverFacilityIds: ["{{ tamanu_facility_id }}"],
+  canonicalUrl: "https://{{ public_hostname }}",
+  sync: {
+    host: "{{ tamanu_central_canonical_url }}",
+    dynamicLimiter: {
+      initialLimit: 10000,
+      minLimit: 1000,
+      maxLimit: 100000,
+      optimalTimePerPageMs: 10000,
+      maxLimitChangePerPage: 0.3,
+    },
+  },
+  auth: {
+    secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'tamanuauth') }}",
+    useHardcodedPermissions: false,
+  },
+  survey: {
+    defaultCodes: {
+      department: "{{ tamanu_default_department }}",
+      location: "{{ tamanu_default_location }}",
+    },
+  },
+  db: {
+    reportSchemas: {
+      enabled: true,
+    },
+  },
+}

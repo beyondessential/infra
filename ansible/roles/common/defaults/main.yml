@@ -1,0 +1,31 @@
+---
+# TODO: flip default to true once we know this works fully
+ufw_managed: false
+dangerously_leave_ufw_alone: false
+
+# Read-only Postgres role bestool-alertd's doctor connects as, via peer auth
+# (pg_ident maps root -> this role), so there's no DB password to keep in sync.
+# Defined here in `common` so both the postgres role (which creates the role and
+# its auth) and the bestool role (which builds alertd's connection URLs) can see
+# it — they run in different plays.
+alertd_db_role: alertd
+# Database alertd's generic cluster-health checks connect to (DATABASE_URL). The
+# maintenance DB always exists wherever Postgres runs, so this works even on a
+# host with no application database.
+alertd_cluster_db: postgres
+# Database alertd's schema-aware checks connect to (TAMANU_DATABASE_URL). Empty
+# means the host has no such database and that URL is omitted.
+alertd_app_db: tamanu
+
+# Tailnet name, used to build `<host>.<tailnet>.ts.net` hostnames. Defined here
+# in `common` (not the tamanu roles) so roles running in the all-hosts play —
+# e.g. munin's Caddy vhost — can see it, not just the tamanu central/facility
+# plays.
+tailnet: tail53aef
+
+# Tamanu and mSupply sites name bestool-alertd's certificate endpoint, so a
+# Canopy-issued chain is served wherever one has been collected and Caddy's own
+# issuer covers every name the daemon declines. Defined here in `common` because
+# the tamanu and msupply roles both render sites from it. Takes effect only where
+# the installed bestool serves the endpoint (see bestool/tasks/caddy-certificates.yml).
+caddy_canopy_certificates: true

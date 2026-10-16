@@ -1,0 +1,26 @@
+---
+# rsyslog isn't installed by the baseline role; some hosts (e.g. journald-only
+# ITIs) don't have it at all. The noise-reduction config below only matters
+# where rsyslog actually writes /var/log/syslog, so skip it (and its restart
+# handler) when rsyslog is absent.
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Drop noisy programs from rsyslog output (e.g. /var/log/syslog)
+  when: "'rsyslog' in ansible_facts.packages"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/10-exclude-from-syslog.conf
+    mode: "0644"
+    content: |
+      # Managed by Ansible (baseline role).
+      # These programs are dropped from rsyslog output, such as /var/log/syslog.
+      # They are still recorded in the systemd journal — read them with `journalctl`.
+      {% for program in baseline_syslog_excludes %}
+      if $programname == '{{ program }}' then stop
+      {% endfor %}
+      {% for prefix in baseline_syslog_exclude_prefixes %}
+      if $programname startswith '{{ prefix }}' then stop
+      {% endfor %}
+  notify: Restart rsyslog

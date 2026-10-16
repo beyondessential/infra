@@ -1,0 +1,43 @@
+{
+  countryTimeZone: "{{ timezone }}",
+  primaryTimeZone: "{{ timezone }}",
+  canonicalHostName: "{{ tamanu_central_canonical_url }}",
+  auth: {
+    secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'tamanuauth') }}",
+    refreshToken: {
+      secret: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'tamanurefresh') }}",
+    },
+    reportNoUserError: true,
+    useHardcodedPermissions: false,
+  },
+  sync: {
+   lookupTable: {
+      enabled: true,
+    },
+  },
+  db: {
+    reportSchemas: {
+      enabled: true,
+    },
+  },
+  localisation: {
+    data: {
+      country: {
+        name: "{{ tamanu_country_name }}",
+        "alpha-2": "{{ tamanu_country_alpha2 }}",
+        "alpha-3": "{{ tamanu_country_alpha3 }}",
+      },
+      timeZone: '{{ timezone}}',
+    },
+  },
+  disk: {
+    freeSpaceRequired: {
+      gigabytesForUploadingDocuments: 0.1,
+    },
+  },
+  notifications: {
+    certificates: {
+      labTestCategoryIds: ['labTestCategory-COVID', 'labTestCategory-COVIDRAT'],
+    },
+  },
+}

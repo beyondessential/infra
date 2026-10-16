@@ -1,0 +1,17 @@
+---
+- name: Install
+  hosts: all
+  pre_tasks:
+    - name: Gather EC2 metadata facts
+      when: ansible_facts['system_vendor'] == 'Amazon EC2'
+      amazon.aws.ec2_metadata_facts:
+  roles:
+    - role: baseline
+      tags: [base, baseline]
+    - role: toolbox
+      tags: [base, toolbox]
+    - role: tailscale
+      tags: [base, tailscale]
+      when: tailscale_name is defined
+    - role: podman
+      tags: [base, podman]

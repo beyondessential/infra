@@ -1,0 +1,104 @@
+---
+# Pull before anything points at the new version: the quadlets resolve their
+# image from TAMANU_VERSION in /etc/tamanu/env, so writing that first and then
+# failing to pull leaves the box unable to start after its next restart.
+- name: Pull the Tamanu images
+  become: true
+  loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"
+  containers.podman.podman_image:
+    name: "{{ item }}"
+
+- name: Create versioned tamanu config directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu/{{ tamanu_version }}
+    mode: "0770"
+    owner: tamanu
+    group: tamanu
+    state: directory
+
+- name: Copy current app config to new version
+  become: true
+  ansible.builtin.copy:
+    remote_src: true
+    src: /etc/tamanu/current/production.json5
+    dest: /etc/tamanu/{{ tamanu_version }}/production.json5
+    mode: "0660"
+    owner: tamanu
+    group: tamanu
+    force: false # preserve modifications
+  ignore_errors: true
+  register: copy_current
+
+- name: Add new tamanu app config
+  when: copy_current.failed
+  become: true
+  diff: false
+  ansible.builtin.template:
+    dest: /etc/tamanu/{{ tamanu_version }}/production.json5
+    src: "{{ tamanu_server_type }}.json5.j2"
+    mode: "0660"
+    owner: tamanu
+    group: tamanu
+    force: false # preserve modifications
+
+- name: Apply local tamanu config
+  ansible.builtin.include_tasks: local-config.yml
+
+- name: Set permissions of tamanu app config
+  become: true
+  ansible.builtin.file:
+    path: /etc/tamanu/{{ tamanu_version }}/production.json5
+    mode: "0660"
+    owner: tamanu
+    group: tamanu
+    state: file
+
+- name: Move current symlink
+  become: true
+  ansible.builtin.file:
+    src: /etc/tamanu/{{ tamanu_version }}
+    dest: /etc/tamanu/current
+    owner: tamanu
+    group: tamanu
+    state: link
+    force: true
+  notify: Restart bestool-alertd
+
+- name: Add version file
+  ansible.builtin.include_role:
+    name: tamanu-single-common
+    tasks_from: env
+
+# Per-server AES key for local_system_secrets encryption, kept as a podman secret.
+# Piped from /dev/urandom straight into podman so it never touches Ansible; never
+# regenerated (anything encrypted under it is lost if the host dies).
+- name: Ensure tamanu config key podman secret exists
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      if podman secret exists tamanu-config-key; then
+        exit 0
+      fi
+      dd if=/dev/urandom bs=32 count=1 status=none | podman secret create tamanu-config-key -
+      echo created
+    executable: /bin/bash
+  register: tamanu_config_key
+  changed_when: tamanu_config_key.stdout == "created"
+
+# The relative source path resolves against the image's working directory.
+# default.json5 holds the app's built-in defaults that production.json5
+# layers over; keep a read-only copy next to it for reference.
+- name: Extract default app config from tamanu image
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      cid=$(podman create {{ tamanu_image_server }})
+      trap 'podman rm "$cid" >/dev/null' EXIT
+      podman cp "$cid:config/default.json5" /etc/tamanu/{{ tamanu_version }}/default.json5
+      chown tamanu:tamanu /etc/tamanu/{{ tamanu_version }}/default.json5
+      chmod 0440 /etc/tamanu/{{ tamanu_version }}/default.json5
+    creates: /etc/tamanu/{{ tamanu_version }}/default.json5
+    executable: /bin/bash

@@ -1,0 +1,22 @@
+---
+- name: Gather mSupply facts
+  ansible.builtin.include_tasks: facts.yml
+
+- name: Install and configure mSupply
+  when: msupply_enabled | bool
+  block:
+    - name: Set up mSupply user
+      ansible.builtin.include_tasks: user.yml
+    - name: Set up mSupply volume
+      ansible.builtin.include_tasks: volume.yml
+    - name: Install mSupply quadlet
+      ansible.builtin.include_tasks: quadlet.yml
+    - name: Configure mSupply
+      ansible.builtin.include_tasks: config.yml
+    - name: Configure mSupply tailscale
+      ansible.builtin.include_tasks: tailscale.yml
+    - name: Set mSupply version
+      ansible.builtin.include_tasks: version.yml
+    - name: Configure mSupply ufw
+      ansible.builtin.include_tasks: ufw.yml
+      when: ufw_managed | bool and not (dangerously_leave_ufw_alone | bool)

@@ -1,0 +1,5 @@
+{
+  "name": "@tamanu/ips",
+  "type": "module",
+  "main": "./index.ts"
+}

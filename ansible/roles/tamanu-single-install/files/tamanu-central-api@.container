@@ -1,0 +1,19 @@
+[Unit]
+Description=Tamanu Central server API
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-central:${TAMANU_VERSION}
+Exec=startApi
+Volume=/etc/tamanu/${TAMANU_VERSION}:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=api.central.tamanu.internal
+NetworkAlias=api-%i.central.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.api.central.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.api-%i.central.tamanu.internal
+Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5

@@ -1,0 +1,18 @@
+[Unit]
+Description=Tamanu patient portal
+
+[Container]
+EnvironmentFile=/etc/tamanu/env
+Image=ghcr.io/beyondessential/tamanu-patient-portal:${TAMANU_VERSION}
+Volume=/etc/tamanu/${TAMANU_VERSION}:/config
+Volume=/var/run/postgresql:/var/run/postgresql
+NetworkAlias=patientportal.tamanu.internal
+NetworkAlias=patientportal-%i.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.patientportal.tamanu.internal
+NetworkAlias=${TAMANU_VERSION_DOMAIN}.patientportal-%i.tamanu.internal
+Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+
+[Service]
+EnvironmentFile=/etc/tamanu/env
+Restart=always
+RestartSec=5

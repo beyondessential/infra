@@ -1,0 +1,24 @@
+---
+- name: Check if crun is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/crun ] && ! dpkg -S /usr/local/bin/crun 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: crun_install_type
+  changed_when: false
+
+- name: Remove old crun binary (migration only)
+  become: true
+  when: crun_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/local/bin/crun
+    state: absent
+
+- name: Install crun from bes-tools repo
+  become: true
+  ansible.builtin.apt:
+    name: crun
+    state: present
+    update_cache: true

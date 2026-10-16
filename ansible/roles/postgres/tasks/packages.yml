@@ -1,0 +1,78 @@
+---
+- name: Install postgresql
+  become: true
+  ansible.builtin.apt:
+    name: postgresql-{{ postgresql_version }}
+    state: present
+  notify:
+    - Update package facts
+    - Restart postgres
+
+- name: Create postgresql QoS drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/postgresql@.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install postgresql QoS drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/postgresql@.service.d/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMPolicy=continue
+      Restart=on-failure
+      RestartSec=30s
+  notify:
+    - Reload systemd
+    - Restart postgres
+
+# during first install, the service is not started (handlers are not run) until
+# after the play completes, and thus the symlink step below fails. Workaround by
+# forcing the handlers to run now.
+- name: Ensure /var/run/postgresql exists on boot
+  become: true
+  ansible.builtin.copy:
+    src: run-postgresql.conf
+    dest: /etc/tmpfiles.d/run-postgresql.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Ensure /var/run/postgresql exists now
+  become: true
+  ansible.builtin.file:
+    path: /var/run/postgresql
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "2775"
+
+- name: Make sure postgresql is running now
+  ansible.builtin.meta: flush_handlers
+- name: Symlink current postgresql version configuration
+  become: true
+  ansible.builtin.file:
+    src: /etc/postgresql/{{ postgresql_version }}
+    dest: /etc/postgresql/current
+    state: link
+
+- name: Symlink current postgresql version data
+  become: true
+  ansible.builtin.file:
+    src: /var/lib/postgresql/{{ postgresql_version }}/main
+    dest: /var/lib/postgresql/current
+    state: link
+
+- name: Hold postgresql packages to prevent unattended upgrades
+  become: true
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - postgresql-{{ postgresql_version }}
+    - postgresql-client-{{ postgresql_version }}

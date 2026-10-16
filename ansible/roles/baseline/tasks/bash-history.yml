@@ -1,0 +1,8 @@
+---
+- name: Enable bash history timestamps
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/profile.d/bash-history.sh
+    mode: "0644"
+    content: |
+      HISTTIMEFORMAT="%F %T  "

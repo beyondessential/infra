@@ -1,0 +1,30 @@
+---
+- name: Set WAL expiry
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: archive_timeout
+    value: "300"
+    # recommended to be no shorter than 1 minute
+    # this helps keep pg_wal size reasonable
+
+# Backups are taken by bestool/Canopy (volume snapshot or pg_basebackup, which
+# streams its own WAL); nothing on the host archives WAL. Reset the archiving
+# scaffolding the old kopia backups carried back to PostgreSQL's defaults:
+# archive_mode off and no archive_command. archive_mode is restart-only, so this
+# restarts postgres when it was previously on.
+- name: Disable WAL archiving (archive_mode)
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: archive_mode
+    value: _RESET
+  notify: Restart postgres
+
+- name: Clear the no-op archive_command
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_alter_system:
+    param: archive_command
+    value: _RESET
+  notify: Restart postgres

@@ -1,0 +1,50 @@
+---
+# bestool/Canopy resolves the postgres backup by cluster name ("main", see
+# tamanu-postgres.toml) via pg_lsclusters. Assert that pg_lsclusters points
+# "main" at the live data directory, so that resolution can be relied upon —
+# an upgrade rebuilds the cluster layout, which is exactly when it could drift.
+
+- name: Check for the live postgres data directory
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/current/main
+  register: pg_current_main
+
+- name: Verify pg_lsclusters resolves 'main' to the live cluster
+  when: pg_current_main.stat.exists
+  block:
+    - name: Resolve the live postgres data directory
+      become: true
+      ansible.builtin.command:
+        cmd: readlink -f /var/lib/postgresql/current/main
+      register: pg_live_datadir
+      changed_when: false
+
+    # Columns: Ver Cluster Port Status Owner Datadir Logfile. Skip the header
+    # (non-numeric Ver), keep only the online 'main' cluster(s), and normalise
+    # each data directory the same way the live path is resolved.
+    - name: Resolve online 'main' cluster data directories from pg_lsclusters
+      become: true
+      become_user: postgres
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          pg_lsclusters | awk '$1 ~ /^[0-9]/ && $2 == "main" && $4 == "online" { print $6 }' \
+            | while read -r d; do readlink -f "$d"; done
+        executable: /bin/bash
+      register: pg_lsclusters_main
+      changed_when: false
+
+    - name: Assert pg_lsclusters points 'main' at the live data directory
+      ansible.builtin.assert:
+        that:
+          - (pg_lsclusters_main.stdout_lines | length == 1) and ((pg_lsclusters_main.stdout_lines | first | default('')) == pg_live_datadir.stdout)
+        fail_msg: >-
+          bestool resolves the postgres backup by cluster name 'main' via
+          pg_lsclusters, but that does not resolve to the live data directory
+          ({{ pg_live_datadir.stdout }}). Online 'main' clusters reported:
+          {{ pg_lsclusters_main.stdout_lines | default([]) }}. Resolve the
+          cluster layout before relying on bestool postgres backups.
+        success_msg: >-
+          pg_lsclusters resolves 'main' to {{ pg_live_datadir.stdout }}
+          (the live data directory).
+        quiet: true

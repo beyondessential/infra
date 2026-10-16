@@ -1,0 +1,12 @@
+[Unit]
+Description=Bring up Tamanu services at boot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/bestool tamanu start
+
+[Install]
+WantedBy=multi-user.target

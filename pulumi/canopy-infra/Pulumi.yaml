@@ -1,0 +1,3 @@
+name: canopy-infra
+description: AWS-side IAM for the Canopy control plane (IRSA roles)
+runtime: nodejs

@@ -1,0 +1,14 @@
+[Unit]
+Description=Podman images cleanup
+
+# Dangling images only. Quadlet containers are --rm, so a stopped service's
+# image has no container referencing it, and `--all` would delete it; at boot
+# the Persistent= catch-up run can land before the services are started.
+# Tagged images are cleaned up by the playbooks once an upgrade has succeeded.
+[Service]
+Type=oneshot
+ExecStart=podman image prune --force
+Slice=background.slice
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=500

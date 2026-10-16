@@ -1,0 +1,104 @@
+---
+# All handlers carry `tags: [always]` so they run whenever a task notifies them,
+# regardless of any `--tags` filter on the run. Without it Ansible tag-filters
+# handlers too, silently skipping a notified handler (e.g. `Reload caddy`) when
+# its role isn't in the active tag set — so a `--tags munin`/`--tags app` run
+# would change config on disk but never reload the service.
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: [always]
+
+- name: Restart bestool-alertd
+  become: true
+  ansible.builtin.systemd:
+    name: bestool-alertd.service
+    state: restarted
+  tags: [always]
+
+# Re-read the backups directory after a definition changes. The packaged unit
+# (bestool >= 1.26) defines a reload, so this re-registers without dropping the
+# daemon; the older self-templated unit has no ExecReload, so reload-or-restart
+# falls back to a restart there. The daemon also watches the directory, so this
+# is belt-and-braces.
+- name: Reload bestool-alertd
+  become: true
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    cmd: systemctl reload-or-restart bestool-alertd.service
+  changed_when: true
+  tags: [always]
+
+- name: Reboot
+  become: true
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: Rebooting to apply changes
+    pre_reboot_delay: 5
+  tags: [always]
+
+- name: Update package facts
+  ansible.builtin.package_facts:
+  tags: [always]
+
+- name: Reload systemd-networkd
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-networkd
+    state: reloaded
+  tags: [always]
+
+- name: Restart systemd-resolved
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  tags: [always]
+
+- name: Restart postgres
+  when: postgresql_installed_version is defined
+  become: true
+  ansible.builtin.systemd:
+    name: postgresql@{{ postgresql_installed_version }}-main
+    state: restarted
+  tags: [always]
+
+- name: Reload postgres
+  when: postgresql_installed_version is defined
+  become: true
+  ansible.builtin.systemd:
+    name: postgresql@{{ postgresql_installed_version }}-main
+    state: reloaded
+  tags: [always]
+
+- name: Restart caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    state: restarted
+  tags: [always]
+
+- name: Reload caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    state: reloaded
+  tags: [always]
+
+# Shared here (not in the munin role) so the postgres role — which wires Munin's
+# postgres plugins but depends on `common`, not `munin` — can notify it too.
+- name: Restart munin-node
+  become: true
+  ansible.builtin.systemd:
+    name: munin-node
+    state: restarted
+  tags: [always]
+
+- name: Flush systemd-resolved cache
+  become: true
+  ansible.builtin.command:
+    cmd: resolvectl flush-caches
+  changed_when: true
+  failed_when: false
+  listen: Reload caddy
+  tags: [always]

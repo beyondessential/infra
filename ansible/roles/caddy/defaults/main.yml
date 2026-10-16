@@ -1,0 +1,10 @@
+---
+caddy_version: "2.11.4-bes1"
+caddy_email: tls-renewal@bes.au
+# Enable the ZeroSSL certificate issuer
+# caddy_zerossl_api_key: APIKEY
+caddy_waf_enforce: false
+# Enable ACME DNS-01 challenges via Route53 (for external servers)
+# tamanu_caddy_tls_dns_iam:
+#   access_key_id: AKIAIOSFODNN7EXAMPLE
+#   secret_access_key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY

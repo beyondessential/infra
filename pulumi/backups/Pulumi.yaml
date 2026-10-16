@@ -1,0 +1,6 @@
+name: tamanu-backups
+description: Infrastructure for Tamanu incremental backups
+runtime:
+  name: nodejs
+  options:
+    typescript: false

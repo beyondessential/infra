@@ -1,0 +1,28 @@
+[Unit]
+Description=Roll Tamanu services after PostgreSQL restarts
+# WantedBy below makes systemd pull this unit in whenever postgresql starts, and
+# After= orders it once the database is back. So a `systemctl restart
+# postgresql@{{ postgresql_installed_version }}-main` (e.g. the common "Restart postgres" handler, an
+# operator, or a config change) triggers a graceful roll of the workload, whose
+# pooled connections the restart just severed.
+#
+# A hard systemd dependency (Requires/BindsTo) is deliberately avoided: stopping
+# and starting every Tamanu service in lockstep with postgres would drop traffic.
+# bestool's rolling restart keeps at least one critical instance serving instead.
+After=postgresql@{{ postgresql_installed_version }}-main.service
+
+[Service]
+Type=oneshot
+# Only roll when Tamanu is already serving. At boot this unit fires right after
+# postgres, before tamanu-boot.service has brought the workload up over
+# network-online.target, so the frontend is not yet active and we skip — boot
+# startup is tamanu-boot's job. It also respects an operator who has deliberately
+# stopped Tamanu: a postgres restart won't yank it back up.
+ExecCondition=/bin/sh -c '/usr/bin/systemctl is-active --quiet tamanu-frontend@a.service || /usr/bin/systemctl is-active --quiet tamanu-frontend@b.service'
+# No service names = roll every running instance of every Up expectation:
+# background workers (tasks/sync/fhir) bulk-restart, while api/frontend roll one
+# instance at a time behind a readiness probe + caddy reload.
+ExecStart=/usr/bin/bestool tamanu restart
+
+[Install]
+WantedBy=postgresql@{{ postgresql_installed_version }}-main.service

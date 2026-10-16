@@ -1,0 +1,1 @@
+\set lsf 'select key, value from local_system_facts;'

@@ -1,0 +1,6 @@
+name: ts-relay
+description: Tailscale Peer Relay node
+runtime:
+  name: nodejs
+  options:
+    typescript: false

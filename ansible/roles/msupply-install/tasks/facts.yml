@@ -1,0 +1,32 @@
+---
+- name: Set msupply image tag
+  ansible.builtin.set_fact:
+    msupply_tag: "{{ msupply_version_arm64 if ansible_facts['architecture'] == 'aarch64' else msupply_version_amd64 }}"
+    msupply_image: "docker.io/msupplyfoundation/omsupply:{{ msupply_version_arm64 if ansible_facts['architecture'] == 'aarch64' else msupply_version_amd64 }}"
+
+# MsupplyFQDN is fetched in msupply-common (a dependency of this role), which
+# also sets msupply_enabled from it.
+- name: Fetch MsupplyTailscaleService EC2 tag
+  ansible.builtin.include_tasks: ../../../tasks/fetch-ec2-tag.yml
+  vars:
+    ec2_tag_name: MsupplyTailscaleService
+
+- name: Set msupply hostname from EC2 tag
+  when: ansible_facts['system_vendor'] == 'Amazon EC2' and ansible_ec2_tag_MsupplyFQDN is defined
+  ansible.builtin.set_fact:
+    msupply_hostname: "{{ ansible_ec2_tag_MsupplyFQDN }}"
+
+- name: Set msupply tailscale service from EC2 tag
+  when:
+    - msupply_tailscale_service is not defined
+    - ansible_facts['system_vendor'] == 'Amazon EC2'
+    - ansible_ec2_tag_MsupplyTailscaleService is defined
+  ansible.builtin.set_fact:
+    msupply_tailscale_service: "{{ ansible_ec2_tag_MsupplyTailscaleService }}"
+
+- name: Normalise msupply tailscale service prefix
+  when:
+    - msupply_tailscale_service is defined
+    - not msupply_tailscale_service.startswith('svc:')
+  ansible.builtin.set_fact:
+    msupply_tailscale_service: "svc:{{ msupply_tailscale_service }}"

@@ -1,0 +1,59 @@
+---
+# Tuning for BTRFS with CoW enabled
+
+- name: Read the filesystem and live mount options for /var/lib/postgresql
+  ansible.builtin.command: findmnt -no UUID,OPTIONS -P -T /var/lib/postgresql
+  register: pg_mount_info
+  changed_when: false
+
+- name: List btrfs mount points
+  ansible.builtin.command: findmnt -rn -t btrfs -o UUID,TARGET
+  register: btrfs_mounts
+  changed_when: false
+
+# fstab names the device many ways (UUID=, LABEL=, PARTUUID=, /dev/disk/by-*, /dev/sdX), so match by mount point
+- name: Find mount points on the postgres filesystem
+  ansible.builtin.set_fact:
+    pg_fs_targets: >-
+      {{ btrfs_mounts.stdout_lines
+         | select('match', (pg_mount_info.stdout | regex_search('UUID="([^"]*)"', '\1') | first) ~ ' ')
+         | map('regex_replace', '^\S+ ', '') | unique }}
+
+# btrfs applies the first mount's options to the whole filesystem, so every fstab line for it has to agree
+- name: Set btrfs compression to zstd:1 in fstab
+  become: true
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^(\S+\s+(?:{{ pg_fs_targets | map("regex_escape") | join("|") }})\s+btrfs\s+(?:\S*,)?compress=zstd)(?::\d+)?(?=[,\s])'
+    replace: '\1:1'
+  register: pg_fstab_compress
+
+- name: Reload systemd mount units
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: pg_fstab_compress is changed  # noqa: no-handler reload before the remount, not at end of play
+
+- name: Apply btrfs compression level live
+  become: true
+  ansible.builtin.command: mount -o remount,compress=zstd:1 /var/lib/postgresql  # noqa: command-instead-of-module
+  when: pg_mount_info.stdout is search('compress=zstd:(?!1\b)\d+')
+  changed_when: true
+
+- name: Set wal_init_zero to off
+  become: true
+  become_user: postgres
+  notify:
+    - Restart postgres
+  community.postgresql.postgresql_alter_system:
+    param: wal_init_zero
+    value: "off"
+
+- name: Set wal_recycle to off
+  become: true
+  become_user: postgres
+  notify:
+    - Restart postgres
+  community.postgresql.postgresql_alter_system:
+    param: wal_recycle
+    value: "off"

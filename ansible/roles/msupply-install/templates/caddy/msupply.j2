@@ -1,0 +1,48 @@
+{# The `dynamic a` block below sets `resolvers` to aardvark_dns so caddy resolves
+   *.msupply.internal via podman's aardvark-dns directly, bypassing the host's
+   systemd-resolved which is intermittently slow (seconds) for these lookups and
+   stalls requests inside caddy.
+
+   aardvark-dns (podman's in-network DNS) listens on the podman network gateway,
+   defined in roles/podman/defaults/main.yml as podman_network_subnets_v4[0].gateway.
+   That role runs in a separate play, so the var isn't in scope here; fall back to
+   the literal, which must stay in sync with the podman network gateway. #}
+{% set aardvark_dns = podman_network_subnets_v4[0].gateway | default('10.100.0.1') %}
+(msupply_server) {
+  log {
+    output stdout
+  }
+
+  encode zstd gzip
+
+  reverse_proxy {
+    dynamic a {
+      name api.msupply.internal
+      port 8000
+      versions ipv4
+      resolvers {{ aardvark_dns }}
+    }
+
+    transport http {
+      keepalive 90s
+      compression false
+    }
+  }
+}
+
+https://{{ msupply_hostname }} {
+{# See the canopy_certificate snippet in tamanu-single-install's common.j2: a
+   decline falls through to the global cert_issuer, and the block is emitted only
+   once alertd serves the endpoint and admits caddy. #}
+{% if caddy_canopy_certificates_active | default(false) | bool %}
+  tls {
+    get_certificate http http://127.0.0.1:8271/certificate
+  }
+{% endif %}
+  import msupply_server
+}
+
+http://{{ msupply_hostname }} {
+  import bind80
+  redir https://{host}{uri} 308
+}

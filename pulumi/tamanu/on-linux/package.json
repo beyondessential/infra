@@ -1,0 +1,5 @@
+{
+  "name": "@tamanu/on-linux",
+  "type": "module",
+  "main": "src/index.ts"
+}

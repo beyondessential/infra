@@ -1,0 +1,6 @@
+name: dagster
+description: Dagster deploys
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -1,0 +1,81 @@
+---
+- name: Check if snapper is installed
+  ansible.builtin.command:
+    cmd: command -v snapper
+  register: snapper_binary_check
+  changed_when: false
+  failed_when: false
+
+- name: Remove snapper
+  when: snapper_binary_check.rc == 0
+  block:
+    - name: List existing snapper configs
+      become: true
+      ansible.builtin.shell: |
+        set -o pipefail
+        snapper list-configs | tail -n +3 | awk '{print $1}'
+      args:
+        executable: /bin/bash
+      register: existing_snapper_configs
+      changed_when: false
+      failed_when: false
+
+    - name: Delete all snapper configs and their snapshots
+      become: true
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          set -e
+          config="{{ item }}"
+          if [ ! -f "/etc/snapper/configs/$config" ]; then
+            exit 0
+          fi
+
+          subvolume=$(. "/etc/snapper/configs/$config"; echo "$SUBVOLUME")
+          snapshots_dir="$subvolume/.snapshots"
+
+          if snapper -c "$config" delete-config; then
+            exit 0
+          fi
+
+          # Fallback: snapper couldn't clean up (e.g. nested subvolumes inside snapshots).
+          if [ -d "$snapshots_dir" ]; then
+            for snap_dir in "$snapshots_dir"/*/; do
+              [ -d "$snap_dir" ] || continue
+              if [ -d "${snap_dir}snapshot" ]; then
+                btrfs subvolume delete "${snap_dir}snapshot" || true
+              fi
+              rm -rf "$snap_dir" || true
+            done
+            btrfs subvolume delete "$snapshots_dir" 2>/dev/null || rm -rf "$snapshots_dir" 2>/dev/null || true
+          fi
+
+          # Config file and SNAPPER_CONFIGS entry may linger if delete-config bailed early.
+          rm -f "/etc/snapper/configs/$config"
+          if [ -f /etc/default/snapper ]; then
+            current=$(. /etc/default/snapper; echo "$SNAPPER_CONFIGS")
+            new=$(echo "$current" | tr ' ' '\n' | grep -vx "$config" | tr '\n' ' ' | sed 's/ *$//')
+            sed -i -E "s|^SNAPPER_CONFIGS=.*|SNAPPER_CONFIGS=\"$new\"|" /etc/default/snapper
+          fi
+      args:
+        executable: /bin/bash
+      changed_when: true
+      loop: "{{ existing_snapper_configs.stdout_lines }}"
+
+    - name: Disable snapper timers
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: false
+        state: stopped
+      loop:
+        - snapper-timeline.timer
+        - snapper-cleanup.timer
+      failed_when: false
+
+    - name: Uninstall snapper
+      become: true
+      ansible.builtin.apt:
+        name: snapper
+        state: absent
+        purge: true

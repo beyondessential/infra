@@ -1,0 +1,6 @@
+name: tamanu-k8s-infra
+description: Tamanu on Kubernetes - common infrastructure
+runtime:
+  name: nodejs
+  options:
+    typescript: false

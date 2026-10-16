@@ -1,0 +1,6 @@
+name: bestool-proxy
+description: Tailscale proxy for select resources for bestool
+runtime:
+  name: nodejs
+  options:
+    typescript: false

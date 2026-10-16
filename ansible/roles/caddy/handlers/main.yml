@@ -1,0 +1,19 @@
+---
+- name: Regenerate caddy manpages
+  become: true
+  ansible.builtin.command: caddy manpage --directory /usr/share/man/man8
+  changed_when: true
+
+- name: Regenerate caddy completions
+  become: true
+  ansible.builtin.shell: |
+    caddy completion bash > /usr/share/bash-completion/completions/caddy
+    caddy completion zsh > /usr/share/zsh/site-functions/_caddy
+    caddy completion fish > /usr/share/fish/vendor_completions.d/caddy.fish
+  changed_when: true
+
+- name: Enable caddy
+  become: true
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true

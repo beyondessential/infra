@@ -1,0 +1,92 @@
+(server) {
+  import tamanu_common
+
+  # stays out of tamanu_common: the glob resolves against this file's own
+  # directory, and from snippets/ it would match the packaged (waf) definition
+  # file, which caddy refuses to parse inside a site block
+  import waf*
+
+  header /manifest.json Cache-Control no-cache
+
+  {% if tamanu_version is defined and tamanu_version.startswith('v') and (tamanu_version | regex_replace('^v', '')) is version_compare('2.48.0', '<') %}
+  @socket_io_paths {
+    path /socket.io*
+    path /api/socket.io*
+  }
+
+  handle @socket_io_paths {
+    respond 405
+  }
+  {% endif %}
+
+  redir /v1/login /api/login 308
+
+  reverse_proxy /env.js {
+    header_down Cache-Control "public, max-age=604800, immutable"
+    import upstream_frontend
+  }
+
+  reverse_proxy /* {
+    import upstream_frontend
+  }
+}
+
+http:// {
+  import bind80
+  import server
+}
+
+{% if tamanu_caddy_tls and not (public_hostname | regex_search('\\.local$')) %}
+https://{{ public_hostname }} {
+  import canopy_certificate
+  import server
+}
+http://{{ public_hostname }} {
+  import bind80
+  redir https://{host}{uri} 308
+}
+{% endif %}
+
+{% if tailscale_name is defined and tamanu_tailscale_tls %}
+https://{{ tailscale_name }}.{{ tailnet }}.ts.net {
+  import server
+  tls {
+    get_certificate tailscale
+  }
+}
+{% endif %}
+
+{% for hostname in tamanu_caddy_extra_hostnames %}
+  {% if tamanu_caddy_tls and not (hostname | regex_search('\.local$')) %}
+    {% if tamanu_caddy_extra_hostnames_redirect %}
+https://{{ hostname }} {
+  redir https://{{ public_hostname }}{uri} 308
+}
+http://{{ hostname }} {
+  import bind80
+  redir https://{{ public_hostname }}{uri} 308
+}
+    {% else %}
+https://{{ hostname }} {
+  import canopy_certificate
+  import server
+}
+http://{{ hostname }} {
+  import bind80
+  redir https://{host}{uri} 308
+}
+    {% endif %}
+  {% else %}
+    {% if tamanu_caddy_extra_hostnames_redirect %}
+http://{{ hostname }} {
+  import bind80
+  redir http://{{ public_hostname }}{uri} 308
+}
+    {% else %}
+http://{{ hostname }} {
+  import bind80
+  import server
+}
+    {% endif %}
+  {% endif %}
+{% endfor %}

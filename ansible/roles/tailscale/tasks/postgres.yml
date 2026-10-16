@@ -1,0 +1,53 @@
+---
+- name: Get tailscale IPv4 address
+  ansible.builtin.command: tailscale ip -4
+  register: tailscale_ipv4
+  changed_when: false
+
+- name: Get tailscale IPv6 address
+  ansible.builtin.command: tailscale ip -6
+  register: tailscale_ipv6
+  changed_when: false
+
+- name: Set postgres listen_addresses to include tailscale
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/current/main/postgresql.conf
+    line: "listen_addresses = 'localhost,{{ tailscale_ipv4.stdout | trim }},{{ tailscale_ipv6.stdout | trim }}'"
+    regexp: "^#?listen_addresses\\s*="
+  register: listen_addresses_result
+
+- name: Restart postgres for listen_addresses change
+  ansible.builtin.debug:
+    msg: "listen_addresses changed, restarting postgres"
+  changed_when: true
+  notify: Restart postgres
+  when:
+    - listen_addresses_result is changed
+    - tailscale_name is defined
+    - "'prod' not in tailscale_name"
+
+- name: Warn about pending postgres restart on prod
+  ansible.builtin.debug:
+    msg: >-
+      listen_addresses was changed but postgres was NOT restarted automatically
+      because this is a prod server ({{ tailscale_name }}).
+      Schedule a manual restart of postgresql to apply the change.
+  when:
+    - listen_addresses_result is changed
+    - tailscale_name is defined
+    - "'prod' in tailscale_name"
+
+- name: Allow tailscale access to postgres
+  loop:
+    - 100.64.0.0/10
+    - fd7a:115c:a1e0::/56
+  become: true
+  community.postgresql.postgresql_pg_hba:
+    dest: /etc/postgresql/current/main/pg_hba.conf
+    contype: host
+    users: all
+    databases: all
+    source: "{{ item }}"
+    method: scram-sha-256
+  notify: Reload postgres

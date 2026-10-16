@@ -1,0 +1,3 @@
+---
+- name: Configure reporting users
+  ansible.builtin.include_tasks: reporting-users.yml

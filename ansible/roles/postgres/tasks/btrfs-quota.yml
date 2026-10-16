@@ -1,0 +1,50 @@
+---
+# Cap the @postgres subvolume with a btrfs quota so postgres can never consume
+# the whole disk. Included only when postgresql_btrfs_quota_percent is set; the
+# referenced-limit (max_rfer) is that percentage of the data filesystem size.
+#
+# Quotas must already be enabled on the filesystem (the mode — simple squota vs
+# full qgroup accounting — is chosen out of band); this only sets the limit.
+
+- name: Get data filesystem size for btrfs quota
+  ansible.builtin.command: findmnt -nb -o SIZE -T /var/lib/postgresql
+  register: pg_quota_fs_size
+  changed_when: false
+
+- name: Compute btrfs quota referenced-limit bytes
+  ansible.builtin.set_fact:
+    pg_quota_limit_bytes: "{{ ((pg_quota_fs_size.stdout | int) * (postgresql_btrfs_quota_percent | int)) // 100 }}"
+
+- name: Check whether btrfs quotas are enabled
+  become: true
+  ansible.builtin.command: btrfs qgroup show /var/lib/postgresql
+  register: pg_quota_status
+  changed_when: false
+  failed_when: false
+
+- name: Warn if btrfs quotas are not enabled
+  ansible.builtin.debug:
+    msg: >-
+      postgresql_btrfs_quota_percent is set but btrfs quotas are not enabled on
+      /var/lib/postgresql; enable quotas out of band to apply the limit.
+  when: pg_quota_status.rc != 0
+
+- name: Read current btrfs qgroup referenced-limit
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    id="$(btrfs inspect-internal rootid /var/lib/postgresql)"
+    btrfs qgroup show -re --raw /var/lib/postgresql | awk -v q="0/$id" '$1 == q { print $4 }'
+  args:
+    executable: /bin/bash
+  register: pg_quota_current
+  changed_when: false
+  when: pg_quota_status.rc == 0
+
+- name: Set btrfs qgroup referenced-limit on the postgres subvolume
+  become: true
+  ansible.builtin.command: btrfs qgroup limit {{ pg_quota_limit_bytes }} /var/lib/postgresql
+  changed_when: true
+  when:
+    - pg_quota_status.rc == 0
+    - (pg_quota_current.stdout | trim) != (pg_quota_limit_bytes | string)

@@ -1,0 +1,85 @@
+---
+- name: Check for PostgreSQL version symlink
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/current
+  register: postgresql_current_symlink
+
+- name: Set installed_postgresql_version from symlink
+  when: postgresql_current_symlink.stat.exists and postgresql_current_symlink.stat.islnk
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_current_symlink.stat.lnk_source | dirname | basename }}"
+
+- name: Check if postgres user exists
+  when: installed_postgresql_version is not defined
+  ansible.builtin.command: id postgres
+  register: postgres_user_check
+  changed_when: false
+  failed_when: false
+
+- name: Query running PostgreSQL version via psql
+  when:
+    - installed_postgresql_version is not defined
+    - postgres_user_check.rc is defined
+    - postgres_user_check.rc == 0
+  become: true
+  become_user: postgres
+  ansible.builtin.shell: |
+    set -o pipefail
+    psql -c "select version()" 2>/dev/null | grep PostgreSQL | sed 's/.*PostgreSQL \([0-9]*\).*/\1/' | head -1
+  args:
+    executable: /bin/bash
+  register: postgresql_running_query
+  changed_when: false
+  failed_when: false
+
+- name: Set installed version from running PostgreSQL
+  when:
+    - installed_postgresql_version is not defined
+    - postgresql_running_query is not skipped
+    - postgresql_running_query.stdout is defined
+    - postgresql_running_query.stdout | length > 0
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_running_query.stdout }}"
+
+- name: Query PostgreSQL version from systemctl status
+  when: installed_postgresql_version is not defined
+  ansible.builtin.shell: |  # noqa: command-instead-of-module
+    set -o pipefail
+    systemctl list-units --type=service --all | grep '^.*postgresql@' | sed 's/.*postgresql@\([0-9]*\)-main.*/\1/' | head -1
+  args:
+    executable: /bin/bash
+  register: postgresql_systemctl_query
+  changed_when: false
+  failed_when: false
+
+- name: Set installed version from systemctl status
+  when:
+    - installed_postgresql_version is not defined
+    - postgresql_systemctl_query.stdout is defined
+    - postgresql_systemctl_query.stdout | length > 0
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_systemctl_query.stdout }}"
+
+- name: Query installed PostgreSQL packages to detect version
+  when: installed_postgresql_version is not defined
+  ansible.builtin.shell: |
+    set -o pipefail
+    dpkg -l | grep '^ii' | grep 'postgresql-[0-9]' | sed 's/.*postgresql-//' | cut -d' ' -f1 | head -1
+  args:
+    executable: /bin/bash
+  register: postgresql_package_query
+  changed_when: false
+  failed_when: false
+
+- name: Set installed version from package query
+  when:
+    - installed_postgresql_version is not defined
+    - postgresql_package_query.stdout is defined
+    - postgresql_package_query.stdout | length > 0
+  ansible.builtin.set_fact:
+    installed_postgresql_version: "{{ postgresql_package_query.stdout }}"
+
+- name: Set postgresql_version to installed version if exists, otherwise use desired version
+  ansible.builtin.set_fact:
+    postgresql_version: "{{ installed_postgresql_version | default(postgresql_version) }}"
+    postgresql_installed_version: "{{ installed_postgresql_version | default(omit) }}"

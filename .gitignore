@@ -1,2 +1,5 @@
 target/
 .build-context/
+**/Pulumi.*.yaml*
+node_modules
+*.key

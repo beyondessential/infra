@@ -1,0 +1,71 @@
+---
+# The key path here is different from convention elsewhere in this ansible repo,
+# but matches exactly that which set by the Tailscale setup script, so we don't
+# overwrite or conflict with that when Tailscale is already present from install.
+- name: Add tailscale apt key
+  become: true
+  ansible.builtin.copy:
+    src: apt.gpg
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: "0644"
+
+# These must run BEFORE "Add tailscale repo": if a host already has Tailscale
+# (installed via Tailscale's own setup script), it ships a tailscale.list that
+# references key /etc/apt/keyrings/tailscale.asc. apt_repository runs a cache
+# update while adding our entry, and apt aborts on the conflicting Signed-By
+# before any later cleanup task can run. So strip the drifted source first.
+- name: Remove duplicate tailscale repo
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pkgs_tailscale_com_stable_{{ ansible_facts['distribution'] | lower }}.list
+    state: absent
+
+- name: Remove duplicate tailscale apt source line
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/tailscale.list
+    line: "deb [signed-by=/etc/apt/keyrings/tailscale.asc] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release']
+      }} main"
+    state: absent
+
+- name: Add tailscale repo
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_facts['distribution'] | lower }} {{
+      ansible_facts['distribution_release'] }} main
+    filename: tailscale
+    state: present
+
+- name: Prioritise tailscale repo
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99-tailscale
+    mode: "0644"
+    content: |
+      Package: *
+      Pin: release o=pkgs.tailscale.com
+      Pin-Priority: 900
+
+- name: Install tailscale
+  become: true
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+  notify:
+    - Update package facts
+
+- name: Enable tailscale
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: started
+    enabled: true
+
+- name: Set tailscale auto-upgrade
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.weekly/apt-upgrade-tailscale
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      apt install -y tailscale

@@ -1,0 +1,14 @@
+---
+# local.json5 is generated entirely by ansible — tamanu and operators only
+# read it, so lock down to read-only for the tamanu group. Root (running
+# ansible) ignores mode bits when rewriting.
+- name: Add tamanu local config
+  become: true
+  diff: false
+  ansible.builtin.template:
+    dest: /etc/tamanu/{{ tamanu_version }}/local.json5
+    src: local.json5.j2
+    mode: "0440"
+    owner: root
+    group: tamanu
+    force: true

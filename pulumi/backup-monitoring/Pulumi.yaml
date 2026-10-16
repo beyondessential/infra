@@ -1,0 +1,6 @@
+name: backup-monitoring
+description: Organization-wide AWS Backup failure monitoring and alerting
+runtime:
+  name: nodejs
+  options:
+    typescript: false

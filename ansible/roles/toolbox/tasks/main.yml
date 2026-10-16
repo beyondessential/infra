@@ -1,0 +1,32 @@
+---
+- name: Install toolbox packages
+  ansible.builtin.include_tasks: packages.yml
+- name: Install bestool
+  ansible.builtin.include_tasks: bestool.yml
+- name: Install msedit
+  ansible.builtin.include_tasks: edit.yml
+- name: Install starship
+  ansible.builtin.include_tasks: starship.yml
+- name: Configure tmux
+  ansible.builtin.include_tasks: tmux.yml
+
+- name: Add tsw script
+  become: true
+  ansible.builtin.copy:
+    dest: /usr/local/bin/tsw
+    src: tsw.fish
+    mode: "0755"
+
+- name: Create .config/htop for current user
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.config/htop"
+    state: directory
+    mode: "0755"
+
+- name: Configure htop
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ ansible_facts['env']['HOME'] }}/.config/htop/htoprc"
+    src: htoprc
+    mode: "0644"
+    force: false

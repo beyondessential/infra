@@ -1,0 +1,112 @@
+---
+# Tamanu config is backed up by bestool/Canopy via a backup definition in
+# /etc/bestool/backups. The old self-driven kopia snapshot timer is retired, as
+# is the local `bestool tamanu backup` logical-dump timer and its
+# /opt/tamanu-backup output dir (superseded by the Canopy-driven tamanu-postgres
+# backup).
+
+- name: Stop and disable old tamanu config kopia backup timer
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-backup-tamanu-config.timer
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Stop and disable old tamanu logical backup timer
+  become: true
+  ansible.builtin.systemd:
+    name: tamanu-backup.timer
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Remove old tamanu backup units
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  loop:
+    - kopia-backup-tamanu-config.timer
+    - kopia-backup-tamanu-config.service
+    - tamanu-backup.timer
+    - tamanu-backup.service
+  notify:
+    - Reload systemd
+
+- name: Remove the old tamanu logical backup output directory
+  become: true
+  ansible.builtin.file:
+    path: /opt/tamanu-backup
+    state: absent
+
+- name: Ensure bestool backups directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool/backups
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install tamanu-config backup definition
+  become: true
+  ansible.builtin.copy:
+    src: tamanu-config.toml
+    dest: /etc/bestool/backups/tamanu-config.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload bestool-alertd
+
+- name: Install tamanu-secrets backup definition
+  become: true
+  ansible.builtin.copy:
+    src: tamanu-secrets.toml
+    dest: /etc/bestool/backups/tamanu-secrets.toml
+    owner: root
+    group: root
+    mode: "0644"
+  register: tamanu_secrets_def
+  when: not tamanu_clone
+  notify:
+    - Reload bestool-alertd
+
+# A clone keeps its own key: restoring the source's would let the copy read the
+# source's credentials.
+- name: Remove tamanu-secrets backup definition from a clone
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool/backups/tamanu-secrets.toml
+    state: absent
+  when: tamanu_clone
+  notify:
+    - Reload bestool-alertd
+
+- name: Look for the leader backup definition
+  become: true
+  ansible.builtin.stat:
+    path: /etc/bestool/backups/tamanu-postgres.toml
+  register: tamanu_postgres_def
+
+# A restore of this host's database refuses until a key snapshot exists to pair
+# with, so take one as the def lands. In-process: the daemon has yet to reload.
+- name: Take the first key backup
+  become: true
+  ansible.builtin.command: /usr/bin/bestool canopy backup --type tamanu-secrets --no-daemon
+  register: tamanu_secrets_backup
+  changed_when: tamanu_secrets_backup.rc == 0
+  failed_when: false
+  when:
+    - not tamanu_clone
+    - tamanu_secrets_def is changed
+    - tamanu_postgres_def.stat.exists
+
+- name: Warn when the host has no key snapshot yet
+  ansible.builtin.debug:
+    msg: >-
+      The first key backup did not run, so a restore of this host's database
+      will refuse until one succeeds:
+      bestool canopy backup --type tamanu-secrets
+  when: tamanu_secrets_backup.rc | default(0) != 0

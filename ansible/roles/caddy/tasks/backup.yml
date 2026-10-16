@@ -1,0 +1,43 @@
+---
+# Caddy config is backed up by bestool/Canopy via a backup definition in
+# /etc/bestool/backups; bestool-alertd watches that directory and registers the
+# type with Canopy. The old self-driven kopia snapshot timer is retired below.
+
+- name: Stop and disable old caddy kopia backup timer
+  become: true
+  ansible.builtin.systemd:
+    name: kopia-backup-caddy.timer
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Remove old caddy kopia backup units
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  loop:
+    - kopia-backup-caddy.timer
+    - kopia-backup-caddy.service
+  notify:
+    - Reload systemd
+
+- name: Ensure bestool backups directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/bestool/backups
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install caddy-config backup definition
+  become: true
+  ansible.builtin.copy:
+    src: caddy-config.toml
+    dest: /etc/bestool/backups/caddy-config.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload bestool-alertd

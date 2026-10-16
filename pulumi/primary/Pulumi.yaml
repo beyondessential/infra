@@ -1,0 +1,6 @@
+name: primary
+description: Primary AWS Account setup
+runtime:
+  name: nodejs
+  options:
+    typescript: false

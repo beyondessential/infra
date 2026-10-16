@@ -1,0 +1,13 @@
+---
+- name: Install tmux
+  become: true
+  ansible.builtin.apt:
+    name: tmux
+  notify: Update package facts
+
+- name: Add tmux config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/tmux.conf
+    src: tmux.conf.j2
+    mode: "0644"

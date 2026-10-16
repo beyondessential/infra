@@ -1,0 +1,15 @@
+email {{ caddy_email }}
+
+{% if caddy_zerossl_api_key is defined %}
+cert_issuer zerossl {{ caddy_zerossl_api_key }}
+{% endif %}
+
+{% if tamanu_caddy_tls_dns_iam is defined %}
+cert_issuer acme {
+  dns route53 {
+    max_retries 10
+  }
+}
+{% else %}
+cert_issuer acme
+{% endif %}

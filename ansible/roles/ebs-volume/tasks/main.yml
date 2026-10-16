@@ -1,0 +1,102 @@
+---
+- name: Make sure nvme-cli is available
+  become: true
+  ansible.builtin.apt:
+    name: nvme-cli
+
+- name: Locate the attached EBS volume {{ volume }}
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    for f in /dev/nvme*n1
+    do
+      echo -n $f=
+      nvme id-ctrl -V $f | grep ^0000: | grep -oP '(?<=")[^.]+'
+    done | grep {{ volume }}$ | cut -d= -f1 || true
+  args:
+    executable: /bin/bash
+  register: volume_device
+  changed_when: false
+
+- name: Detect existing filesystem type on {{ volume }}
+  when: volume_device.stdout != ''
+  become: true
+  ansible.builtin.command: blkid -s TYPE -o value {{ volume_device.stdout }}
+  register: detected_fs_type
+  changed_when: false
+
+- name: Set effective filesystem type for {{ volume }}
+  when: volume_device.stdout != ''
+  ansible.builtin.set_fact:
+    effective_fs_type: "{{ detected_fs_type.stdout | trim if detected_fs_type.stdout | trim != '' else fs_type }}"
+
+- name: Format volume {{ volume }}
+  when: volume_device.stdout != '' and detected_fs_type.stdout | trim == ''
+  become: true
+  community.general.filesystem:
+    fstype: "{{ fs_type }}"
+    dev: "{{ volume_device.stdout }}"
+    opts: "{{ fs_opts if fs_opts is defined else '' }}"
+
+- name: Check whether a separate partition is already mounted at {{ mount }}
+  ansible.builtin.shell: grep -qs ' {{ mount }} ' /proc/mounts && echo 'true' || true
+  register: is_already_partition
+  changed_when: false
+
+- name: Check whether the mount directory exists at {{ mount }}
+  ansible.builtin.shell: test -d {{ mount }} && echo 'true' || true
+  register: mountpoint_exists
+  changed_when: false
+
+- name: Copy existing files to new volume
+  when: volume_device.stdout != '' and is_already_partition.stdout != 'true' and mountpoint_exists.stdout == 'true'
+  notify: Reboot
+  block:
+    - name: Unmount /mnt
+      become: true
+      ansible.posix.mount:
+        path: /mnt
+        state: unmounted
+    - name: Temporarily mount volume
+      become: true
+      ansible.posix.mount:
+        src: "{{ volume_device.stdout }}"
+        path: /mnt
+        fstype: "{{ effective_fs_type }}"
+        opts: "{{ mount_opts if mount_opts is defined else '' }}"
+        state: ephemeral
+    - name: Copy old files to new volume
+      become: true
+      ansible.builtin.command: rsync -a {{ mount }}/ /mnt/  # noqa: command-instead-of-module
+      changed_when: true
+    - name: Unmount /mnt
+      become: true
+      ansible.posix.mount:
+        path: /mnt
+        state: unmounted
+
+- name: Get volume UUID
+  when: volume_device.stdout != ''
+  become: true
+  ansible.builtin.command: blkid -s UUID -o value {{ volume_device.stdout }}
+  register: volume_uuid
+  changed_when: false
+
+- name: Permanently mount EBS volume {{ volume }}
+  when: volume_uuid.stdout != ''
+  become: true
+  ansible.posix.mount:
+    src: "UUID={{ volume_uuid.stdout }}"
+    path: "{{ mount }}"
+    fstype: "{{ effective_fs_type }}"
+    opts: "{{ mount_opts if mount_opts is defined else '' }}"
+    state: mounted
+
+- name: Grow filesystem if needed on volume {{ volume }}
+  when: volume_device.stdout != ''
+  become: true
+  community.general.filesystem:
+    fstype: "{{ effective_fs_type }}"
+    dev: "{{ volume_device.stdout }}"
+    opts: "{{ fs_opts if fs_opts is defined else '' }}"
+    resizefs: true

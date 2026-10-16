@@ -1,0 +1,13 @@
+---
+- name: Enable locales
+  become: true
+  loop:
+    - en_US
+    - en_AU
+    - en_GB
+    - en_NZ
+  ansible.builtin.lineinfile:
+    path: /etc/locale.gen
+    line: "{{ item }}.UTF-8 UTF-8"
+    regexp: "^#\\s+{{ item }}.UTF-8 UTF-8"
+  notify: Regenerate locales

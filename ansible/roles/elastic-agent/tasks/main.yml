@@ -1,0 +1,123 @@
+---
+- name: Disable Elastic services
+  when: not elastic_agent_enabled
+  block:
+    - name: Stop elastic-agent service
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Stop ElasticEndpoint service
+      become: true
+      ansible.builtin.systemd:
+        name: ElasticEndpoint
+        state: stopped
+        enabled: false
+      failed_when: false
+
+- name: Uninstall Elastic security agent
+  when: (not elastic_agent_enabled) or (elastic_agent_enrollment_token is not defined)
+  block:
+    - name: Stop Elastic agent
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Uninstall Elastic agent
+      become: true
+      ansible.builtin.apt:
+        name: elastic-agent
+        state: absent
+        purge: true
+
+    - name: Remove Elastic agent data
+      become: true
+      ansible.builtin.file:
+        path: /opt/Elastic
+        state: absent
+
+- name: Install Elastic security agent
+  when: (elastic_agent_enabled) and (elastic_agent_enrollment_token is defined)
+  block:
+    - name: Set elastic_architecture
+      ansible.builtin.set_fact:
+        elastic_architecture: |-
+          {{
+            "amd64" if ansible_facts['architecture'] == "x86_64"
+            else (
+              "arm64" if ansible_facts['architecture'] == "aarch64"
+              else ansible_facts['architecture']
+            )
+          }}
+
+    - name: Add Elastic apt key
+      become: true
+      ansible.builtin.copy:
+        src: elasticsearch.asc
+        dest: /etc/apt/keyrings/elasticsearch.asc
+        mode: "0644"
+
+    - name: Add Elastic repo
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/elastic.list
+        mode: "0644"
+        content: |
+          deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/elasticsearch.asc] https://artifacts.elastic.co/packages/9.x/apt stable main
+
+    - name: Remove duplicate Elastic apt source
+      become: true
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/artifacts_elastic_co_packages_9_x_apt.list
+        state: absent
+
+    - name: Prioritise Elastic repo
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/99-elastic
+        mode: "0644"
+        content: |
+          Package: *
+          Pin: release o=artifacts.elastic.co
+          Pin-Priority: 900
+
+    - name: Install Elastic agent
+      become: true
+      ansible.builtin.apt:
+        name: elastic-agent
+        state: present
+        update_cache: true
+
+    - name: Enable Elastic agent
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: started
+        enabled: true
+
+    - name: Check Elastic agent enrollment status
+      become: true
+      ansible.builtin.command:
+        cmd: elastic-agent status --output json
+      register: elastic_agent_status
+      failed_when: false
+      changed_when: false
+
+    - name: Enroll Elastic agent
+      become: true
+      no_log: true
+      ansible.builtin.command:
+        cmd: >
+          elastic-agent enroll
+          --url={{ elastic_agent_fleet_url }}
+          --enrollment-token={{ elastic_agent_enrollment_token }}
+      changed_when: true
+      when: >
+        elastic_agent_fleet_url and
+        (elastic_agent_status.stdout | from_json).FleetMessage == "Not enrolled into Fleet"

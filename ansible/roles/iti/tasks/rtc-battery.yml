@@ -1,0 +1,55 @@
+---
+# Pi 5 itis ship with a rechargeable RTC battery (ML2032 or similar) wired to
+# the J5 connector. The bootloader-level charging setting defaults to 0
+# (disabled); set it to 3.0V so the battery stays topped up while the host is
+# powered, and so the RTC keeps the clock through brief outages.
+- name: Install rpi-eeprom
+  become: true
+  ansible.builtin.apt:
+    name: rpi-eeprom
+    state: present
+
+- name: Read current bootloader config
+  become: true
+  ansible.builtin.command: rpi-eeprom-config
+  register: rpi_eeprom_current
+  changed_when: false
+
+- name: Enable RTC battery charging at 3.0V
+  when: "'RTC_BBAT_VCHG=3000000' not in rpi_eeprom_current.stdout"
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      tmp=$(mktemp)
+      trap 'rm -f "$tmp"' EXIT
+      rpi-eeprom-config > "$tmp"
+      sed -i '/^RTC_BBAT_VCHG=/d' "$tmp"
+      echo 'RTC_BBAT_VCHG=3000000' >> "$tmp"
+      rpi-eeprom-config --apply "$tmp"
+    executable: /bin/bash
+  changed_when: true
+  register: rtc_battery_vchg_result
+
+# The EEPROM update is staged by --apply and only flashes at boot, so a
+# reboot is needed for the setting to take effect (and for the check above
+# to see it on subsequent runs).
+- name: Reboot to flash the EEPROM update
+  ansible.builtin.debug:
+    msg: bootloader config changed and requires a reboot to apply, rebooting
+  changed_when: true
+  notify: Reboot
+  when:
+    - rtc_battery_vchg_result is changed
+    - (tailscale_name is not defined) or ('prod' not in tailscale_name)
+
+- name: Warn about pending reboot on prod
+  ansible.builtin.debug:
+    msg: >-
+      the bootloader config changed and requires a reboot to apply, but this
+      is a prod server ({{ tailscale_name | default('unknown') }}) so it was
+      NOT rebooted automatically. Schedule a manual reboot to apply.
+  when:
+    - rtc_battery_vchg_result is changed
+    - tailscale_name is defined
+    - "'prod' in tailscale_name"

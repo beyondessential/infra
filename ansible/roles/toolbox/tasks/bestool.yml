@@ -1,0 +1,38 @@
+---
+- name: Check if bestool is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/local/bin/bestool ] && ! dpkg -S /usr/local/bin/bestool 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: bestool_install_type
+  changed_when: false
+
+- name: Remove old bestool binary (migration only)
+  when: bestool_install_type.stdout == "custom"
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/bin/bestool
+    state: absent
+
+- name: Install bestool from bes-tools repo
+  become: true
+  ansible.builtin.apt:
+    name: bestool
+    state: present
+
+- name: Set up bestool auto-update
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.daily/apt-upgrade-bestool
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      apt install -y bestool
+
+- name: Remove old tb symlink
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/bin/tb
+    state: absent

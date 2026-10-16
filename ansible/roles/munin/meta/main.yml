@@ -1,0 +1,4 @@
+---
+# `common` provides the shared `Reload caddy` handler this role notifies.
+dependencies:
+  - role: common

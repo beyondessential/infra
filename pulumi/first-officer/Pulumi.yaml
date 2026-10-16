@@ -1,0 +1,6 @@
+name: first-officer
+description: GitHub Copilot API proxy exposed as a Tailscale service
+runtime:
+  name: nodejs
+  options:
+    typescript: false

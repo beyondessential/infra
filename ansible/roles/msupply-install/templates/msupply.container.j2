@@ -1,0 +1,24 @@
+[Unit]
+Description=Open mSupply server
+
+[Container]
+EnvironmentFile=/etc/msupply/env
+Image=docker.io/msupplyfoundation/omsupply:${MSUPPLY_VERSION}
+Volume=/var/lib/msupply:/database
+Volume=/etc/machine-id:/etc/machine-id:ro
+Volume=/etc/msupply/local.yaml:/usr/src/omsupply/server/configuration/local.yaml:ro
+NetworkAlias=api.msupply.internal
+Sysctl=net.ipv4.tcp_slow_start_after_idle=0
+{% if msupply_hostname is not defined and msupply_tailscale_service is not defined %}
+PublishPort=0.0.0.0:8000:8000
+{% elif msupply_tailscale_service is defined %}
+PublishPort=127.0.0.1:8000:8000
+{% endif %}
+
+[Service]
+EnvironmentFile=/etc/msupply/env
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

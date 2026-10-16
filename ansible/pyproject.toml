@@ -1,0 +1,22 @@
+[project]
+name = "ansible-setup"
+version = "0.1.0"
+description = "Ansible setup with pipelining for faster execution"
+requires-python = ">=3.12"
+dependencies = [
+    "ansible~=13.2",
+    "ansible-core~=2.20",
+    "dnspython~=2.6",
+]
+
+[project.scripts]
+ansible-setup = "ansible_setup:setup"
+
+[dependency-groups]
+dev = [
+    "ansible-lint~=26.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

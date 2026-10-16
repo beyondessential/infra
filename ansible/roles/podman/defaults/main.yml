@@ -1,0 +1,20 @@
+---
+podman_version: "5.5.0"
+netavark_version: "1.15.0"
+crun_version: "1.21"
+
+# Follow the host: allocating a ULA to containers on a host without v6 egress
+# causes Node's Happy Eyeballs to stall on unroutable v6 before falling back.
+podman_ipv6_enabled: "{{ ansible_default_ipv6 is defined and ansible_default_ipv6.address is defined }}"
+
+podman_network_subnets_v4:
+  - { subnet: "10.100.0.1/16", gateway: "10.100.0.1" }
+podman_network_subnets_v6:
+  - { subnet: "fd62:6573:b558:f686::1/64", gateway: "fd62:6573:b558:f686::1" }
+# fd00::/8 is the private IPv6 address range
+# 626573 is "bes" in hex
+#
+# generate a new random one with:
+# node -e 'f=()=>(a=new Uint8Array(2),crypto.getRandomValues(a),Buffer.from(a).toString("hex"));console.log(`fd62:6573:${f()}:${f()}::/64`)'
+
+podman_network_subnets: "{{ podman_network_subnets_v4 + (podman_network_subnets_v6 if podman_ipv6_enabled | bool else []) }}"

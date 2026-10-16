@@ -1,0 +1,164 @@
+---
+- name: Check if caddy is from old custom installation
+  ansible.builtin.shell: |
+    if [ -f /usr/bin/caddy ] && ! dpkg -S /usr/bin/caddy 2>/dev/null; then
+      echo "custom"
+    else
+      echo "package"
+    fi
+  register: caddy_install_type
+  changed_when: false
+
+- name: Stop caddy socket if running (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.systemd_service:
+    name: caddy.socket
+    state: stopped
+  failed_when: false
+
+- name: Stop caddy service if running (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    state: stopped
+  failed_when: false
+
+- name: Remove old caddy binary (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.file:
+    path: /usr/bin/caddy
+    state: absent
+
+- name: Remove old caddy systemd files (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  loop:
+    - /etc/systemd/system/caddy.service
+    - /etc/systemd/system/caddy.socket
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+
+- name: Remove caddy config except servers (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.shell: |
+    if [ -d /etc/caddy ]; then
+      find /etc/caddy -mindepth 1 -maxdepth 1 ! -name servers -exec rm -rf {} +
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Remove old caddy user (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.user:
+    name: caddy
+    state: absent
+    remove: true
+  failed_when: false
+
+- name: Remove old caddy group (migration only)
+  become: true
+  when: caddy_install_type.stdout == "custom"
+  ansible.builtin.group:
+    name: caddy
+    state: absent
+  failed_when: false
+
+- name: Install caddy from bes-tools repo
+  become: true
+  ansible.builtin.apt:
+    name: "caddy={{ caddy_version }}"
+    state: present
+    allow_downgrade: true
+    allow_change_held_packages: true
+    update_cache: true
+  notify:
+    - Reload systemd
+    - Regenerate caddy manpages
+    - Regenerate caddy completions
+    - Restart caddy
+
+- name: Hold caddy package to prevent unattended upgrades
+  become: true
+  ansible.builtin.dpkg_selections:
+    name: caddy
+    selection: hold
+
+- name: Ensure tailscale environment variable for caddy
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/default/tailscaled
+    line: TS_PERMIT_CERT_UID=caddy
+    create: true
+    mode: "0644"
+
+- name: Enable caddy socket
+  become: true
+  ansible.builtin.systemd:
+    name: caddy.socket
+    enabled: true
+    daemon_reload: true
+    state: started
+
+- name: Disable caddy service
+  become: true
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    enabled: false
+
+- name: Create caddy QoS drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install caddy QoS drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/qos.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=critical.slice
+      OOMScoreAdjust=-500
+  notify:
+    - Reload systemd
+    - Restart caddy
+
+# systemd recreates this on every start, which matters because /var/log is a
+# separate volume on split-data-logs hosts: a task-created directory would not
+# survive the volume being remounted or replaced.
+- name: Install caddy logs directory drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/logs.conf
+    mode: "0644"
+    content: |
+      [Service]
+      LogsDirectory=caddy
+      LogsDirectoryMode=0750
+  notify:
+    - Reload systemd
+    - Restart caddy
+
+# A site naming alertd's certificate endpoint loads nothing before its first
+# handshake, and that handshake fails while the daemon is unreachable; ordering
+# after the daemon keeps a boot from serving in that gap. Wanting it is left to
+# the bestool role, so Caddy still starts on a host without the daemon.
+- name: Install caddy ordering drop-in
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/after-alertd.conf
+    mode: "0644"
+    content: |
+      [Unit]
+      After=bestool-alertd.service
+  notify:
+    - Reload systemd

@@ -1,0 +1,15 @@
+---
+- name: Set timezone
+  become: true
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Set tzdata auto-upgrade
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.weekly/apt-upgrade-tzdata
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      exec systemd-run --slice=background.slice --scope --quiet \
+        env DEBIAN_FRONTEND=noninteractive apt install -y tzdata

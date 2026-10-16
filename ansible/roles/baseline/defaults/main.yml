@@ -1,0 +1,15 @@
+---
+# Messages from these programs are dropped from rsyslog output (e.g. /var/log/syslog).
+# They remain in the systemd journal and can be read with `journalctl`.
+# baseline_syslog_excludes matches the program tag exactly;
+# baseline_syslog_exclude_prefixes matches any tag starting with the given string.
+baseline_syslog_excludes:
+  - caddy
+  - bestool-alertd
+  - aardvark-dns
+# Container services run under podman/quadlet, which names containers
+# "systemd-<unit>" — so their journal identifier is "systemd-tamanu-…" /
+# "systemd-msupply", not the bare unit name.
+baseline_syslog_exclude_prefixes:
+  - systemd-tamanu
+  - systemd-msupply

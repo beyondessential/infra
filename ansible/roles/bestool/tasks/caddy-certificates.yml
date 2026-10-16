@@ -1,0 +1,59 @@
+---
+# From bestool 2.2.0 alertd serves Canopy-issued certificates to Caddy during the
+# handshake, and Caddy falls back to its own issuer for any name the daemon
+# declines. The daemon hands out private keys, so it admits only root and the one
+# user named in BESTOOL_PERMIT_CERT_USER; refusing Caddy fails the handshake
+# rather than falling back. The roles rendering Caddy sites include this just
+# before they render, so a site never names the endpoint ahead of the daemon
+# admitting Caddy: tamanu-single-install reloads Caddy before the bestool role
+# runs, and the upgrade playbook never runs the caddy role.
+
+- name: Gather bestool version
+  when: bestool_installed_version is not defined
+  ansible.builtin.include_tasks: version.yml
+
+- name: Decide whether Caddy asks alertd for certificates
+  ansible.builtin.set_fact:
+    alertd_serves_certificates: "{{ bestool_installed_version is defined and bestool_installed_version is version('2.2.0', '>=') }}"
+
+- name: Decide whether Caddy sites name the alertd certificate endpoint
+  ansible.builtin.set_fact:
+    caddy_canopy_certificates_active: "{{ (caddy_canopy_certificates | bool) and (alertd_serves_certificates | bool) }}"
+
+# Admitting Caddy is harmless on its own, so it follows the daemon's capability
+# rather than caddy_canopy_certificates: switching the hook off never leaves a
+# rendered site naming an endpoint that refuses it.
+- name: Create bestool-alertd unit drop-in directory
+  when: alertd_serves_certificates | bool
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/bestool-alertd.service.d
+    state: directory
+    mode: "0755"
+
+- name: Permit Caddy to fetch certificates from alertd
+  when: alertd_serves_certificates | bool
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/bestool-alertd.service.d/20-caddy-certificates.conf
+    content: |
+      [Service]
+      Environment=BESTOOL_PERMIT_CERT_USER=caddy
+    mode: "0644"
+  register: alertd_caddy_permit
+
+# Inline rather than a handler: a tag-limited run skips notified handlers, and
+# the Caddy reload this has to precede may be flushed before the play ends.
+# try-restart leaves a daemon that is not yet running for the bestool role.
+- name: Apply the Caddy certificate permit to a running alertd  # noqa: no-handler
+  when: alertd_caddy_permit is changed
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart a running alertd to admit Caddy  # noqa: no-handler command-instead-of-module
+  when: alertd_caddy_permit is changed
+  become: true
+  ansible.builtin.command:
+    cmd: systemctl try-restart bestool-alertd.service
+  changed_when: true

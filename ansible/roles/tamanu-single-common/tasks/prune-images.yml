@@ -1,0 +1,24 @@
+---
+# Removes tagged images of the given ghcr.io/beyondessential repositories,
+# except for the given tags. Callers keep the current and previous versions,
+# so a rollback works without reaching the registry. `podman rmi` without
+# --force refuses images a container still uses, which are left in place.
+- name: Remove superseded Tamanu images
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      repos=" {{ tamanu_image_prune_repos | map('regex_replace', '^', 'ghcr.io/beyondessential/') | join(' ') }} "
+      keep=" {{ tamanu_image_prune_keep | select | map('trim') | unique | join(' ') }} "
+      podman images --format '{% raw %}{{.Repository}} {{.Tag}}{% endraw %}' \
+        | while read -r repo tag; do
+            case "$repos" in *" $repo "*) ;; *) continue ;; esac
+            case "$keep" in *" $tag "*) continue ;; esac
+            [ "$tag" != "<none>" ] || continue
+            if podman rmi "$repo:$tag" >/dev/null 2>&1; then
+              echo "removed $repo:$tag"
+            fi
+          done
+    executable: /bin/bash
+  register: tamanu_image_prune
+  changed_when: tamanu_image_prune.stdout != ''

@@ -1,0 +1,5 @@
+{
+  "name": "@bes/canopy",
+  "type": "module",
+  "main": "src/index.ts"
+}

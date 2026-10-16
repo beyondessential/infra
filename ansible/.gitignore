@@ -1,0 +1,10 @@
+/*password.txt
+/vault-password.txt
+/.vault-password
+/*password*
+
+# uv
+.venv/
+__pycache__/
+*.pyc
+*.Zone.Identifier

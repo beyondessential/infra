@@ -1,0 +1,125 @@
+---
+- name: Read deployed TAMANU_VERSION from env  # noqa: command-instead-of-module
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    sed -n 's/^TAMANU_VERSION=//p' /etc/tamanu/env | head -n1
+  args:
+    executable: /bin/bash
+  register: deployed_tamanu_version_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Assert TAMANU_VERSION is set
+  ansible.builtin.assert:
+    that: (deployed_tamanu_version_cmd.stdout | trim) != ''
+    fail_msg: >-
+      /etc/tamanu/env does not have TAMANU_VERSION set.
+      Run tamanu-upgrade.yml first to deploy a full Tamanu version.
+
+# Pin tamanu_version to whatever is deployed so the env file write below
+# preserves it. Inventory may set tamanu_version, but a frontend-only
+# upgrade must never change it.
+- name: Pin tamanu_version to deployed value
+  ansible.builtin.set_fact:
+    tamanu_version: "{{ deployed_tamanu_version_cmd.stdout | trim }}"
+
+- name: Read previous TAMANU_FRONTEND_VERSION from env  # noqa: command-instead-of-module
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    sed -n 's/^TAMANU_FRONTEND_VERSION=//p' /etc/tamanu/env | head -n1
+  args:
+    executable: /bin/bash
+  register: previous_tamanu_frontend_version_cmd
+  changed_when: false
+  check_mode: false
+
+# Fall back to TAMANU_VERSION when env predates the split, so the downgrade
+# check below has a sensible baseline rather than comparing against empty.
+- name: Set previous frontend version fact
+  ansible.builtin.set_fact:
+    previous_tamanu_frontend_version: >-
+      {{ previous_tamanu_frontend_version_cmd.stdout | trim
+         or tamanu_version }}
+
+- name: Forbid tamanu_frontend_version downgrade
+  when:
+    - not (tamanu_allow_downgrade | default(false) | bool)
+    - tamanu_frontend_version is string
+    - tamanu_frontend_version.startswith('v')
+    - previous_tamanu_frontend_version is string
+    - previous_tamanu_frontend_version.startswith('v')
+    - tamanu_frontend_version[1:] is version(previous_tamanu_frontend_version[1:], '<')
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to downgrade tamanu_frontend_version from
+      {{ previous_tamanu_frontend_version }} to {{ tamanu_frontend_version }}.
+      Set tamanu_allow_downgrade=true to override.
+
+- name: Report what this upgrade will do
+  ansible.builtin.debug:
+    msg: >-
+      tamanu_version: {{ tamanu_version }} (preserved);
+      tamanu_frontend_version: {{ previous_tamanu_frontend_version }} -> {{ tamanu_frontend_version }}
+
+- name: Pull the frontend image
+  become: true
+  containers.podman.podman_image:
+    name: "{{ tamanu_image_frontend }}"
+
+- name: Update env with new frontend version
+  ansible.builtin.include_role:
+    name: tamanu-single-common
+    tasks_from: env
+
+- name: Collect which services are running
+  ansible.builtin.service_facts:
+
+- name: Detect installed bestool version
+  become: true
+  ansible.builtin.command: /usr/bin/bestool --version
+  register: bestool_version_cmd
+  changed_when: false
+  check_mode: false
+
+# --ignore-unmatched (bestool 1.23.0+) makes restart skip service names that
+# don't exist on this server type instead of failing. Empty on older bestool.
+- name: Set bestool start/restart flags
+  ansible.builtin.set_fact:
+    bestool_unmatched_arg: >-
+      {{ '--ignore-unmatched'
+         if (bestool_version_cmd.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+')) is version('1.23.0', '>=')
+         else '' }}
+
+# `bestool tamanu restart` does the rolling A->B dance with a readiness
+# probe and caddy reload between instances.
+- name: Roll the frontend services
+  become: true
+  ansible.builtin.command: /usr/bin/bestool tamanu restart {{ bestool_unmatched_arg }} tamanu-frontend
+  changed_when: true
+
+# cleanup any legacy or experiments; bestool's frontend expectation only
+# admits @a/@b, so any other instance has to be cleaned up by hand.
+- name: Stop frontend services that don't need to be running
+  loop: "{{ ansible_facts.services | list | select('match', '^tamanu-frontend@.*') | reject('match', '^tamanu-frontend@(a|b)[.]service$') | reject('match', '.+@[.]service$')
+    }}"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  notify: Reload caddy
+
+- name: Reload caddy
+  ansible.builtin.meta: flush_handlers
+
+- name: Remove superseded frontend images
+  ansible.builtin.include_role:
+    name: tamanu-single-common
+    tasks_from: prune-images
+  vars:
+    tamanu_image_prune_repos: [tamanu-frontend]
+    tamanu_image_prune_keep:
+      - "{{ tamanu_frontend_version }}"
+      - "{{ previous_tamanu_frontend_version }}"
