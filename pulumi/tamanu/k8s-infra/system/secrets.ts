@@ -1,19 +1,14 @@
 import * as k8s from '@pulumi/kubernetes';
+import { type Input } from '@pulumi/pulumi';
+import { cfg } from '../../../common/cfg.ts';
 import { namespace } from './namespace.ts';
 
-const secrets: { [key: string]: { [key: string]: string } } = {
+const secrets: { [key: string]: Input<{ [key: string]: Input<string> }> } = {
   bugsnag: {
-    apiKey: 'REDACTED',
+    apiKey: cfg.requireSecret('bugsnagApiKey'),
   },
-  mailgun: {
-    apiKey: 'REDACTED',
-    domain: 'tupaia.org',
-    from: 'tamanu@tupaia.org',
-  },
-  tupaia: {
-    password: 'REDACTED',
-    username: 'tamanu-server@tupaia.org',
-  },
+  mailgun: cfg.requireSecretObject<{ [key: string]: string }>('mailgun'),
+  tupaia: cfg.requireSecretObject<{ [key: string]: string }>('tupaia'),
 };
 
 for (const [name, data] of Object.entries(secrets)) {
