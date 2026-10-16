@@ -71,6 +71,14 @@ parameters for a deployment on `stable` are converted to the older shape. This
 lets a change to what the infrastructure passes be tried on `canary` before
 `stable` is able to accept it.
 
+r[params.checked-per-channel]
+A change to what the infrastructure passes to the renderer must be checked
+before it merges, against the renderer that each channel currently serves: the
+parameters for `stable` against the renderer `stable` serves, and the parameters
+for `canary` against the renderer built from the same change. A shape that the
+channel's renderer rejects is found by the change that introduced it instead of
+by the deployments rendered with it.
+
 r[params.channel-label]
 An Application must carry its channel as a label, so that the Argo CD interface
 can filter and group Applications by it.
@@ -118,8 +126,11 @@ a different render from the others until it is repeated.
 r[promotion.outcome]
 A promotion must not succeed until each Application it refreshed has either
 rendered or reported an error, and must fail if any reports a render error or a
-failed sync. A promotion is the moment a renderer change takes effect on
-deployments, so the run that performs it is where a broken change is seen.
+failed sync, or if any has done neither within a bounded time. A promotion is
+the moment a renderer change takes effect on deployments, so the run that
+performs it is where a broken change is seen. The bar is a render
+that succeeds and a sync that has not failed, since a sync that runs migrations
+can outlast any reasonable wait for health.
 
 ## Access
 
