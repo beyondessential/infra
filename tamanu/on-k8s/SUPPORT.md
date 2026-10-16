@@ -118,7 +118,7 @@ The render failed, so nothing is applied. Read `status.conditions` for the messa
   kubectl -n argocd-system get pods -l app.kubernetes.io/component=repo-server
   kubectl -n argocd-system logs deploy/argo-cd-argocd-repo-server -c infra-argo-tamanu-renderer
   ```
-- A message naming a config key: the renderer rejects keys it does not know, and secret values in stack config. Fix or remove the key, or add support for it in `src/params.rs`.
+- A message naming a config key: the `canary` renderer rejects keys it does not know (`stable` ignores them and logs `ignoring unknown config key(s)` in its sidecar), and both reject secret values in stack config. Fix or remove the key, or add support for it in `src/params.rs`.
 - Any other message: run the renderer by hand with the parameters from the Application, as above. It reports the same error.
 
 ### A renderer change does not show up

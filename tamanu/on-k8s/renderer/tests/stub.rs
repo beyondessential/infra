@@ -8,6 +8,7 @@ use tamanu_renderer::params::Params;
 fn options() -> Options {
 	Options {
 		templates: Some(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/templates").into()),
+		..Options::default()
 	}
 }
 

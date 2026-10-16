@@ -48,3 +48,17 @@ export function pluginName(channel: Channel): string {
 export function rendererImage(channel: Channel): string {
   return `${RENDERER_IMAGE}:${channel}`;
 }
+
+/** The variable a renderer reads to decide what to do with a stack config key it does not know. */
+export const UNKNOWN_CONFIG_KEYS_ENV = 'RENDERER_UNKNOWN_CONFIG_KEYS';
+
+/**
+ * What the channel's renderer does with a stack config key it does not know. Such a key means the
+ * sender is ahead of the renderer, or the key is mistaken. Stable lags, so it ignores them and
+ * keeps its deployments rendering; canary is built with the sender, so a key it does not know is
+ * a mistake, and it rejects them.
+ */
+// r[impl params.unknown-config-keys]
+export function unknownConfigKeys(channel: Channel): 'ignore' | 'reject' {
+  return channel === 'stable' ? 'ignore' : 'reject';
+}

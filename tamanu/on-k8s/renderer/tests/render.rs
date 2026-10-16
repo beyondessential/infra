@@ -1,10 +1,11 @@
 use serde_json::{Value, json};
-use tamanu_renderer::Options;
 use tamanu_renderer::params::Params;
+use tamanu_renderer::{Options, UnknownConfigKeys};
 
 fn options() -> Options {
 	Options {
 		templates: Some(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/templates").into()),
+		..Options::default()
 	}
 }
 
@@ -67,13 +68,50 @@ fn redirect_targets_with_a_path_are_rejected() {
 	assert!(err.contains("must not have a path"), "{err}");
 }
 
+// r[verify params.unknown-config-keys]
 #[test]
-fn unknown_config_keys_are_rejected() {
+fn unknown_config_keys_are_rejected_when_asked() {
+	let p = params(json!({ "notAKey": 1, "alsoNot": "x" }));
+	assert_eq!(p.config.unknown_keys(), ["alsoNot", "notAKey"]);
+
+	// Rejecting is what a renderer does unless told otherwise.
+	let err = tamanu_renderer::render_with(&p, &options())
+		.unwrap_err()
+		.to_string();
+	assert!(
+		err.contains("unknown config key(s): alsoNot, notAKey"),
+		"{err}"
+	);
+}
+
+// r[verify params.unknown-config-keys]
+#[test]
+fn unknown_config_keys_are_ignored_when_asked() {
+	let ignoring = Options {
+		unknown_config_keys: UnknownConfigKeys::Ignore,
+		..options()
+	};
+	let with = params(json!({ "nodeEnv": "staging", "notAKey": 1 }));
+	let without = params(json!({ "nodeEnv": "staging" }));
+	assert_eq!(
+		tamanu_renderer::render_with(&with, &ignoring).unwrap(),
+		tamanu_renderer::render_with(&without, &ignoring).unwrap(),
+	);
+}
+
+#[test]
+fn a_known_key_is_not_reported_as_unknown() {
+	let p = params(json!({ "nodeEnv": "staging", "facilities": 3 }));
+	assert!(p.config.unknown_keys().is_empty());
+}
+
+// The contract between the stub and the renderer stays strict: only stack config is lenient.
+#[test]
+fn unknown_fields_outside_stack_config_are_still_rejected() {
 	let err = serde_json::from_value::<Params>(json!({
 		"stack": "main",
 		"imageTag": "x",
-		"cluster": { "fullName": "c" },
-		"config": { "notAKey": 1 },
+		"cluster": { "fullName": "c", "notAField": 1 },
 	}))
 	.unwrap_err()
 	.to_string();

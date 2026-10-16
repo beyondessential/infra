@@ -52,6 +52,12 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 - [x] Renderer test in `tests/`: deserialise `canary.json` into `Params` and render it, so the tree's renderer is checked against canary's shape (`r[params.checked-per-channel]`).
 - [x] New workflow `tamanu-renderer-contract.yml`, triggered by changes under `pulumi/tamanu/on-k8s/**` and `tamanu/on-k8s/renderer/**`: run the published `:stable` image against `stable.json` (`infra-argo-tamanu-renderer --params ... --format yaml`). Needs `:stable` to exist, so it is enabled after the first stable promotion.
 
+## 5b. Unknown stack config keys per channel
+
+- [x] Renderer: `StackConfig` keeps unknown keys instead of failing on them; `Options.unknown_config_keys` (`reject` by default, or `ignore`) decides, read by the binary from `RENDERER_UNKNOWN_CONFIG_KEYS` and logging what it ignores. Keys outside stack config stay strict (`r[params.unknown-config-keys]`).
+- [x] `argoPlugin` takes `env` for the sidecar; `k8s-infra` sets `ignore` for stable and `reject` for canary through `unknownConfigKeys(channel)`. An environment variable and not a plugin argument, because an argument the stable image does not know would break every stable render until stable is promoted. The variable is harmless to an older renderer.
+- [x] `SUPPORT.md` and the spec updated. The setting takes effect on stable only once a renderer build with it has been promoted to stable and the sidecar has restarted; until then stable still rejects unknown keys, which is why `rendererChannel` stays in `STUB_ONLY`.
+
 ## 6. External and manual
 
 - [x] `beyondessential/tailscale` PR #46: `tag:infra-gha-renderer-promote`, and a grant on each cluster's operator that impersonates the group `tailscale:gha:renderer-promote`. Needs merging.

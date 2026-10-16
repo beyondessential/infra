@@ -5,8 +5,10 @@ import {
   CHANNELS,
   PLUGIN_VERSION,
   type Channel,
+  UNKNOWN_CONFIG_KEYS_ENV,
   pluginBaseName,
   rendererImage,
+  unknownConfigKeys,
 } from '../../../common/tamanuRenderer.ts';
 
 // What Tamanu deployments need from the shared Argo CD controller in
@@ -40,6 +42,7 @@ const plugins = CHANNELS.map((channel) =>
     name: pluginBaseName(channel),
     image: rendererImage(channel),
     config: pluginConfig(channel),
+    env: { [UNKNOWN_CONFIG_KEYS_ENV]: unknownConfigKeys(channel) },
     namespace: namespaceName,
   }),
 );

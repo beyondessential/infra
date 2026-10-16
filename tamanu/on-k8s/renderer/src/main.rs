@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::Parser;
 
+use tamanu_renderer::UnknownConfigKeys;
 use tamanu_renderer::params::Params;
 
 /// Renders a Tamanu deployment to manifests on stdout.
@@ -24,6 +25,16 @@ struct Args {
 	/// Output format.
 	#[arg(long, value_enum, default_value_t = Format::Stream)]
 	format: Format,
+
+	/// What to do with a stack config key this renderer does not know. Set on a plugin sidecar
+	/// through the environment, since the same arguments run on every channel's image.
+	#[arg(
+		long,
+		env = "RENDERER_UNKNOWN_CONFIG_KEYS",
+		value_enum,
+		default_value_t = UnknownConfigKeys::Reject
+	)]
+	unknown_config_keys: UnknownConfigKeys,
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -47,8 +58,13 @@ fn main() -> Result<()> {
 		(None, Err(_)) => read_stdin()?,
 	};
 	let params: Params = serde_json::from_str(&raw).context("parsing parameters")?;
+	let unknown = params.config.unknown_keys();
+	if !unknown.is_empty() && args.unknown_config_keys == UnknownConfigKeys::Ignore {
+		eprintln!("ignoring unknown config key(s): {}", unknown.join(", "));
+	}
 	let options = tamanu_renderer::Options {
 		templates: args.templates.clone(),
+		unknown_config_keys: args.unknown_config_keys,
 	};
 	let resources = tamanu_renderer::render_with(&params, &options)?;
 	match args.format {

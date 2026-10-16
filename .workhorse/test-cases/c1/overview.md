@@ -17,6 +17,9 @@ Scenarios that show a renderer change reaching only the deployments on the promo
 - [x] The stub's output for each channel matches the committed fixtures (`params.checked-per-channel`)
 - [x] The renderer built from the tree accepts and renders the canary fixture (`params.checked-per-channel`)
 - [ ] The published `:stable` image renders the stable fixture in CI, after the first stable promotion (`params.checked-per-channel`)
+- [x] A renderer set to reject refuses an unknown stack config key and names it, one set to ignore renders as if it were absent, and a key outside stack config is still rejected (`params.unknown-config-keys`)
+- [x] The sidecar setting is `ignore` for stable and `reject` for canary, under the variable the renderer reads (`params.unknown-config-keys`)
+- [ ] After a renderer with the setting is promoted to stable, a stable deployment with a key stable does not know renders and the sidecar log reports it, while the same key on a canary deployment fails with a message naming it (`params.unknown-config-keys`)
 - [ ] When the stub's parameters change shape, stable's conversion keeps stable deployments rendering while canary receives the new shape (`params.per-channel-shape`)
 
 ## Sidecars

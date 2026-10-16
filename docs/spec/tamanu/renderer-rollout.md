@@ -61,8 +61,18 @@ starts. A tag that moves is otherwise served from whatever the node last pulled.
 
 r[params.channel-not-forwarded]
 The setting that selects a deployment's channel belongs to the infrastructure
-and must not be passed to the renderer. The renderer rejects parameters it does
-not know, so a forwarded setting fails every render of the deployment.
+and must not be passed to the renderer. A channel that rejects unknown stack
+config keys fails every render of the deployment on it, and one that ignores
+them carries a key that means nothing to it.
+
+r[params.unknown-config-keys]
+A renderer must treat a stack config key it does not know as its channel
+directs. `canary` rejects it, with a message naming the key, and `stable`
+ignores it and reports it in its log. A key it does not know means either that
+the sender is ahead of the renderer or that the key is mistaken. `stable` lags
+the senders, so an option added by Tamanu CD must not stop the deployments on it
+rendering, and `canary` is built with the sender, so a key it does not know is a
+mistake that it finds.
 
 r[params.per-channel-shape]
 The parameters passed to a channel's renderer must be in the shape that

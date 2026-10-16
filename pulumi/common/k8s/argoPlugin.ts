@@ -33,6 +33,8 @@ export interface ArgoPluginArgs {
    * rather than carried in the image, so that several plugins can share one image.
    */
   config: string;
+  /** Environment for the plugin's process, which the sidecar's image reads. */
+  env?: Record<string, string>;
   /** Where Argo CD is installed. */
   namespace?: string;
 }
@@ -64,6 +66,7 @@ export function argoPlugin({
   name,
   image,
   config,
+  env = {},
   namespace = argoNamespace,
 }: ArgoPluginArgs): k8s.apps.v1.DeploymentPatch {
   // A sidecar must not share /tmp with the repo server, or with another plugin.
@@ -104,6 +107,7 @@ export function argoPlugin({
               // A tag that moves is otherwise served from whatever the node last pulled.
               imagePullPolicy: 'Always',
               command: ['/var/run/argocd/argocd-cmp-server'],
+              env: Object.entries(env).map(([name, value]) => ({ name, value })),
               securityContext: { runAsNonRoot: true, runAsUser: 999 },
               resources: {
                 requests: { cpu: '10m', memory: '32Mi' },

@@ -7,6 +7,8 @@ import {
   pluginBaseName,
   pluginName,
   rendererImage,
+  UNKNOWN_CONFIG_KEYS_ENV,
+  unknownConfigKeys,
 } from './tamanuRenderer.ts';
 
 // r[verify channel.default]
@@ -65,4 +67,19 @@ test('the promotion script names the same plugins', () => {
       `refresh-channel.sh does not name ${pluginName(channel)} for ${channel}`,
     );
   }
+});
+
+// r[verify params.unknown-config-keys]
+test('stable ignores a stack config key it does not know and canary rejects it', () => {
+  assert.equal(unknownConfigKeys('stable'), 'ignore');
+  assert.equal(unknownConfigKeys('canary'), 'reject');
+});
+
+// The renderer reads the setting from the environment, so the name here has to be its own.
+test('the renderer reads the variable the sidecars set', () => {
+  const main = readFileSync(
+    new URL('../../tamanu/on-k8s/renderer/src/main.rs', import.meta.url),
+    'utf8',
+  );
+  assert.ok(main.includes(`env = "${UNKNOWN_CONFIG_KEYS_ENV}"`));
 });
