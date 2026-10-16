@@ -63,12 +63,13 @@ function labelValue(value: string): string {
     .replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
 }
 
-// What the Argo CD UI can filter and group Applications by.
+// What the Argo CD UI can filter and group Applications by. The UI lists labels by name, so
+// the version's sorts before the template's.
 const LABELS = {
+  // The Tamanu version, or the image tag where the stack has none.
+  'bes.tamanu/app-version': labelValue(appVersion ?? imageTag),
   // Pull request, release, branch or demo deployment, as Tamanu CD and the demos set it.
   'bes.tamanu/template': labelValue(configTemplate),
-  // The Tamanu version, or the image tag where the stack has none.
-  'bes.tamanu/version': labelValue(appVersion ?? imageTag),
 };
 
 // Argo CD shows these as links on the Application, so the deployment's addresses are one
