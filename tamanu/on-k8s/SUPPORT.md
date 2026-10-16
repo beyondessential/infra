@@ -185,7 +185,7 @@ The auth secrets in `config-secrets-<server>` are created once and kept in Pulum
 
 ### The program refuses because Argo CD is not installed
 
-The error names the namespace and says Argo CD is not installed on the cluster it runs on. Nothing was changed. Install Argo CD, the renderer plugin and the `tamanu` project on that cluster first. Deployments on the demo cluster fall under this until then.
+The error names the namespace and says Argo CD is not installed on the cluster it runs on. Nothing was changed. Install Argo CD, the renderer plugin and the `tamanu` project on that cluster first.
 
 ### A deployment from the previous program is refused
 
