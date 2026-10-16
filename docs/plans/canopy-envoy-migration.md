@@ -184,6 +184,20 @@ per the repo's spec-first rule (edit the spec, then update the code that cites i
   buffer) rather than only the 50m figure, and the meta workload should state a 60s
   request timeout for parity with nginx.
 
+## Gap: TCP 80 redirect
+
+The ingress spec ([K8SING](../spec/kubernetes/ingress.md#gateway)) requires a Gateway listener on TCP 80 that redirects every request to HTTPS.
+The Envoy NLB created in `pulumi/k8s-essentials/envoyGateway.ts` forwards only TCP 443 and UDP 443 (a `TCP_UDP` listener on one target group), so a request to port 80 never reaches the Gateway.
+The nginx NLB handles port 80 today, which is why the gap is invisible until the hostnames move.
+
+To close it before `drain` or `primary`:
+
+- add TCP 80 to the Envoy service and NLB, and a target group for it;
+- add the redirect listener to the Gateway and confirm it answers on the `gw.` aliases;
+- check HTTP requests to a migrated hostname get a redirect to HTTPS, not a connection failure.
+
+The ingress spec states the end state, so it stays as is.
+
 ## Implementation
 
 ### Stage config
