@@ -91,7 +91,7 @@ export const seedSnapshot: boolean =
     : false;
 export const appVersion: string | undefined = cfg.get('appVersion') ?? undefined;
 
-const configTemplate = cfg.get('configTemplate') ?? 'basic';
+export const configTemplate = cfg.get('configTemplate') ?? 'basic';
 
 // Release-branch deploys get configTemplate 'rc' (see parseDeployConfig in tamanu's
 // ghaCdHelpers). Those exist to rehearse the release, so they seed from the previous

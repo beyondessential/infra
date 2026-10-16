@@ -5,10 +5,14 @@
 #   r1  mark every Pulumi-owned resource retain-on-delete, and leave a marker in the
 #       namespace. State only; nothing changes in the cluster.
 #   r2  hand the stack over to Argo CD. Requires the marker.
+#   r3  update a stack that is already on Argo CD, from main, to pick up a change to the
+#       program that makes its Application (a label, say). It is an ordinary update. A
+#       hibernated deployment is left out, since an update wakes it, and gets the change at
+#       its next update; --wake includes it.
 #
 # Each stack is classified from the cluster first:
 #   none      no namespace or no database cluster yet
-#   argo      already has an Argo CD Application
+#   argo      already has an Argo CD Application (what r3 updates)
 #   unmarked  deployed by the previous program, no marker (needs r1)
 #   marked    deployed by the previous program, with the marker (needs r2)
 #
@@ -28,6 +32,7 @@
 #   tamanuMigrate.fish r1 --preview x y     # also run `pulumi preview` for stacks x and y
 #   tamanuMigrate.fish r1 --apply           # run r1 on the pull request stacks
 #   tamanuMigrate.fish r2 --apply --all     # run r2 on every stack on the cluster, release and main included
+#   tamanuMigrate.fish r3 --apply --all     # update every stack already on Argo CD
 #   tamanuMigrate.fish r1 --cluster shared-demos-demo --context demo   # another cluster
 #
 # Needs kubectl access to the cluster that runs the deployments (--cluster, default
@@ -40,19 +45,20 @@ set -l project_dir tamanu/on-k8s
 set -l org bes
 set -l project tamanu-on-k8s
 
-argparse a/apply p/preview all 'ref=' 'cluster=' 'context=' -- $argv
+argparse a/apply p/preview all wake 'ref=' 'cluster=' 'context=' -- $argv
 or exit 2
 
 set -l phase $argv[1]
 set -l named $argv[2..-1]
-if not contains -- "$phase" r1 r2
-    echo "usage: tamanuMigrate.fish r1|r2 [--apply] [--preview] [--all] [--ref REF] [--cluster NAME] [--context NAME] [STACK...]" >&2
+if not contains -- "$phase" r1 r2 r3
+    echo "usage: tamanuMigrate.fish r1|r2|r3 [--apply] [--preview] [--all] [--wake] [--ref REF] [--cluster NAME] [--context NAME] [STACK...]" >&2
     exit 2
 end
 
 # r1 runs from the branch that is kept for stragglers; r2 is what main has.
 set -l ref origin/p1-r1
 test $phase = r2; and set ref origin/main
+test $phase = r3; and set ref origin/main
 set -q _flag_ref; and set ref $_flag_ref
 
 # Only stacks on this cluster are looked at: the checks use the current kubectl context, and
@@ -167,6 +173,7 @@ end
 
 set -l wanted unmarked
 test $phase = r2; and set wanted marked
+test $phase = r3; and set wanted argo
 
 set -l failed
 set -l done_count 0
@@ -198,10 +205,16 @@ for stack in $stacks
         set action "needs r1 first"
     end
     # An update wakes a hibernated deployment and starts its TTL again, so it sleeps again once
-    # that runs out. Stacks are updated one at a time, so they wake one at a time.
+    # that runs out. Stacks are updated one at a time, so they wake one at a time. A migration
+    # includes them, since leaving one on the old program would break it; r3 only adds to a
+    # stack that already works, so it leaves them for their next update.
     set -l asleep (kubectl -n $ns get clusters.postgresql.cnpg.io central-db -o jsonpath='{.metadata.annotations.cnpg\.io/hibernation}' 2>/dev/null)
     if test "$action" = run; and test "$asleep" = on
-        set action "run (hibernated: will wake until its TTL runs out)"
+        if test $phase = r3; and not set -q _flag_wake
+            set action "left out (hibernated: it gets this at its next update; --wake to include)"
+        else
+            set action "run (hibernated: will wake until its TTL runs out)"
+        end
     end
     printf '%-52s %-10s %s\n' $stack $state "$action"
 
