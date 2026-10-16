@@ -1,0 +1,44 @@
+name: Rust Check
+
+on:
+  pull_request:
+    paths:
+      - "pgsnap/**"
+      - ".github/workflows/rust-check.yml"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+
+jobs:
+  check:
+    name: ${{ matrix.crate }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [pgsnap]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --no-self-update stable
+          rustup default stable
+          rustup component add clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.crate }}
+          key: check
+
+      - name: Check
+        working-directory: ${{ matrix.crate }}
+        run: cargo check --locked
+
+      - name: Clippy
+        working-directory: ${{ matrix.crate }}
+        run: cargo clippy --locked -- -D warnings

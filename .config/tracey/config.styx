@@ -2,6 +2,18 @@
 
 specs (
     {
+        name pgsnap
+        include (docs/spec/pgsnap.md)
+        impls (
+            {
+                name main
+                include (
+                    pgsnap/src/**/*.rs
+                )
+            }
+        )
+    }
+    {
         name kubernetes
         include (docs/spec/kubernetes/*.md)
         impls (

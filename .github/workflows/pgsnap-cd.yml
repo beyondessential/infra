@@ -103,8 +103,8 @@ jobs:
           labels: |
             org.opencontainers.image.vendor=BES International
             org.opencontainers.image.title=pgsnap
-            org.opencontainers.image.url=https://github.com/beyondessential/ops/
-            org.opencontainers.image.source=https://github.com/beyondessential/ops/
+            org.opencontainers.image.url=https://github.com/beyondessential/infra/
+            org.opencontainers.image.source=https://github.com/beyondessential/infra/
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
       - name: Build and push
