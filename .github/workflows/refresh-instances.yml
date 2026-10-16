@@ -1,0 +1,51 @@
+name: Refresh instance list
+
+on:
+  schedule:
+    # First of every month, 00:00 UTC
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: pulumi/common
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Refresh instances.json
+        run: bash refreshInstances.sh
+
+      - name: Open PR if the list changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- instances.json; then
+            echo "No changes to instances.json."
+            exit 0
+          fi
+
+          branch="refresh-instances/${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add instances.json
+          git commit -m "chore(pulumi): refresh instance list"
+          git push origin "$branch"
+
+          gh pr create \
+            --title "chore(pulumi): refresh instance list" \
+            --body $'🤖 Monthly refresh of `pulumi/common/instances.json` from [instances.vantage.sh](https://instances.vantage.sh/instances.json).\n\nAfter merging, run `k8s-core` to update the nodepools.' \
+            --base main \
+            --head "$branch"

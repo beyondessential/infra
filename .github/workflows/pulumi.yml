@@ -1,0 +1,45 @@
+name: Pulumi checks
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/pulumi.yml
+      - pulumi/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/pulumi.yml
+      - pulumi/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+      # postinstall runs tsc, so this typechecks every stack.
+      - run: npm ci
+        working-directory: pulumi
+      - run: npm test
+        working-directory: pulumi
+
+  policies:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+      # Separate npm project with its own deps, excluded from the root tsconfig.
+      - run: npm ci
+        working-directory: pulumi/policies
+      # The pack loads from bin/, which is gitignored, and the tests run against that
+      # build — so a rule that stops compiling fails here rather than silently going
+      # unenforced.
+      - run: npm run build
+        working-directory: pulumi/policies
+      - run: npm test
+        working-directory: pulumi/policies

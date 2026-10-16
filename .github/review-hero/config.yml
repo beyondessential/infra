@@ -1,0 +1,8 @@
+project: BES Infra
+description: infrastructure for our AWS organisation and server fleet, comprising Pulumi stacks, Ansible playbooks, and the Tamanu-on-Kubernetes renderer
+
+ignore_patterns:
+  # Fetched wholesale from instances.vantage.sh by the monthly refresh job.
+  - pulumi/common/instances.json
+  - uv.lock
+  - Cargo.lock
