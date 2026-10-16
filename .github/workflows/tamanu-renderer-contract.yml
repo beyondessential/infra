@@ -33,11 +33,34 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Stable has no image until the first stable promotion, so there is nothing to check
+      # against before it. Only a missing tag skips the check: any other answer from the
+      # registry fails it. The image is public, as the clusters pull it without credentials.
+      - name: Find the stable renderer
+        id: stable
+        run: |
+          repo=beyondessential/infra-argo-tamanu-renderer
+          token=$(curl -fsS "https://ghcr.io/token?scope=repository:$repo:pull" | jq -r .token)
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/$repo/manifests/stable")
+          case "$status" in
+            200) echo "exists=true" >> "$GITHUB_OUTPUT" ;;
+            404)
+              echo "::warning::There is no stable renderer yet, so the stable parameters are not checked. Promote a build to stable to start checking them."
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *) echo "::error::The registry answered $status for the stable renderer"; exit 1 ;;
+          esac
+
       - name: Login to ghcr.io
+        if: steps.stable.outputs.exists == 'true'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
       # r[impl params.checked-per-channel]
       - name: Render the stable parameters with the stable image
+        if: steps.stable.outputs.exists == 'true'
         run: |
           docker run --rm \
             -v "$PWD/tamanu/on-k8s/renderer/tests/fixtures/stub:/fixtures:ro" \

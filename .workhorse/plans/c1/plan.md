@@ -50,7 +50,7 @@ Builds what `docs/spec/tamanu/renderer-rollout.md` requires: `canary` and `stabl
 
 - [x] Fixtures under `tamanu/on-k8s/renderer/tests/fixtures/stub/`: `canary.json` and `stable.json`, the stub's `forChannel` output for a representative config. A stub test asserts the committed files match what the stub produces, so a stub change shows up as a fixture diff.
 - [x] Renderer test in `tests/`: deserialise `canary.json` into `Params` and render it, so the tree's renderer is checked against canary's shape (`r[params.checked-per-channel]`).
-- [x] New workflow `tamanu-renderer-contract.yml`, triggered by changes under `pulumi/tamanu/on-k8s/**` and `tamanu/on-k8s/renderer/**`: run the published `:stable` image against `stable.json` (`infra-argo-tamanu-renderer --params ... --format yaml`). Needs `:stable` to exist, so it is enabled after the first stable promotion.
+- [x] New workflow `tamanu-renderer-contract.yml`, triggered by changes under `pulumi/tamanu/on-k8s/**` and `tamanu/on-k8s/renderer/**`: run the published `:stable` image against `stable.json` (`infra-argo-tamanu-renderer --params ... --format yaml`). Skipped with a warning while `:stable` does not exist, which is until the first stable promotion (the workflow that creates it ships in this PR); any other registry error fails it.
 
 ## 5b. Unknown stack config keys per channel
 
