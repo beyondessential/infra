@@ -5,7 +5,7 @@ id: LNXSRV
 # Linux server hosts
 
 The requirements in this spec apply to every [Linux server](../overview.md#linux-server), and to the cloud infrastructure that provisions it.
-The database is specified by [LNXDB](database.md), the Tamanu services and their proxy by [LNXAPP](application.md), and backups by [LNXBAK](backups.md).
+The database is specified by [LNXDB](database.md), the Tamanu services and their proxy by [LNXRUN](runtime.md), their installation by [LNXANS](ansible.md), and backups by [LNXBAK](backups.md).
 
 ## Borrowed terms
 
@@ -31,43 +31,12 @@ The database is specified by [LNXDB](database.md), the Tamanu services and their
 
 A Linux server MUST be either a [central server](../overview.md#central-server) or a [facility server](../overview.md#facility-server).
 
-A Linux server MUST run the Tamanu services that [LNXAPP](application.md#services) assigns to its type.
+A Linux server MUST run the Tamanu services that [LNXRUN](runtime.md#services) assigns to its type.
 
 A facility server MUST have a facility identifier.
 
 A deployment's central server and facility servers MUST be managed from one inventory, in which a central server is a member of the group `central` and a facility server is a member of the group `facility`.
-
-## Inventory
-
-The inventory of a deployment MUST be read from [Canopy](../overview.md#canopy), for one group and one rank, by an inventory source that takes the run lease of the environment.
-
-A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
-
-An inventory source MUST include only the machines that carry the variable `managed_by_ansible`.
-
-An inventory source MUST make a machine a member of the group named for each product that runs on it and for each role those products play, and MUST make a machine whose application type names no role a member of the group `standalone`.
-
-An inventory source MUST address a machine by the tailnet name of its bound device, or by the recorded host of its application where no device is bound, unless the machine has the variable `ansible_host`.
-
-An address MUST be a host name or an IP address that does not begin with a hyphen.
-
-An inventory source MUST accept only the Ansible variables `ansible_host`, `ansible_user`, `ansible_port`, `ansible_python_interpreter` and `ansible_timeout` from Canopy.
-
-An inventory source MUST set the variable `canopy_intent` to the intent of the run, `configure` or `upgrade`, and the variable `tamanu_clone` to true where the deployment has the rank `clone`.
-
-An inventory source MUST send its requests over HTTPS, except to a loopback address.
-
-An inventory source MUST NOT follow a redirect.
-
-Where Canopy cannot be reached, an inventory source SHOULD fall back to its cache of the last successful read and warn that secret variables are unset.
-
-Where Canopy refuses a request, an inventory source MUST stop the run.
-
-An inventory source MUST NOT write a secret variable to its cache.
-
-Where the intent is `upgrade`, an inventory source MUST NOT use the cache, and Canopy MUST refuse the read for a production deployment that has no open upgrade plan.
-
-Reading an inventory MUST require Canopy administrator access.
+The inventory is specified by [LNXANS](ansible.md#inventory).
 
 ## Platform
 

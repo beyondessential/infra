@@ -73,7 +73,9 @@ The shared credentials file and its directory MUST be removed where `tamanu_cadd
 
 ## DNS-01 users
 
-A server that lists any external IP address MUST have an IAM user for DNS-01, whose managed policy and inline policy are those in the following table.
+A server MAY have an IAM user for DNS-01.
+
+The managed policy and inline policy of such a user MUST be those in the following table.
 
 | policy | actions | resource | condition |
 |---|---|---|---|
@@ -82,8 +84,6 @@ A server that lists any external IP address MUST have an IAM user for DNS-01, wh
 | inline | `route53:ListResourceRecordSets` | the hosted zone of the core | none |
 
 The access keys of the IAM user MUST be created by an operator.
-
-A server MAY be given an IAM user for DNS-01 by its configuration, whether or not it lists an external IP address.
 
 ## Tailscale certificates
 
