@@ -19,7 +19,20 @@ The host is specified by [LNXSRV](server.md), the database by [LNXDB](database.m
 
 ## Services
 
-A Linux server MUST run the Tamanu services in the following table, each as a quadlet whose unit name is given and from the image of that name in `ghcr.io/beyondessential`.
+A Tamanu server MUST be either a [central server](../overview.md#central-server) or a [facility server](../overview.md#facility-server).
+
+A facility server MUST have a facility identifier.
+
+A Linux server that runs Tamanu MUST be able to reach the hosts in the following table over HTTPS.
+
+| host | purpose |
+|---|---|
+| `meta.tamanu.app` | Tamanu's meta server. |
+| `clients.ops.tamanu.io` | Client downloads. |
+| `servers.ops.tamanu.io` | Server downloads. |
+| `ghcr.io` | The container registry that holds the Tamanu images. |
+
+A Linux server that runs Tamanu MUST run the Tamanu services in the following table, each as a quadlet whose unit name is given and from the image of that name in `ghcr.io/beyondessential`.
 The duty that each service performs is named by the [duty vocabulary](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/substrate.md#the-duty-vocabulary) of [bestool](../overview.md#bestool).
 
 | unit | server type | instances | image | command |
@@ -52,20 +65,23 @@ A Tamanu container SHOULD disable TCP slow start after idle in its network names
 
 A quadlet MUST NOT be enabled directly.
 
+The Tamanu API instances MUST run in the critical [resource class](../overview.md#resource-class) of [LNXSRV](server.md#resource-classes).
+
+The Tamanu sync service of a facility server and the Tamanu FHIR workers of a central server MUST run in the elevated resource class.
+
+The Tamanu API instances SHOULD be less likely than other processes to be chosen by the kernel's out-of-memory killer.
+
 ## Container runtime
 
 A Linux server MUST run containers with Podman, using the netavark network backend with the nftables firewall driver.
 
-The default Podman network of a server MUST be a bridge with the interface `podman0`, DNS enabled, and the subnets in the following table.
+The default Podman network of a server MUST be a bridge with the interface `podman0` and DNS enabled.
 
-| family | subnet | gateway | condition |
-|---|---|---|---|
-| IPv4 | `10.100.0.1/16` | `10.100.0.1` | always |
-| IPv6 | `fd62:6573:b558:f686::1/64` | `fd62:6573:b558:f686::1` | the host has a default IPv6 route |
+The default Podman network MUST have an IPv4 subnet, and MUST have an IPv6 subnet where the host has a default IPv6 route.
 
 The inventory MAY override the subnets, through [the inventory variables](ansible.md#inventory-variables).
 
-The container DNS server MUST listen on port 53 of the gateway.
+The container DNS server MUST be reachable from containers at the gateway address of the network.
 
 The host resolver MUST route names under `tamanu.internal` to the container DNS server of `podman0`.
 
@@ -75,7 +91,7 @@ Where the inventory enables the host certificate store for Tamanu containers, ev
 
 Container images that no container references and that carry no tag SHOULD be pruned daily in the background [resource class](../overview.md#resource-class).
 
-A Tamanu container MUST be reachable on port 3000 at the network aliases in the following table, where `<i>` is its instance and `<t>` the server type.
+A Tamanu container MUST be reachable at the network aliases in the following table, where `<i>` is its instance and `<t>` the server type.
 
 | service | alias | alias of an instance |
 |---|---|---|
@@ -122,7 +138,7 @@ The file `local.json5` MUST set the keys in the following table.
 | `schedules.sendStatusToMetaServer.enabled` | `false`, where the installed [bestool](../overview.md#bestool) sends the status to the meta server |
 | `disk.diskPath` | `/var/lib/postgresql`, on a central server |
 | `patientPortal.portalUrl` | `https://` followed by the patient portal hostname, on a central server with the patient portal enabled |
-| `sync.syncApiConnection` | host `http://syncapi.facility.tamanu.internal` and port 3000, on a facility server |
+| `sync.syncApiConnection` | the address `http://syncapi.facility.tamanu.internal`, on a facility server |
 
 A Tamanu service MUST NOT run database migrations at start-up.
 
@@ -196,8 +212,8 @@ A site that serves Tamanu MUST behave as the following table gives.
 
 | behaviour | requirement |
 |---|---|
-| API paths, `/v1/*` and `/api/*` | reverse proxied to `api.<server type>.tamanu.internal` port 3000, with `Cache-Control: no-store` on responses |
-| every other path | reverse proxied to `frontend.tamanu.internal` port 3000, with the request header `Host` set to `localhost`, or to `patientportal.tamanu.internal` port 3000 with the same header on the patient portal site |
+| API paths, `/v1/*` and `/api/*` | reverse proxied to `api.<server type>.tamanu.internal`, with `Cache-Control: no-store` on responses |
+| every other path | reverse proxied to `frontend.tamanu.internal`, with the request header `Host` set to `localhost`, or to `patientportal.tamanu.internal` with the same header on the patient portal site |
 | `/v1/login` | redirected with status 308 to `/api/login`, on the Tamanu site |
 | `/` and `/manifest.json` | `Cache-Control: no-cache` |
 | `/env.js` | the upstream response with `Cache-Control: public, max-age=604800, immutable`, on the Tamanu site |

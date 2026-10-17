@@ -159,7 +159,7 @@ An API server and a web frontend MUST be updated by rolling update.
 
 ## Server health
 
-An API server, a facility sync server and a web frontend MUST declare a startup probe and a liveness probe, each of which fetches `/` on port 3000.
+An API server, a facility sync server and a web frontend MUST declare a startup probe and a liveness probe, each of which fetches the root path of the server.
 
 The startup probe SHOULD poll every second and allow 60 failures before the container is restarted.
 

@@ -40,7 +40,7 @@ The issuer of Caddy MUST remain configured for every site that names the certifi
 
 ## Certificate endpoint
 
-A site that obtains its certificate from the bestool daemon MUST name the certificate endpoint `http://127.0.0.1:8271/certificate` as a `get_certificate` source.
+A site that obtains its certificate from the bestool daemon MUST name the certificate endpoint as a `get_certificate` source, as [TLS, Caddy configuration](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md#caddy-configuration) specifies.
 
 A site MUST name the certificate endpoint only where the installed bestool is version 2.2.0 or later and the inventory variable `caddy_canopy_certificates` is true.
 

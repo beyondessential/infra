@@ -26,10 +26,6 @@ The provisioning of servers in AWS is specified by [LNXAWS](aws.md), the databas
 
 ## Platform
 
-A Linux server MUST be either a [central server](../overview.md#central-server) or a [facility server](../overview.md#facility-server).
-
-A facility server MUST have a facility identifier.
-
 A Linux server MUST run Ubuntu 24.04 or later.
 
 A Linux server MAY have an amd64 or an arm64 processor.
@@ -42,15 +38,7 @@ A Linux server SHOULD have a btrfs root filesystem with the subvolume `@` mounte
 
 A Linux server whose root filesystem is not btrfs MUST still be managed by the playbooks, with the behaviour that depends on btrfs skipped.
 
-A Linux server MUST be able to reach the hosts in the following table over HTTPS.
-
-| host | purpose |
-|---|---|
-| `meta.tamanu.app` | Tamanu's meta server. |
-| `tools.ops.tamanu.io` | The BES package repository and tool downloads. |
-| `clients.ops.tamanu.io` | Client downloads. |
-| `servers.ops.tamanu.io` | Server downloads. |
-| `ghcr.io` | The container registry that holds the Tamanu images. |
+A Linux server MUST be able to reach `tools.ops.tamanu.io`, the BES package repository and tool downloads, over HTTPS.
 
 A Linux server SHOULD be able to send and receive UDP on port 123 to reach NTP servers.
 
@@ -175,16 +163,13 @@ A Linux server MUST run the services in the following table in the resource clas
 |---|---|
 | PostgreSQL | critical |
 | Caddy | critical |
-| the Tamanu API instances | critical |
-| the Tamanu sync service of a facility server | elevated |
-| the Tamanu FHIR workers of a central server | elevated |
 | package refreshes, btrfs balance and scrub, and image pruning | background |
 
 PostgreSQL SHOULD restart on failure after 30 seconds.
 
 PostgreSQL SHOULD continue running when one of its processes is killed for lack of memory.
 
-Caddy and the Tamanu API instances SHOULD be less likely than other processes to be chosen by the kernel's out-of-memory killer.
+Caddy SHOULD be less likely than other processes to be chosen by the kernel's out-of-memory killer.
 
 A Linux server MUST enable systemd accounting of CPU, I/O, IP, memory and tasks by default for all units.
 
@@ -224,7 +209,7 @@ A managed host firewall MUST allow the traffic in the following table.
 |---|---|
 | TCP 80, TCP 443 and UDP 443 from any source | always |
 | forwarded traffic in from `podman0` | always |
-| DNS (port 53) in from `podman0` | always |
+| DNS in from `podman0` | always |
 | every packet in from `tailscale0` | the server is a member of the tailnet |
 | SSH from `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` and `fc00::/7` | the server is a member of the tailnet |
 | SSH from any source | the server is not a member of the tailnet |

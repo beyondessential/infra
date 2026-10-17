@@ -58,23 +58,23 @@ The unit `msupply` MUST start at boot, and MUST restart whenever it exits.
 
 mSupply MUST run as the system user `msupply`, with its database in `/var/lib/msupply` with mode 0770, and its configuration in `/etc/msupply/env` and `/etc/msupply/local.yaml`.
 
-mSupply MUST be reachable on port 8000 at the network alias `api.msupply.internal`.
+mSupply MUST be reachable at the network alias `api.msupply.internal`.
 
 The host resolver MUST route names under `msupply.internal` to the container DNS server of [LNXRUN](runtime.md#container-runtime).
 
-mSupply MUST publish port 8000 as the following table gives.
+mSupply MUST publish its service port as the following table gives.
 
-| mSupply has | port 8000 published on |
+| mSupply has | the service port is published on |
 |---|---|
 | a Tailscale service | `127.0.0.1` |
 | neither a hostname nor a Tailscale service | all addresses |
 | a hostname and no Tailscale service | no address |
 
-Where the host firewall is managed and mSupply has no hostname, the firewall MUST allow TCP port 8000.
+Where the host firewall is managed and mSupply has no hostname, the firewall MUST allow the service port of mSupply.
 
 ## Proxy site
 
-Where mSupply has a hostname, the proxy MUST serve it as an HTTPS site that reverse proxies to the network alias on port 8000, resolving it as [LNXRUN](runtime.md#reverse-proxy) requires of upstream names.
+Where mSupply has a hostname, the proxy MUST serve it as an HTTPS site that reverse proxies to the network alias, resolving it as [LNXRUN](runtime.md#reverse-proxy) requires of upstream names.
 
 Where mSupply has a hostname, the proxy MUST redirect HTTP requests for it to HTTPS with status 308.
 
@@ -86,7 +86,7 @@ The certificate of the site is given by [LNXTLS](tls.md).
 
 Where mSupply has a Tailscale service, the server MUST advertise that service from its Tailscale node once the node is ready.
 
-The advertised service MUST forward HTTPS on port 443 and HTTP on port 80 to port 8000 on `127.0.0.1`.
+The advertised service MUST forward HTTPS on port 443 and HTTP on port 80 to the service port of mSupply on the loopback address.
 
 ## Installation and upgrades
 

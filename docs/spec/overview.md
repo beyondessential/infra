@@ -148,7 +148,7 @@ Defined by this gloss alone.
 
 ### Linux server
 
-A host, managed by the Ansible playbooks, that runs a Tamanu central or facility server with its database and reverse proxy.
+A host that the Ansible playbooks manage, whatever it runs.
 Defined in [LNXSRV](linux/server.md#platform).
 
 ### External server
