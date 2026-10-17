@@ -25,7 +25,7 @@ Canopy's rules for domains, grants, issuance and renewal are specified by Canopy
 
 ## Managed zones
 
-Canopy MUST receive its [managed zones](#borrowed-terms) as a comma-separated list in the environment variable `CANOPY_DNS_ZONES`.
+Canopy MUST receive its managed zones as a comma-separated list in the environment variable `CANOPY_DNS_ZONES`.
 
 An entry of the list MUST have one of the forms in the following table.
 
@@ -131,7 +131,7 @@ A Canopy workload that neither orders certificates nor reports the authority MUS
 
 ## Staging and production
 
-A stack MAY configure the directory as the Let's Encrypt [staging environment](#borrowed-terms).
+A stack MAY configure the directory as the Let's Encrypt staging environment.
 
 A stack that configures no directory MUST select the Let's Encrypt production authority.
 
