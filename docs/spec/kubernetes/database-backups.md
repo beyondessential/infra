@@ -118,6 +118,9 @@ The archive of a cluster MUST be written under the destination path `s3://<bucke
 
 Two clusters MUST NOT share a destination path.
 
+> [!NOTE]
+> Two deployments whose normalised stack names coincide collide on their namespace name before either archives, so the path is unique by construction.
+
 The deployment name MUST be the value that the following table gives for the owner of the cluster.
 
 | owner of the cluster | deployment name |
