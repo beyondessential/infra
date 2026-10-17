@@ -78,13 +78,24 @@ A sync MUST run each of those Jobs, including a sync that changes nothing in the
 
 ## Version-gated steps
 
-The renderer MUST omit the `facility-N-setup-sync` Job, the FHIR workers of a facility and the seed top-up Job from a deployment whose Tamanu version predates the first release that has the command the step runs.
+The renderer MUST treat a behaviour in the following table as present from the first Tamanu release given for it, and as absent before.
 
-A pre-release of that first release MUST count as that release.
+| behaviour | first release | before it |
+|---|---|---|
+| The `facility-N-setup-sync` Job seeds the central address and credentials of a facility. | 2.60.0 | The facility configuration carries the sync setup itself, and the Job is omitted. |
+| A facility has FHIR workers. | 2.60.0 | A facility has no FHIR workers. |
+| Tamanu creates and manages its own `tamanu_raw` and `tamanu_reporting` database roles. | 2.60.0 | The `raw` and `reporting` roles, their password Secrets and the variables that read them are kept. |
+| The seed top-up Job exists. | 2.65.0 | The Job is omitted. |
+
+A pre-release of a first release MUST count as that release.
 
 A deployment whose Tamanu version is unknown MUST be treated as lower than every first release.
 
 The Tamanu version of a deployment MUST be the version the stub read from the image, and MUST NOT be inferred from the image tag.
+
+> [!NOTE]
+> The first releases are facts of Tamanu that the renderer encodes: the release that first ships a command or takes over a behaviour.
+> A step whose command the image lacks exits with an error and fails the sync, so an unknown version errs towards the older behaviour.
 
 ## Seed top-up
 
