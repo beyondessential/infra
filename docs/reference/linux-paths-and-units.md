@@ -7,12 +7,10 @@ Reading `/etc/tamanu/env` and `local.json5` prints database passwords: tag it **
 
 ## Units
 
+The Tamanu service units themselves are listed in [LNXRUN](../spec/linux/runtime.md#services); the units around them are these.
+
 | unit | what it is | notes |
 |---|---|---|
-| `tamanu-frontend@a`, `@b` | Frontend | Both roles. Rolled one at a time. |
-| `tamanu-central-api@1`, `@2`, `tamanu-central-tasks`, `tamanu-central-fhir-refresh`, `tamanu-central-fhir-resolve` | Central services | |
-| `tamanu-patientportal@a`, `@b` | Patient portal | Central, where enabled. |
-| `tamanu-facility-api@1`, `@2`, `tamanu-facility-tasks`, `tamanu-facility-sync` | Facility services | |
 | `tamanu-boot.service` | Oneshot that runs `bestool tamanu start` after the network is up | The only thing that starts Tamanu at boot. The quadlets have no install section. |
 | `tamanu-roll-on-postgres.service` | Oneshot that rolls running Tamanu services when PostgreSQL starts | Skips when no frontend is active, so a deliberately stopped Tamanu stays stopped. |
 | `postgresql@<version>-main` | The cluster | Slice `critical.slice`, restarts after 30 seconds on failure. |
@@ -30,14 +28,10 @@ Containers run as `systemd-<unit>`, so the journal identifier of a service is `s
 
 ## Files
 
+The Tamanu configuration files under `/etc/tamanu/`, their modes and when each is written, and the `tamanu-run` helper, are in [LNXRUN](../spec/linux/runtime.md#configuration) and [LNXANS](../spec/linux/ansible.md#installation); the files around them are these.
+
 | path | what | owner and mode |
 |---|---|---|
-| `/etc/tamanu/env` | Versions, `TZ`, `DATABASE_URL`. Rewritten by every run. | `tamanu:tamanu` 0640 |
-| `/etc/tamanu/current` | Symlink to the active version directory | |
-| `/etc/tamanu/<version>/production.json5` | Tamanu config. Edit this one. Copied forward at each version. | `tamanu:tamanu` 0660 |
-| `/etc/tamanu/<version>/local.json5` | Generated config. Overwritten by every run. | `root:tamanu` 0440 |
-| `/etc/tamanu/<version>/default.json5` | Copy of the image's defaults, for reference | `tamanu:tamanu` 0440 |
-| `/usr/local/bin/tamanu-run` | Run a command in a server container: `tamanu-run current <command>` or `tamanu-run <tag> <command>` | 0755 |
 | `/etc/containers/systemd/` | Quadlets and the `tamanu-.container.d` drop-ins (`crypto-secret.conf`, `noipv6.conf`, `host-ca-certs.conf`) | |
 | `/etc/bestool/` | bestool daemon and backup configuration, group `tamanu`, setgid | `root:tamanu` 2775 |
 | `/etc/bestool/backups/*.toml` | [Backup definitions](../spec/linux/backups.md#backup-definitions) | `root:root` 0644 |

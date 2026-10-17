@@ -4,7 +4,7 @@ Browsers or integrations get TLS errors from a Linux server, the `caddy_certs` c
 Where certificates come from is in [LNXTLS](../spec/linux/tls.md#certificate-sources); the Canopy side of issuance is [Canopy TLS not issuing](canopy-tls-not-issuing.md).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
-Access to the DNS-01 keys and any ZeroSSL key is **sensitive-data**; never print them ([rotate credentials](../sops/linux-rotate-credentials.md)).
+Access to the DNS-01 keys and any ZeroSSL key is **sensitive-data**; never print them ([rotate credentials](../reference/linux-credentials.md)).
 
 ## 1. When this applies
 
@@ -30,7 +30,7 @@ On the host. **[diagnose]**
 |---|---|---|
 | Handshake fails right after a play, only for names that use the daemon | Caddy cannot reach the daemon (down) or is not admitted. A refusal fails the handshake; it does not fall back. | Start the daemon or re-run the `bestool` role ([dev-OTS](../sops/linux-run-playbooks.md)). |
 | The daemon is up, a name still has Caddy's own certificate | The daemon declined that name, so Caddy's issuer took it. Canopy has no certificate for it. | Check the Canopy side ([Canopy TLS not issuing](canopy-tls-not-issuing.md)). |
-| Renewal errors naming Route 53 or `AccessDenied` | The DNS-01 key is wrong, deleted or lacks the name. The policy covers `_acme-challenge.<name>` for the server, mSupply and portal names only. | Rotate the key ([SOP](../sops/linux-rotate-credentials.md)). **[dev-OTS]** |
+| Renewal errors naming Route 53 or `AccessDenied` | The DNS-01 key is wrong, deleted or lacks the name. The policy covers `_acme-challenge.<name>` for the server, mSupply and portal names only. | Rotate the key ([SOP](../reference/linux-credentials.md)). **[dev-OTS]** |
 | Renewal errors naming rate limits or HTTP-01 failures | Port 80 or 443 is not reachable from the internet, or the authority's rate limit is hit. | Check the security group, a host firewall and DNS ([network exposure](../spec/linux/aws.md#network-exposure)); escalate for a rate limit. |
 | A `.local` name, or `tamanu_caddy_tls` false | HTTP only by design. | None. |
 | An extra hostname redirects but its certificate is wrong | A redirecting hostname uses Caddy's issuer, not the daemon. | Same issuer checks. |

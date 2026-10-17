@@ -12,6 +12,7 @@ import { backups } from '../../common/k8s/coreRef.ts';
 import { namespace } from './namespace.ts';
 import './ca.ts';
 
+// spec: K8SCNP#database
 export const dbReady = runPostgres({
   namespace,
   name: 'meta',

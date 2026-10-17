@@ -21,6 +21,7 @@ import {
   normalizedStack,
 } from './config.ts';
 
+// spec: K8SCNP#workloads
 export const migrator = new k8s.batch.v1.Job('migrator', {
   metadata: {
     namespace,

@@ -73,7 +73,7 @@ tamanu-on-linux:facilities: [{ id: a, name: Facility A }]
 | `tailscaleTags` | Tags in force. |
 | `backupBucket`, `bucketArn` | The repository bucket. |
 | `deviceRoleArn`, `maintenanceRoleArn` | The two repository roles. |
-| `acmeDnsUsers` | IAM user names for DNS-01. Create their access keys by hand ([rotate credentials](../sops/linux-rotate-credentials.md)). |
+| `acmeDnsUsers` | IAM user names for DNS-01. Create their access keys by hand ([rotate credentials](../reference/linux-credentials.md)). |
 | `redirectsTo` | Hostname to target map of a retired deployment. |
 
 A retired deployment exports no server outputs; `facilities` is still required because the redirected hostnames derive from it.

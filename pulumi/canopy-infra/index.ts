@@ -54,6 +54,7 @@ function assumeRolePolicy(name: string): awsNative.iam.ManagedPolicy {
 // and expiring by age would delete bytes a registration still names and answer
 // every device with a 404. Canopy sweeps what no artifact reaches instead, which
 // is what canopy-jobs' listing access below is for.
+// spec: K8SCNP#artifact-store
 const artifactBucket = new awsNative.s3.Bucket(
   'canopy-artifacts',
   {
@@ -113,6 +114,7 @@ function artifactPolicy(name: string, actions: string[]) {
   );
 }
 
+// spec: K8SCNP#canopy-infra
 const issuerRole = eksServiceAccount('canopy-issuer', {
   serviceAccountName: CANOPY_SA_ISSUER,
   oidcProviderArn,
@@ -189,6 +191,7 @@ const domainsRole = eksServiceAccount('canopy-domains', {
   ],
 });
 
+// spec: K8SCNP#outputs
 export const canopyIssuerRoleArn = issuerRole.arn;
 export const canopyJobsRoleArn = jobsRole.arn;
 export const canopyPrivateRoleArn = privateRole.arn;

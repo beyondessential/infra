@@ -1,4 +1,4 @@
-# SOP: Credentials on a Linux server
+# Reference: Credentials on a Linux server
 
 What each credential is, where it lives, and what happens when it changes.
 Creating, changing or replacing a credential is **[dev-OTS]** and carries **sensitive-data**; never paste a value into a ticket, chat, commit or PR.

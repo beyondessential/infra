@@ -71,7 +71,7 @@ The monitor, backups, domains and slacker workloads MUST each run one replica, r
 > [!NOTE]
 > Each of the four holds work that at most one instance may drive at a time, and none is on a request path, so a brief gap on update delays work rather than failing it.
 
-A Deployment of a Canopy stack MUST NOT start before the migrate Job of the same apply has completed.
+A Deployment in the table MUST NOT start before the migrate Job of the same apply has completed.
 
 The domains workload is the [Canopy DNS identity](../overview.md#canopy-dns-identity), whose access [CTLS](../canopy/tls-issuance.md#zone-access) specifies.
 

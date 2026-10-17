@@ -65,6 +65,7 @@ const publicService = (name: string, task: string) =>
 // the header nginx sets (plan: docs/plans/canopy-envoy-migration.md#migration-rules).
 const envoyPublicSvc = publicService('public-server-envoy', 'public-envoy');
 
+// spec: K8SCNP#public-hostnames
 const gateway = Gateway('http', {
   metadata: {
     namespace,
@@ -196,6 +197,7 @@ const domainsRoute = gatewayServesDomains
   ? gatewayRoute('http-domains', domains, gatewayAdvertisesDomains)
   : undefined;
 
+// spec: K8SCNP#workloads
 function publicServer(name: string, task: string, certHeader: 'mtls' | 'xfcc') {
   return new k8s.apps.v1.Deployment(
     name,
@@ -364,6 +366,7 @@ const privateSvc = new k8s.core.v1.Service('private-server', {
   },
 });
 
+// spec: K8SCNP#tailnet-hostnames
 // The historical tailnet name. It no longer serves the private server: it
 // answers with a permanent redirect to the canopy name, ahead of going away.
 new k8s.networking.v1.Ingress('tailscale-server', {

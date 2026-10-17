@@ -33,7 +33,7 @@ Which clone and facility, which source it was restored from, the Tamanu version 
 |---|---|---|
 | Tamanu stopped, no `clone-setup.sh` run | A restore hook failed before the start, or the identity scrub failed (hooks run with errors fatal). | Read the daemon log; escalate. |
 | `clone-setup.sh` missing | The play never wrote it: `tamanu_clone_auto_setup` is false. | Set up each facility by hand ([escalate](#6-escalate)). |
-| Password file shorter than 64 characters | The account SQL changes nothing for a short password. | Delete the file on central, re-run `tamanu-install.yml`, run the script ([credentials](../sops/linux-rotate-credentials.md)). **[dev-OTS]** |
+| Password file shorter than 64 characters | The account SQL changes nothing for a short password. | Delete the file on central, re-run `tamanu-install.yml`, run the script ([credentials](../reference/linux-credentials.md)). **[dev-OTS]** |
 | No `clone.<name>@sync.tamanu` row | The central script did not run after the restore. | Run `/etc/bestool/clone-setup.sh` on the central, then on the facility. **[dev-OTS]** |
 | Row present, facility still unsynced | The facility ran `setupSync` before central had the account, or its password differs. | Run the facility script again. **[dev-OTS]** |
 | Facility syncs as the source's identity | The scrub did not run. | Escalate immediately: the clone can send as the source. Stop the facility from syncing first ([stop facility syncing](https://github.com/beyondessential/tamanu/blob/main/docs/sops/stop-facility-syncing.md)). **[dev-OTS]** |

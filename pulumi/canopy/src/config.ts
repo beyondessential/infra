@@ -8,6 +8,7 @@ import { truncateDomainIfNeeded } from '../../common/dns.ts';
 // string is the live k8s namespace (and derived tailscale/service hostnames),
 // so changing it would recreate the whole control plane. Renaming the project
 // is a Pulumi/CrossStack-ref concern only; the in-cluster identity is pinned.
+// spec: K8SCNP#instance
 export const normalizedStack = `tamanu-meta-${getStack()}`
   .toLowerCase()
   .replace(/[^a-z0-9-]+/g, '-')
@@ -15,6 +16,7 @@ export const normalizedStack = `tamanu-meta-${getStack()}`
   .slice(0, 63) // 63 is the max length of a k8s namespace
   .replace(/^-+|-+$/g, '');
 
+// spec: K8SCNP#public-hostnames
 export const domains: string[] = cfg.getObject('domains') ?? [
   truncateDomainIfNeeded(normalizedStack.replace(/^tamanu-/, ''), 'cd.tamanu.app'),
 ];

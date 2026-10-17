@@ -83,6 +83,7 @@ A route MUST specify a request timeout.
 
 How [tamanu-meta](../overview.md#tamanu-meta) authenticates a client by its certificate is specified by Canopy in [DTR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/device-trust.md#authentication).
 Which header carries the certificate to the backend, and which headers the backend ignores, is documented in [Canopy public API authentication](https://github.com/beyondessential/canopy/blob/main/README.md#public-api-authentication).
+The listeners serving tamanu-meta are those of the hostnames [K8SCNP](canopy.md#public-hostnames) gives.
 
 For a listener serving tamanu-meta, the Gateway MUST request a client certificate during the TLS handshake.
 

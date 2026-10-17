@@ -54,7 +54,7 @@ The recovery window of a database SHOULD default to the value that the following
 | database | backups | default recovery window |
 |---|---|---|
 | Tamanu deployment, central and each facility | Enabled only where the deployment enables them. | 3 days |
-| Canopy meta database | Always enabled. | 30 days |
+| Canopy meta database ([K8SCNP](canopy.md#database)) | Always enabled. | 30 days |
 | pollen database | Always enabled. | 30 days |
 
 The recovery window of a database MUST be configurable for each deployment.
@@ -123,7 +123,7 @@ The deployment name MUST be the value that the following table gives for the own
 | owner of the cluster | deployment name |
 |---|---|
 | Tamanu deployment | The normalised stack name of the deployment, as [K8SNSP](namespaces.md#deployment-namespaces) defines it. |
-| Canopy meta database | `tamanu-meta-` followed by the stack name. |
+| Canopy meta database ([K8SCNP](canopy.md#database)) | `tamanu-meta-` followed by the stack name. |
 | pollen database | `pollen-` followed by the stack name. |
 
 ## Deployment parameters

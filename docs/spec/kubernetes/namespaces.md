@@ -82,7 +82,7 @@ The namespaces in the following table MUST NOT be descendants of the super names
 |---|---|
 | `tamanu-system` | The Secrets and config templates that deployments copy into their own namespaces. |
 | `tamanu-seed` | The pgsnap operator and the seed jobs. |
-| `tamanu-meta-` followed by a stack name | A [Canopy](../overview.md#canopy) control plane. |
+| `tamanu-meta-` followed by a stack name | The instance of a [Canopy stack](../overview.md#canopy-stack), whose contents [K8SCNP](canopy.md) specifies. |
 
 > [!NOTE]
 > Propagation copies every binding of the super namespace into every descendant.
@@ -147,7 +147,7 @@ A group assigned to a GitHub Actions workflow MUST be named `tailscale:gha:` fol
 | `tailscale:tamanu-deploy` | [Tamanu CD](../overview.md#tamanu-cd) and other automation that deploys Tamanu. |
 | `tailscale:gha:dbt-build` | The dbt build workflow, which port-forwards to a database pod. |
 | `tailscale:gha:renderer-promote` | The renderer promotion workflow, whose access [K8STRO](tamanu/renderer-rollout.md#access) defines. |
-| `tailscale:gha:canopy` | The workflow that deploys Canopy. |
+| `tailscale:gha:canopy` | The workflow that deploys Canopy, whose access [K8SCNP](canopy.md#access) describes. |
 
 The bindings in the following table MUST exist.
 
@@ -165,7 +165,7 @@ The bindings in the following table MUST exist.
 | `tailscale:tamanu-deploy` | `tamanu-deploy`, a Role over `applications` | the namespace of Argo CD |
 | `tailscale:gha:renderer-promote` | `renderer-promote`, a Role over `applications` and the repo server Deployment | the namespace of Argo CD |
 | `tailscale:gha:dbt-build` | `tamanu-gha-dbt-build` | the subtree of the super namespace |
-| `tailscale:gha:canopy` | `cluster-admin` | the namespace of the Canopy deployment |
+| `tailscale:gha:canopy` | `cluster-admin` | the namespace of the Canopy stack, as [K8SCNP](canopy.md#instance) names it |
 | `tailscale:gha:canopy` | `tamanu-meta-gha-canopy-ns` | cluster-wide |
 
 An access group MUST NOT be bound to `cluster-admin` by a ClusterRoleBinding.

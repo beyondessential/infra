@@ -8,6 +8,7 @@ import { dbReady } from './db.ts';
 // pooling: Canopy holds no session state (its advisory locks are transaction
 // scoped), and PgBouncer tracks the named prepared statements diesel-async caches.
 // Jobs and cronjobs connect directly: they are short, and migrations need a session.
+// spec: K8SCNP#database
 export const POOLER_RW_HOST = 'meta-pooler-rw';
 export const POOLER_RO_HOST = 'meta-pooler-ro';
 

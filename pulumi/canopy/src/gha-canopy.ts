@@ -3,6 +3,7 @@ import { namespace } from './namespace.ts';
 
 const subject = { kind: 'Group', name: 'tailscale:gha:canopy' } as const;
 
+// spec: K8SCNP#access
 new k8s.rbac.v1.RoleBinding('gha-canopy', {
   metadata: {
     namespace,
