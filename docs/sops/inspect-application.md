@@ -27,7 +27,7 @@ For anything else that is Degraded, `kubectl -n tamanu-<stack> describe <kind>/<
 | Where | Meaning |
 |---|---|
 | `status.conditions` with type `ComparisonError` | The render failed, so nothing is applied: [render error](../runbooks/render-error.md). |
-| `status.operationState.phase` `Failed` or `Error` | A sync failed: [sync failed](../runbooks/argo-sync-failed.md). |
+| `status.operationState.phase` `Failed` or `Error` | A sync failed: [sync failed or stuck progressing](../runbooks/application-stuck-progressing.md). |
 | Sync `Synced`, health `Progressing` | The sync finished but something is not ready: [stuck progressing](../runbooks/application-stuck-progressing.md). |
 | Sync `OutOfSync` after a good sync | [Out of sync](../runbooks/application-out-of-sync.md). |
 | A `Cluster` with health message `Hibernated` | The deployment is hibernated: [down but nothing failed](../runbooks/deployment-down-nothing-failed.md). |

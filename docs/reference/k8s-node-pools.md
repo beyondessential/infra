@@ -39,7 +39,7 @@ All classes use `bottlerocket@latest`, IMDSv2 with IPv6 enabled and hop limit 2,
 | `system` | workload | 15Gi | default | `k8s-system` |
 | `tailscale-exit` | workload | 15Gi | 15 | `k8s-tailscale-exit` |
 
-Tag values on a class propagate to the IAM instance profile Karpenter creates, so they must use only characters IAM accepts ([runbook](../runbooks/karpenter-nodeclass-not-ready.md)).
+Tag values on a class propagate to the IAM instance profile Karpenter creates, so they must use only characters IAM accepts ([runbook](../runbooks/nodes-not-provisioning.md)).
 
 ## Bootstrap nodegroups and placeholders
 

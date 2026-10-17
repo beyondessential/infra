@@ -9,7 +9,7 @@ Check [ruled-out actions](../ruled-out-actions.md) before running anything mutat
 ## 1. When this applies
 
 Use this when the Application is Synced and Healthy (or Healthy with a database message `Hibernated`) and the servers have zero replicas.
-If a sync failed or the Application is Progressing, use [sync failed](argo-sync-failed.md) or [stuck progressing](application-stuck-progressing.md) instead.
+If a sync failed or the Application is Progressing, use [sync failed or stuck progressing](application-stuck-progressing.md) instead.
 
 ## 2. Establish context
 

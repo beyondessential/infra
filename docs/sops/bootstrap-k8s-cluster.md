@@ -95,7 +95,7 @@ kubectl --context=<context> get ec2nodeclasses
 ```
 
 **[diagnose]** Expect running pods in the namespaces listed under [component ownership](../reference/k8s-what-lives-where.md#component-ownership) for the features you enabled, every NodeClass `Ready=True` (with `SubnetsReady` and `SecurityGroupsReady` true), and every NodePool `Ready=True`.
-An empty or `Unknown` NodeClass: [karpenter-nodeclass-not-ready](../runbooks/karpenter-nodeclass-not-ready.md).
+An empty or `Unknown` NodeClass: [nodes-not-provisioning](../runbooks/nodes-not-provisioning.md).
 
 ## 7. Wind down
 

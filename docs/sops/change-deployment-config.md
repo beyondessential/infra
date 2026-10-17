@@ -32,7 +32,7 @@ Every `pulumi up` also sets a new expiry on a deployment with a time to live and
    ```
 
    The update waits for the Application to be Synced and Healthy and fails after `argoWaitMinutes` (30 by default) or when a sync fails ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#update-completion)).
-   If it fails, go to [sync failed](../runbooks/argo-sync-failed.md) or [stuck progressing](../runbooks/application-stuck-progressing.md).
+   If it fails, go to [sync failed or stuck progressing](../runbooks/application-stuck-progressing.md).
 6. Check the [Application](inspect-application.md).
 
 ## Many stacks at once

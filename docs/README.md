@@ -33,7 +33,7 @@ An action may also carry a **sensitive-data** flag. It marks actions that touch 
 
 A runbook covers one named symptom, the thing an engineer sees first, and is titled for it. Keep it under 80 lines; when it grows past that, split it along a symptom seam into two runbooks, each with its own entry in the index below.
 
-Open with the title, a line or two stating the symptom, and the line `Every action is tagged with its class ([ladder](../ruled-out-actions.md)).` Then six numbered sections, in this order ([hook-job-failed](runbooks/hook-job-failed.md) is the model):
+Open with the title, a line or two stating the symptom, and the tag line `Every action is tagged with its class`, linked to [ruled-out actions](ruled-out-actions.md). Then six numbered sections, in this order ([hook-job-failed](runbooks/hook-job-failed.md) is the model):
 
 1. **When this applies**: the evidence that confirms the symptom, and the sibling runbook to use when it does not match.
 2. **Establish context**: which deployment or cluster, what changed, through [deployment context](deployment-context.md).
@@ -46,7 +46,7 @@ These rules hold throughout:
 
 - Tag every action with its ladder class in bold brackets, `**[diagnose]**` or `**[dev-OTS]**`. Add `sensitive-data` when the action touches personal or credential data, even to read it: `**[diagnose, sensitive-data]**`.
 - Cite a SOP for a procedure rather than restating its commands. A runbook holds only the commands that exist nowhere else.
-- Cite the spec section by id and heading, as in `[K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)`, or the code file, for each claim about how the system behaves.
+- Cite the spec section by id and heading ([K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs), for example) or the code file, for each claim about how the system behaves.
 - The Escalate section names the state in the terms of the [support-assist skill](../.agents/skills/support-assist/SKILL.md), which defines them:
   - **workaround-in-place**: the user can keep working, and the cause can be handled on a normal timeline.
   - **fix-required**: a code change is needed; name the code file and area.
@@ -60,9 +60,9 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 ## Runbooks
 
 - [Runbook: Application stays OutOfSync after a successful sync](runbooks/application-out-of-sync.md)
-- [Runbook: Application stuck Progressing, or `pulumi up` times out](runbooks/application-stuck-progressing.md)
-- [Runbook: `pulumi up` fails with "Argo CD sync Failed"](runbooks/argo-sync-failed.md)
+- [Runbook: Argo CD sync Failed, or Application stuck Progressing until `pulumi up` times out](runbooks/application-stuck-progressing.md)
 - [Runbook: Canopy is not issuing certificates](runbooks/canopy-tls-not-issuing.md)
+- [Runbook: the canopy stack refuses to preview or apply](runbooks/canopy-tls-stack-refuses.md)
 - [Runbook: Cannot reach the cluster API, or a stack refuses to run](runbooks/cluster-api-unreachable.md)
 - [Runbook: A cluster upgrade is stuck or pod health is falling](runbooks/cluster-upgrade-stuck.md)
 - [Runbook: a config or template change did not reach a deployment](runbooks/config-change-not-applied.md)
@@ -72,7 +72,6 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 - [Runbook: HNC pods not starting, or writes rejected by HNC webhooks](runbooks/hnc-pods-not-starting.md)
 - [Runbook: a migrator or other hook Job failed](runbooks/hook-job-failed.md)
 - [Runbook: pods stuck in ImagePullBackOff (image tag missing)](runbooks/image-pull-backoff.md)
-- [Runbook: Karpenter NodeClasses not Ready](runbooks/karpenter-nodeclass-not-ready.md)
 - [Runbook: a Linux server's backup is failing or missing](runbooks/linux-backup-failing.md)
 - [Runbook: a Linux server's certificate is wrong or missing](runbooks/linux-certificate-not-served.md)
 - [Runbook: a clone deployment's facility does not sync after a restore](runbooks/linux-clone-not-syncing.md)
@@ -82,7 +81,7 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 - [Runbook: PostgreSQL restart pending on a production server](runbooks/linux-postgres-restart-pending.md)
 - [Runbook: a Linux server cannot be reached](runbooks/linux-server-unreachable.md)
 - [Runbook: a Tamanu service is down on a Linux server](runbooks/linux-tamanu-service-down.md)
-- [Runbook: Pods stay Pending and no node appears](runbooks/nodes-not-provisioning.md)
+- [Runbook: Pods stay Pending and no node appears, or NodeClasses are not Ready](runbooks/nodes-not-provisioning.md)
 - [Runbook: Application shows a render error](runbooks/render-error.md)
 - [Runbook: a renderer change does not show up](runbooks/renderer-change-not-showing.md)
 - [Runbook: a seeded deployment starts empty, with the wrong data, or refuses](runbooks/seeded-deployment.md)

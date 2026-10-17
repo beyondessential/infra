@@ -1,7 +1,7 @@
 # Reference: Canopy TLS issuance plumbing
 
 Where each piece of [CTLS](../spec/canopy/tls-issuance.md) lives in the stacks, and the config keys and outputs that join them.
-The requirements are in the spec; the procedure is [enable-canopy-tls-core](../sops/enable-canopy-tls-core.md); symptoms are in [canopy-tls-not-issuing](../runbooks/canopy-tls-not-issuing.md).
+The requirements are in the spec; the procedure is [enable-canopy-tls-core](../sops/enable-canopy-tls-core.md); symptoms are in [canopy-tls-stack-refuses](../runbooks/canopy-tls-stack-refuses.md) and [canopy-tls-not-issuing](../runbooks/canopy-tls-not-issuing.md).
 
 ## Parts
 

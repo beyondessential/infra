@@ -7,7 +7,7 @@ Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 ## 1. When this applies
 
 The error is one of the messages below, raised while the program starts.
-A failure after the Application exists is a [sync failure](argo-sync-failed.md), a [stuck sync](application-stuck-progressing.md) or a [render error](render-error.md).
+A failure after the Application exists is a [failed or stuck sync](application-stuck-progressing.md) or a [render error](render-error.md).
 
 ## 2. Establish context
 

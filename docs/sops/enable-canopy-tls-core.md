@@ -4,7 +4,7 @@ Canopy holds the ACME account and the write access to DNS zones; a server asks f
 This procedure lets Canopy into one more account's zone.
 Requirements: [CTLS](../spec/canopy/tls-issuance.md).
 Where each piece lives, and the keys and outputs: [canopy-tls-config](../reference/canopy-tls-config.md).
-Symptoms afterwards: [canopy-tls-not-issuing](../runbooks/canopy-tls-not-issuing.md).
+Symptoms afterwards: [canopy-tls-stack-refuses](../runbooks/canopy-tls-stack-refuses.md) for a preview or apply that refuses, [canopy-tls-not-issuing](../runbooks/canopy-tls-not-issuing.md) for issuance.
 
 Every action is tagged with its class from the ladder in [README](../README.md).
 Check [ruled-out-actions](../ruled-out-actions.md) before running anything mutating.

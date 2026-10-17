@@ -80,7 +80,7 @@ Under the `core:` namespace.
 | `withGithubOidc` | boolean | `true` | GitHub Actions OIDC provider. |
 | `enableDnsHostnames` | boolean | `true` | VPC DNS hostnames. Sometimes flipped off where EKS bootstrap required it. |
 | `tags` | object | `{}` | Extra tags applied to everything, merged into the default set. |
-| `domain` | string \| `false` | derived | Zone root. Derivation: `tamanu-internal` → `tamanu.app`, `tupaia-internal` → `tamanu.org`, `data-internal` → `data.bes.au`, `tamanu-{x}[-prod]` → `{x}.tamanu.app`, otherwise required. `domain: false` disables the zone. |
+| `domain` | string \| `false` | derived | Zone root. Derived from the stack name for the internal accounts and for `tamanu-{x}[-prod]` stacks (see `src/config.ts`), otherwise required. `domain: false` disables the zone. |
 | `zoneImport` | string | — | Zone ID to import instead of creating. |
 | `extraZones` | string[] | `[]` | Further hosted zones to create in this account, each a fully-qualified apex of its own; its NS must be delegated from the parent zone by hand. For accounts shared by several deployments that need distinct apex domains. |
 | `canopyInfra` | string | — | A `canopy-infra` stack reference. Set when Canopy manages this account's zone: it creates a role Canopy assumes to write the records it manages there. Unset means Canopy has no access. |
@@ -110,35 +110,9 @@ Consumed by downstream stacks via the `CrossStack` wrapper (see `docs/dev/pulumi
 
 ---
 
-## 4. Real stack configs
+## 4. Stack configs
 
-One stack per AWS account; there are ~22 today.
-
-**`Pulumi.tamanu-internal.yaml`** — the account that hosts the main EKS cluster:
-```yaml
-aws:region: ap-southeast-2
-aws-native:region: ap-southeast-2
-core:forEksCluster: true
-core:ssoProfile: _Internal_Tamanu:AdminAccess
-```
-Domain derives to `tamanu.app`.
-
-**`Pulumi.tamanu-example-prod.yaml`** — a production Linux-hosted customer account:
-```yaml
-core:domain: tamanu-example.org
-core:ssoProfile: Example_Tamanu_Prod:AdminAccess
-```
-No `forEksCluster` — this account only has Linux servers (see `docs/spec/linux/aws.md`). Public subnets and default DNS — nothing fancy.
-
-**`Pulumi.data-internal.yaml`** — the data team's EKS account:
-```yaml
-core:forEksCluster: "true"
-core:enableDnsHostnames: "false"
-core:ssoProfile: _Internal_Data:AdminAccess
-```
-Domain `data.bes.au`. DNS hostnames flipped off — a one-off EKS bootstrap concession for this account.
-
-**`Pulumi.tamanu-{x}-prod.yaml`** / **`Pulumi.tamanu-{x}-dev.yaml`** — the long tail is all similar shape: `domain`, `ssoProfile`, occasionally a custom `networkV4` CIDR.
+One stack per AWS account. Stack configs are gitignored; pull the ones you need with the [refresh stack config SOP](../sops/refresh-stack-config.md). Most set `domain` and `ssoProfile`; accounts that host a cluster set `forEksCluster`, and a few set a custom `networkV4` CIDR.
 
 ---
 
