@@ -1,4 +1,5 @@
 ---
+# spec: LNXAPP#reverse-proxy
 - name: Configure larger buffers for UDP connections
   become: true
   loop:

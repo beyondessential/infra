@@ -13,6 +13,7 @@
 # scaffolding the old kopia backups carried back to PostgreSQL's defaults:
 # archive_mode off and no archive_command. archive_mode is restart-only, so this
 # restarts postgres when it was previously on.
+# spec: LNXDB#tuning
 - name: Disable WAL archiving (archive_mode)
   become: true
   become_user: postgres

@@ -6,6 +6,9 @@ Stack config (`Pulumi.<stack>.yaml`) is gitignored: values go in with `pulumi co
 Run previews as `pulumi preview --policy-pack <path to pulumi/policies>` after `npm run build` in `pulumi/policies`; never `pulumi up` from an agent ([ruled-out actions](../ruled-out-actions.md#consequential-but-recoverable-dev-ots)).
 All keys are under the namespace `tamanu-on-linux:` except `billing:`.
 
+The instance image is built from the `beyondessential/linux-images` repository and shared into the account; its id is per region in `pulumi/constants/internal.ts`.
+Tailscale ACLs, tags and auto-approvals live in the BES tailnet policy repository, not here.
+
 ## Deployment keys
 
 | key | default | what it does |
@@ -78,6 +81,7 @@ A retired deployment exports no server outputs; `facilities` is still required b
 
 ## Other stacks
 
-`pulumi/backups` makes a standalone Kopia repository bucket (`bes-kopia-backups-<stack>` unless `bucketName` is set) with the same lock, versioning and roles, for repositories that are not Tamanu deployments.
-Its config keys are `bucketName`, `tags` and `users`; it also takes `canopyInfra` and `serverGroupId`.
+`pulumi/backups` makes a standalone Kopia repository bucket (`bes-kopia-backups-<stack>` unless `bucketName` is set) with the same lock, versioning and roles, for repositories that are not Tamanu deployments: one stack per repository.
+Its config keys are `bucketName`, `tags` (a map, on top of `Purpose: backups`) and `users` (names of IAM users to create, by convention one per server, and none once `canopyInfra` is set); it also takes `canopyInfra` and `serverGroupId`.
+By convention a bucket name begins with `bes-` and contains `kopia-backups`, and avoids the prefix `bes-tamanu-kopia-backups`, which is the Tamanu deployment pattern.
 `pulumi/backup-monitoring` forwards failed, aborted and expired AWS Backup jobs from every account to a central event bus ([LNXBAK](../spec/linux/backups.md#backup-failure-notification)).

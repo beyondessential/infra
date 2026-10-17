@@ -4,7 +4,7 @@
 
 An "ad-hoc" Linux host is one built by `ansible/base-install.yml` plus
 `ansible/tamanu-install.yml` and driven thereafter by `ansible/tamanu-upgrade.yml`. The
-full shape is documented in `docs/tamanu-on-linux.md`. The parts that matter here are the
+full shape is specified in `docs/spec/linux/`. The parts that matter here are the
 ones Seedling wants to own:
 
 - **Host Caddy** — the `caddy` deb, socket-activated, with vhosts dropped into

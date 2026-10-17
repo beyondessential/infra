@@ -15,6 +15,7 @@
       default(1, true)) | int }}"
     pg_tune_pg_version: "{{ postgresql_version | int }}"
 
+# spec: LNXDB#tuning
 - name: Compute postgres tuning base values (effective resources)
   ansible.builtin.set_fact:
     # RAM: >=8GB → host_ram - 4GB; otherwise host_ram/2

@@ -32,6 +32,7 @@
     jid: "{{ apt_update.ansible_job_id }}"
     mode: cleanup
 
+# spec: LNXSRV#package-sources-and-updates
 - name: Install basic tooling
   become: true
   ansible.builtin.apt:

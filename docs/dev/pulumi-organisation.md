@@ -1,6 +1,6 @@
 # Pulumi Repo Organisation
 
-How `pulumi/` is laid out, the conventions every stack follows, and the shared utilities in `common/`. For the `core` stack itself see `docs/dev/pulumi-core.md`; for the K8s clusters see `docs/kubernetes.md`.
+How `pulumi/` is laid out, the conventions every stack follows, and the shared utilities in `common/`. For the `core` stack itself see `docs/dev/pulumi-core.md`; for the K8s clusters see `docs/spec/kubernetes/` and `docs/reference/k8s-what-lives-where.md`.
 
 ---
 
@@ -20,12 +20,12 @@ pulumi/
 ├── core/                 # foundational per-AWS-account stack (see docs/dev/pulumi-core.md)
 ├── primary/              # tiny stack for the primary billing account
 │
-├── k8s-core/             # EKS cluster per K8s cluster (see docs/kubernetes.md)
+├── k8s-core/             # EKS cluster per K8s cluster (see docs/reference/k8s-core-config.md)
 ├── k8s-essentials/       # cluster-wide services on top of k8s-core
 │
 ├── tamanu/
-│   ├── on-linux/         # Tamanu on EC2 (docs/tamanu-on-linux.md)
-│   ├── on-k8s/           # Tamanu on K8s (docs/tamanu-on-k8s.md)
+│   ├── on-linux/         # Tamanu on EC2 (docs/spec/linux/)
+│   ├── on-k8s/           # Tamanu on K8s (docs/reference/tamanu-deployment-config.md)
 │   ├── k8s-infra/        # Tamanu-scoped cluster-wide infra
 │   ├── meta/             # meta.tamanu.app
 │   ├── ips/, ips-infra/  # International Patient Summary
@@ -91,7 +91,7 @@ The glue is `common/CrossStack.ts`: a thin typed wrapper around Pulumi's `StackR
 
 The `$core.name.split('/')[2]` trick derives the trailing part of a stack name (`bes/core/tamanu-internal` → `tamanu-internal`). That feeds `coreStackName`, and any current-stack name that starts with it is stripped (`tamanu-internal-main` → `main`). This is how downstream stacks get a compact name of their own position within a core — useful for tagging and resource naming.
 
-`failIfIncorrectCluster()` has a nice extra trick: it recognises Tailscale MagicDNS kubeconfigs (`https://k8s-operator-{name}.tail{hex}.ts.net`) and matches on the cluster name embedded in the hostname, so you can run `k8s-essentials` pulumi over the Tailscale proxy without AWS creds — see `docs/kubernetes.md` §1.
+`failIfIncorrectCluster()` has a nice extra trick: it recognises Tailscale MagicDNS kubeconfigs (`https://k8s-operator-{name}.tail{hex}.ts.net`) and matches on the cluster name embedded in the hostname, so you can run `k8s-essentials` pulumi over the Tailscale proxy without AWS creds — see `docs/sops/connect-to-k8s-cluster.md` §1.
 
 ---
 

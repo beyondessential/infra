@@ -41,6 +41,7 @@
   changed_when: false
   when: pg_quota_status.rc == 0
 
+# spec: LNXDB#data-directory
 - name: Set btrfs qgroup referenced-limit on the postgres subvolume
   become: true
   ansible.builtin.command: btrfs qgroup limit {{ pg_quota_limit_bytes }} /var/lib/postgresql

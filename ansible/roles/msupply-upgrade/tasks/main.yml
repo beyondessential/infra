@@ -2,6 +2,7 @@
 - name: Upgrade mSupply
   when: msupply_enabled | bool
   block:
+    # spec: LNXAPP#msupply
     - name: Restart mSupply service
       become: true
       ansible.builtin.systemd:

@@ -24,6 +24,7 @@
     state: absent
   notify: Reload systemd
 
+# spec: LNXAPP#boot-and-restart
 - name: Install tamanu-boot oneshot
   become: true
   ansible.builtin.copy:

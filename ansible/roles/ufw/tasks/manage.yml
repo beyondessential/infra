@@ -71,6 +71,7 @@
   changed_when: false
   failed_when: false
 
+# spec: LNXSRV#host-firewall
 - name: Allow HTTP
   become: true
   community.general.ufw:

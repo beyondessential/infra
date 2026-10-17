@@ -21,6 +21,7 @@
     persistent: present
   failed_when: false
 
+# spec: LNXSRV#resource-classes
 - name: Set bfq as I/O scheduler via udev
   become: true
   ansible.builtin.copy:

@@ -1,4 +1,5 @@
-// Checks that every local link and heading anchor in docs/spec resolves, and that every
+// Checks that every local link and heading anchor in docs/ (except docs/plans) resolves, that
+// every runbook, SOP and reference page is listed in docs/README.md, and that every
 // `spec: ID#section` citation in the repository names a spec id and a heading that exist.
 //
 // Offline and dependency-free. Run from anywhere: node scripts/check-spec-links.mjs
@@ -54,7 +55,11 @@ for (const file of specFiles) {
   ids.set(id, file);
 }
 
-for (const file of specFiles) {
+const docFiles = git('ls-files', '-co', '--exclude-standard', 'docs')
+  .split('\n')
+  .filter((f) => f.endsWith('.md') && !f.startsWith('docs/plans/'));
+
+for (const file of docFiles) {
   const path = join(root, file);
   const text = readFileSync(path, 'utf8');
   for (const [, target] of text.matchAll(/\]\(([^)\s]+)\)/g)) {
@@ -66,6 +71,13 @@ for (const file of specFiles) {
     } else if (anchor && dest.endsWith('.md') && !anchors(dest).has(anchor)) {
       problems.push(`${file}: link to missing heading ${target}`);
     }
+  }
+}
+
+const readme = readFileSync(join(root, 'docs', 'README.md'), 'utf8');
+for (const file of docFiles) {
+  if (/^docs\/(runbooks|sops|reference)\//.test(file) && !readme.includes(`](${file.slice('docs/'.length)})`)) {
+    problems.push(`${file}: not listed in docs/README.md`);
   }
 }
 

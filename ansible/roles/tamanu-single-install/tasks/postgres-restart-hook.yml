@@ -8,6 +8,7 @@
 # `systemctl restart postgresql@N-main` re-pulls and runs it. WantedBy means a
 # plain stop/start re-arms it too — it can't get permanently disarmed.
 
+# spec: LNXAPP#boot-and-restart
 - name: Install the roll-Tamanu-on-postgres-restart unit
   become: true
   ansible.builtin.template:

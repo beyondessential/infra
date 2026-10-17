@@ -7,6 +7,7 @@
 # package and so is not handled here. Remove this file once patched kernels
 # are deployed across the fleet.
 
+# spec: LNXSRV#kernel-hardening
 - name: Block vulnerable kernel modules
   become: true
   ansible.builtin.copy:

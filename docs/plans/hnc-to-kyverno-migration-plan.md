@@ -56,14 +56,14 @@ Capsule was considered and rejected: it carries more conceptual weight (Tenants,
 - Remove `pulumi/k8s-essentials/hnc/` entirely.
 - Drop `apiGroups: ['hnc.x-k8s.io']` rules from `pulumi/tamanu/k8s-infra/roles/deploy.ts` and `pulumi/k8s-essentials/roles/oncall.ts`.
 - Delete the `system-x86-v2` pool from `pulumi/k8s-core/nodes/groups.ts` (the karpenter migration plan already references the `hncEnabled` gate for this).
-- Update `docs/kubernetes.md` §2.8, `docs/tamanu-on-k8s.md` §1.1–1.2.
+- Update `docs/spec/kubernetes/namespaces.md` and the cluster runbooks that mention HNC (`docs/runbooks/hnc-pods-not-starting.md`).
 
 ## Open Questions
 
 - **Cluster-admin escape hatch on the validate policy.** Probably exempt cluster-admin from the namespace-name pattern requirement (escape hatches matter for incidents). Decide the exempt subjects up front.
 - **HierarchicalResourceQuota usage.** HNC's roles include HRQ propagation rules but no HRQ CRs are visible in the cluster. Confirm none are in use before dropping the role grants.
 - **Migration of in-flight PR namespaces.** Live migration order — install Kyverno → audit-mode policies → backfill labels → swap CI → drain HNC over a quiet period — should work without disrupting open PRs. Worth a dry-run on a handful of namespaces in audit before committing.
-- **`tamanu-seed` and other HNC-isolated namespaces.** Per `docs/tamanu-on-k8s.md`, `tamanu-seed` is intentionally outside the HNC tree. Its absence of a tenancy label means Kyverno generate policies skip it — confirm that's the intent and not an accidental gap.
+- **`tamanu-seed` and other HNC-isolated namespaces.** Per `docs/spec/kubernetes/namespaces.md`, `tamanu-seed` is intentionally outside the HNC tree. Its absence of a tenancy label means Kyverno generate policies skip it — confirm that's the intent and not an accidental gap.
 
 ## References
 
@@ -71,4 +71,4 @@ Capsule was considered and rejected: it carries more conceptual weight (Tenants,
 - Kyverno generate: https://kyverno.io/docs/writing-policies/generate/.
 - Current HNC config: `pulumi/k8s-essentials/hnc/`.
 - Current HNC role grants: `pulumi/k8s-essentials/hnc/roles.ts`, `pulumi/tamanu/k8s-infra/roles/deploy.ts`, `pulumi/k8s-essentials/roles/oncall.ts`.
-- Tamanu deploy RBAC overview: `docs/tamanu-on-k8s.md` §1.1–1.2.
+- Tamanu deploy RBAC overview: `docs/spec/kubernetes/namespaces.md`.

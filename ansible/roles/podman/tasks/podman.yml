@@ -128,6 +128,7 @@
     line: network_backend = "netavark"
     regexp: "^#?network_backend\\s*="
 
+# spec: LNXAPP#container-runtime
 - name: Use nftables for container networking
   become: true
   ansible.builtin.lineinfile:
@@ -141,6 +142,7 @@
 # without a 53→5533 DNAT detour — but with the documented default left
 # commented out, netavark 1.17.0 ends up letting aardvark fall back to 5533.
 # Setting it explicitly forces netavark to actually pass -p 53 along.
+# spec: LNXAPP#container-runtime
 - name: Bind aardvark-dns to port 53
   become: true
   ansible.builtin.lineinfile:

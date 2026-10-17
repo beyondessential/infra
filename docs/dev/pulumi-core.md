@@ -123,7 +123,7 @@ Domain derives to `tamanu.app`.
 core:domain: tamanu-example.org
 core:ssoProfile: Example_Tamanu_Prod:AdminAccess
 ```
-No `forEksCluster` — this account only has Linux servers (see `docs/tamanu-on-linux.md`). Public subnets and default DNS — nothing fancy.
+No `forEksCluster` — this account only has Linux servers (see `docs/spec/linux/server.md`). Public subnets and default DNS — nothing fancy.
 
 **`Pulumi.data-internal.yaml`** — the data team's EKS account:
 ```yaml

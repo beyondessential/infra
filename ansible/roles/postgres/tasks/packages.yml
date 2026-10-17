@@ -61,6 +61,7 @@
     dest: /etc/postgresql/current
     state: link
 
+# spec: LNXDB#version-and-layout
 - name: Symlink current postgresql version data
   become: true
   ansible.builtin.file:
@@ -68,6 +69,7 @@
     dest: /var/lib/postgresql/current
     state: link
 
+# spec: LNXDB#version-and-layout
 - name: Hold postgresql packages to prevent unattended upgrades
   become: true
   ansible.builtin.dpkg_selections:

@@ -31,6 +31,7 @@
     group: root
     mode: "0755"
 
+# spec: LNXBAK#backup-definitions
 - name: Install caddy-config backup definition
   become: true
   ansible.builtin.copy:

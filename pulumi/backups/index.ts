@@ -33,6 +33,7 @@ const canopyPrivateRoleArn = canopy?.get<string>('canopyPrivateRoleArn');
 // reduced device policy, the EC2 trust falls away (see canopyBackup.ts), and the
 // static-key backup users are no longer provisioned.
 
+// spec: LNXBAK#repository-bucket
 export const bucketName: string = config.get('bucketName') ?? `bes-kopia-backups-${getStack()}`;
 
 const tags = {
@@ -69,6 +70,7 @@ const bucket = new awsNative.s3.Bucket(
           noncurrentVersionExpiration: { noncurrentDays: 35 },
           // kopia deletes are version-less, so each leaves a delete-marker; reap
           // the dangling marker once its last noncurrent version is gone.
+          // spec: LNXBAK#repository-bucket
           expiredObjectDeleteMarker: true,
           abortIncompleteMultipartUpload: { daysAfterInitiation: 7 },
         },

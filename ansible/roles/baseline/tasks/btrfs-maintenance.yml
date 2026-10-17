@@ -48,6 +48,7 @@
   failed_when: false
   when: not is_btrfs
 
+# spec: LNXSRV#storage-layout
 - name: Create btrfs maintenance systemd service for balance
   become: true
   ansible.builtin.copy:

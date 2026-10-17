@@ -18,6 +18,7 @@
         enabled: false
       failed_when: false
 
+# spec: LNXSRV#endpoint-security-agent
 - name: Uninstall Elastic security agent
   when: (not elastic_agent_enabled) or (elastic_agent_enrollment_token is not defined)
   block:

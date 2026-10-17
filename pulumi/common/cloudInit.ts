@@ -37,6 +37,7 @@ export function tailscaleUpCommands(options: TailscaleUpOptions): string[][] {
   return [args, ['systemctl', 'enable', 'tailscaled']];
 }
 
+// spec: LNXSRV#provisioning
 export function emergencySshKeyCommands(sshKey: string = EMERGENCY_SSH_KEY): string[][] {
   return [
     ['mkdir', '-p', '/home/ubuntu/.ssh'],

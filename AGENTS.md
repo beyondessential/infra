@@ -16,6 +16,7 @@ Workhorse keeps this section, the skills, and the reference docs current automat
 
 - This repository is public. Never commit secrets or credentials, and keep client-identifying names out of code, comments, commits and PRs beyond the deployment names already present. Stack config (`Pulumi.<stack>.yaml`) is gitignored and must stay so: values go in via `pulumi config set` (`--secret` for secrets), never in source.
 - If you write a script, always remind the user to carefully review the script before running it.
+- Troubleshooting and procedures are in the support pack at `docs/`: [docs/README.md](docs/README.md) indexes the runbooks, SOPs and reference pages, `docs/ruled-out-actions.md` is the hard filter on suggested actions, and `docs/deployment-context.md` says how to work out which deployment is affected. When a change alters something a runbook or SOP describes, update it, following the `curate-support-docs` skill.
 - Developer orientation is in `docs/dev/`: `pulumi-organisation.md` for how `pulumi/` is laid out and the conventions every stack follows, and `pulumi-core.md` for the per-account core stack. What each part of the system must do is in `docs/spec/`.
 - When writing or changing specs in `docs/spec/` or plans in `docs/plans/` or `.workhorse/plans/`, follow the spec and plan rules in [.workhorse/rules.md](.workhorse/rules.md). Run `node scripts/check-spec-links.mjs` after editing specs or `spec:` citations.
 - Assume these tools are available, you can use them all the time instead of more standard tools like grep etc:

@@ -17,6 +17,7 @@ export const CLOUDWATCH_METRIC_ACTIONS = [
 // immutable (reclaimed by the lifecycle once the lock lapses) — a compromised
 // device still can't destroy or shorten-lock anything, only write recoverable
 // delete-markers. Plus a read of the Object Lock config for the preflight.
+// spec: LNXBAK#repository-roles
 export const DEVICE_S3_ACTIONS = [
   ...AWS_S3_DELETE_ACTIONS,
   's3:GetBucketObjectLockConfiguration',
@@ -54,6 +55,7 @@ export function deviceAssumeRolePolicy(
 // connect-verify). Must NEVER trust canopy-issuer — the delete/BypassGovernance
 // capability stays unreachable from the internet-facing public-server. Falls back
 // to EC2-only trust when not onboarded to Canopy.
+// spec: LNXBAK#repository-roles
 export function maintenanceAssumeRolePolicy(
   jobsRoleArn?: Input<string>,
   privateRoleArn?: Input<string>,

@@ -1,3 +1,4 @@
+// spec: LNXSRV#retired-deployments
 import { RedirectSite } from '../../../common/RedirectSite.ts';
 import { billingTags, redirects, zoneId } from './config.ts';
 

@@ -8,6 +8,7 @@ import { billingTags } from '../config.ts';
 // Named "External" to make clear it is NOT for stack-managed resources (those
 // are covered by the ARN selection; tagging one would double-back it up).
 // On-prem servers can't be reached by AWS Backup and are covered separately.
+// spec: LNXBAK#instance-snapshots
 export const BACKUP_OPT_IN_TAG = 'TamanuExternalBackup';
 
 // `resources` are the ARNs of instances/volumes provisioned by this stack.
@@ -40,6 +41,7 @@ export function applyBackup(resources: Output<string>[]) {
     },
   });
 
+  // spec: LNXBAK#instance-snapshots
   const vault = new awsNative.backup.BackupVault(
     'backup',
     {
@@ -59,6 +61,7 @@ export function applyBackup(resources: Output<string>[]) {
       backupPlanName: interpolate`tamanu-on-linux-${getStack()}-12months`,
       backupPlanRule: [
         {
+          // spec: LNXBAK#instance-snapshots
           ruleName: 'daily-keep7days',
           targetBackupVault: vault.backupVaultName,
           scheduleExpression: 'cron(30 0 ? * * *)',
@@ -116,6 +119,7 @@ export function applyBackup(resources: Output<string>[]) {
   // this stack (e.g. Windows facility servers). On-prem hosts simply never
   // carry the tag and remain on the separate backup strategy.
   new awsNative.backup.BackupSelection(
+    // spec: LNXBAK#instance-snapshots
     'backup-tagged',
     {
       backupPlanId: backup.backupPlanId,

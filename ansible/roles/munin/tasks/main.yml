@@ -19,6 +19,7 @@
     group: munin
     mode: "0755"
 
+# spec: LNXSRV#metrics
 - name: Bind munin-node to loopback only
   become: true
   ansible.builtin.lineinfile:

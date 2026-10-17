@@ -27,6 +27,7 @@
   failed_when: false
   when: pg_btrfs_subvol_eligible
 
+# spec: LNXDB#data-directory
 - name: Set up @postgres btrfs subvolume
   when:
     - pg_btrfs_subvol_eligible

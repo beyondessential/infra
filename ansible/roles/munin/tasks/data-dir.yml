@@ -15,6 +15,7 @@
     path: /var/lib/munin
   register: munin_data_dir
 
+# spec: LNXSRV#metrics
 - name: Create /var/lib/munin as a btrfs subvolume
   # Only when it does not exist yet, so re-runs are a no-op and we never touch a
   # populated directory (chattr +C only takes effect on an empty subvolume).

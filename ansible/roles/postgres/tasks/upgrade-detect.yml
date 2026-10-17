@@ -4,6 +4,7 @@
   ansible.builtin.set_fact:
     postgresql_upgrade_needed: "{{ installed_postgresql_version != postgresql_desired_version }}"
 
+# spec: LNXDB#major-version-upgrades
 - name: Check for downgrade attempt
   when: postgresql_upgrade_enabled and postgresql_upgrade_needed and (installed_postgresql_version | int) > (postgresql_desired_version | int)
   ansible.builtin.fail:

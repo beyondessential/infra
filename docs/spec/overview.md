@@ -69,6 +69,18 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Tailscale Kubernetes operator API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), [grants](https://tailscale.com/kb/1324/grants) and [workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation) | Authenticated access to the API server over the tailnet. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) | Mapping IAM principals to Kubernetes permissions. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md) and [how-to](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md) | Namespace trees, subnamespace anchors and propagation. Used by [K8SNSP](kubernetes/namespaces.md). |
+| [cloud-init](https://cloudinit.readthedocs.io/en/latest/) | First-boot user data. Used by [LNXSRV](linux/server.md). |
+| [Work with instance tags in instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) | Instance tags through the metadata service. Used by [LNXSRV](linux/server.md). |
+| [General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html) | The gp3 volume type. Used by [LNXSRV](linux/server.md). |
+| [Tailscale tags](https://tailscale.com/kb/1068/tags), [SSH](https://tailscale.com/kb/1193/tailscale-ssh) and [HTTPS](https://tailscale.com/kb/1153/enabling-https) | Tailnet tags, Tailscale SSH and node certificates. Used by [LNXSRV](linux/server.md) and [LNXAPP](linux/application.md). |
+| [btrfs subvolumes](https://btrfs.readthedocs.io/en/latest/Subvolumes.html) and [quota groups](https://btrfs.readthedocs.io/en/latest/Qgroups.html) | Subvolumes and qgroup limits. Used by [LNXSRV](linux/server.md) and [LNXDB](linux/database.md). |
+| [systemd.slice](https://www.freedesktop.org/software/systemd/man/latest/systemd.slice.html), [systemd.resource-control](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html), [journald.conf](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html), [systemd.unit](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html) and [systemd.socket](https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html) | Slices, resource weights, the journal, template units and socket activation. Used by [LNXSRV](linux/server.md) and [LNXAPP](linux/application.md). |
+| [chrony](https://chrony-project.org/documentation.html), [IP sysctl](https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html), [UFW](https://help.ubuntu.com/community/UFW) and [Munin](https://munin-monitoring.org/) | Clock, TCP tuning, host firewall and metrics. Used by [LNXSRV](linux/server.md). |
+| [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) | Backup plans and vaults. Used by [LNXSRV](linux/server.md) and [LNXBAK](linux/backups.md). |
+| [PostgreSQL clusters](https://www.postgresql.org/docs/current/creating-cluster.html), [pg_hba.conf](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html), [peer authentication](https://www.postgresql.org/docs/current/auth-peer.html), [user name maps](https://www.postgresql.org/docs/current/auth-username-maps.html), [password authentication](https://www.postgresql.org/docs/current/auth-password.html), [ALTER SYSTEM](https://www.postgresql.org/docs/current/sql-altersystem.html), [pg_upgrade](https://www.postgresql.org/docs/current/pgupgrade.html) and [pg_checksums](https://www.postgresql.org/docs/current/app-pgchecksums.html) | Cluster layout, authentication, parameters and upgrade. Used by [LNXDB](linux/database.md). |
+| [podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) and [podman-secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html) | Quadlets and secrets. Used by [LNXAPP](linux/application.md). |
+| [Caddy documentation](https://caddyserver.com/docs/), [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [the tls directive](https://caddyserver.com/docs/caddyfile/directives/tls) | The reverse proxy, snippets and certificate retrieval. Used by [LNXAPP](linux/application.md). |
+| [Kopia repositories](https://kopia.io/docs/repositories/), [storage tiers](https://kopia.io/docs/advanced/storage-tiers/) and [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) | The repository, its storage configuration and lock modes. Used by [LNXBAK](linux/backups.md). |
 
 ## Terminology
 
@@ -101,6 +113,36 @@ Defined in [CTLS](canopy/tls-issuance.md#zone-access).
 
 The per-deployment program that creates what the renderer cannot render, and the Application that applies the render.
 Defined in [TDR](tamanu/deployment-rollout.md#application).
+
+### Central server
+
+The Tamanu server that facility servers synchronise against.
+Defined by this gloss alone.
+
+### Facility server
+
+A Tamanu server run at a clinic site that synchronises with the central server.
+Defined by this gloss alone.
+
+### bestool
+
+The BES operator tool installed on Linux servers, which controls Tamanu services and runs the alert daemon.
+Defined by this gloss alone.
+
+### Alert daemon
+
+The bestool service that runs health checks and backups and serves Canopy certificates to the proxy.
+Defined by this gloss alone.
+
+### Linux server
+
+A host, managed by the Ansible playbooks, that runs a Tamanu central or facility server with its database and reverse proxy.
+Defined in [LNXSRV](linux/server.md#server-types).
+
+### External server
+
+A Linux server that runs outside the deployment's AWS account and has only DNS records and certificate credentials provisioned for it.
+Defined in [LNXSRV](linux/server.md#provisioning).
 
 ### Node pool
 
@@ -256,3 +298,58 @@ Defined in [TSD](tamanu/scaledown.md#hibernation).
 
 Reversing the hibernation of a deployment.
 Defined in [TSD](tamanu/scaledown.md#waking).
+
+### Split layout
+
+The storage layout in which `/var/log` and `/var/lib/postgresql` are separate volumes.
+Defined in [LNXSRV](linux/server.md#storage-layout).
+
+### Instance tags
+
+The EC2 tags that provisioning writes and the playbooks read.
+Defined in [LNXSRV](linux/server.md#instance-tags).
+
+### Resource class
+
+One of the three slices, critical, elevated and background, that divide CPU and I/O among a server's services.
+Defined in [LNXSRV](linux/server.md#resource-classes).
+
+### Credential seed
+
+The secret value from which, with the machine identifier, a server's database passwords derive.
+Defined in [LNXDB](linux/database.md#roles-and-credentials).
+
+### Production server
+
+A Linux server that provisioning treats as live, identified by its Tailscale name.
+Defined in [LNXDB](linux/database.md#tuning).
+
+### Server key
+
+The per-server secret that encrypts the values Tamanu stores as secrets.
+Defined in [LNXAPP](linux/application.md#server-key).
+
+### Backup definition
+
+A file that names one backup type for the alert daemon to run.
+Defined in [LNXBAK](linux/backups.md#backup-definitions).
+
+### Clone deployment
+
+A deployment whose servers are restored from another deployment's backups.
+Defined in [LNXBAK](linux/backups.md#clone-deployments).
+
+### Repository bucket
+
+The S3 bucket that holds the Kopia repository of a deployment's Linux servers.
+Defined in [LNXBAK](linux/backups.md#repository-bucket).
+
+### Device role
+
+The IAM role whose credentials a server's backups use to write to the repository bucket.
+Defined in [LNXBAK](linux/backups.md#repository-roles).
+
+### Maintenance role
+
+The IAM role that maintains and inspects a repository bucket.
+Defined in [LNXBAK](linux/backups.md#repository-roles).

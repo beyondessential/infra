@@ -21,6 +21,7 @@ export const stackSetTemplate = (name: string) =>
             source: ['aws.backup'],
             'detail-type': ['Backup Job State Change'],
             detail: {
+              // spec: LNXBAK#backup-failure-notification
               state: ['FAILED', 'ABORTED', 'EXPIRED'],
             },
           },

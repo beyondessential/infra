@@ -25,6 +25,7 @@
   register: swap_img
   when: btrfs_swap_eligible
 
+# spec: LNXSRV#storage-layout
 - name: Migrate swap to nocow subvolume
   when: btrfs_swap_eligible and swap_img.stat.exists
   block:

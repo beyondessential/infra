@@ -9,6 +9,7 @@ export const sg = new aws.ec2.SecurityGroup(
     vpcId: $network.vpc,
     description: normalizedStack,
     ingress: [
+      // spec: LNXSRV#network-exposure
       ...securityGroupRules.allICMP,
       securityGroupRules.openPort('HTTP', 80),
       securityGroupRules.openPort('HTTPS', 443),

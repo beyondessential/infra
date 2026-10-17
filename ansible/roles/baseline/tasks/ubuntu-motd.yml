@@ -38,6 +38,7 @@
           (\s*echo.*\n)+fi\n?
         replace: ""
 
+    # spec: LNXSRV#access
     - name: Manage login warning in the ubuntu user's .profile
       become: true
       ansible.builtin.blockinfile:

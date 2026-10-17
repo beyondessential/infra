@@ -10,6 +10,7 @@
   changed_when: false
   failed_when: false
 
+# spec: LNXSRV#host-firewall
 - name: Disable ufw when not managed by playbook
   when: ufw_binary_check.rc == 0
   become: true

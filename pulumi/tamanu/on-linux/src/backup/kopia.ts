@@ -38,6 +38,7 @@ interface KopiaOutputs {
   bucketArn: Output<string>;
 }
 
+// spec: LNXBAK#repository-bucket
 function cloneFromStack(ref: string): KopiaOutputs {
   const source = new CrossStack(ref);
   return {
@@ -50,6 +51,7 @@ function cloneFromStack(ref: string): KopiaOutputs {
   };
 }
 
+// spec: LNXBAK#repository-bucket
 function createOwnBucket(): KopiaOutputs {
   const tags = nativeTags(
     {
@@ -87,6 +89,7 @@ function createOwnBucket(): KopiaOutputs {
             id: 'expire-noncurrent-and-incomplete',
             status: 'Enabled',
             noncurrentVersionExpiration: {
+              // spec: LNXBAK#repository-bucket
               noncurrentDays: 35,
             },
             abortIncompleteMultipartUpload: {
@@ -107,6 +110,7 @@ function createOwnBucket(): KopiaOutputs {
         Version: '2012-10-17',
         Statement: [
           {
+            // spec: LNXBAK#repository-bucket
             Sid: 'DenyInsecureTransport',
             Effect: 'Deny',
             Principal: '*',
@@ -154,6 +158,7 @@ function createOwnBucket(): KopiaOutputs {
   // The role Canopy issues device creds from drops delete/retention and gains
   // the Object Lock read; the IAM Users keep the full kopiaPolicy. Without
   // Canopy the role stays on the full kopiaPolicy, unchanged.
+  // spec: LNXBAK#repository-roles
   const devicePolicy = canopy
     ? new awsNative.iam.ManagedPolicy(
         'backups-device-policy',
@@ -190,6 +195,7 @@ function createOwnBucket(): KopiaOutputs {
   // Maintenance/fullaccess role: only when onboarded to Canopy (the EC2 model
   // never had one). s3:* + CloudWatch for the s3-metrics loop; trusts canopy-jobs
   // (never the issuer).
+  // spec: LNXBAK#repository-roles
   const maintenanceRole = canopy
     ? new awsNative.iam.Role(
         `backups-fullaccess-role-${normalizedStack}`,
@@ -227,6 +233,7 @@ function createOwnBucket(): KopiaOutputs {
     : undefined;
 
   new awsClassic.s3.BucketObjectv2(
+    // spec: LNXBAK#repository-bucket
     'kopia-storageconfig',
     {
       bucket: bucket.bucketName.apply((name) => name!),
@@ -311,6 +318,7 @@ function createOwnBucket(): KopiaOutputs {
         'on-linux backups: serverGroupId requires Canopy onboarding (set canopyInfra)',
       );
     }
+    // spec: LNXBAK#canopy-registration
     new CanopyBackupConfig('canopy-backup-config', {
       serverGroupId,
       bucket: bucket.bucketName.apply((name) => name!),

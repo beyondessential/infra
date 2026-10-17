@@ -40,6 +40,7 @@
   when: pg_mount_info.stdout is search('compress=zstd:(?!1\b)\d+')
   changed_when: true
 
+# spec: LNXDB#data-directory
 - name: Set wal_init_zero to off
   become: true
   become_user: postgres

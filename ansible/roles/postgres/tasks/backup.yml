@@ -103,6 +103,7 @@
   notify:
     - Reload bestool-alertd
 
+# spec: LNXBAK#backup-definitions
 - name: Install tamanu-postgres backup definition
   become: true
   ansible.builtin.template:
