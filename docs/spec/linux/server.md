@@ -73,7 +73,9 @@ Reading an inventory MUST require Canopy administrator access.
 
 A Linux server MUST run Ubuntu 24.04 or later.
 
-A Linux server MUST have a btrfs root filesystem mounted from the subvolume `@`.
+A Linux server SHOULD have a btrfs root filesystem mounted from the subvolume `@`.
+
+A Linux server whose root filesystem is not btrfs MUST still be managed by the playbooks, with the behaviour that depends on btrfs skipped.
 
 A Linux server MAY have an amd64 or an arm64 processor.
 
@@ -95,7 +97,7 @@ A Linux server SHOULD have Tailscale installed.
 
 ## Storage layout
 
-A Linux server MUST use one of the layouts in the following table.
+A Linux server that is an instance MUST use one of the layouts in the following table.
 
 | layout | root | `/var/log` | `/var/lib/postgresql` |
 |---|---|---|---|
@@ -290,7 +292,7 @@ A deployment's servers MUST be provisioned from one infrastructure stack for the
 
 A server MUST be either an instance in the deployment's AWS account or an [external server](../overview.md#external-server).
 
-An instance MUST boot from an Ubuntu 24.04 arm64 image with the btrfs root that [Platform](#platform) requires.
+An instance MUST boot from an Ubuntu 24.04 arm64 image with a btrfs root.
 
 The infrastructure stack MUST refuse to run against an AWS account other than the account of its core.
 
