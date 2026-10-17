@@ -24,7 +24,7 @@ The `seedSnapshot`, `configTemplate` and `nodeEnv` of the stack, and the Tamanu 
 
 | Evidence | Diagnosis | Action |
 |---|---|---|
-| Warning `No ready seed snapshots` | The stub found none in `tamanu-seed` and starts with an empty database. | Seed snapshots are made by pgsnap ([PGS](../spec/pgsnap.md)): escalate if one should exist. |
+| Warning `No ready seed snapshots` | The stub found none in `tamanu-seed` and starts with an empty database. | Seed snapshots are made by pgsnap ([PGS](../spec/kubernetes/pgsnap.md)): escalate if one should exist. |
 | Warning `falling back to newest` | No snapshot matches the deployment's major and minor version, so the newest is used and the migrator brings it forward. | Expected. |
 | Warning `No seed snapshot predates v...` | A release rehearsal (`rc` template) seeds from the newest snapshot from before its minor so its migrations run, and there is none, so it starts empty. | Expected, and the migrations run from scratch. |
 | Error `seedSnapshot writes fake clinical data` | `nodeEnv` is `production`. Refused on purpose ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#seed-top-up)). | Do not work around it. |

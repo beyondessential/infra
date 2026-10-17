@@ -64,4 +64,4 @@ If a new deployment namespace lacks a binding, check HNC first ([runbook](../run
 ## pgsnap
 
 The operator runs in `tamanu-seed` on `workload` arm64 nodes.
-It acts on Jobs that carry the label `pgsnap.bes.au/create: "true"` ([PGS](../spec/pgsnap.md#annotation-contract)).
+It acts on Jobs that carry the label `pgsnap.bes.au/create: "true"` ([PGS](../spec/kubernetes/pgsnap.md#annotation-contract)).

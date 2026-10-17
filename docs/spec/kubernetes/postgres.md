@@ -4,7 +4,8 @@ id: K8SPGC
 
 # PostgreSQL clusters
 
-The requirements in this spec apply to every CloudNativePG cluster that the shared Kubernetes PostgreSQL component creates.
+The requirements in this spec apply to every CloudNativePG cluster that serves an application, whether a Tamanu deployment, Canopy or pollen.
+The ephemeral clusters of [pgsnap](pgsnap.md) are outside this spec.
 Memory-derived parameters follow the [pgtune](https://github.com/le0pard/pgtune) algorithm for a Linux OLTP workload on SSD storage, except where a requirement below differs.
 
 ## Borrowed terms

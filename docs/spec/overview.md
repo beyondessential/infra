@@ -35,14 +35,14 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) | Taints, tolerations and their effects. Used by [K8SNOD](kubernetes/nodes.md) and [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
 | [Kubernetes garbage collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/) | The kubelet's image garbage collection thresholds. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and [storage classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) | Claims, access modes and storage classes. Used by [K8SVOL](kubernetes/volumes.md) and [GRD](policies/guardrails.md). |
-| [CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/) | The `Cluster` resource, instance pods, switchover and scheduled backups. Used by [K8SPGC](kubernetes/postgres.md), [PGS](pgsnap.md) and [K8SBAK](kubernetes/database-backups.md). |
+| [CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/) | The `Cluster` resource, instance pods, switchover and scheduled backups. Used by [K8SPGC](kubernetes/postgres.md), [PGS](kubernetes/pgsnap.md) and [K8SBAK](kubernetes/database-backups.md). |
 | [PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html) | The server parameters that [K8SPGC](kubernetes/postgres.md) sets. |
 | [pgtune](https://github.com/le0pard/pgtune) | The tuning algorithm that [K8SPGC](kubernetes/postgres.md) follows. |
 | [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) | Applications, projects, RBAC, config management plugins, the repo server, hard refresh, sync waves, hooks, health, automated sync, ignored differences and resource actions. Used by [K8STRO](kubernetes/tamanu/renderer-rollout.md), [K8STDR](kubernetes/tamanu/deployment-rollout.md), [K8STSD](kubernetes/tamanu/scaledown.md) and [K8SNSP](kubernetes/namespaces.md). |
-| [Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) | VolumeSnapshot and VolumeSnapshotClass. Used by [PGS](pgsnap.md) and [K8SVOL](kubernetes/volumes.md). |
-| [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) and [owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) | Suspended Jobs and owner references. Used by [PGS](pgsnap.md). |
-| [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) | Version syntax and precedence. Used by [PGS](pgsnap.md). |
-| [Prometheus exposition formats](https://prometheus.io/docs/instrumenting/exposition_formats/) | The format of the metrics endpoint. Used by [PGS](pgsnap.md). |
+| [Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) | VolumeSnapshot and VolumeSnapshotClass. Used by [PGS](kubernetes/pgsnap.md) and [K8SVOL](kubernetes/volumes.md). |
+| [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) and [owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) | Suspended Jobs and owner references. Used by [PGS](kubernetes/pgsnap.md). |
+| [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) | Version syntax and precedence. Used by [PGS](kubernetes/pgsnap.md). |
+| [Prometheus exposition formats](https://prometheus.io/docs/instrumenting/exposition_formats/) | The format of the metrics endpoint. Used by [PGS](kubernetes/pgsnap.md). |
 | [RFC 5958](https://www.rfc-editor.org/rfc/rfc5958) | PKCS #8 private-key syntax. Used by [CTLS](canopy/tls-issuance.md). |
 | [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md) and [CORE](core.md). |
 | [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) and [Routing traffic for subdomains](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-routing-traffic-for-subdomains.html) | Route 53 hosted zones and the delegation of a zone to the name servers of its hosted zone. Used by [CTLS](canopy/tls-issuance.md) and [CORE](core.md). |
@@ -231,12 +231,12 @@ Defined in [K8STRO](kubernetes/tamanu/renderer-rollout.md#promotion).
 ### Ephemeral cluster
 
 A single-instance CloudNativePG cluster that pgsnap creates for one Job and deletes afterwards.
-Defined in [PGS](pgsnap.md#snapshot-creation).
+Defined in [PGS](kubernetes/pgsnap.md#snapshot-creation).
 
 ### Passthrough annotation
 
 An annotation of a Job that pgsnap copies to the VolumeSnapshot it produces.
-Defined in [PGS](pgsnap.md#passthrough-annotations).
+Defined in [PGS](kubernetes/pgsnap.md#passthrough-annotations).
 
 ### Core
 

@@ -39,7 +39,7 @@ Releasing a claim MUST leave the content of every other claim untouched.
 
 ## Snapshots
 
-A cluster that runs [pgsnap](../pgsnap.md) MUST offer a VolumeSnapshotClass named `ebs-retain` whose snapshots outlive the volume they were taken from.
+A cluster that runs [pgsnap](pgsnap.md) MUST offer a VolumeSnapshotClass named `ebs-retain` whose snapshots outlive the volume they were taken from.
 
 ## Reclaim
 

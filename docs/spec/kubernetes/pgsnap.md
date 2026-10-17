@@ -32,7 +32,7 @@ A Job MAY carry the annotations in the following table.
 
 | annotation | meaning | default |
 |---|---|---|
-| `pgsnap.bes.au/size` | The storage size of the [ephemeral cluster](overview.md#ephemeral-cluster). | `20Gi` |
+| `pgsnap.bes.au/size` | The storage size of the [ephemeral cluster](../overview.md#ephemeral-cluster). | `20Gi` |
 | `pgsnap.bes.au/cpu` | The CPU request and limit of the PostgreSQL container of the ephemeral cluster. | `250m` |
 | `pgsnap.bes.au/memory` | The memory request and limit of the PostgreSQL container of the ephemeral cluster. | `1Gi` |
 | `pgsnap.bes.au/for-version` | The semver version of the application whose data the snapshot holds. | none |
@@ -71,7 +71,7 @@ Where the requested source cannot be resolved, pgsnap MUST mark the Job `failed`
 
 ### Passthrough annotations
 
-A [passthrough annotation](overview.md#passthrough-annotation) of a Job is every annotation with the pgsnap prefix other than `create`, `size`, `cpu`, `memory`, `phase`, `cluster-name`, `snapshot-name`, `from-snapshot` and `snapshot`.
+A [passthrough annotation](../overview.md#passthrough-annotation) of a Job is every annotation with the pgsnap prefix other than `create`, `size`, `cpu`, `memory`, `phase`, `cluster-name`, `snapshot-name`, `from-snapshot` and `snapshot`.
 
 pgsnap MUST copy every passthrough annotation of a Job to the VolumeSnapshot it produces.
 
