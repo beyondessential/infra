@@ -176,7 +176,7 @@ A binding of an access group to `cluster-admin` MUST be a RoleBinding.
 
 Each role MUST grant the permissions its purpose needs and no others.
 
-The permissions of a role are defined once, in the cluster stacks that create it, and are not restated here.
+The permissions of a role are defined once, in the stack that creates it, and are not restated here.
 The bounds in the following table hold for every version of a role.
 
 | role | purpose | bounds |

@@ -32,7 +32,7 @@ An IngressClass named `tailscale`, backed by the Tailscale operator, MUST exist.
 
 ## Gateway
 
-A GatewayClass named `envoy`, referencing the Envoy Gateway controller, MUST exist.
+A GatewayClass named `envoy-gateway`, referencing the Envoy Gateway controller, MUST exist.
 
 A Gateway of that class MUST have a listener on TCP 443 that terminates TLS.
 
