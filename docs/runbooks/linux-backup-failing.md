@@ -1,7 +1,7 @@
 # Runbook: a Linux server's backup is failing or missing
 
 A backup check fails in Canopy, a backup is older than expected, or a restore refuses.
-The definitions and the wiring are in [LNXBAK](../spec/linux/backups.md); how a PostgreSQL backup is captured is [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-postgresql-method), and what a restore of it must need is [PPB](../spec/postgres-physical-backup.md).
+The definitions and the wiring are in [LNXBAK](../spec/linux/backups.md); how a PostgreSQL backup is captured is [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-postgresql-method), and what a restore of it needs is [bestool BAK, restore](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#restore).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 **Never delete, edit or change the retention of anything in the repository bucket**, and never change its versioning, lifecycle or policy: that is [ruled out](../ruled-out-actions.md#ruled-out-actions-never-suggest).

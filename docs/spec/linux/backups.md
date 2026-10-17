@@ -7,7 +7,7 @@ id: LNXBAK
 The requirements in this spec apply to the backups of every [Linux server](../overview.md#linux-server): the [backup definitions](../overview.md#backup-definition) it carries, the restore setup of a [clone deployment](../overview.md#clone-deployment), the S3 bucket and roles that hold its backups, and the snapshots of its instances.
 
 How bestool takes and restores a backup is specified by bestool's [BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md), and how [Canopy](../overview.md#canopy) schedules, retains and credentials backups is specified by Canopy's [BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md).
-How a PostgreSQL backup is captured and restored is specified by [PPB](../postgres-physical-backup.md).
+How a PostgreSQL backup is captured and restored is specified by bestool's [BAK, the PostgreSQL method](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-postgresql-method), and how [pgro](../overview.md#pgro) restores and verifies it by pgro's [INT](https://github.com/beyondessential/postgres-restore-operator/blob/main/.workhorse/specs/canopy/intents.md).
 
 ## Borrowed terms
 
@@ -31,13 +31,16 @@ The format of a definition is specified by bestool's [BAK](https://github.com/be
 
 | type | content | carried by |
 |---|---|---|
-| `tamanu-postgres` | A PostgreSQL backup of the cluster named `main`. | every server that runs PostgreSQL |
+| `tamanu-postgres` | A PostgreSQL backup of the cluster named `main`, taken by the `postgresql` method of bestool. | every server that runs PostgreSQL |
 | `postgres-config` | The PostgreSQL configuration files, tagged `area=postgres-config`. | every server that runs PostgreSQL |
 | `tamanu-config` | The Tamanu configuration files. | every Tamanu server |
 | `tamanu-secrets` | The server key, ordered after `tamanu-postgres`, with a post-restore hook that restarts the Tamanu services. | every Tamanu server that is not in a clone deployment |
 | `caddy-config` | The reverse proxy configuration files, tagged `area=caddy-config`. | every server that runs Caddy |
 
-The `tamanu-postgres` definition MUST satisfy [PPB](../postgres-physical-backup.md).
+The `tamanu-postgres` definition MUST be taken under the Canopy backup type `tamanu-postgres`.
+
+> [!NOTE]
+> pgro finds the snapshots it restores by filtering the repository on that type.
 
 ## Key pairing
 

@@ -43,8 +43,6 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) and [owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) | Suspended Jobs and owner references. Used by [PGS](pgsnap.md). |
 | [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) | Version syntax and precedence. Used by [PGS](pgsnap.md). |
 | [Prometheus exposition formats](https://prometheus.io/docs/instrumenting/exposition_formats/) | The format of the metrics endpoint. Used by [PGS](pgsnap.md). |
-| [PostgreSQL backup documentation](https://www.postgresql.org/docs/current/backup-file.html) | File system level backup and crash recovery. Used by [PPB](postgres-physical-backup.md). |
-| [Kopia documentation](https://kopia.io/docs/) | The snapshot repository. Used by [PPB](postgres-physical-backup.md). |
 | [RFC 5958](https://www.rfc-editor.org/rfc/rfc5958) | PKCS #8 private-key syntax. Used by [CTLS](canopy/tls-issuance.md). |
 | [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md) and [CORE](core.md). |
 | [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) and [Routing traffic for subdomains](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-routing-traffic-for-subdomains.html) | Route 53 hosted zones and the delegation of a zone to the name servers of its hosted zone. Used by [CTLS](canopy/tls-issuance.md) and [CORE](core.md). |
@@ -63,7 +61,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [CloudNativePG declarative hibernation](https://cloudnative-pg.io/documentation/current/declarative_hibernation/) | Hibernating a database cluster. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
 | [py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler) | The downscaler, forced downtime and exclusion. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
 | [Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/) and [retention](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/) | Object stores and the recovery window. Used by [K8SBAK](kubernetes/database-backups.md). |
-| [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving, base backups and `backup_label`. Used by [K8SBAK](kubernetes/database-backups.md) and [PPB](postgres-physical-backup.md). |
+| [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving, base backups and `backup_label`. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [Amazon S3 versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html), [delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html), [lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) and [aborting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) | Versions, delete markers and lifecycle rules. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) | Pod access to AWS through a service account. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) | Roles, bindings and groups. Used by [K8SNSP](kubernetes/namespaces.md). |
@@ -85,7 +83,8 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kopia repositories](https://kopia.io/docs/repositories/), [storage tiers](https://kopia.io/docs/advanced/storage-tiers/) and [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) | The repository, its storage configuration and lock modes. Used by [LNXBAK](linux/backups.md). |
 | [Canopy DOM](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#managed-zones) and [Canopy CRT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md) | How Canopy reads its managed zones, and how it issues and renews certificates. Used by [CTLS](canopy/tls-issuance.md). |
 | [bestool TLS](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md) | How bestool obtains certificates from Canopy, serves them to Caddy, and grades them. Used by [LNXTLS](linux/tls.md). |
-| [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md) and [Canopy BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md) | How bestool takes and restores backups, and how Canopy schedules, retains and credentials them. Used by [LNXBAK](linux/backups.md) and [PPB](postgres-physical-backup.md). |
+| [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md) and [Canopy BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md) | How bestool takes and restores backups, and how Canopy schedules, retains and credentials them. Used by [LNXBAK](linux/backups.md). |
+| [pgro INT](https://github.com/beyondessential/postgres-restore-operator/blob/main/.workhorse/specs/canopy/intents.md) | The restore intents pgro acts on, and how it reports a backup restorable. Used by [LNXBAK](linux/backups.md). |
 | [Caddy global options](https://caddyserver.com/docs/caddyfile/options#cert-issuer) and [Caddy certificates on Tailscale](https://tailscale.com/kb/1190/caddy-certificates) | The certificate issuer option and Tailscale-issued certificates. Used by [LNXTLS](linux/tls.md). |
 | [AWS shared config and credentials files](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html), [IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users.html) and [managed and inline policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html) | Credential files, users and policies. Used by [LNXTLS](linux/tls.md). |
 | [Ansible playbooks](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html), [tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html), [check mode](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_checkmode.html), [inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html) and [basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html) | Playbooks, plays, tags, check mode, inventory sources and the control node. Used by [LNXANS](linux/ansible.md). |
@@ -117,7 +116,7 @@ Defined by this gloss alone.
 ### pgro
 
 The operator that restores and verifies `tamanu-postgres` backups.
-Defined by this gloss alone.
+Defined by pgro in [INT](https://github.com/beyondessential/postgres-restore-operator/blob/main/.workhorse/specs/canopy/intents.md).
 
 ### Tamanu CD
 

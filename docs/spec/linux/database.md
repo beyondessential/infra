@@ -5,7 +5,7 @@ id: LNXDB
 # Database on a Linux server
 
 The requirements in this spec apply to the PostgreSQL server of every [Linux server](../overview.md#linux-server).
-Backups of the database are specified by [LNXBAK](backups.md) and [PPB](../postgres-physical-backup.md).
+Backups of the database are specified by [LNXBAK](backups.md).
 The tuning of a PostgreSQL cluster in Kubernetes is specified by [K8SPGC](../kubernetes/postgres.md).
 
 ## Borrowed terms

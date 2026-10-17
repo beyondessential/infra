@@ -14,7 +14,7 @@ Backups themselves are scheduled and retained by Canopy; this checks that the ho
 
 ## In Canopy
 
-Use the backup signals and checks: *backed up*, *persisted*, *restorable* ([PPB](../spec/postgres-physical-backup.md#canopy-integration)).
+Use the backup signals and checks: *backed up* and *persisted* from bestool ([bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-control-plane-contract)), *restorable* from pgro ([pgro INT](https://github.com/beyondessential/postgres-restore-operator/blob/main/.workhorse/specs/canopy/intents.md)).
 The Tamanu pack's [healthchecks bridge](https://github.com/beyondessential/tamanu/blob/main/docs/healthchecks.md) says to call Canopy's `get_check_documentation` for the failing check first.
 
 ## In AWS
