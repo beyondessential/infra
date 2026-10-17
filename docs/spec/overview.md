@@ -21,6 +21,9 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) | IngressClass. Used by [K8SING](kubernetes/ingress.md). |
 | [cert-manager](https://cert-manager.io/docs/) | ClusterIssuer and certificate provisioning. Used by [K8SING](kubernetes/ingress.md). |
 | [Envoy HTTP headers](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers) | The `x-forwarded-client-cert` header. Used by [K8SING](kubernetes/ingress.md). |
+| [Envoy Gateway](https://gateway.envoyproxy.io/) | The controller that implements the Gateway API with Envoy proxy pods. Used by [K8SING](kubernetes/ingress.md). |
+| [external-dns](https://kubernetes-sigs.github.io/external-dns/latest/) | The controller that writes DNS records for Kubernetes resources. Used by [K8SING](kubernetes/ingress.md). |
+| [Canopy DTR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/device-trust.md#authentication) and [Canopy public API authentication](https://github.com/beyondessential/canopy/blob/main/README.md#public-api-authentication) | How Canopy authenticates a device by its client certificate, and which header carries the certificate to the backend. Used by [K8SING](kubernetes/ingress.md). |
 | [Network Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html) | The AWS NLB. Used by [K8SING](kubernetes/ingress.md). |
 | [Choosing between alias and non-alias records](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-choosing-alias-non-alias.html) | Route 53 ALIAS records. Used by [K8SING](kubernetes/ingress.md). |
 | [Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html) | IMDSv2 and the metadata options of an instance. Used by [K8SNOD](kubernetes/nodes.md) and [LNXAWS](linux/aws.md). |
@@ -28,7 +31,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Spot Instance Advisor](https://aws.amazon.com/ec2/spot/instance-advisor/) | The published interruption frequency of each instance type. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Service-linked role for Spot Instance requests](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/service-linked-roles-spot-instance-requests.html) | The `AWSServiceRoleForEC2Spot` role. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/) | Consolidation and drift. Used by [K8SNOD](kubernetes/nodes.md). |
-| [Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) | PodDisruptionBudgets. Used by [K8SNOD](kubernetes/nodes.md), [K8SPGC](kubernetes/postgres.md) and [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
+| [Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) | PodDisruptionBudgets. Used by [K8SPGC](kubernetes/postgres.md) and [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
 | [Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) | Taints, tolerations and their effects. Used by [K8SNOD](kubernetes/nodes.md) and [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
 | [Kubernetes garbage collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/) | The kubelet's image garbage collection thresholds. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and [storage classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) | Claims, access modes and storage classes. Used by [K8SVOL](kubernetes/volumes.md) and [GRD](policies/guardrails.md). |
@@ -42,8 +45,6 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Prometheus exposition formats](https://prometheus.io/docs/instrumenting/exposition_formats/) | The format of the metrics endpoint. Used by [PGS](pgsnap.md). |
 | [PostgreSQL backup documentation](https://www.postgresql.org/docs/current/backup-file.html) | File system level backup and crash recovery. Used by [PPB](postgres-physical-backup.md). |
 | [Kopia documentation](https://kopia.io/docs/) | The snapshot repository. Used by [PPB](postgres-physical-backup.md). |
-| [Volume Shadow Copy Service](https://learn.microsoft.com/en-us/windows-server/storage/file-server/volume-shadow-copy-service) | Windows shadow copies. Used by [PPB](postgres-physical-backup.md). |
-| [lvmthin](https://man7.org/linux/man-pages/man7/lvmthin.7.html) | LVM thin provisioning. Used by [PPB](postgres-physical-backup.md). |
 | [RFC 5958](https://www.rfc-editor.org/rfc/rfc5958) | PKCS #8 private-key syntax. Used by [CTLS](canopy/tls-issuance.md). |
 | [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md). |
 | [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) | Route 53 hosted zones. Used by [CTLS](canopy/tls-issuance.md). |
@@ -60,11 +61,11 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [CloudNativePG declarative hibernation](https://cloudnative-pg.io/documentation/current/declarative_hibernation/) | Hibernating a database cluster. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
 | [py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler) | The downscaler, forced downtime and exclusion. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
 | [Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/) and [retention](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/) | Object stores and the recovery window. Used by [K8SBAK](kubernetes/database-backups.md). |
-| [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving and base backups. Used by [K8SBAK](kubernetes/database-backups.md). |
+| [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving, base backups and `backup_label`. Used by [K8SBAK](kubernetes/database-backups.md) and [PPB](postgres-physical-backup.md). |
 | [Amazon S3 versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html), [delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html), [lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) and [aborting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) | Versions, delete markers and lifecycle rules. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) | Pod access to AWS through a service account. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) | Roles, bindings and groups. Used by [K8SNSP](kubernetes/namespaces.md). |
-| [Tailscale Kubernetes operator API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), [grants](https://tailscale.com/kb/1324/grants) and [workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation) | Authenticated access to the API server over the tailnet. Used by [K8SNSP](kubernetes/namespaces.md). |
+| [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator), [API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), [grants](https://tailscale.com/kb/1324/grants) and [workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation) | Authenticated access to the API server over the tailnet. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) | Mapping IAM principals to Kubernetes permissions. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md) and [how-to](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md) | Namespace trees, subnamespace anchors and propagation. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [user data](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) | First-boot commands from user data. Used by [LNXAWS](linux/aws.md). |
@@ -82,7 +83,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kopia repositories](https://kopia.io/docs/repositories/), [storage tiers](https://kopia.io/docs/advanced/storage-tiers/) and [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) | The repository, its storage configuration and lock modes. Used by [LNXBAK](linux/backups.md). |
 | [Canopy DOM](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#managed-zones) and [Canopy CRT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md) | How Canopy reads its managed zones, and how it issues and renews certificates. Used by [CTLS](canopy/tls-issuance.md). |
 | [bestool TLS](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md) | How bestool obtains certificates from Canopy, serves them to Caddy, and grades them. Used by [LNXTLS](linux/tls.md). |
-| [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md) and [Canopy BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md) | How bestool takes and restores backups, and how Canopy schedules, retains and credentials them. Used by [LNXBAK](linux/backups.md). |
+| [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md) and [Canopy BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md) | How bestool takes and restores backups, and how Canopy schedules, retains and credentials them. Used by [LNXBAK](linux/backups.md) and [PPB](postgres-physical-backup.md). |
 | [Caddy global options](https://caddyserver.com/docs/caddyfile/options#cert-issuer) and [Caddy certificates on Tailscale](https://tailscale.com/kb/1190/caddy-certificates) | The certificate issuer option and Tailscale-issued certificates. Used by [LNXTLS](linux/tls.md). |
 | [AWS shared config and credentials files](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html), [IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users.html) and [managed and inline policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html) | Credential files, users and policies. Used by [LNXTLS](linux/tls.md). |
 | [Ansible playbooks](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html), [tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html), [check mode](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_checkmode.html), [inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html) and [basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html) | Playbooks, plays, tags, check mode, inventory sources and the control node. Used by [LNXANS](linux/ansible.md). |
@@ -198,8 +199,8 @@ Defined in [K8SPGC](kubernetes/postgres.md#tuning-basis).
 
 ### tamanu-meta
 
-The Tamanu workload whose clients authenticate by presenting a self-signed TLS client certificate.
-Defined in [K8SING](kubernetes/ingress.md#client-certificates).
+The Canopy workload that devices reach over the internet, authenticating with a TLS client certificate.
+Defined by this gloss alone.
 
 ### Renderer
 
@@ -225,16 +226,6 @@ Defined in [PGS](pgsnap.md#snapshot-creation).
 
 An annotation of a Job that pgsnap copies to the VolumeSnapshot it produces.
 Defined in [PGS](pgsnap.md#passthrough-annotations).
-
-### Snapshot strategy
-
-Backing up a PostgreSQL cluster from an atomic snapshot of every volume it occupies.
-Defined in [PPB](postgres-physical-backup.md#snapshot-strategy).
-
-### Base backup strategy
-
-Backing up a PostgreSQL cluster with `pg_basebackup` into a staging directory.
-Defined in [PPB](postgres-physical-backup.md#base-backup-strategy).
 
 ### Core
 

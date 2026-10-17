@@ -40,7 +40,7 @@ The result is Argo CD applying the render, and the update fails if the Applicati
    kubectl -n tamanu-super wait --for=condition=Ready subnamespaceanchor/tamanu-<name>
    ```
 
-   Deleting the anchor later deletes the namespace and everything in it ([K8SNSP](../spec/kubernetes/namespaces.md#deployment-namespaces)).
+   Deleting the anchor later deletes the namespace and everything in it ([K8SNSP](../spec/kubernetes/namespaces.md#deployment-namespaces), [HNC](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md#delete-a-subnamespace)).
 4. From `pulumi/tamanu/on-k8s`, create the stack and set its config ([config reference](../reference/tamanu-deployment-config.md)).
    `k8s-core` and `imageTag` are required.
    Stack config files are gitignored ([pull stack config](refresh-stack-config.md)), and values go in with `pulumi config set`, never as secrets:

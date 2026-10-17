@@ -35,7 +35,7 @@ Which server and layout (single, or split with `/var/log` and `/var/lib/postgres
 |---|---|---|
 | `/var/log` full on a split layout | The 10 GiB logs volume filled. | Find the writer; escalate for a resize. |
 | Pre-upgrade snapshot `@postgres-pre-pgupgrade-...` large | The snapshot pins the old data after the upgrade ([upgrade PostgreSQL](../sops/linux-upgrade-postgres.md)). | A developer removes it once the new version has run cleanly. **[dev-OTS]** |
-| Snapshots named by the backup, left after a crash | A hard reboot skipped cleanup. | The next backup removes them ([PPB](../spec/postgres-physical-backup.md#reliability)). Escalate if it does not. |
+| Snapshots named by the backup, left after a crash | A hard reboot skipped cleanup. | The next backup removes them ([bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-postgresql-method)). Escalate if it does not. |
 | Many untagged or old images | Pruning only removes dangling images daily, and the upgrade keeps the new and previous versions. | `podman images` shows them. Pruning is **[dev-OTS]**. |
 | `pgsql_tmp` large | A query spilled to disk, up to `temp_file_limit`. | The limit aborts the query. Escalate if repeated. |
 | Metadata full, data free | btrfs needs a balance. | The weekly balance runs on the `btrfs-balance.timer`: `systemctl list-timers 'btrfs-*'`. Escalate. |

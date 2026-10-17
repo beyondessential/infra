@@ -15,10 +15,6 @@ id: K8SVOL
 
 Where a cluster hosts a workload that holds content on disk and either serves it from more than one replica or hands it between separate processes, the cluster MUST offer a storage class whose volumes mount read-write from several nodes at once.
 
-> [!NOTE]
-> Block storage binds a volume to one node.
-> The second consumer then fails to schedule, or reads an empty directory while the first holds the only copy.
-
 A [shared filesystem](../overview.md#shared-filesystem) volume MUST be mountable from every availability zone in which the cluster places workloads.
 
 > [!NOTE]
@@ -64,6 +60,3 @@ Whatever identity brings a workload up MUST be able to create and release that w
 Shared filesystem content MUST be encrypted at rest.
 
 A shared filesystem MUST accept connections only from the nodes of its own cluster.
-
-> [!NOTE]
-> The wire protocol authenticates nothing itself, so reachability is the whole of the access control, and a VPC holds more than one cluster's worth of hosts.

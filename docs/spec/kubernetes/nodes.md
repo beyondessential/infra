@@ -12,7 +12,6 @@ The requirements in this spec apply to every worker node of a cluster, whichever
 |---|---|
 | consolidation | Karpenter's removal or replacement of underutilised nodes by draining their pods onto other nodes ([Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/)). |
 | drift | The state of a node that no longer matches its configured specification ([Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/)). |
-| PodDisruptionBudget | A limit on how many pods of a workload may be voluntarily disrupted at once ([Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)). |
 | taint | A node attribute that repels pods which do not tolerate it ([Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)). |
 | IMDSv2 | The session-oriented method of the EC2 instance metadata service ([Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)). |
 | spot interruption warning | The notice EC2 gives before it reclaims a Spot instance ([Spot Instance interruptions](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html)). |
@@ -57,9 +56,9 @@ The subnets and security groups an autoscaler uses to provision a cluster's node
 
 ## Instance metadata
 
-A node MUST require IMDSv2 (`httpTokens=required`).
+A node MUST require IMDSv2.
 
-The instance metadata endpoint of a node MUST be reachable over IPv6 (`httpProtocolIpv6=enabled`).
+The instance metadata endpoint of a node MUST be reachable over IPv6.
 
 > [!NOTE]
 > Pods running in IPv6-only contexts reach the endpoint this way.
@@ -107,9 +106,6 @@ A general on-demand workload pool MUST offer a single node shape.
 
 An account hosting a cluster MUST have the EC2 Spot service-linked role, `AWSServiceRoleForEC2Spot` ([Service-linked role for Spot Instance requests](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/service-linked-roles-spot-instance-requests.html)).
 
-> [!NOTE]
-> Without the role, spot launches fail silently: capacity falls back to on-demand pools while the provisioner retries indefinitely.
-
 Spot instance type selection SHOULD exclude types whose current spot price exceeds their on-demand price.
 
 Spot instance type selection for workload and ingress pools MUST exclude types whose interruption frequency in the cluster's region exceeds 10%, and types with no published interruption frequency.
@@ -122,8 +118,6 @@ Spot instance type selection for workload and ingress pools MUST exclude types w
 On a spot interruption warning for a node, the cluster MUST cordon the node, drain its pods, and remove the node from service before the reclaim takes effect.
 
 On an EC2 instance health event for a node, such as a scheduled hardware retirement, the cluster MUST replace the node.
-
-Consolidation, drift replacement and spot interruption MUST respect PodDisruptionBudgets.
 
 Underutilised nodes SHOULD be consolidated.
 

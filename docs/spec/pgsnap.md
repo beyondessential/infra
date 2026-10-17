@@ -28,9 +28,6 @@ All pgsnap annotations and labels MUST use the prefix `pgsnap.bes.au/`.
 
 A Job MUST carry the label `pgsnap.bes.au/create: "true"` for pgsnap to manage it.
 
-> [!NOTE]
-> This is a label and not an annotation because Kubernetes watch selectors select on labels only.
-
 A Job MAY carry the annotations in the following table.
 
 | annotation | meaning | default |
@@ -90,17 +87,11 @@ pgsnap MUST create the ephemeral cluster with a single instance, and with the st
 
 The ephemeral cluster MUST run the same PostgreSQL major version as the clusters its snapshots are restored into.
 
-> [!NOTE]
-> A snapshot is a physical data directory, and PostgreSQL refuses to start on one written by a different major version.
-
 pgsnap MUST wait until the read-write service of the ephemeral cluster has at least one ready address before it proceeds.
 
 Where the Job requests a source snapshot, pgsnap MUST bootstrap the ephemeral cluster from that snapshot.
 
 The connection details pgsnap hands to a Job restored from a snapshot MUST be those of the superuser of the cluster.
-
-> [!NOTE]
-> A restored database carries its own roles, so there is no application user to mint.
 
 pgsnap MUST create a Secret named `pgsnap-<job-name>` with the keys `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME` and `DB_PASSWORD`.
 
@@ -122,12 +113,7 @@ If the Job fails, pgsnap MUST NOT create a VolumeSnapshot.
 
 The ephemeral cluster and the connection Secret MUST carry an owner reference to the Job.
 
-> [!NOTE]
-> Anything left by an interrupted run is then deleted by Kubernetes when the Job is removed, for example by `ttlSecondsAfterFinished`.
-
 ## Snapshot garbage collection
-
-The garbage collector SHOULD run every five minutes.
 
 The garbage collector MUST consider the VolumeSnapshots in its namespace that carry the label `pgsnap.bes.au/managed: "true"`.
 

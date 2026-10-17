@@ -28,7 +28,7 @@ Which Job, which server, the Tamanu version and what changed: [deployment contex
 | `central-provisioner` (wave 2, 2 retries) | Runs `provision --skip-if-not-needed` on the `provisioning` ConfigMap. | A hand edit broke `provisioning`, or the migrator did not finish. |
 | `facility-N-setup-sync` (wave 2, 5 retries) | Runs `setupSync` to seed the central address and credentials into the facility. | Needs the provisioning document and a reachable central. Only present for Tamanu 2.60.0 or later, and omitted when the version is unknown ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#version-gated-steps)). |
 
-A Job that fails only on a re-run against an unchanged image means its command is not safe to repeat, which [K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs) requires: that is a Tamanu fault.
+The stub runs these Jobs on every sync ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)), so a Job that fails only on a re-run against an unchanged image has a command that is not safe to repeat: that is a Tamanu fault.
 
 ## 5. Resolve
 

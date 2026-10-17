@@ -28,8 +28,6 @@ The downscaler MUST act on Deployments.
 
 The downscaler MUST leave a workload alone when neither the workload nor its namespace carries a downscaler annotation.
 
-The downscaler SHOULD evaluate workloads every 60 seconds.
-
 The downscaler SHOULD run on a node with the label `bes.node.purpose=system`.
 
 > [!NOTE]
@@ -61,16 +59,13 @@ Hibernation MUST NOT remove or change any other object of the deployment, includ
 
 The namespace of a deployment MUST NOT carry a downscaler exclusion.
 
-> [!NOTE]
-> The downscaler skips every workload of an excluded namespace, so forced downtime set on its Deployments would have no effect.
-
 The stub MUST create a service account named `tamanu-ttl` in the namespace of each deployment that has a time to live.
 
 The steps of hibernation MUST run as that service account.
 
-That service account MUST be able to get, list and patch Deployments and database clusters in that namespace.
+That service account MUST hold permissions only on Deployments and database clusters, and only in that namespace.
 
-That service account MUST NOT be able to act outside that namespace or on any other kind of object.
+That service account MUST be able to carry out the steps of hibernation and waking.
 
 The Job that performs a step of hibernation SHOULD tolerate the spot taint of [K8SNOD](../nodes.md#node-identity).
 
@@ -86,14 +81,7 @@ Waking a deployment MUST NOT change the end of its time to live.
 
 After the steps above, waking a deployment MUST hard-refresh the Application of the deployment.
 
-> [!NOTE]
-> A promotion skips a hibernated deployment, so its Application can hold a render from an earlier renderer build.
-> The refresh makes the woken deployment render with the current channel.
-
 The stub MUST wake a deployment that has a time to live on every update of it.
-
-> [!NOTE]
-> A deployment that has been hibernated at the end of its time to live is revived by the next update, and a woken deployment is then given a new time to live.
 
 The steps of waking MUST run as the service account `tamanu-ttl`, which has the permissions given under [hibernation](#hibernation).
 
@@ -109,8 +97,6 @@ A person MAY wake a hibernated deployment by running the Create Job action on it
 
 A person MAY wake a hibernated deployment by creating a Job from its `wake` CronJob with the Kubernetes command line.
 
-The `wake` CronJob SHOULD allow one Job to run at a time.
-
 The Job created from the `wake` CronJob SHOULD tolerate the spot taint of [K8SNOD](../nodes.md#node-identity).
 
-The Argo CD of each cluster that hosts deployments MUST allow the role that operates deployments to run the Create Job action on the CronJobs of Applications in the `tamanu` project.
+The access that the Create Job action needs is specified in [K8SNSP](../namespaces.md#argo-cd-access).

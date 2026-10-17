@@ -39,11 +39,7 @@ The Application MUST use automated sync, with prune and self-heal.
 
 The Application MUST use server-side apply and server-side diff.
 
-> [!NOTE]
-> The API server and its webhooks fill in fields that the render leaves unset.
-> A diff made on the client reports those fields as drift without end, so the Application never reaches Synced.
-
-The Application SHOULD retry a failed sync up to 5 times, starting 10 seconds after the failure, doubling the delay each time, up to 3 minutes.
+The Application SHOULD retry a failed sync a bounded number of times, with a delay that grows after each failure.
 
 Deleting the Application MUST delete every resource it created.
 
@@ -53,36 +49,16 @@ Which renderer renders an Application is specified in [K8STRO](renderer-rollout.
 
 ## Sync order
 
-The renderer MUST place each resource of a deployment in the sync wave that the following table gives for it.
+The renderer MUST order the sync waves of the resources of a deployment as the following table gives, earliest first.
 
-| wave | resources |
+| order | resources |
 |---|---|
-| 0 | The rendered configuration ConfigMaps, the application service account, the claim of each shared blob store, and the database clusters with their backup resources. |
-| 1 | The `<server>-reporting-grants` and `<server>-migrator` Jobs. |
-| 2 | The `central-provisioner` Job and the `facility-N-setup-sync` Jobs. |
-| 3 | Deployments, Services, Gateways with their traffic policies, HTTPRoutes, PodDisruptionBudgets, the `central-db-tailscale` Service, the seed top-up Job, the synthetic tests Deployment, and the `wake` CronJob. |
-
-A database cluster MUST be in an earlier wave than every Job and every server that connects to it.
-
-A `<server>-migrator` Job MUST be in an earlier wave than the provisioner, the setup-sync Jobs and the servers.
-
-A `<server>-reporting-grants` Job MUST be in an earlier wave than the servers, and in a later wave than its database cluster.
-
-> [!NOTE]
-> The Job reads a Secret that the database operator creates with the cluster.
-> A pod whose Secret is missing never starts, so the Job neither completes nor fails, and the sync waits on it without end.
-
-The `central-provisioner` Job MUST be in a later wave than the central migrator.
-
-A `facility-N-setup-sync` Job MUST be in a later wave than the migrator of the same facility.
-
-Every Service, Gateway, route and server MUST be in the last wave.
+| 1 | The rendered configuration ConfigMaps, the application service account, the claim of each shared blob store, and the database clusters with their backup resources. |
+| 2 | The `<server>-reporting-grants` and `<server>-migrator` Jobs. |
+| 3 | The `central-provisioner` Job and the `facility-N-setup-sync` Jobs. |
+| 4 | Deployments, Services, Gateways with their traffic policies, HTTPRoutes, PodDisruptionBudgets, the `central-db-tailscale` Service, the seed top-up Job, the synthetic tests Deployment, and the `wake` CronJob. |
 
 A route MUST NOT be applied before the Service it names.
-
-> [!NOTE]
-> Argo CD reports a route as unhealthy while its backend Service is missing.
-> A wave completes only when everything in it is healthy, so a route in an earlier wave than its Service stalls the sync.
 
 ## Database health
 
@@ -92,13 +68,7 @@ That Argo CD MUST report a database cluster as Healthy while the cluster carries
 
 That Argo CD MUST give the health of a hibernated database cluster the message `Hibernated`.
 
-> [!NOTE]
-> A [promotion](../../overview.md#promotion) reads that message to tell a hibernated deployment from an awake one.
-
 That Argo CD MUST report any other database cluster as Progressing.
-
-> [!NOTE]
-> A database cluster has no health rule of its own in Argo CD, so without these rules it is Healthy the moment it exists, and a wave that waits on health would not wait for the database.
 
 ## Hook Jobs
 
@@ -106,25 +76,15 @@ The `<server>-reporting-grants`, `<server>-migrator`, `central-provisioner` and 
 
 A sync MUST run each of those Jobs, including a sync that changes nothing in the Tamanu image.
 
-The command of each of those Jobs MUST be safe to run again against a database it has already run against.
-
 ## Version-gated steps
 
-A step in the following table MUST be omitted from a deployment whose Tamanu version is lower than the version given for it.
+The renderer MUST omit the `facility-N-setup-sync` Job, the FHIR workers of a facility and the seed top-up Job from a deployment whose Tamanu version predates the first release that has the command the step runs.
 
-| step | first version |
-|---|---|
-| the `facility-N-setup-sync` Job | 2.60.0, counting its pre-releases |
-| the FHIR workers of a facility | 2.60.0, counting its pre-releases |
-| the seed top-up Job | 2.65.0, counting its pre-releases |
+A pre-release of that first release MUST count as that release.
 
-A deployment whose Tamanu version is unknown MUST be treated as lower than every version in the table.
+A deployment whose Tamanu version is unknown MUST be treated as lower than every first release.
 
 The Tamanu version of a deployment MUST be the version the stub read from the image, and MUST NOT be inferred from the image tag.
-
-> [!NOTE]
-> A Job that runs a subcommand the image lacks exits with an error and fails the sync.
-> An unknown version therefore errs towards omitting the step.
 
 ## Seed top-up
 
@@ -148,26 +108,16 @@ The renderer MUST refuse a deployment that is configured to be topped up with ge
 
 ## Update strategy
 
-A workload that must not run two instances at once MUST be updated by recreation.
-
 The central task runner, the task runner of each facility, the sync server of each facility and the FHIR workers of each facility MUST be updated by recreation.
 
 > [!NOTE]
-> Stopping the old instance first avoids running scheduled tasks twice and doubling up on sync.
+> Each of these runs scheduled work or sync, which two instances at once would run twice.
 
 An API server and a web frontend MUST be updated by rolling update.
 
 ## Server health
 
 An API server, a facility sync server and a web frontend MUST declare a startup probe and a liveness probe, each of which fetches the root path of the server.
-
-The startup probe SHOULD poll every second and allow 60 failures before the container is restarted.
-
-The liveness probe SHOULD poll every 10 seconds and restart the container after 2 failures.
-
-> [!NOTE]
-> A rolling update replaces pods only as their successors become ready, and a container is not ready before its startup probe succeeds.
-> A server without the probe is ready as soon as its container starts.
 
 ## Replicas
 
@@ -213,9 +163,6 @@ A deployment with capacity `ondemand` MUST run those pods only on nodes with the
 A deployment with capacity `spot` SHOULD run those pods on nodes with the label `bes.node.schedule=spot`.
 
 A deployment with capacity `spot` SHOULD give those pods a toleration of the taint `spotInstance=true:PreferNoSchedule`.
-
-> [!NOTE]
-> The spot preference is soft, so a pod runs on an on-demand node when no spot node has room.
 
 The database clusters of a deployment MUST follow the capacity of the deployment.
 
@@ -265,9 +212,6 @@ The Application MUST ignore the differences in the following table, and MUST res
 | database cluster | the annotation `cnpg.io/hibernation` | hibernation and waking |
 | ConfigMap `provisioning`, `config-central` and `config-facility-N` | `data` and `binaryData` | anyone who edits the configuration by hand |
 
-> [!NOTE]
-> A sync that applied these fields would undo a scaledown and discard hand edits on every sync.
-
 Scaledown is specified in [K8STSD](scaledown.md).
 
 ## Update completion
@@ -277,9 +221,6 @@ The stub MUST NOT complete an update of a deployment until the Application of th
 The stub MUST fail an update when a sync operation of the Application finishes failed or in error after the update began.
 
 The stub MUST NOT fail an update for a sync operation that finished before the update began.
-
-> [!NOTE]
-> That operation is the previous update's, which Argo CD replaces when it notices the new parameters.
 
 The stub MUST fail an update when the Application is not Synced and Healthy within the wait limit.
 

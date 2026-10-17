@@ -35,7 +35,7 @@ Waves are in [object names](../reference/tamanu-deployment-objects.md#rendered-o
 
 ## 5. Resolve
 
-Once the cause is fixed the Application retries on its own, up to 5 times at growing intervals ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#application)).
+Once the cause is fixed the Application retries on its own, a bounded number of times at growing intervals ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#application)). The limit is in `pulumi/tamanu/on-k8s/src/argo/application.ts`.
 Run the update again to have the stub wait on it ([change a deployment's config](../sops/change-deployment-config.md)) **[dev-OTS]**.
 
 ## 6. Escalate

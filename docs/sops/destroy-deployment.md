@@ -12,7 +12,7 @@ Tamanu CD does it when a pull request closes, when its deploy box is unticked, o
 It checks the `auto-deploy` ConfigMap belongs to the branch, runs `pulumi destroy` and removes the stack, then always deletes the SubnamespaceAnchor, and forgets the stack if the destroy failed.
 
 Destroying the stub deletes the Application, and the Application's finalizer deletes everything it created before the namespace goes ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#application)).
-The anchor delete removes the namespace and anything left in it ([K8SNSP](../spec/kubernetes/namespaces.md#deployment-namespaces)).
+The anchor delete removes the namespace and anything left in it ([K8SNSP](../spec/kubernetes/namespaces.md#deployment-namespaces), [HNC](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md#delete-a-subnamespace)).
 
 ## By hand
 

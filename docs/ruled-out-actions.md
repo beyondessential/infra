@@ -36,7 +36,7 @@ These destroy backups, volumes or secrets, or overwrite a live database, and can
 - **Changing config so that Argo CD prunes a database.** Lowering `facilities`, renaming or removing entries of `facilityNames`, or changing `namespace` on a long-lived deployment.
   The Application prunes whatever the render no longer produces, which includes the removed facility's `Cluster` ([K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#application)).
 - **Destroying a long-lived deployment or its namespace.** Deleting its SubnamespaceAnchor in `tamanu-super`, `kubectl delete namespace`, `pulumi destroy`, `pulumi stack rm --force`, `scripts/tamanuStacks.fish --destroy --yes`, or removing the Application's finalizer.
-  Deleting the anchor deletes the namespace and every object in it ([K8SNSP](spec/kubernetes/namespaces.md#deployment-namespaces)).
+  Deleting the anchor deletes the namespace and every object in it ([K8SNSP](spec/kubernetes/namespaces.md#deployment-namespaces), [HNC](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md#delete-a-subnamespace)).
   The same actions on a disposable deployment are [dev-OTS](#consequential-but-recoverable-dev-ots), see [destroy a deployment](sops/destroy-deployment.md).
 - **Destroying a cluster** (a `pulumi destroy` of a `k8s-core` or `k8s-essentials` stack, or deleting the EKS cluster).
 - **Creating, rotating, recreating or deleting secrets.** `tamanu-crypto`, `config-secrets-<server>`, `<server>-db-app`, `<server>-db-superuser`, `<server>-raw-db`, `<server>-reporting-db`, the Secrets copied from `tamanu-system`, and any API key or credential.

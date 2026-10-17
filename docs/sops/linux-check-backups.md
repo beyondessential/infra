@@ -9,8 +9,8 @@ Backups themselves are scheduled and retained by Canopy; this checks that the ho
 1. The definitions are present: `ls -l /etc/bestool/backups`. Expect `tamanu-postgres.toml`, `postgres-config.toml`, `tamanu-config.toml`, `caddy-config.toml`, and `tamanu-secrets.toml` everywhere except a clone ([definitions](../spec/linux/backups.md#backup-definitions)).
 2. The daemon runs: `systemctl status bestool-alertd` and `journalctl -u bestool-alertd --since "1 day ago"`. It registers each definition with Canopy and runs the backups. **[diagnose, sensitive-data]**
 3. PostgreSQL is resolvable by name for the backup: `pg_lsclusters` shows exactly one online `main` ([LNXDB](../spec/linux/database.md#version-and-layout)).
-4. Storage for the snapshot: the data must be on btrfs for a snapshot backup, otherwise the backup falls back to `pg_basebackup` and needs free space about the size of the cluster ([PPB](../spec/postgres-physical-backup.md#strategy)). `findmnt /var/lib/postgresql`, `df -h`.
-5. Leaked snapshots: a hard reboot mid-backup can leave snapshot subvolumes behind, and the next run removes them first ([PPB](../spec/postgres-physical-backup.md#reliability)). `sudo btrfs subvolume list /` shows them.
+4. Storage for the snapshot: the data must be on btrfs for a snapshot backup, otherwise the backup falls back to `pg_basebackup` and needs free space about the size of the cluster ([bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-postgresql-method)). `findmnt /var/lib/postgresql`, `df -h`.
+5. Leaked snapshots: a hard reboot mid-backup can leave snapshot subvolumes behind, and the next run removes them first ([bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#the-postgresql-method)). `sudo btrfs subvolume list /` shows them.
 
 ## In Canopy
 

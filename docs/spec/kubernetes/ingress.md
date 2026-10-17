@@ -8,6 +8,8 @@ id: K8SING
 
 | term | meaning |
 |---|---|
+| Envoy Gateway | The controller that implements the Gateway API with Envoy proxy pods ([Envoy Gateway](https://gateway.envoyproxy.io/)). |
+| external-dns | The controller that writes DNS records for Kubernetes resources ([external-dns](https://kubernetes-sigs.github.io/external-dns/latest/)). |
 | NLB | An AWS Network Load Balancer ([Network Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html)). |
 | PROXY protocol | The header a load balancer prepends to a TCP connection to convey the client address ([PROXY protocol specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)). |
 | IngressClass | The Kubernetes resource that binds Ingress resources to a controller ([Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class)). |
@@ -22,14 +24,9 @@ id: K8SING
 
 An NLB MUST front the Envoy Gateway proxy pods, handling TCP 443 and UDP 443.
 
-The NLB MUST forward UDP 443 so that clients can reach the Gateway over HTTP/3.
-
 ## Ingress classes
 
 An IngressClass named `tailscale`, backed by the Tailscale operator, MUST exist.
-
-> [!NOTE]
-> The class serves internal tailnet access.
 
 ## Gateway
 
@@ -49,9 +46,7 @@ A TLS certificate MUST be provisioned by cert-manager, using the `letsencrypt` C
 
 ## DNS
 
-external-dns MUST manage the DNS records for all ingress traffic.
-
-external-dns MUST watch the `gateway-httproute` source.
+external-dns MUST manage the DNS records of the hostnames of HTTPRoutes.
 
 The Route 53 hosted zones that external-dns manages MUST be an explicit list.
 
@@ -59,21 +54,13 @@ The permission external-dns holds to change records MUST be limited to the zones
 
 For a hostname at a zone apex, external-dns MUST create a Route 53 ALIAS record pointing at the NLB.
 
-> [!NOTE]
-> A CNAME is not valid at a zone apex.
-
 ## Envoy proxy
 
 The Envoy proxy pods MUST be scheduled on nodes with `bes.node.purpose=ingress`.
 
 The Envoy proxy pods MUST NOT place more than one replica in the same availability zone.
 
-HTTP/3 MUST be enabled on the Gateway.
-
 The Gateway MUST NOT use the PROXY protocol.
-
-> [!NOTE]
-> The PROXY protocol cannot be combined with HTTP/3 on a listener, and HTTP/3 takes precedence.
 
 Backends MUST receive the original client IP of requests from IPv6 clients.
 
@@ -86,12 +73,10 @@ The Gateway MUST reject a request whose body exceeds 50 MiB.
 
 A route MUST specify a request timeout.
 
-> [!NOTE]
-> A route that does not specify one would be left on the default timeout of the Gateway.
-
 ## Client certificates
 
-[tamanu-meta](../overview.md#tamanu-meta) clients authenticate by presenting a self-signed TLS client certificate.
+How [tamanu-meta](../overview.md#tamanu-meta) authenticates a client by its certificate is specified by Canopy in [DTR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/device-trust.md#authentication).
+Which header carries the certificate to the backend, and which headers the backend ignores, is documented in [Canopy public API authentication](https://github.com/beyondessential/canopy/blob/main/README.md#public-api-authentication).
 
 For a listener serving tamanu-meta, the Gateway MUST request a client certificate during the TLS handshake.
 
@@ -99,16 +84,8 @@ For a listener serving tamanu-meta, the Gateway MUST accept the connection wheth
 
 The Gateway MUST NOT verify a presented client certificate against a trust anchor.
 
-The Gateway MUST NOT require a certificate authority to be configured in order to request a client certificate.
-
-> [!NOTE]
-> The backend performs authentication, by pinning the subject public key of the certificate.
-
 The Gateway MUST forward a presented client certificate to the backend in the `x-forwarded-client-cert` header, carrying the full certificate.
 
 The Gateway MUST overwrite any `x-forwarded-client-cert` header that a client supplies.
 
 The Gateway MUST remove the `mtls-certificate` and `ssl-client-cert` headers from requests to tamanu-meta.
-
-> [!NOTE]
-> A backend that trusts either of those headers then only ever sees a value set by the proxy that terminated the TLS connection of the client.

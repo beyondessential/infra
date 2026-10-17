@@ -13,7 +13,7 @@ Tuning, scheduling and the resource requests of the archiving sidecar are define
 |---|---|
 | cluster | A CloudNativePG `Cluster` resource, a PostgreSQL primary with its replicas ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). Within this spec the word never means a Kubernetes cluster. |
 | object store | A Barman Cloud plugin `ObjectStore` resource, which holds the destination, credentials method, compression and retention policy that a cluster archives under ([Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/)). |
-| scheduled backup | A CloudNativePG `ScheduledBackup` resource, which takes base backups on a cron schedule. The schedule is a six-field expression whose first field is seconds, so `0 0 2 * * *` is 02:00:00 every day ([CloudNativePG backup](https://cloudnative-pg.io/documentation/current/backup/)). |
+| scheduled backup | A CloudNativePG `ScheduledBackup` resource, which takes base backups on a cron schedule ([CloudNativePG backup](https://cloudnative-pg.io/documentation/current/backup/)). |
 | WAL archiving | PostgreSQL's copying of each completed write-ahead log segment to storage outside the server ([PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html)). |
 | base backup | A file-level copy of the data directory of a cluster, from which WAL replay starts ([PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html)). |
 | recovery window | The period back from the present within which a cluster can be restored to any moment; the retention policy of an object store sets it ([Barman Cloud plugin retention policies](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/)). |
@@ -33,10 +33,6 @@ The server name MUST be the name of the cluster.
 
 The object store of a cluster MUST be named `<cluster>-object-store` and MUST live in the namespace of the cluster.
 
-An object store SHOULD serve one cluster only.
-
-An object store SHOULD compress WAL and base backup data with gzip.
-
 The archive of a cluster MUST be written to the [backup bucket](../overview.md#backup-bucket) at the location that [Object layout](#object-layout) gives.
 
 ## Base backups
@@ -46,12 +42,6 @@ A cluster that archives MUST have a scheduled backup named `<cluster>-scheduled`
 The scheduled backup MUST take base backups through the Barman Cloud plugin.
 
 The scheduled backup MUST take a base backup every day.
-
-The scheduled backup SHOULD take its base backup at 02:00.
-
-The scheduled backup SHOULD take a base backup when it is created, without waiting for the first scheduled time.
-
-A backup resource that the scheduled backup creates SHOULD be owned by the scheduled backup.
 
 ## Recovery window
 
@@ -105,25 +95,11 @@ The backup role of a Kubernetes cluster MUST be assumable from a service account
 > [!NOTE]
 > The operator creates the service account of a cluster in the namespace of the deployment that owns it, named for the cluster, so the trust cannot name one namespace or one account.
 
-A backup role MUST be granted the actions in the following table on its backup bucket and on every object in it.
+A backup role MUST be granted on its backup bucket and on every object in it the actions that the Barman Cloud plugin needs to list the archive, read objects, write objects, abort multipart uploads and delete an object without naming a version.
 
-| action | use |
-|---|---|
-| `s3:ListBucket` | List the archive. |
-| `s3:GetBucketLocation` | Resolve the region of the bucket. |
-| `s3:GetObject` | Read an object. |
-| `s3:GetObjectAttributes` | Read the attributes of an object. |
-| `s3:GetObjectTorrent` | Read an object as a torrent. |
-| `s3:PutObject` | Write an object. |
-| `s3:ListBucketMultipartUploads` | List the multipart uploads in progress. |
-| `s3:ListMultipartUploadParts` | List the parts of a multipart upload. |
-| `s3:AbortMultipartUpload` | Abort a multipart upload. |
-| `s3:DeleteObject` | Delete an object without naming a version. |
-
-A backup role MUST NOT be granted any action outside the table.
+A backup role MUST NOT be granted any action that deletes a version of an object, or that changes the versioning, lifecycle rules, policy or object retention of the bucket.
 
 > [!NOTE]
-> The table omits every action that deletes a version, or that changes the versioning, lifecycle rules, policy or object retention of the bucket.
 > Credentials taken from a pod therefore cannot remove anything permanently.
 
 The backup role of a Kubernetes cluster MUST grant access to no bucket other than the backup bucket of that Kubernetes cluster.
@@ -144,7 +120,7 @@ The deployment name MUST be the value that the following table gives for the own
 
 | owner of the cluster | deployment name |
 |---|---|
-| Tamanu deployment | The stack name of the deployment in lower case, with each run of characters other than letters, digits and hyphens replaced by one hyphen, and cut to at most 56 characters with leading and trailing hyphens removed. |
+| Tamanu deployment | The normalised stack name of the deployment, as [K8SNSP](namespaces.md#deployment-namespaces) defines it. |
 | Canopy meta database | `tamanu-meta-` followed by the stack name. |
 | pollen database | `pollen-` followed by the stack name. |
 

@@ -32,8 +32,6 @@ The requirements on namespaces and roles apply to every cluster that hosts [Tama
 
 Once bootstrapped, a cluster MUST run the Tailscale operator with its API server proxy enabled.
 
-The API server proxy MUST present each caller to the API server as the caller's tailnet identity, carrying the Kubernetes groups that the tailnet policy assigns to that caller.
-
 A caller MUST NOT need a Kubernetes credential beyond its tailnet identity.
 
 The tailnet hostname of the API server proxy MUST be `k8s-operator-` followed by the name of the cluster.
@@ -58,7 +56,7 @@ The operator MUST authenticate to the Tailscale API with an OAuth client.
 
 The operator SHOULD authenticate by exchanging an OIDC token that the cluster's issuer mints, and SHOULD NOT hold a stored client secret.
 
-The OAuth client SHOULD carry the scopes `devices:core:write`, `auth_keys:write` and `services:write`, and no others.
+The OAuth client SHOULD carry only the scopes that the [Tailscale Kubernetes operator documentation](https://tailscale.com/kb/1236/kubernetes-operator) requires of it.
 
 The device of the operator, and the device of each proxy it creates, MUST carry tags that the tailnet policy defines.
 
@@ -116,8 +114,6 @@ A stack that references a deployment namespace it did not create MUST leave the 
 
 A deployment namespace that was created as a subnamespace MUST be deleted by deleting its anchor.
 
-Deleting the anchor of a deployment namespace MUST delete the namespace and every object in it.
-
 ## Hierarchy controller
 
 A cluster that has a super namespace MUST run HNC.
@@ -135,10 +131,6 @@ The admission webhooks of HNC MUST run as at least two replicas, no two of which
 ## Role propagation
 
 A binding whose scope is the subtree of the super namespace MUST be created once, in the super namespace, and propagated to its descendants.
-
-A new deployment namespace MUST receive every propagated binding without further action.
-
-A change to a propagated binding in the super namespace MUST reach every deployment namespace.
 
 ## Access groups
 
@@ -192,7 +184,7 @@ The bounds in the following table hold for every version of a role.
 | `data-engineer` | Reading from a database through the cluster. | MUST NOT change any object. MAY open a port-forward or an exec session to a pod. |
 | `tamanu-engineer` | Investigating a Tamanu deployment and applying small fixes. | MAY read most objects of a deployment, edit its ConfigMaps and Secrets, delete its pods, and update or patch its Deployments and StatefulSets. MUST NOT create or delete a workload. |
 | `tamanu-engineer-cluster` | Cluster-wide read access that `tamanu-engineer` needs. | MUST be read-only. |
-| `tamanu-deploy` | Creating and changing the objects of a Tamanu deployment in its namespace. | MUST be bound only in the namespaces of deployments. MUST NOT hold `escalate` or `bind`. |
+| `tamanu-deploy` | Creating and changing the objects of a Tamanu deployment in its namespace. | MUST be bound only in the namespaces of deployments. |
 | `tamanu-deploy-cluster` | The cluster-scoped permissions that a deployment needs. | Limited to patching namespaces and managing VolumeSnapshotContents, as [Deployer limits](#deployer-limits) states. |
 | `tamanu-deploy-system` | Letting the deployer read the shared configuration. | MUST be bound only in `tamanu-system`. MUST be read-only. |
 | `tamanu-gha-dbt-build` | Letting the data build job reach a database. | MUST NOT change any object. |
@@ -219,11 +211,6 @@ The deployer SHOULD be able to create, change and delete only the VolumeSnapshot
 The deployer MUST NOT change the objects of `tamanu-system`.
 
 The deployer MUST NOT hold the verbs `escalate` or `bind`.
-
-> [!NOTE]
-> The deployer can create Roles and RoleBindings in deployment namespaces, because deployments declare roles for their own jobs.
-> The API server refuses a Role or RoleBinding that grants more than its author holds, and that refusal keeps the deployer from widening its own access.
-> Granting the verbs that bypass the refusal removes the limit.
 
 The deployer MUST be able to create and release the claims of a workload, as [K8SVOL](volumes.md#provisioning-access) requires.
 
