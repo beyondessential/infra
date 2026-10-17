@@ -4,7 +4,8 @@ id: K8SPGC
 
 # PostgreSQL clusters
 
-The requirements in this spec apply to every CloudNativePG cluster that the shared Kubernetes PostgreSQL component creates.
+The requirements in this spec apply to every CloudNativePG cluster that serves an application, whether a Tamanu deployment, Canopy or pollen.
+The ephemeral clusters of [pgsnap](pgsnap.md) are outside this spec.
 Memory-derived parameters follow the [pgtune](https://github.com/le0pard/pgtune) algorithm for a Linux OLTP workload on SSD storage, except where a requirement below differs.
 
 ## Borrowed terms
@@ -30,10 +31,7 @@ A host-level or node-level memory figure MUST NOT be used as a basis.
 
 A change to the memory request MUST change every memory-derived parameter, except where a floor or cap in this spec applies.
 
-Tuning MUST NOT set a parameter below the value PostgreSQL uses by default.
-
-> [!NOTE]
-> The tuning basis can be small enough for a pgtune ratio to fall under the stock default, and the stock default is then used.
+Tuning MUST NOT set a memory-derived parameter below the value PostgreSQL uses by default.
 
 ## Memory parameters
 
@@ -48,22 +46,18 @@ A cluster MUST set each parameter in the following table to the value given for 
 | `wal_buffers` | Three percent of `shared_buffers`, at least 32kB and at most 16MB, rounded up to 16MB where the computed value is between 14MB and 16MB. |
 | `autovacuum_work_mem` | 2GB where `maintenance_work_mem` is 2GB or more, otherwise PostgreSQL's default of tracking `maintenance_work_mem`. |
 
-> [!NOTE]
-> The 8 in the `work_mem` divisor accounts for the worker processes a backend may recruit.
-
 ## Storage-derived limits
+
+A cluster MUST set each parameter in the following table to the value given for it.
 
 | parameter | value |
 |---|---|
 | `temp_file_limit` | A quarter of the volume size of the cluster. |
 | `max_slot_wal_keep_size` | Thirty percent of the volume size of the cluster, at least 1GB. |
 
-> [!NOTE]
-> `temp_file_limit` stops a single query that spills temporary files from filling the volume.
-> Replication slots retain WAL without bound by default, so without `max_slot_wal_keep_size` a stranded or long-lagging standby fills the volume of the primary.
-> A standby that falls further behind than the limit is re-cloned.
-
 ## Workload parameters
+
+A cluster MUST set each parameter in the following table to the value given for it.
 
 | parameter | value |
 |---|---|
@@ -72,18 +66,9 @@ A cluster MUST set each parameter in the following table to the value given for 
 | `jit` | `off` |
 | `wal_compression` | `lz4` |
 
-> [!NOTE]
-> Cluster volumes are SSD-class network block storage, where a seek costs little more than a sequential read and there is queue depth to exploit.
-> JIT compilation causes CPU spikes and slow planning on the simple OLTP queries these clusters serve.
-> `lz4` costs less CPU than `pglz`.
-
 ## Connection hygiene
 
 A backend MUST notice within ten seconds that its client has disconnected, including while it waits on a lock, and MUST abort its query.
-
-> [!NOTE]
-> A client that gives up on a blocked query otherwise leaves its backend waiting and holding a connection slot.
-> Behind a connection pooler, which replaces the closed server connection at once, such backends accumulate until the cluster runs out of slots.
 
 A backend that waits on a lock for longer than the deadlock timeout MUST log the wait.
 
@@ -95,7 +80,7 @@ A cluster that opts out of its disruption budgets MUST let every node hosting it
 
 A cluster MUST be able to opt into the [critical database pool](../overview.md#critical-database-pool).
 
-A cluster that opts into the critical database pool MUST run its instances only on that pool, each on its own node.
+A cluster that opts into the critical database pool MUST run its instances only on that pool, each on its own node, by tolerating and requiring the pool as [K8SNOD](nodes.md#database-pools) gives.
 
 A cluster MUST be able to opt into on-demand placement.
 
@@ -118,12 +103,7 @@ A parameter MUST NOT be derived from a CPU count.
 
 > [!NOTE]
 > Instance pods request a fraction of a core and share nodes with unrelated workloads, so no CPU figure available to a cluster describes what it can use.
-> CloudNativePG sets `max_worker_processes` itself.
 
 A cluster MUST NOT enable huge pages unless its nodes preallocate them and its instance pods request them as a pod resource.
 
 A cluster MUST NOT select the `io_uring` I/O method.
-
-> [!NOTE]
-> The default seccomp profile of the container runtime denies the `io_uring` system calls.
-> Enabling the method would require instance pods to give up that profile.

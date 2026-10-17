@@ -13,6 +13,7 @@ export interface CrossStackGhaOidc {
   url: Output<string>;
 }
 
+// spec: CTLS#managed-zones
 export interface CrossStackZone {
   id: Output<string>;
   name: Output<string>;

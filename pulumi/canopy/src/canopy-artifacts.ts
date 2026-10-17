@@ -16,6 +16,7 @@ type Env = { name: string; value: Input<string> }[];
 //
 // The bucket is in the same account as the IRSA roles, so there is no role to
 // assume and CANOPY_ARTIFACT_ROLE_ARN stays unset.
+// spec: K8SCNP#artifact-store
 export const artifactStoreEnv: Env = canopyInfra
   ? [
       { name: 'CANOPY_ARTIFACT_BUCKET', value: canopyInfra.get<string>('canopyArtifactBucket') },

@@ -1,4 +1,5 @@
 ---
+# spec: LNXSRV#resource-classes
 - name: Enable systemd accounting
   become: true
   loop:

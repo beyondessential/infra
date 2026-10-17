@@ -3,6 +3,7 @@
 # see https://www.infradead.org/~mchehab/kernel_docs/networking/ip-sysctl.html#proc-sys-net-ipv6-variables
 
 # https://ably.com/blog/optimizing-global-message-transit-latency-a-journey-through-tcp-configuration
+# spec: LNXSRV#network-tuning
 - name: Disable TCP slow start after idle
   become: true
   ansible.posix.sysctl:

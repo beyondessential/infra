@@ -28,6 +28,7 @@ jobs:
       - run: npm test
         working-directory: pulumi
 
+  # spec: GRD#build-and-tests
   policies:
     runs-on: ubuntu-slim
     steps:

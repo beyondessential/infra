@@ -1,4 +1,5 @@
 ---
+# spec: LNXDB#roles-and-credentials
 - name: Create postgres user '{{ postgres_username }}'
   become: true
   become_user: postgres

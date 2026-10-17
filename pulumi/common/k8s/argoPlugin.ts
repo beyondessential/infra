@@ -73,7 +73,7 @@ export function argoPlugin({
   const tmp = `cmp-tmp-${name}`;
   const configVolume = `cmp-config-${name}`;
 
-  // spec: TRO#plugins
+  // spec: K8STRO#plugins
   const configMap = new k8s.core.v1.ConfigMap(`argo-plugin-${name}`, {
     metadata: { namespace },
     data: { [CONFIG_FILE]: config },
@@ -103,7 +103,7 @@ export function argoPlugin({
             {
               name,
               image,
-              // spec: TRO#plugins
+              // spec: K8STRO#plugins
               // A tag that moves is otherwise served from whatever the node last pulled.
               imagePullPolicy: 'Always',
               command: ['/var/run/argocd/argocd-cmp-server'],

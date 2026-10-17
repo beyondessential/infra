@@ -26,6 +26,7 @@ const namespace = new k8s.core.v1.Namespace('argocd-system', { metadata: { name:
 // library, so a script that searches or lowercases the phase fails with an error for
 // any cluster that is not healthy, and Argo then cannot compute the application's
 // health at all.
+// spec: K8STDR#database-health
 const CNPG_CLUSTER_HEALTH = `
 local hs = {}
 local status = obj.status
@@ -75,6 +76,7 @@ const release = new k8s.helm.v3.Release(
       dex: { enabled: false },
       notifications: { enabled: false },
       configs: {
+        // spec: K8SNSP#argo-cd-access
         cm: {
           // Annotation tracking keeps Argo's bookkeeping off labels, which
           // applications may already use for their own selectors.

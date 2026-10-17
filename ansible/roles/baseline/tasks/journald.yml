@@ -8,6 +8,7 @@
     group: systemd-journal
     mode: "2755"
 
+# spec: LNXSRV#logging
 - name: Configure journald for persistent storage
   become: true
   ansible.builtin.lineinfile:

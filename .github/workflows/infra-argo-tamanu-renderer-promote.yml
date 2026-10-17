@@ -1,7 +1,7 @@
 name: infra-argo-tamanu-renderer promote
 
 # Moves a renderer channel tag to a build that already exists, then makes each cluster's Argo CD
-# render the Applications on that channel with it. docs/spec/tamanu/renderer-rollout.md says what
+# render the Applications on that channel with it. docs/spec/kubernetes/tamanu/renderer-rollout.md says what
 # this must do. Canary is promoted by the renderer's CD on every build from main; stable is
 # promoted by running this by hand with the commit to promote.
 #
@@ -45,7 +45,7 @@ on:
 
 # One promotion at a time: both channels are served by the same repo server on each cluster, so
 # promotions that overlap would restart it under each other.
-# spec: TRO#promotion
+# spec: K8STRO#promotion
 concurrency:
   group: renderer-promotion
   cancel-in-progress: false
@@ -83,7 +83,7 @@ jobs:
             fi
           done
           # The clusters a promotion applies to: by default, every one that runs Tamanu deployments.
-          # spec: TRO#promotion
+          # spec: K8STRO#promotion
           echo "clusters=$(jq -cn --arg c "$CLUSTERS" '$c | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   retag:

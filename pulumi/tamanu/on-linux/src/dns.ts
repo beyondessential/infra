@@ -8,6 +8,7 @@ import { zoneId } from './config.ts';
 export function applyDNS(records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>>) {
   for (const [name, record] of records) {
     // all([zoneId, output(record.name), output(record.type)]).apply(([zone, fqdn, type]) => {
+    // spec: LNXAWS#dns-records
     new aws.route53.Record(
       name,
       {

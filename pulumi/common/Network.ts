@@ -207,6 +207,7 @@ export class Network extends ComponentResource {
     { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
     const name = `${this.name}-nat-${zone}`;
+    // spec: CORE#network
     const tags = {
       Name: name,
       Purpose: 'nat',
@@ -267,6 +268,7 @@ export class Network extends ComponentResource {
       { parent: routes },
     );
 
+    // spec: CORE#egress
     const ipv4 = !!ipv4Block && new Eip(name, { tags }, { parent: subnet });
     const nat = ipv4
       ? new NatGateway(
@@ -330,6 +332,7 @@ export class Network extends ComponentResource {
     { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
     const name = `${this.name}-workload${index}-${zone}`;
+    // spec: CORE#network
     const tags = {
       Name: name,
       Purpose: 'workload',
@@ -392,6 +395,7 @@ export class Network extends ComponentResource {
 
     const nat = this.nats.find((nat) => nat.zone === zone)?.nat;
 
+    // spec: CORE#egress
     nat &&
       new Route(
         `${name}-out4`,
@@ -440,6 +444,7 @@ export class Network extends ComponentResource {
     { ipv4Block, ipv6Block }: { ipv4Block?: string; ipv6Block?: Output<string> },
   ): SubnetBlock {
     const name = `${this.name}-pubworkload${index}-${zone}`;
+    // spec: CORE#network
     const tags = {
       Name: name,
       Purpose: 'workload',

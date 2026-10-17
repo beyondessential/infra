@@ -274,6 +274,7 @@ if test $mode = preview -o $mode = up
             exit 1
         end
     end
+    # spec: GRD#application-to-stacks
     echo '== building policy pack'
     npm --prefix $pulumi_root/policies run build >$logs/policies.log 2>&1
     or begin

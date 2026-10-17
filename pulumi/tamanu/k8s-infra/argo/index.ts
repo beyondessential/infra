@@ -48,18 +48,23 @@ const plugins = CHANNELS.map((channel) =>
 );
 
 // Applications are limited to the render repository and to Tamanu deployment
-// namespaces. `tamanu-meta-*` hold the version and meta servers and are not
+// namespaces. `tamanu-meta-*` hold the version and meta servers, and
+// `tamanu-super`, `tamanu-system` and `tamanu-seed` are shared; none of them are
 // deployed this way. No cluster-scoped kind is allowed.
 new k8s.apiextensions.CustomResource('argo-project-tamanu', {
   apiVersion: 'argoproj.io/v1alpha1',
   kind: 'AppProject',
   metadata: { name: 'tamanu', namespace: namespaceName },
   spec: {
+    // spec: K8SNSP#argo-cd-access
     description: 'Tamanu deployments rendered by infra-argo-tamanu-renderer',
     sourceRepos: [RENDER_REPO],
     destinations: [
       { server: 'https://kubernetes.default.svc', namespace: 'tamanu-*' },
       { server: '*', namespace: '!tamanu-meta-*' },
+      { server: '*', namespace: '!tamanu-super' },
+      { server: '*', namespace: '!tamanu-system' },
+      { server: '*', namespace: '!tamanu-seed' },
     ],
     clusterResourceWhitelist: [],
   },
@@ -87,7 +92,7 @@ new k8s.rbac.v1.RoleBinding('argo-tamanu-deploy', {
 // A promotion restarts the repo server, so that it serves the channel's new image, and then
 // refreshes the Applications rendered by that channel. Through the same Tailscale proxy as
 // Tamanu CD, under a group of its own, it can do those two things and nothing else.
-// spec: TRO#access
+// spec: K8STRO#access
 const promoteRole = new k8s.rbac.v1.Role('argo-renderer-promote', {
   metadata: { namespace: namespaceName },
   rules: [

@@ -12,6 +12,7 @@
   when: bestool_installed_version is not defined
   ansible.builtin.include_tasks: version.yml
 
+# spec: LNXTLS#certificate-endpoint
 - name: Decide whether Caddy asks alertd for certificates
   ansible.builtin.set_fact:
     alertd_serves_certificates: "{{ bestool_installed_version is defined and bestool_installed_version is version('2.2.0', '>=') }}"

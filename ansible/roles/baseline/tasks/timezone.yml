@@ -1,4 +1,5 @@
 ---
+# spec: LNXSRV#time-and-names
 - name: Set timezone
   become: true
   community.general.timezone:

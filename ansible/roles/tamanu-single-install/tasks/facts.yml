@@ -29,6 +29,7 @@
 # 1.21.0 is the first release where the tamanu alert checks are built
 # into bestool itself; alertd no longer loads YAML alert definitions,
 # so this role deploys it without any on-disk alert config.
+# spec: LNXANS#versions
 - name: Require bestool >= 1.21.0
   ansible.builtin.assert:
     that:
@@ -78,6 +79,7 @@
 
 # Only compare when both sides are v-prefixed semver. SHA-pinned versions and
 # fresh installs (empty previous) are skipped.
+# spec: LNXANS#versions
 - name: Forbid tamanu_version downgrade
   when:
     - not (tamanu_allow_downgrade | default(false) | bool)

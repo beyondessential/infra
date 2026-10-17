@@ -3,6 +3,7 @@
 # `reporting`/`raw` roles (below) plus the grants Tamanu needs to provision its own
 # `tamanu_reporting`/`tamanu_raw` roles at startup (TAM-6862). The legacy pair is
 # superseded once a server runs that Tamanu — kept only for old servers/rollbacks.
+# spec: LNXDB#roles-and-credentials
 - name: Add reporting database users
   loop:
     - reporting

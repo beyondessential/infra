@@ -133,6 +133,7 @@ impl Config {
 		let c = &p.config;
 		let stack = normalise_stack(&p.stack);
 
+		// spec: K8SNSP#deployment-namespaces
 		let namespace = c
 			.namespace
 			.clone()
@@ -395,6 +396,7 @@ enum Server {
 	Facility,
 }
 
+// spec: K8STDR#replicas
 const MIN: ReplicaConfig = ReplicaConfig {
 	api: 0,
 	db: 2,

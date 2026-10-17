@@ -17,6 +17,7 @@ import {
 // and security groups are owned by downstream stacks (k8s-core). Ignoring
 // them at the provider level keeps core from treating them as drift and
 // stripping them on every `pulumi up`.
+// spec: CORE#network
 const networkAws = new awsClassic.Provider('core-network-aws', {
   region,
   ignoreTags: {
@@ -30,6 +31,8 @@ const logGroup = new awsClassic.cloudwatch.LogGroup('core-network-flow-logs', {
   tags,
 });
 
+// spec: CORE#network
+// spec: CORE#egress
 const $network = accountId.apply((id) => {
   const ipv4Cidr = v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;
 

@@ -4,6 +4,7 @@ import { namespace } from '../superns.ts';
 // Minimal role for GHA dbt-build: can only port-forward to pods.
 // Note: K8s RBAC cannot restrict portforward to a specific port (e.g. 5432);
 // that restriction is enforced by the absence of any other permissions.
+// spec: K8SNSP#roles
 const role = new k8s.rbac.v1.ClusterRole('tamanu-gha-dbt-build', {
   metadata: {
     name: 'tamanu-gha-dbt-build',

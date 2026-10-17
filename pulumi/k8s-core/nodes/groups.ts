@@ -24,7 +24,7 @@ import { upToMonthly, onlyBurst, instancesSizedAtLeast } from '../../common/k8s/
 // Tailscale and the API down with it) by bumping the relevant bootstrap
 // nodegroup's desired in the AWS console.
 //
-// See docs/kubernetes.md §3.1.
+// See docs/sops/bootstrap-k8s-cluster.md and docs/sops/scale-bootstrap-nodegroups.md.
 const bootstrap = cfg.getBoolean('bootstrap') ?? false;
 
 // Two AZs is the minimum that satisfies the `minDomains: 2` topology spread

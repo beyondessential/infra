@@ -1,6 +1,7 @@
 import * as aws from '@pulumi/aws';
 import { getStack } from '@pulumi/pulumi';
 
+// spec: CORE#alerts
 export const topic = new aws.sns.Topic('workload-alerts', {
   displayName: `[${getStack()}] Workload Alerts`,
 });

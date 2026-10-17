@@ -80,6 +80,7 @@ pub struct PgArgs {
 impl PgArgs {
 	/// The arguments the Tamanu servers give their cluster: storage, memory,
 	/// placement, backups and cost labels all from the stack config.
+	// spec: K8SBAK#deployment-parameters
 	pub fn from_config(
 		cfg: &Config,
 		name: &str,
@@ -225,6 +226,7 @@ fn labels(name: &str) -> Value {
 	})
 }
 
+// spec: K8STDR#placement
 fn affinity(args: &PgArgs, opts: &PgOptions, cluster_name: &str) -> Result<Value> {
 	let mut node_selector = json!({
 		"bes.node.purpose": "workload",
@@ -375,6 +377,8 @@ fn cluster(
 	);
 	spec.insert("affinity".into(), affinity(args, opts, cluster_name)?);
 	if let Some(arn) = role_arn {
+		// spec: K8SBAK#backup-role
+		// spec: K8SBAK#wal-archiving
 		spec.insert(
 			"serviceAccountTemplate".into(),
 			json!({ "metadata": { "annotations": { "eks.amazonaws.com/role-arn": arn } } }),
@@ -406,6 +410,8 @@ fn cluster(
 	}))
 }
 
+// spec: K8SBAK#recovery-window
+// spec: K8SBAK#object-layout
 fn object_store(
 	cfg: &Config,
 	store_name: &str,
@@ -434,6 +440,7 @@ fn object_store(
 	})
 }
 
+// spec: K8SBAK#base-backups
 fn scheduled_backup(cfg: &Config, cluster_name: &str) -> Value {
 	json!({
 		"apiVersion": "postgresql.cnpg.io/v1",

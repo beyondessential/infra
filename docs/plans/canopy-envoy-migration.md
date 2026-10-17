@@ -144,8 +144,7 @@ behaviour, and dropping it later is a one-field change if that cost shows up.
 still differs: nginx passes it upstream as `ssl-client-cert` (via
 `auth-tls-pass-certificate-to-upstream`), Envoy as `x-forwarded-client-cert`, already
 configured on the Gateway's ClientTrafficPolicy as `SanitizeSet` with
-`certDetailsToAdd: ['Cert']`. `docs/tamanu-on-k8s.md` records that Envoy Gateway was
-chosen for exactly this, and canopy necessarily reads `ssl-client-cert` today for the live
+`certDetailsToAdd: ['Cert']`. Envoy Gateway was chosen for exactly this, and canopy necessarily reads `ssl-client-cert` today for the live
 nginx path.
 
 This is the whole reason the staging path exists. Client certificates are how the fleet

@@ -1,6 +1,7 @@
 import { all, interpolate } from '@pulumi/pulumi';
 
 import { instances, patientPortalDomain, redirects, retired, type Server } from './config.ts';
+// spec: LNXAWS#instances-and-external-servers
 import { failIfIncorrectAccount } from '../../../common/coreRef.ts';
 failIfIncorrectAccount();
 
@@ -14,8 +15,6 @@ if (redirects.length > 0) {
 }
 
 export const backupBucket = live?.backupBucket;
-export const backupReadOnlyUser = live?.backupReadOnlyUser;
-export const backupUsers = live?.backupUsers;
 export const deviceRoleArn = live?.deviceRoleArn;
 export const maintenanceRoleArn = live?.maintenanceRoleArn;
 export const bucketArn = live?.bucketArn;

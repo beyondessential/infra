@@ -3,7 +3,7 @@ name: Tamanu renderer contract
 # What the stub in pulumi/tamanu/on-k8s sends a channel has to be accepted by the renderer that
 # channel serves. Canary's is built from the same change and checked by the renderer's own tests
 # (tests/stub.rs). Stable's is whatever was last promoted, so it is checked here, against the
-# published image. spec: TRO#parameters.
+# published image. spec: K8STRO#parameters.
 
 on:
   push:
@@ -58,7 +58,7 @@ jobs:
         if: steps.stable.outputs.exists == 'true'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
-      # spec: TRO#parameters
+      # spec: K8STRO#parameters
       - name: Render the stable parameters with the stable image
         if: steps.stable.outputs.exists == 'true'
         run: |

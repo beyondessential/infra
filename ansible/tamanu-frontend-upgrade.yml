@@ -11,6 +11,7 @@
           or pass it with -e. TAMANU_VERSION is read from the server's
           /etc/tamanu/env and is not changed by this playbook.
 
+    # spec: LNXANS#upgrades
     - name: Check the inventory was read as an upgrade
       ansible.builtin.assert:
         that: canopy_intent is defined and canopy_intent == 'upgrade'

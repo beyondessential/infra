@@ -12,6 +12,7 @@
   failed_when: false
   when: tailscale_ipv4.rc == 0
 
+# spec: LNXDB#access
 - name: Set postgres listen_addresses
   become: true
   ansible.builtin.lineinfile:
@@ -52,6 +53,7 @@
 
 # Default cipher suites still allow various old cipher suites; we can
 # reasonably exclude everything before the TLS 1.2 era.
+# spec: LNXDB#access
 - name: Restrict cipher suites for postgres TLS connections
   become: true
   ansible.builtin.lineinfile:
@@ -63,6 +65,7 @@
 # lineinfile (postgresql.conf) settings are machine-local
 # postgresql_alter_system settings are saved in backups
 
+# spec: LNXDB#access
 - name: Raise password hashing iterations
   become: true
   become_user: postgres
@@ -75,6 +78,7 @@
 # back to pg_basebackup over the replication protocol when a volume snapshot
 # isn't possible. The stock Debian pg_hba carries both lines; assert them so the
 # backup (and its fallback) work even on a trimmed pg_hba.
+# spec: LNXDB#access
 - name: Ensure local peer auth for the postgres superuser
   become: true
   community.postgresql.postgresql_pg_hba:

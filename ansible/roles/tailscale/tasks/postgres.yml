@@ -38,6 +38,7 @@
     - tailscale_name is defined
     - "'prod' in tailscale_name"
 
+# spec: LNXDB#access
 - name: Allow tailscale access to postgres
   loop:
     - 100.64.0.0/10

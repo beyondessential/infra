@@ -15,6 +15,7 @@ import { namespace } from './namespace.ts';
 // before. The exported SA names are undefined in that case so callers skip
 // `serviceAccountName`.
 
+// spec: K8SCNP#workloads
 // `secretVerbs` empty means the identity is for AWS alone and gets no Role at
 // all, rather than a Role granting nothing.
 function serviceAccount(name: string, roleArn: Output<string>, secretVerbs: string[]): void {

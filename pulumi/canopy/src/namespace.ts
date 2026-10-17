@@ -4,6 +4,7 @@ import { normalizedStack } from './config.ts';
 
 const name = cfg.get('namespace') ?? normalizedStack;
 
+// spec: K8SCNP#instance
 const ns = new k8s.core.v1.Namespace(
   normalizedStack,
   {

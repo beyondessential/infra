@@ -46,6 +46,7 @@ fn kubectl(name: &str, args: &[&str], namespace: &str) -> Container {
 	}
 }
 
+// spec: K8STSD#waking
 pub fn wake(cfg: &Config) -> Result<Vec<Value>> {
 	if !cfg.has_ttl {
 		return Ok(vec![]);

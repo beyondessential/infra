@@ -32,6 +32,7 @@
 # dash filters out the legacy `tamanu-facility` singleton (no dash after
 # `facility`) and tamanu-frontend (no kind segment), so the frontend keeps
 # serving traffic while we migrate.
+# spec: LNXANS#upgrades
 - name: Stop the API/tasks/sync/fhir services
   become: true
   ansible.builtin.command: /usr/bin/bestool tamanu stop tamanu-{{ tamanu_server_type }}-
@@ -87,6 +88,7 @@
 
 - name: Reload caddy
   ansible.builtin.meta: flush_handlers
+# spec: LNXANS#upgrades
 - name: Roll the frontend service
   when: tamanu_server_type == 'facility'
   become: true
@@ -125,6 +127,7 @@
 
 - name: Reload caddy
   ansible.builtin.meta: flush_handlers
+# spec: LNXANS#upgrades
 - name: Drop reporting schema if present
   become: true
   become_user: postgres
@@ -134,6 +137,7 @@
     state: absent
     cascade_drop: true
 
+# spec: LNXANS#upgrades
 - name: Migrate the database
   ansible.builtin.command: tamanu-run {{ tamanu_version }} migrate
   changed_when: true
@@ -150,6 +154,7 @@
 # Bring everything that should be Up back up. Idempotent: services already
 # running are left alone, so this also doubles as recovery for a partial
 # previous run that left things stopped.
+# spec: LNXANS#upgrades
 - name: Start the standard services
   become: true
   ansible.builtin.command: /usr/bin/bestool tamanu start {{ bestool_unmatched_arg }}

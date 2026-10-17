@@ -10,6 +10,7 @@
   changed_when: false
   check_mode: false
 
+# spec: LNXANS#frontend-upgrades
 - name: Assert TAMANU_VERSION is set
   ansible.builtin.assert:
     that: (deployed_tamanu_version_cmd.stdout | trim) != ''

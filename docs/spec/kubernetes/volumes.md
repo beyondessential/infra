@@ -4,6 +4,8 @@ id: K8SVOL
 
 # Persistent volumes
 
+The requirements in this spec apply to the persistent volumes that a cluster offers to its workloads, and to the [shared filesystem](../overview.md#shared-filesystem) among them.
+
 ## Borrowed terms
 
 | term | meaning |
@@ -13,13 +15,11 @@ id: K8SVOL
 
 ## Multi-node access
 
+A shared filesystem is a filesystem whose volumes several nodes mount read-write at once.
+
 Where a cluster hosts a workload that holds content on disk and either serves it from more than one replica or hands it between separate processes, the cluster MUST offer a storage class whose volumes mount read-write from several nodes at once.
 
-> [!NOTE]
-> Block storage binds a volume to one node.
-> The second consumer then fails to schedule, or reads an empty directory while the first holds the only copy.
-
-A [shared filesystem](../overview.md#shared-filesystem) volume MUST be mountable from every availability zone in which the cluster places workloads.
+A shared filesystem volume MUST be mountable from every availability zone in which the cluster places workloads.
 
 > [!NOTE]
 > Pods are scheduled against capacity and not against storage locality, so a volume reachable from only some zones turns a spot capacity shift into a mount failure.
@@ -36,6 +36,10 @@ The filesystem MUST enforce that confinement.
 A new claim MUST start empty, including where an earlier claim had the same namespace and name.
 
 Releasing a claim MUST leave the content of every other claim untouched.
+
+## Snapshots
+
+A cluster that runs [pgsnap](pgsnap.md) MUST offer a VolumeSnapshotClass named `ebs-retain` whose snapshots outlive the volume they were taken from.
 
 ## Reclaim
 
@@ -64,6 +68,3 @@ Whatever identity brings a workload up MUST be able to create and release that w
 Shared filesystem content MUST be encrypted at rest.
 
 A shared filesystem MUST accept connections only from the nodes of its own cluster.
-
-> [!NOTE]
-> The wire protocol authenticates nothing itself, so reachability is the whole of the access control, and a VPC holds more than one cluster's worth of hosts.

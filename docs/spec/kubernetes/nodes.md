@@ -12,7 +12,6 @@ The requirements in this spec apply to every worker node of a cluster, whichever
 |---|---|
 | consolidation | Karpenter's removal or replacement of underutilised nodes by draining their pods onto other nodes ([Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/)). |
 | drift | The state of a node that no longer matches its configured specification ([Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/)). |
-| PodDisruptionBudget | A limit on how many pods of a workload may be voluntarily disrupted at once ([Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)). |
 | taint | A node attribute that repels pods which do not tolerate it ([Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)). |
 | IMDSv2 | The session-oriented method of the EC2 instance metadata service ([Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)). |
 | spot interruption warning | The notice EC2 gives before it reclaims a Spot instance ([Spot Instance interruptions](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html)). |
@@ -21,6 +20,8 @@ The requirements in this spec apply to every worker node of a cluster, whichever
 
 ## Node identity
 
+A [node pool](../overview.md#node-pool) is a set of nodes provisioned from one shared configuration, whether by a managed nodegroup or by a Karpenter NodePool.
+
 Every node MUST carry each of the labels in the following table, with a value permitted for it.
 
 | label | values | meaning |
@@ -28,7 +29,7 @@ Every node MUST carry each of the labels in the following table, with a value pe
 | `bes.node.purpose` | `workload`, `ingress`, `system`, `tailscale-exit` | What the node is for. Drives workload affinity and cost attribution. |
 | `bes.node.schedule` | `spot`, `ondemand` | The EC2 capacity type backing the instance. |
 | `bes.node.arch` | `arm64`, `amd64` | The CPU architecture of the node. |
-| `bes.node.group` | the name of a [node pool](../overview.md#node-pool) | The node pool that created the node. Used for cost attribution and filtering. |
+| `bes.node.group` | the name of a node pool | The node pool that created the node. Used for cost attribution and filtering. |
 
 The value of `bes.node.schedule` MUST be the capacity type that backs the node's instance.
 
@@ -40,9 +41,9 @@ A node on spot capacity MUST carry the taint `spotInstance=true:PreferNoSchedule
 
 ## Placement
 
-A node with purpose `ingress` MUST be placed in a subnet tagged `Purpose: nat`.
+A node with purpose `ingress` MUST be placed in a subnet of the [core](../overview.md#core) tagged `Purpose: nat`, as specified in [CORE](../core.md#network).
 
-A node with purpose `workload`, `system` or `tailscale-exit` MUST be placed in a subnet tagged `Purpose: workload`.
+A node with purpose `workload`, `system` or `tailscale-exit` MUST be placed in a subnet of the core tagged `Purpose: workload`, as specified in [CORE](../core.md#network).
 
 Traffic that an [exit node](../overview.md#exit-node) forwards MUST egress through the NAT gateways, so that its source addresses are the Elastic IPs of those gateways.
 
@@ -57,9 +58,9 @@ The subnets and security groups an autoscaler uses to provision a cluster's node
 
 ## Instance metadata
 
-A node MUST require IMDSv2 (`httpTokens=required`).
+A node MUST require IMDSv2.
 
-The instance metadata endpoint of a node MUST be reachable over IPv6 (`httpProtocolIpv6=enabled`).
+The instance metadata endpoint of a node MUST be reachable over IPv6.
 
 > [!NOTE]
 > Pods running in IPv6-only contexts reach the endpoint this way.
@@ -75,6 +76,8 @@ Where a spot system pool also exists, the replicas of the autoscaler controller 
 > Spreading the replicas keeps a simultaneous loss of spot nodes from taking down all of them.
 
 ## Workload capacity
+
+A [general workload pool](../overview.md#general-workload-pool) is a node pool with purpose `workload` that is not a dedicated pool.
 
 A workload SHOULD run on spot capacity wherever it tolerates the spot taint.
 
@@ -107,9 +110,6 @@ A general on-demand workload pool MUST offer a single node shape.
 
 An account hosting a cluster MUST have the EC2 Spot service-linked role, `AWSServiceRoleForEC2Spot` ([Service-linked role for Spot Instance requests](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/service-linked-roles-spot-instance-requests.html)).
 
-> [!NOTE]
-> Without the role, spot launches fail silently: capacity falls back to on-demand pools while the provisioner retries indefinitely.
-
 Spot instance type selection SHOULD exclude types whose current spot price exceeds their on-demand price.
 
 Spot instance type selection for workload and ingress pools MUST exclude types whose interruption frequency in the cluster's region exceeds 10%, and types with no published interruption frequency.
@@ -123,8 +123,6 @@ On a spot interruption warning for a node, the cluster MUST cordon the node, dra
 
 On an EC2 instance health event for a node, such as a scheduled hardware retirement, the cluster MUST replace the node.
 
-Consolidation, drift replacement and spot interruption MUST respect PodDisruptionBudgets.
-
 Underutilised nodes SHOULD be consolidated.
 
 A spot workload pool MUST NOT consolidate an underutilised node until the pods on it have been unchanged for 30 minutes.
@@ -135,7 +133,13 @@ A spot workload pool MUST NOT consolidate an underutilised node until the pods o
 
 ## Database pools
 
-The database replica pool and the critical database pool are [dedicated pools](../overview.md#dedicated-pool).
+A [dedicated pool](../overview.md#dedicated-pool) is a node pool that only workloads which explicitly opt in can use.
+
+A dedicated pool MUST taint its nodes with `bes.node.group=<pool name>:NoSchedule`.
+
+A workload opts into a dedicated pool by tolerating that taint and requiring the label `bes.node.group=<pool name>`.
+
+The database replica pool and the critical database pool are dedicated pools, named `db-replica` and `db-critical`.
 
 The database replica pool MUST offer memory-dense node shapes, sized so that one database replica fills a node.
 
@@ -169,7 +173,11 @@ The nodes of the critical database pool MUST be attributable as critical databas
 
 ## Exit node
 
+An exit node is a Tailscale node that forwards the internet traffic of connected clients, run as a workload in the cluster.
+
 An exit node MUST run on a node with no workload other than daemonsets.
+
+A node with purpose `tailscale-exit` MUST carry the taint `bes.node.purpose=tailscale-exit:NoSchedule`.
 
 An exit node MUST run on on-demand capacity.
 

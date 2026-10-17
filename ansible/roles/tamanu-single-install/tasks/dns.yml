@@ -6,6 +6,7 @@
     regexp: "^\\S+\\s+{{ tamanu_central_hostname }}\\s*$"
     state: absent
 
+# spec: LNXANS#central-server-address
 - name: Custom IP record for tamanu central in /etc/hosts
   become: true
   when: tamanu_central_ip is truthy

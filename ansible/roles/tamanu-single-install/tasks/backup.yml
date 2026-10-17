@@ -49,6 +49,7 @@
     group: root
     mode: "0755"
 
+# spec: LNXBAK#backup-definitions
 - name: Install tamanu-config backup definition
   become: true
   ansible.builtin.copy:
@@ -60,6 +61,7 @@
   notify:
     - Reload bestool-alertd
 
+# spec: LNXBAK#backup-definitions
 - name: Install tamanu-secrets backup definition
   become: true
   ansible.builtin.copy:
@@ -92,6 +94,7 @@
 
 # A restore of this host's database refuses until a key snapshot exists to pair
 # with, so take one as the def lands. In-process: the daemon has yet to reload.
+# spec: LNXBAK#key-pairing
 - name: Take the first key backup
   become: true
   ansible.builtin.command: /usr/bin/bestool canopy backup --type tamanu-secrets --no-daemon

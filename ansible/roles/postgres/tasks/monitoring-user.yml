@@ -9,6 +9,7 @@
 # its peer auth have no dependency on any application database, so provisioning
 # them here means they exist on every Postgres host regardless of tamanu, and a
 # `--skip-tags app` run still fully sets up alertd's DB access.
+# spec: LNXDB#roles-and-credentials
 - name: Create read-only monitoring role for bestool-alertd
   become: true
   become_user: postgres
@@ -48,6 +49,7 @@
 # monitoring role for the `map=alertd` peer rule above. No module manages
 # pg_ident, so edit the file directly. The former tamanu_monitoring role used
 # the same map name, so this line retargets it in place.
+# spec: LNXDB#roles-and-credentials
 - name: Map root to the alertd monitoring role (pg_ident)
   become: true
   ansible.builtin.lineinfile:

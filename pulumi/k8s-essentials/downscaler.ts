@@ -9,6 +9,7 @@ import { KUBE_DOWNSCALER_VERSION } from './versions.ts';
 // We run with the default policy of "always up unless annotated", so untagged
 // namespaces are unaffected.
 
+// spec: K8STSD#cluster-downscaler
 const namespace = new k8s.core.v1.Namespace('kube-downscaler', {
   metadata: {
     name: 'kube-downscaler',

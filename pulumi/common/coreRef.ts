@@ -21,6 +21,7 @@ export const zone = $core.zone();
 export const alertsTopicArn = $core.alertsTopicArn();
 export { region } from './awsAccount.ts';
 
+// spec: CORE#account
 export function failIfIncorrectAccount(): void {
   all([$core.get('accountId'), accountId]).apply(([coreAccountId, accountId]) => {
     if (coreAccountId !== accountId) {

@@ -12,6 +12,7 @@ import { backups } from '../../common/k8s/coreRef.ts';
 import { namespace } from './namespace.ts';
 import './ca.ts';
 
+// spec: K8SCNP#database
 export const dbReady = runPostgres({
   namespace,
   name: 'meta',
@@ -20,6 +21,7 @@ export const dbReady = runPostgres({
   timezone: 'Etc/UTC',
   // WAL archiving plus nightly base backups to S3, which retention actually
   // applies to and which recover to a point in time rather than to Monday.
+  // spec: K8SBAK#recovery-window
   barmanBackup: {
     bucket: backups.bucket,
     deployName: normalizedStack,

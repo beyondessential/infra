@@ -72,7 +72,7 @@
       db_name: tamanu
       tags: [app, tamanu]
 
-    # Tagged outside [app] so the alert daemon still deploys on partial runs that
+    # Tagged outside [app] so the bestool daemon still deploys on partial runs that
     # skip the app role. Runs after tamanu-single-install so its
     # tamanu-single-common dependency has set up /etc/bestool first.
     - role: bestool

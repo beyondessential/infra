@@ -11,14 +11,14 @@ import {
   unknownConfigKeys,
 } from './tamanuRenderer.ts';
 
-// spec: TRO#channels
+// spec: K8STRO#channels
 test('a deployment that names no channel is rendered by stable', () => {
   assert.equal(parseChannel(undefined), 'stable');
   assert.equal(parseChannel(null), 'stable');
   assert.equal(parseChannel(''), 'stable');
 });
 
-// spec: TRO#channels
+// spec: K8STRO#channels
 test('the string "null", which is how CD writes an unset option, means stable', () => {
   assert.equal(parseChannel('null'), 'stable');
 });
@@ -28,27 +28,27 @@ test('each channel is accepted by name', () => {
   assert.equal(parseChannel('canary'), 'canary');
 });
 
-// spec: TRO#channels
+// spec: K8STRO#channels
 test('any other channel is refused with the accepted ones listed', () => {
   for (const wrong of ['canry', 'Canary', 'main', 'sha-abc1234']) {
     assert.throws(() => parseChannel(wrong), /use stable or canary/);
   }
 });
 
-// spec: TRO#plugins
+// spec: K8STRO#plugins
 test('stable registers under the name existing Applications refer to', () => {
   assert.equal(pluginBaseName('stable'), 'infra-argo-tamanu-renderer');
   assert.equal(pluginName('stable'), 'infra-argo-tamanu-renderer-v1');
 });
 
-// spec: TRO#plugins
+// spec: K8STRO#plugins
 test('every channel has a plugin name of its own', () => {
   const names = CHANNELS.map(pluginName);
   assert.equal(new Set(names).size, CHANNELS.length);
   assert.equal(pluginName('canary'), 'infra-argo-tamanu-renderer-canary-v1');
 });
 
-// spec: TRO#channels
+// spec: K8STRO#channels
 test('a sidecar runs the image at its channel tag', () => {
   assert.equal(rendererImage('stable'), 'ghcr.io/beyondessential/infra-argo-tamanu-renderer:stable');
   assert.equal(rendererImage('canary'), 'ghcr.io/beyondessential/infra-argo-tamanu-renderer:canary');
@@ -69,7 +69,7 @@ test('the promotion script names the same plugins', () => {
   }
 });
 
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 test('stable ignores a stack config key it does not know and canary rejects it', () => {
   assert.equal(unknownConfigKeys('stable'), 'ignore');
   assert.equal(unknownConfigKeys('canary'), 'reject');

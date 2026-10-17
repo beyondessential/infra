@@ -11,6 +11,7 @@ const tags = nativeTags(
   billingTags,
 );
 
+// spec: LNXTLS#dns-01-users
 const acmeDnsReadPolicy = new awsNative.iam.ManagedPolicy(
   'acme-dns-route53-policy',
   {
@@ -71,6 +72,7 @@ export const acmeDnsPersistPolicy = instances
     );
   });
 
+// spec: LNXTLS#dns-01-users
 export const acmeDnsUsers = instances
   .filter((inst) => inst.dnsUser || (inst.external && inst.externalIps && inst.externalIps.length > 0))
   .map((inst) => {

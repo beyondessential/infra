@@ -7,6 +7,7 @@
   ansible.builtin.package_facts:
     manager: apt
 
+# spec: LNXSRV#logging
 - name: Drop noisy programs from rsyslog output (e.g. /var/log/syslog)
   when: "'rsyslog' in ansible_facts.packages"
   become: true

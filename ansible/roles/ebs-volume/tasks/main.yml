@@ -4,6 +4,7 @@
   ansible.builtin.apt:
     name: nvme-cli
 
+# spec: LNXSRV#storage-layout
 - name: Locate the attached EBS volume {{ volume }}
   become: true
   ansible.builtin.shell: |

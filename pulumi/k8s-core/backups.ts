@@ -5,6 +5,7 @@ import { stackName } from '../common/coreRef.ts';
 import { interpolate } from '@pulumi/pulumi';
 import { AWS_S3_DELETE_ACTIONS } from '../constants/external.ts';
 
+// spec: K8SBAK#backup-bucket
 export const bucket = new awsClassic.s3.BucketV2('s3-backups', {
   bucket: `bes-k8s-${stackName}-backups`,
   tags: {
@@ -47,6 +48,7 @@ new awsClassic.s3.BucketLifecycleConfiguration('s3-backups-lifecycle', {
   ],
 });
 
+// spec: K8SBAK#backup-role
 const policy = new awsClassic.iam.Policy(
   's3-backups-policy',
   {

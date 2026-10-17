@@ -236,6 +236,7 @@ export function runPostgres({
               }
             : {}),
         },
+        // spec: K8SBAK#backup-role
         serviceAccountTemplate: {
           metadata: {
             annotations: {
@@ -243,6 +244,7 @@ export function runPostgres({
             },
           },
         },
+        // spec: K8SBAK#wal-archiving
         ...(barmanBackup
           ? {
               plugins: [
@@ -271,6 +273,8 @@ export function runPostgres({
   //
   // Snapshots remain how a cluster is *seeded*: see seedSnapshotName above,
   // which restores from one at bootstrap. That path is unrelated to this.
+  // spec: K8SBAK#recovery-window
+  // spec: K8SBAK#object-layout
   if (barmanBackup) {
     const objectStore = new k8s.apiextensions.CustomResource(
       `${name}-db-object-store`,
@@ -306,6 +310,7 @@ export function runPostgres({
       { parent },
     );
 
+    // spec: K8SBAK#base-backups
     new k8s.apiextensions.CustomResource(
       `${name}-db-scheduled-backup`,
       {

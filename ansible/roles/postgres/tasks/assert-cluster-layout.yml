@@ -34,6 +34,7 @@
       register: pg_lsclusters_main
       changed_when: false
 
+    # spec: LNXDB#version-and-layout
     - name: Assert pg_lsclusters points 'main' at the live data directory
       ansible.builtin.assert:
         that:

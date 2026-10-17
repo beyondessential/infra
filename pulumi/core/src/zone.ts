@@ -10,6 +10,7 @@ let zone: aws.route53.HostedZone | undefined;
 let policy: aws.iam.ManagedPolicy | undefined;
 let canopyDnsRole: aws.iam.Role | undefined;
 let user: aws.iam.User | undefined;
+// spec: CORE#zone
 if (domain) {
   zone = new aws.route53.HostedZone(
     domain,
@@ -70,6 +71,7 @@ if (domain) {
   //
   // Gated on the ref: a stack that has not been pointed at Canopy gets no role,
   // and its zone stays reachable only by the stack's own identities.
+  // spec: CTLS#zone-access
   if (canopyInfra) {
     const canopyDomainsRoleArn = new CrossStack(canopyInfra).get<string>('canopyDomainsRoleArn');
     const tags = nativeTags(configTags, { Purpose: 'canopy-dns', ManagedBy: 'pulumi' });
@@ -115,10 +117,12 @@ if (domain) {
   }
 }
 
+// spec: CORE#outputs
 export const zoneId = zone?.id;
 export const zoneNS = zone?.nameServers;
 export const zoneMgmtPolicy = policy?.policyArn;
 
+// spec: CORE#zone
 const extraZoneResources = extraZones.map(
   (name) =>
     new aws.route53.HostedZone(

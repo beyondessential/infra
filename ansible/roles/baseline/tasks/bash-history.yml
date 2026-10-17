@@ -1,4 +1,5 @@
 ---
+# spec: LNXSRV#logging
 - name: Enable bash history timestamps
   become: true
   ansible.builtin.copy:

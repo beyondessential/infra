@@ -19,7 +19,7 @@ failed=$(
     paste -sd' '
 )
 
-# spec: TRO#promotion
+# spec: K8STRO#promotion
 {
   echo "### Promotion of $channel did not reach: $failed"
   echo
