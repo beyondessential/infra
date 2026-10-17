@@ -32,7 +32,7 @@ A server MUST be an external server where its configuration says so or lists any
 
 An external server MUST NOT have an instance or volumes provisioned for it.
 
-The infrastructure stack MUST refuse to run against an AWS account other than the account of its [core](../overview.md#core).
+The infrastructure stack consumes a [core](../overview.md#core), and refuses to run against another account as [CORE](../core.md#account) requires.
 
 ## Provisioning
 
