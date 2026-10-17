@@ -6,7 +6,7 @@ The code is the authority: `tamanu/on-k8s/renderer/src/` (names in `names.rs`, w
 
 ## Owners
 
-- **The renderer** produces everything in the sync-wave table below, and Argo CD applies it ([TDR](../spec/tamanu/deployment-rollout.md#sync-order)).
+- **The renderer** produces everything in the sync-wave table below, and Argo CD applies it ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#sync-order)).
 - **The stub** (the Pulumi program) creates what cannot be rendered: Secret values, anything that needs the live cluster or clock, and the Application.
 - **CloudNativePG** creates the database pods and the database Secrets and Services.
 - Everything Argo CD applies carries the annotation `argocd.argoproj.io/tracking-id`.
@@ -22,7 +22,7 @@ A wave starts only when the previous one is synced and healthy.
 | 2 | Hook Jobs `central-provisioner` and `facility-N-setup-sync` (Tamanu 2.60.0 or later). |
 | 3 | Deployments, Services, Gateways, HTTPRoutes, ClientTrafficPolicies and PodDisruptionBudgets (below). Service `central-db-tailscale` (with `dbExpose`). Job `central-seed-top-up-<hash>` (with `seedSnapshot`, 2.65.0 or later). Deployment `synthetic-tests` (with `syntheticTests`). CronJob `wake` (with `ttlHours`). Gateway `redirects` and its routes (with `redirects`). |
 
-The hook Jobs are deleted and created again on every sync, so read a failed one's logs before anything triggers another sync ([TDR](../spec/tamanu/deployment-rollout.md#hook-jobs)).
+The hook Jobs are deleted and created again on every sync, so read a failed one's logs before anything triggers another sync ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)).
 
 ## Workloads (wave 3)
 
@@ -38,7 +38,7 @@ The hook Jobs are deleted and created again on every sync, so read a failed one'
 
 Gateways are named `central`, `facility-N` and `patient-portal`, each with a `<name>-traffic-policy`.
 The central API has the routes `central-api`, `central-api-legacy`, `central-api-import` and `central-api-import-legacy`, and the frontend route is `central-frontend`.
-Update strategy and replica rules are in [TDR](../spec/tamanu/deployment-rollout.md#update-strategy).
+Update strategy and replica rules are in [K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#update-strategy).
 
 ## Created by the stub
 
@@ -49,10 +49,10 @@ Update strategy and replica rules are in [TDR](../spec/tamanu/deployment-rollout
 | Secrets `<server>-raw-db`, `<server>-reporting-db` | Passwords of the legacy `raw` and `reporting` roles. Only before Tamanu 2.60.0, which manages its own roles. | |
 | Secrets copied from `tamanu-system` | Shared integration credentials, copied on every update. | Rotate in `tamanu-system`, then update the stack. |
 | `VolumeSnapshot seed-snapshot` and a cluster-scoped `VolumeSnapshotContent` | Clone of the seed snapshot (seeded deployments only). | A namespace delete leaves the content behind, `pulumi destroy` removes it. |
-| ServiceAccount, Role and RoleBinding `tamanu-ttl`, CronJob `ttl-hibernate-*`, Job `ttl-wake-*` | Hibernation and waking (with `ttlHours`). | [TSD](../spec/tamanu/scaledown.md#hibernation) |
+| ServiceAccount, Role and RoleBinding `tamanu-ttl`, CronJob `ttl-hibernate-*`, Job `ttl-wake-*` | Hibernation and waking (with `ttlHours`). | [K8STSD](../spec/kubernetes/tamanu/scaledown.md#hibernation) |
 | Application `tamanu-<stack>` in `argocd-system` | Carries the render parameters. | |
 
-The Application ignores the replica count and the hibernation annotations of Deployments, the `cnpg.io/hibernation` annotation of database clusters, and the contents of the three config ConfigMaps ([TDR](../spec/tamanu/deployment-rollout.md#ignored-differences)).
+The Application ignores the replica count and the hibernation annotations of Deployments, the `cnpg.io/hibernation` annotation of database clusters, and the contents of the three config ConfigMaps ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#ignored-differences)).
 
 ## Created by CloudNativePG
 

@@ -78,7 +78,7 @@ pub fn run_web(cfg: &Config, args: WebArgs<'_>) -> Result<Vec<Value>> {
 					..Default::default()
 				}],
 				// Wait up to 60 seconds for the server to start...
-				// spec: TDR#server-health
+				// spec: K8STDR#server-health
 				startup_probe: Some(Probe {
 					period_seconds: Some(1),
 					failure_threshold: Some(60),

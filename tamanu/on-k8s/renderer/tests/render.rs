@@ -68,7 +68,7 @@ fn redirect_targets_with_a_path_are_rejected() {
 	assert!(err.contains("must not have a path"), "{err}");
 }
 
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 #[test]
 fn unknown_config_keys_are_rejected_when_asked() {
 	let p = params(json!({ "notAKey": 1, "alsoNot": "x" }));
@@ -84,7 +84,7 @@ fn unknown_config_keys_are_rejected_when_asked() {
 	);
 }
 
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 #[test]
 fn unknown_config_keys_are_ignored_when_asked() {
 	let ignoring = Options {

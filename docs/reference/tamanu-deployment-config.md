@@ -16,7 +16,7 @@ Numbers, booleans and lists are parsed from their string form.
 ## Rules that apply to every key
 
 - The stub passes every key in the namespace to the renderer, except the stub-only keys below.
-- The renderer refuses a key it does not know on the `canary` channel and ignores it, logging `ignoring unknown config key(s)`, on `stable` ([TRO](../spec/tamanu/renderer-rollout.md#parameters)).
+- The renderer refuses a key it does not know on the `canary` channel and ignores it, logging `ignoring unknown config key(s)`, on `stable` ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#parameters)).
 - The stub refuses a secret value in the namespace, because the Application, and so the value, is readable in the cluster.
 - `ipAllowList` is accepted and does nothing.
 
@@ -31,7 +31,7 @@ Numbers, booleans and lists are parsed from their string form.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `appVersion` | read from the image | Tamanu version. When unset the stub reads the version label of `beyondessential/tamanu-central:<imageTag>` and fails if there is none or it is not valid semver. It gates [version-dependent steps](../spec/tamanu/deployment-rollout.md#version-gated-steps) and is never inferred from the tag. |
+| `appVersion` | read from the image | Tamanu version. When unset the stub reads the version label of `beyondessential/tamanu-central:<imageTag>` and fails if there is none or it is not valid semver. It gates [version-dependent steps](../spec/kubernetes/tamanu/deployment-rollout.md#version-gated-steps) and is never inferred from the tag. |
 | `namespace` | `tamanu-<stack>` | Namespace name. The stack name is lowercased, runs of other characters become `-`, trailing `-` is dropped, it is cut to 56 characters and edge `-` is dropped. An explicit value is used as given. Refused if it is exactly `system` or `super`. |
 | `externalNamespace` | `false` | Stub only. `true` means the namespace already exists (Tamanu CD creates it through a SubnamespaceAnchor) and the stack only references it. `false` makes the stack create it and parent it to `tamanu-super`. |
 | `domainBase` | see meaning | Base for every address. Default `<stack>.cd.tamanu.app`, or `<stack without -demo>.demos.tamanu.app` on a demo cluster (one whose DNS zones include `demos.tamanu.app` or whose name contains `demo`). The stack part is cut when it is 64 characters or more. Addresses are `central.<base>`, `<facility host>.<base>`, `portal.<base>`. |
@@ -48,12 +48,12 @@ Numbers, booleans and lists are parsed from their string form.
 | Key | Default | Meaning |
 |---|---|---|
 | `architecture` | `arm64` | `arm64` or `amd64`, anything else is refused. Applies to server pods. Database pods are always arm64. |
-| `capacity` | `spot` | `spot` or `ondemand`, anything else is refused. `ondemand` keeps servers and databases off spot nodes ([TDR](../spec/tamanu/deployment-rollout.md#placement)). |
+| `capacity` | `spot` | `spot` or `ondemand`, anything else is refused. `ondemand` keeps servers and databases off spot nodes ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#placement)). |
 
 ## Replicas
 
 The per-server key wins over the generic one.
-A value outside its range is raised or lowered to the range, never refused ([TDR](../spec/tamanu/deployment-rollout.md#replicas)).
+A value outside its range is raised or lowered to the range, never refused ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#replicas)).
 
 | Keys | Default | Range |
 |---|---|---|
@@ -98,7 +98,7 @@ Tamanu CD writes all of these from its own options, so a pull request deployment
 
 | Key | Default | Meaning |
 |---|---|---|
-| `ttlHours` | `0` | Hours the deployment stays up after its latest update, a non-negative whole number or the stub refuses it. `0` means never hibernated. Also decides whether a `wake` CronJob is rendered ([TSD](../spec/tamanu/scaledown.md#time-to-live)). |
+| `ttlHours` | `0` | Hours the deployment stays up after its latest update, a non-negative whole number or the stub refuses it. `0` means never hibernated. Also decides whether a `wake` CronJob is rendered ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#time-to-live)). |
 | `deployment` | `engineering` | Stub only. Cost-allocation label `billing.deployment`. |
 | `billing:stage` | `test` | Cost-allocation label `billing.stage`. |
 
@@ -111,8 +111,8 @@ Set `argoNamespace` in every stack that uses it, because the cluster stacks read
 |---|---|---|
 | `argoNamespace` | `argocd-system` | Where Argo CD runs. |
 | `argoProject` | `tamanu` | Argo CD project of the Application. |
-| `argoWaitMinutes` | `30` | How long an update waits for the Application to be Synced and Healthy before failing ([TDR](../spec/tamanu/deployment-rollout.md#update-completion)). |
-| `rendererChannel` | `stable` | `stable` or `canary`. Unset or `null` is `stable`, and any other value is refused ([TRO](../spec/tamanu/renderer-rollout.md#channels)). Tamanu CD sets it from its `channel` option. |
+| `argoWaitMinutes` | `30` | How long an update waits for the Application to be Synced and Healthy before failing ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#update-completion)). |
+| `rendererChannel` | `stable` | `stable` or `canary`. Unset or `null` is `stable`, and any other value is refused ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#channels)). Tamanu CD sets it from its `channel` option. |
 | `rendererRepo` | `https://github.com/beyondessential/infra` | Source repository of the Application. The project accepts only this one ([K8SNSP](../spec/kubernetes/namespaces.md#argo-cd-access)). |
 | `rendererPath` | `.` | Path in that repository. The render does not depend on it. |
 

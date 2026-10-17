@@ -16,7 +16,7 @@ infra-argo-tamanu-renderer --params params.json --format yaml | less
 
 `infra-argo-tamanu-renderer` is the binary built from `tamanu/on-k8s/renderer`.
 If it is not installed, `cargo run --manifest-path tamanu/on-k8s/renderer/Cargo.toml -- --params params.json --format yaml` runs it from a checkout.
-Check out the commit of the channel the deployment uses, because the render depends on the renderer build ([TRO](../spec/tamanu/renderer-rollout.md#channels)).
+Check out the commit of the channel the deployment uses, because the render depends on the renderer build ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#channels)).
 
 Options of the binary (`tamanu/on-k8s/renderer/src/main.rs`):
 

@@ -2,7 +2,7 @@
 
 Bring up a Tamanu deployment on Kubernetes.
 **[dev-OTS]**: it creates a namespace, databases and public addresses.
-The stub, the renderer and Argo CD do the work, and there is no per-deployment code ([TDR](../spec/tamanu/deployment-rollout.md#application)).
+The stub, the renderer and Argo CD do the work, and there is no per-deployment code ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#application)).
 Read the script or workflow you run before running it.
 
 ## From a pull request or branch (the usual route)
@@ -17,7 +17,7 @@ CD then, in order ([`cd-up.yml`](https://github.com/beyondessential/tamanu/blob/
 4. Runs `pulumi up` from the ops ref, which the `%opsref` option can change.
 
 The options and their defaults are Tamanu CD's, so read them there.
-The result is Argo CD applying the render, and the update fails if the Application is not Synced and Healthy within `argoWaitMinutes` ([TDR](../spec/tamanu/deployment-rollout.md#update-completion)).
+The result is Argo CD applying the render, and the update fails if the Application is not Synced and Healthy within `argoWaitMinutes` ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#update-completion)).
 
 ## By hand (a long-lived deployment)
 

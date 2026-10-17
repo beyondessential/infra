@@ -226,7 +226,7 @@ fn labels(name: &str) -> Value {
 	})
 }
 
-// spec: TDR#placement
+// spec: K8STDR#placement
 fn affinity(args: &PgArgs, opts: &PgOptions, cluster_name: &str) -> Result<Value> {
 	let mut node_selector = json!({
 		"bes.node.purpose": "workload",

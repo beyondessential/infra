@@ -1,7 +1,7 @@
 # Runbook: a database does not come up
 
 A server's CloudNativePG cluster (`central-db`, `facility-N-db`) is not Ready, so wave 0 never completes.
-Argo CD reports a cluster Progressing until its Ready condition is true ([TDR](../spec/tamanu/deployment-rollout.md#database-health)).
+Argo CD reports a cluster Progressing until its Ready condition is true ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#database-health)).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 **Never delete a volume, snapshot or the `Cluster`**: [ruled-out actions](../ruled-out-actions.md#ruled-out-actions-never-suggest).
@@ -26,7 +26,7 @@ Which server's cluster, whether the deployment is hibernated, whether this is it
 | Evidence | Diagnosis | Action |
 |---|---|---|
 | Annotation `cnpg.io/hibernation: "on"` | Hibernated, not broken. | [Down but nothing failed](deployment-down-nothing-failed.md). |
-| Instance pods `Pending` with a scheduling message | Database pods need a node labelled `bes.node.purpose=workload` and `bes.node.arch=arm64`. With `capacity: ondemand` each instance needs its own on-demand node, and with `dbAzColocate` (the default) every instance of a cluster must share one availability zone ([TDR](../spec/tamanu/deployment-rollout.md#placement), `tamanu/on-k8s/renderer/src/postgres.rs`). | Read the scheduling message. A zone or capacity shortage is a cluster matter: escalate. Turning `dbAzColocate` off trades zone-failure tolerance for schedulability: a developer's decision **[dev-OTS]**. |
+| Instance pods `Pending` with a scheduling message | Database pods need a node labelled `bes.node.purpose=workload` and `bes.node.arch=arm64`. With `capacity: ondemand` each instance needs its own on-demand node, and with `dbAzColocate` (the default) every instance of a cluster must share one availability zone ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#placement), `tamanu/on-k8s/renderer/src/postgres.rs`). | Read the scheduling message. A zone or capacity shortage is a cluster matter: escalate. Turning `dbAzColocate` off trades zone-failure tolerance for schedulability: a developer's decision **[dev-OTS]**. |
 | A claim `Pending` | The volume cannot be provisioned or bound. | Escalate. Do not delete the claim. |
 | Pods running, cluster not Ready | An instance is starting, restoring or catching up, or the primary is failing. | Read the pod logs. Give a restore from a seed snapshot time before judging it stuck. |
 | `describe cluster` shows an update the operator refused | The operator rejects a single update that changes both the image and Postgres parameters, and a dependent of a refused cluster waits without end ([K8SPGC](../spec/kubernetes/postgres.md#scheduling-and-disruption)). | Escalate with the event text. |

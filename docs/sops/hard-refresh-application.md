@@ -6,7 +6,7 @@ Use it when a renderer change was promoted but one Application still has the old
 
 **Never on a hibernated deployment.**
 A sync of a hibernated deployment runs its hook Jobs against a database with no pods and fails.
-[Waking it](wake-deployment.md) refreshes it ([TRO](../spec/tamanu/renderer-rollout.md#promotion)).
+[Waking it](wake-deployment.md) refreshes it ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#promotion)).
 
 ```sh
 kubectl -n argocd-system annotate app tamanu-<stack> argocd.argoproj.io/refresh=hard --overwrite

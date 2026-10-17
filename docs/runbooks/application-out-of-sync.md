@@ -20,12 +20,12 @@ Which deployment and which channel: [deployment context](../deployment-context.m
 ## 4. Interpret
 
 The API server and its webhooks fill in default fields that the render leaves unset, and a plain diff reports them as drift without end.
-The stub creates every Application with the server-side diff annotation and the `ServerSideApply` sync option to account for that ([TDR](../spec/tamanu/deployment-rollout.md#application)).
+The stub creates every Application with the server-side diff annotation and the `ServerSideApply` sync option to account for that ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#application)).
 
 | Evidence | Diagnosis | Action |
 |---|---|---|
 | The annotation is missing | An Application created outside the stub, or edited. | Add it back, or update the stack so the stub restores it **[dev-OTS]**. |
-| The annotation is present and a field still differs | A field that something else sets and the Application does not ignore. | Name the field and escalate: ignored differences are in `pulumi/tamanu/on-k8s/src/argo/application.ts` ([TDR](../spec/tamanu/deployment-rollout.md#ignored-differences)). |
+| The annotation is present and a field still differs | A field that something else sets and the Application does not ignore. | Name the field and escalate: ignored differences are in `pulumi/tamanu/on-k8s/src/argo/application.ts` ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#ignored-differences)). |
 
 ## 5. Resolve
 

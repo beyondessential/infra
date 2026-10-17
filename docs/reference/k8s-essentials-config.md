@@ -19,7 +19,7 @@ The authority is the code: `rg 'cfg\.(get|require)' pulumi/k8s-essentials pulumi
 | `nginxEnabled` | `true` | NGINX ingress in `ingress-system`. | `index.ts` |
 | `postgresEnabled` | `true` | CloudNativePG, the Barman Cloud plugin and the image catalogs. | `index.ts` |
 | `hncEnabled` | `true` | HNC CRDs, roles, manager and webhooks. | `index.ts` |
-| `downscalerEnabled` | `true` | py-kube-downscaler ([TSD](../spec/tamanu/scaledown.md#cluster-downscaler)). | `index.ts` |
+| `downscalerEnabled` | `true` | py-kube-downscaler ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#cluster-downscaler)). | `index.ts` |
 | `argoEnabled` | `false` | Argo CD in `argocd-system`, behind a Tailscale Ingress. | `index.ts` |
 | `argoVersion` | the pinned chart | Installs another Argo CD chart version. | `argo/index.ts` |
 | `argoNamespace` | `argocd-system` | Namespace of Argo CD. Each stack reads its own copy, so set it in every stack that uses Argo CD, including `tamanu/k8s-infra`. | `common/k8s/argo.ts` |

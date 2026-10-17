@@ -28,14 +28,14 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Spot Instance Advisor](https://aws.amazon.com/ec2/spot/instance-advisor/) | The published interruption frequency of each instance type. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Service-linked role for Spot Instance requests](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/service-linked-roles-spot-instance-requests.html) | The `AWSServiceRoleForEC2Spot` role. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/) | Consolidation and drift. Used by [K8SNOD](kubernetes/nodes.md). |
-| [Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) | PodDisruptionBudgets. Used by [K8SNOD](kubernetes/nodes.md), [K8SPGC](kubernetes/postgres.md) and [TDR](tamanu/deployment-rollout.md). |
-| [Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) | Taints, tolerations and their effects. Used by [K8SNOD](kubernetes/nodes.md) and [TDR](tamanu/deployment-rollout.md). |
+| [Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) | PodDisruptionBudgets. Used by [K8SNOD](kubernetes/nodes.md), [K8SPGC](kubernetes/postgres.md) and [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
+| [Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) | Taints, tolerations and their effects. Used by [K8SNOD](kubernetes/nodes.md) and [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
 | [Kubernetes garbage collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/) | The kubelet's image garbage collection thresholds. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and [storage classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) | Claims, access modes and storage classes. Used by [K8SVOL](kubernetes/volumes.md) and [GRD](policies/guardrails.md). |
 | [CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/) | The `Cluster` resource, instance pods, switchover and scheduled backups. Used by [K8SPGC](kubernetes/postgres.md), [PGS](pgsnap.md) and [K8SBAK](kubernetes/database-backups.md). |
 | [PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html) | The server parameters that [K8SPGC](kubernetes/postgres.md) sets. |
 | [pgtune](https://github.com/le0pard/pgtune) | The tuning algorithm that [K8SPGC](kubernetes/postgres.md) follows. |
-| [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) | Applications, projects, RBAC, config management plugins, the repo server, hard refresh, sync waves, hooks, health, automated sync, ignored differences and resource actions. Used by [TRO](tamanu/renderer-rollout.md), [TDR](tamanu/deployment-rollout.md), [TSD](tamanu/scaledown.md) and [K8SNSP](kubernetes/namespaces.md). |
+| [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) | Applications, projects, RBAC, config management plugins, the repo server, hard refresh, sync waves, hooks, health, automated sync, ignored differences and resource actions. Used by [K8STRO](kubernetes/tamanu/renderer-rollout.md), [K8STDR](kubernetes/tamanu/deployment-rollout.md), [K8STSD](kubernetes/tamanu/scaledown.md) and [K8SNSP](kubernetes/namespaces.md). |
 | [Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) | VolumeSnapshot and VolumeSnapshotClass. Used by [PGS](pgsnap.md). |
 | [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) and [owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) | Suspended Jobs and owner references. Used by [PGS](pgsnap.md). |
 | [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) | Version syntax and precedence. Used by [PGS](pgsnap.md). |
@@ -51,14 +51,14 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) | Route 53 record-set condition keys. Used by [CTLS](canopy/tls-issuance.md) and [LNXTLS](linux/tls.md). |
 | [Let's Encrypt staging environment](https://letsencrypt.org/docs/staging-environment/) | The untrusted-root staging authority. Used by [CTLS](canopy/tls-issuance.md). |
 | [Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/) and [resource names](https://www.pulumi.com/docs/iac/concepts/resources/names/) | Policy packs, enforcement levels and URNs. Used by [GRD](policies/guardrails.md). |
-| [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) | Deployment strategy and rollout. Used by [GRD](policies/guardrails.md), [TDR](tamanu/deployment-rollout.md) and [TSD](tamanu/scaledown.md). |
+| [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) | Deployment strategy and rollout. Used by [GRD](policies/guardrails.md), [K8STDR](kubernetes/tamanu/deployment-rollout.md) and [K8STSD](kubernetes/tamanu/scaledown.md). |
 | [Amazon EFS access points](https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html) and [EFS CSI driver parameters](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md) | Access points and the storage class parameters of the EFS driver. Used by [GRD](policies/guardrails.md). |
 | [GuardDuty and AWS Organizations](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_organizations.html) | The GuardDuty delegated administrator. Used by [GRD](policies/guardrails.md). |
-| [Kubernetes node affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/) and [topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) | Pod placement. Used by [TDR](tamanu/deployment-rollout.md). |
-| [Kubernetes probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) | Liveness, readiness and startup probes. Used by [TDR](tamanu/deployment-rollout.md). |
-| [Kubernetes CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) | Suspended CronJobs. Used by [TSD](tamanu/scaledown.md). |
-| [CloudNativePG declarative hibernation](https://cloudnative-pg.io/documentation/current/declarative_hibernation/) | Hibernating a database cluster. Used by [TSD](tamanu/scaledown.md). |
-| [py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler) | The downscaler, forced downtime and exclusion. Used by [TSD](tamanu/scaledown.md). |
+| [Kubernetes node affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/) and [topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) | Pod placement. Used by [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
+| [Kubernetes probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) | Liveness, readiness and startup probes. Used by [K8STDR](kubernetes/tamanu/deployment-rollout.md). |
+| [Kubernetes CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) | Suspended CronJobs. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
+| [CloudNativePG declarative hibernation](https://cloudnative-pg.io/documentation/current/declarative_hibernation/) | Hibernating a database cluster. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
+| [py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler) | The downscaler, forced downtime and exclusion. Used by [K8STSD](kubernetes/tamanu/scaledown.md). |
 | [Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/) and [retention](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/) | Object stores and the recovery window. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving and base backups. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [Amazon S3 versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html), [delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html), [lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) and [aborting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) | Versions, delete markers and lifecycle rules. Used by [K8SBAK](kubernetes/database-backups.md). |
@@ -70,20 +70,25 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [cloud-init](https://cloudinit.readthedocs.io/en/latest/) | First-boot user data. Used by [LNXSRV](linux/server.md). |
 | [Work with instance tags in instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) | Instance tags through the metadata service. Used by [LNXSRV](linux/server.md). |
 | [General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html) | The gp3 volume type. Used by [LNXSRV](linux/server.md). |
-| [Tailscale tags](https://tailscale.com/kb/1068/tags), [SSH](https://tailscale.com/kb/1193/tailscale-ssh) and [HTTPS](https://tailscale.com/kb/1153/enabling-https) | Tailnet tags, Tailscale SSH and node certificates. Used by [LNXSRV](linux/server.md) and [LNXAPP](linux/application.md). |
+| [Tailscale tags](https://tailscale.com/kb/1068/tags), [SSH](https://tailscale.com/kb/1193/tailscale-ssh) and [HTTPS](https://tailscale.com/kb/1153/enabling-https) | Tailnet tags, Tailscale SSH and node certificates. Used by [LNXSRV](linux/server.md) and [LNXTLS](linux/tls.md). |
 | [btrfs subvolumes](https://btrfs.readthedocs.io/en/latest/Subvolumes.html) and [quota groups](https://btrfs.readthedocs.io/en/latest/Qgroups.html) | Subvolumes and qgroup limits. Used by [LNXSRV](linux/server.md) and [LNXDB](linux/database.md). |
-| [systemd.slice](https://www.freedesktop.org/software/systemd/man/latest/systemd.slice.html), [systemd.resource-control](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html), [journald.conf](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html), [systemd.unit](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html) and [systemd.socket](https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html) | Slices, resource weights, the journal, template units and socket activation. Used by [LNXSRV](linux/server.md) and [LNXAPP](linux/application.md). |
+| [systemd.slice](https://www.freedesktop.org/software/systemd/man/latest/systemd.slice.html), [systemd.resource-control](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html), [journald.conf](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html) and [systemd.socket](https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html) | Slices, resource weights, the journal, template units and socket activation. Used by [LNXSRV](linux/server.md) and [LNXRUN](linux/runtime.md). |
 | [chrony](https://chrony-project.org/documentation.html), [IP sysctl](https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html), [UFW](https://help.ubuntu.com/community/UFW) and [Munin](https://munin-monitoring.org/) | Clock, TCP tuning, host firewall and metrics. Used by [LNXSRV](linux/server.md). |
 | [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) | Backup plans and vaults. Used by [LNXSRV](linux/server.md) and [LNXBAK](linux/backups.md). |
 | [PostgreSQL clusters](https://www.postgresql.org/docs/current/creating-cluster.html), [pg_hba.conf](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html), [peer authentication](https://www.postgresql.org/docs/current/auth-peer.html), [user name maps](https://www.postgresql.org/docs/current/auth-username-maps.html), [password authentication](https://www.postgresql.org/docs/current/auth-password.html), [ALTER SYSTEM](https://www.postgresql.org/docs/current/sql-altersystem.html), [pg_upgrade](https://www.postgresql.org/docs/current/pgupgrade.html) and [pg_checksums](https://www.postgresql.org/docs/current/app-pgchecksums.html) | Cluster layout, authentication, parameters and upgrade. Used by [LNXDB](linux/database.md). |
-| [podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) and [podman-secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html) | Quadlets and secrets. Used by [LNXAPP](linux/application.md). |
-| [Caddy documentation](https://caddyserver.com/docs/), [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [the tls directive](https://caddyserver.com/docs/caddyfile/directives/tls) | The reverse proxy, snippets and certificate retrieval. Used by [LNXAPP](linux/application.md). |
+| [podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) and [podman-secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html) | Quadlets and secrets. Used by [LNXRUN](linux/runtime.md) and [LNXMSP](linux/msupply.md). |
+| [Caddy documentation](https://caddyserver.com/docs/), [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [the tls directive](https://caddyserver.com/docs/caddyfile/directives/tls) | The reverse proxy, snippets and certificate retrieval. Used by [LNXRUN](linux/runtime.md) and [LNXTLS](linux/tls.md). |
 | [Kopia repositories](https://kopia.io/docs/repositories/), [storage tiers](https://kopia.io/docs/advanced/storage-tiers/) and [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) | The repository, its storage configuration and lock modes. Used by [LNXBAK](linux/backups.md). |
 | [Canopy DOM](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#managed-zones) and [Canopy CRT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md) | How Canopy reads its managed zones, and how it issues and renews certificates. Used by [CTLS](canopy/tls-issuance.md). |
-| [bestool TLS](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md), [bestool TLSD](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificate-delivery.md) and [bestool CHK-CCT](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/caddy-certs.md) | How bestool obtains certificates from Canopy and delivers them to the proxy. Used by [LNXTLS](linux/tls.md). |
+| [bestool TLS](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md) | How bestool obtains certificates from Canopy, serves them to Caddy, and grades them. Used by [LNXTLS](linux/tls.md). |
 | [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md) and [Canopy BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md) | How bestool takes and restores backups, and how Canopy schedules, retains and credentials them. Used by [LNXBAK](linux/backups.md). |
 | [Caddy global options](https://caddyserver.com/docs/caddyfile/options#cert-issuer) and [Caddy certificates on Tailscale](https://tailscale.com/kb/1190/caddy-certificates) | The certificate issuer option and Tailscale-issued certificates. Used by [LNXTLS](linux/tls.md). |
 | [AWS shared config and credentials files](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html), [IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users.html) and [managed and inline policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html) | Credential files, users and policies. Used by [LNXTLS](linux/tls.md). |
+| [Ansible playbooks](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html), [tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html), [check mode](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_checkmode.html), [inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html) and [basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html) | Playbooks, plays, tags, check mode, inventory sources and the control node. Used by [LNXANS](linux/ansible.md). |
+| [Tailscale Services](https://tailscale.com/kb/1552/tailscale-services) and [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) | Named services on the tailnet. Used by [LNXMSP](linux/msupply.md). |
+| [Canopy INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md) | What an inventory contains, reaching a machine and run leases. Used by [LNXANS](linux/ansible.md). |
+| [bestool workload and healthchecks](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/substrate.md), [bestool logs](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/logs.md) and [bestool healthchecks](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/healthchecks.md) | How bestool supervises the Tamanu workload, finds logs and grades health. Used by [LNXRUN](linux/runtime.md) and [LNXANS](linux/ansible.md). |
+| [Tamanu configuration sources](https://github.com/beyondessential/tamanu/blob/main/specs/administration/settings/overview.md#configuration-sources) and [secret encryption](https://github.com/beyondessential/tamanu/blob/main/specs/administration/settings/secret-encryption.md#storage) | Where Tamanu reads its configuration and how it stores secrets. Used by [LNXRUN](linux/runtime.md). |
 
 ## Terminology
 
@@ -115,7 +120,7 @@ Defined in [CTLS](canopy/tls-issuance.md#zone-access).
 ### Stub
 
 The per-deployment program that creates what the renderer cannot render, and the Application that applies the render.
-Defined in [TDR](tamanu/deployment-rollout.md#application).
+Defined in [K8STDR](kubernetes/tamanu/deployment-rollout.md#application).
 
 ### Central server
 
@@ -195,17 +200,17 @@ Defined in [K8SING](kubernetes/ingress.md#client-certificates).
 ### Renderer
 
 The image Argo CD runs as a plugin to turn the parameters of a Tamanu deployment into its Kubernetes objects.
-Defined in [TRO](tamanu/renderer-rollout.md#channels).
+Defined in [K8STRO](kubernetes/tamanu/renderer-rollout.md#channels).
 
 ### Channel
 
 A named stream of renderer builds, `canary` or `stable`, that a Tamanu deployment is rendered by.
-Defined in [TRO](tamanu/renderer-rollout.md#channels).
+Defined in [K8STRO](kubernetes/tamanu/renderer-rollout.md#channels).
 
 ### Promotion
 
 The act of moving a channel tag to a renderer build, with the steps that make deployments on that channel render with it.
-Defined in [TRO](tamanu/renderer-rollout.md#promotion).
+Defined in [K8STRO](kubernetes/tamanu/renderer-rollout.md#promotion).
 
 ### Ephemeral cluster
 
@@ -265,22 +270,22 @@ Defined in [K8SNSP](kubernetes/namespaces.md#access-groups).
 ### Tamanu deployment
 
 The central server, facility servers and patient portal of one namespace, with their databases, applied by one Argo CD Application.
-Defined in [TDR](tamanu/deployment-rollout.md#application).
+Defined in [K8STDR](kubernetes/tamanu/deployment-rollout.md#application).
 
 ### Time to live
 
 The number of hours a deployment stays up after its latest update before it is hibernated.
-Defined in [TSD](tamanu/scaledown.md#time-to-live).
+Defined in [K8STSD](kubernetes/tamanu/scaledown.md#time-to-live).
 
 ### Hibernation
 
 Scaling a deployment's Deployments to zero and hibernating its database clusters, with their volumes kept.
-Defined in [TSD](tamanu/scaledown.md#hibernation).
+Defined in [K8STSD](kubernetes/tamanu/scaledown.md#hibernation).
 
 ### Wake
 
 Reversing the hibernation of a deployment.
-Defined in [TSD](tamanu/scaledown.md#waking).
+Defined in [K8STSD](kubernetes/tamanu/scaledown.md#waking).
 
 ### Split layout
 
@@ -310,7 +315,7 @@ Defined in [LNXDB](linux/database.md#tuning).
 ### Server key
 
 The per-server secret that encrypts the values Tamanu stores as secrets.
-Defined in [LNXAPP](linux/application.md#server-key).
+Defined in [LNXRUN](linux/runtime.md#server-key).
 
 ### Backup definition
 

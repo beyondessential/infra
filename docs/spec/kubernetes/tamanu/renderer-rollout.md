@@ -1,5 +1,5 @@
 ---
-id: TRO
+id: K8STRO
 ---
 
 # Tamanu renderer rollout
@@ -16,9 +16,9 @@ id: TRO
 
 ## Channels
 
-A deployment MUST be rendered by exactly one [channel](../overview.md#channel).
+A deployment MUST be rendered by exactly one [channel](../../overview.md#channel).
 
-The [renderer](../overview.md#renderer) image MUST be published under two channel tags, `canary` and `stable`.
+The [renderer](../../overview.md#renderer) image MUST be published under two channel tags, `canary` and `stable`.
 
 Each channel tag MUST name one build of the renderer at a time.
 
@@ -65,7 +65,7 @@ A `stable` renderer MUST ignore a stack config key it does not know, and MUST re
 
 > [!NOTE]
 > A key the renderer does not know means either that the sender is ahead of the renderer or that the key is mistaken.
-> `stable` lags the senders, so an option added by [Tamanu CD](../overview.md#tamanu-cd) must not stop the deployments on it rendering.
+> `stable` lags the senders, so an option added by [Tamanu CD](../../overview.md#tamanu-cd) must not stop the deployments on it rendering.
 > `canary` is built with the sender, so a key it does not know is a mistake, and rejecting it finds the mistake.
 
 The parameters passed to the renderer of a channel MUST be in the shape that renderer accepts.
@@ -88,7 +88,7 @@ An Application MUST carry its channel in the label `bes.tamanu/renderer-channel`
 
 ## Promotion
 
-A channel tag MUST move only by [promoting](../overview.md#promotion) a renderer image that has already been built and is identified by its commit.
+A channel tag MUST move only by [promoting](../../overview.md#promotion) a renderer image that has already been built and is identified by its commit.
 
 A promotion MUST NOT rebuild the renderer.
 
@@ -116,7 +116,7 @@ A promotion MUST NOT refresh an Application rendered by the other channel.
 > [!NOTE]
 > An Application rendered by the other channel keeps serving its cached render.
 
-A promotion MUST NOT refresh an Application whose database cluster Argo CD reports with the health message `Hibernated`, as [TDR](deployment-rollout.md#database-health) specifies.
+A promotion MUST NOT refresh an Application whose database cluster Argo CD reports with the health message `Hibernated`, as [K8STDR](deployment-rollout.md#database-health) specifies.
 
 > [!NOTE]
 > A sync of a hibernated deployment runs its hook Jobs against a database that has no pods, and the sync fails.

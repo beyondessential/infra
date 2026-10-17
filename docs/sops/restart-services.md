@@ -6,7 +6,7 @@ A runbook that wants one pre-signed must say so.
 
 Know what it interrupts first.
 The task runners, FHIR workers and the facility sync server are updated by recreation, which stops the old pod before starting the new one, so a restart means a gap with none running.
-API servers and web frontends are rolling, so a restart replaces them one at a time ([TDR](../spec/tamanu/deployment-rollout.md#update-strategy)).
+API servers and web frontends are rolling, so a restart replaces them one at a time ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#update-strategy)).
 Deployment names are in [object names](../reference/tamanu-deployment-objects.md).
 
 ## Roll a Deployment

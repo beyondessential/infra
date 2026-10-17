@@ -4,7 +4,7 @@ Change a stack config key and update the deployment, for example to raise `ttlHo
 **[dev-OTS]**: an update changes the live deployment, and a config change can be a ruled-out one ([the pruning case](../ruled-out-actions.md#ruled-out-actions-never-suggest)).
 Read the key in the [config reference](../reference/tamanu-deployment-config.md) first.
 
-Every `pulumi up` also sets a new expiry on a deployment with a time to live and wakes it ([TSD](../spec/tamanu/scaledown.md#time-to-live)).
+Every `pulumi up` also sets a new expiry on a deployment with a time to live and wakes it ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#time-to-live)).
 
 1. Connect `kubectl` to the deployment's cluster ([connect to the cluster](connect-to-k8s-cluster.md)).
 2. Pull the stack's config first ([pull stack config](refresh-stack-config.md); for every Tamanu stack, `pulumi/scripts/refreshConfigs.fish tamanu/on-k8s`).
@@ -31,7 +31,7 @@ Every `pulumi up` also sets a new expiry on a deployment with a time to live and
    pulumi up -s <stack> --policy-pack pulumi/policies
    ```
 
-   The update waits for the Application to be Synced and Healthy and fails after `argoWaitMinutes` (30 by default) or when a sync fails ([TDR](../spec/tamanu/deployment-rollout.md#update-completion)).
+   The update waits for the Application to be Synced and Healthy and fails after `argoWaitMinutes` (30 by default) or when a sync fails ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#update-completion)).
    If it fails, go to [sync failed](../runbooks/argo-sync-failed.md) or [stuck progressing](../runbooks/application-stuck-progressing.md).
 6. Check the [Application](inspect-application.md).
 

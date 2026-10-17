@@ -5,7 +5,7 @@
 #   refresh-channel.sh <stable|canary>
 #
 # Run by the promotion workflow after a channel tag has moved, and by hand to repeat that for one
-# cluster. Nothing here moves the tag. docs/spec/tamanu/renderer-rollout.md says what it must do.
+# cluster. Nothing here moves the tag. docs/spec/kubernetes/tamanu/renderer-rollout.md says what it must do.
 #
 # Environment, all optional:
 #   ARGO_NAMESPACE  where Argo CD runs (argocd-system)
@@ -31,14 +31,14 @@ esac
 # Allowance for this clock differing from the cluster's.
 skew=15
 
-# spec: TRO#promotion
+# spec: K8STRO#promotion
 # A refresh answered by the old repo server stores the old render again under the same cache
 # key, so the new one has to be serving before anything is refreshed.
 echo "Restarting $server in $ns"
 kubectl -n "$ns" rollout restart "deploy/$server"
 kubectl -n "$ns" rollout status "deploy/$server" --timeout="${wait_minutes}m"
 
-# spec: TRO#promotion
+# spec: K8STRO#promotion
 # Only Applications rendered by this channel's plugin are refreshed. The others keep serving
 # the render they have cached. An Application whose database Argo CD reports as hibernated is
 # not refreshed either: a sync would run its hooks against a database with no pods. Waking the
@@ -66,7 +66,7 @@ for app in "${apps[@]}"; do
   kubectl -n "$ns" annotate "applications.argoproj.io/$app" argocd.argoproj.io/refresh=hard --overwrite
 done
 
-# spec: TRO#promotion
+# spec: K8STRO#promotion
 # An Application is done once Argo CD has taken the annotation off and compared it again. It
 # has failed if the comparison reported an error, or if a sync that ran since the refresh
 # failed. Health is not waited for: a sync that runs migrations can outlast any wait.

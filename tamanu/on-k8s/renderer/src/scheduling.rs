@@ -35,7 +35,7 @@ fn requirement(key: &str, value: &str) -> NodeSelectorRequirement {
 /// reclaim or drain never takes them all. The constraint counts only the current
 /// ReplicaSet, because counting all of them lets a rolling update surge onto
 /// occupied nodes.
-// spec: TDR#placement
+// spec: K8STDR#placement
 pub fn workload_scheduling(cfg: &Config, spread: Option<&Labels>) -> Scheduling {
 	let mut required = vec![
 		requirement("bes.node.arch", cfg.architecture.as_str()),

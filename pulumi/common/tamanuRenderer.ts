@@ -1,6 +1,6 @@
 // The channels the Tamanu renderer is published and rendered through, shared by the stack that
 // registers the plugins (tamanu/k8s-infra) and the one that names a plugin in each
-// deployment's Application (tamanu/on-k8s). docs/spec/tamanu/renderer-rollout.md says what a
+// deployment's Application (tamanu/on-k8s). docs/spec/kubernetes/tamanu/renderer-rollout.md says what a
 // channel is; this is the part both stacks must agree on.
 
 export const CHANNELS = ['stable', 'canary'] as const;
@@ -16,8 +16,8 @@ export const RENDERER_IMAGE = 'ghcr.io/beyondessential/infra-argo-tamanu-rendere
  * Which channel a deployment's stack config asks for. CD writes an unset option as the string
  * "null", which means the same as no value at all.
  */
-// spec: TRO#channels
-// spec: TRO#channels
+// spec: K8STRO#channels
+// spec: K8STRO#channels
 export function parseChannel(value: string | null | undefined): Channel {
   if (value == null || value === '' || value === 'null') return 'stable';
   if ((CHANNELS as readonly string[]).includes(value)) return value as Channel;
@@ -30,8 +30,8 @@ export function parseChannel(value: string | null | undefined): Channel {
  * The plugin's own name, which is also its sidecar's container name. Stable keeps the name that
  * Applications created before channels existed refer to.
  */
-// spec: TRO#plugins
-// spec: TRO#plugins
+// spec: K8STRO#plugins
+// spec: K8STRO#plugins
 export function pluginBaseName(channel: Channel): string {
   return channel === 'stable'
     ? 'infra-argo-tamanu-renderer'
@@ -44,7 +44,7 @@ export function pluginName(channel: Channel): string {
 }
 
 /** The image the channel's sidecar runs. The tag is the channel's name and moves on promotion. */
-// spec: TRO#channels
+// spec: K8STRO#channels
 export function rendererImage(channel: Channel): string {
   return `${RENDERER_IMAGE}:${channel}`;
 }
@@ -58,7 +58,7 @@ export const UNKNOWN_CONFIG_KEYS_ENV = 'RENDERER_UNKNOWN_CONFIG_KEYS';
  * keeps its deployments rendering; canary is built with the sender, so a key it does not know is
  * a mistake, and it rejects them.
  */
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 export function unknownConfigKeys(channel: Channel): 'ignore' | 'reject' {
   return channel === 'stable' ? 'ignore' : 'reject';
 }

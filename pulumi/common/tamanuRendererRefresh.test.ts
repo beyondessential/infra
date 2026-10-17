@@ -89,21 +89,21 @@ const cluster = [
   app('elsewhere', CANARY, {}, 'not-tamanu'),
 ];
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('a canary promotion refreshes only the Applications rendered by the canary plugin', () => {
   const result = run('canary', cluster);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(result.annotated.sort(), ['canary-1', 'canary-2']);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('a stable promotion refreshes only the Applications rendered by the stable plugin', () => {
   const result = run('stable', cluster);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(result.annotated.sort(), ['stable-1', 'stable-2']);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('the repo server has restarted and rolled out before the first Application is refreshed', () => {
   const { calls } = run('canary', cluster);
   const at = (needle: string) => calls.findIndex((call) => call.includes(needle));
@@ -123,7 +123,7 @@ const AWAKE = {
   ],
 };
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('an Application whose database is hibernated is not refreshed', () => {
   const result = run('canary', [
     app('asleep', CANARY, HIBERNATED),
@@ -133,7 +133,7 @@ test('an Application whose database is hibernated is not refreshed', () => {
   assert.deepEqual(result.annotated, ['awake']);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('a hibernated Application does not fail the promotion', () => {
   const result = run('canary', [app('asleep', CANARY, HIBERNATED)]);
   assert.equal(result.status, 0, result.stderr);
@@ -146,7 +146,7 @@ test('a channel with no Applications has nothing to refresh', () => {
   assert.deepEqual(result.annotated, []);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('a render error fails the promotion and names the Application', () => {
   const result = run('canary', [
     app('good', CANARY),
@@ -156,7 +156,7 @@ test('a render error fails the promotion and names the Application', () => {
   assert.match(result.stderr, /failed broken: render error: bad params/);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('a sync that failed after the refresh fails the promotion', () => {
   const result = run('canary', [
     app('failing', CANARY, { operationState: { phase: 'Failed', message: 'job failed', finishedAt: 'NOW' } }),
@@ -165,7 +165,7 @@ test('a sync that failed after the refresh fails the promotion', () => {
   assert.match(result.stderr, /failed failing: sync Failed: job failed/);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('a sync that failed before the refresh is not this promotion\'s', () => {
   const result = run('canary', [
     app('was-failing', CANARY, { operationState: { phase: 'Failed', finishedAt: OLD } }),
@@ -173,7 +173,7 @@ test('a sync that failed before the refresh is not this promotion\'s', () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
-// spec: TRO#promotion
+// spec: K8STRO#promotion
 test('Applications that have not rendered again in time fail the promotion', () => {
   const result = run('canary', [app('stuck', CANARY)], { FAKE_NO_PROGRESS: '1' });
   assert.equal(result.status, 1);

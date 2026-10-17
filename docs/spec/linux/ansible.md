@@ -73,15 +73,13 @@ The variables in the following table configure a Tamanu server.
 | `tamanu_ipv6` | `true` | Whether Tamanu containers have IPv6. |
 | `tamanu_extra_certs` | `false` | Whether Tamanu containers trust the host certificate store. |
 | `podman_network_subnets_v4`, `podman_network_subnets_v6` | the subnets of [LNXRUN](runtime.md#container-runtime) | The subnets of the default Podman network. |
-| `tamanu_default_department`, `tamanu_default_location` | `GenericClinic` | The survey default codes of a facility server. |
-| `tamanu_country_name`, `tamanu_country_alpha2`, `tamanu_country_alpha3` | `Utopia`, `UT`, `UTO` | The country of a central server. |
 | `elastic_agent_enabled`, `elastic_agent_enrollment_token`, `elastic_agent_fleet_url` | `false`, none, the production Fleet | The endpoint security agent of [LNXSRV](server.md#endpoint-security-agent). |
 | `ufw_managed`, `dangerously_leave_ufw_alone` | `false`, `false` | The host firewall of [LNXSRV](server.md#host-firewall). |
 | `munin_enabled` | `true` | Whether the Munin node runs, as [LNXSRV](server.md#metrics) gives it. |
 
 A name that is a secret variable in Canopy MUST NOT also be a tag of a host.
 
-A central server MUST have its patient portal enabled where the instance tag `PatientPortalFQDN` or the variable `patient_portal_fqdn` is set.
+A [central server](../overview.md#central-server) MUST have its patient portal enabled where the [instance tag](../overview.md#instance-tags) `PatientPortalFQDN` or the variable `patient_portal_fqdn` is set.
 Where both are set, the instance tag MUST take precedence.
 
 ## Playbooks
@@ -107,7 +105,7 @@ A run selects parts of a playbook with the tags in the following table.
 | `pre` | in an upgrade, the provisioning of the new version |
 | `go` | in an upgrade, the stopping, migrating and starting of services |
 
-A run that skips the tag `app` MUST still set up the alert daemon.
+A run that skips the tag `app` MUST still set up the [alert daemon](../overview.md#alert-daemon).
 
 A run limited by tags MUST still apply the reloads and restarts that its changes call for.
 

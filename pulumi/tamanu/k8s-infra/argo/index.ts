@@ -92,7 +92,7 @@ new k8s.rbac.v1.RoleBinding('argo-tamanu-deploy', {
 // A promotion restarts the repo server, so that it serves the channel's new image, and then
 // refreshes the Applications rendered by that channel. Through the same Tailscale proxy as
 // Tamanu CD, under a group of its own, it can do those two things and nothing else.
-// spec: TRO#access
+// spec: K8STRO#access
 const promoteRole = new k8s.rbac.v1.Role('argo-renderer-promote', {
   metadata: { namespace: namespaceName },
   rules: [

@@ -7,7 +7,7 @@ Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 ## 1. When this applies
 
 The change was merged and promoted to the deployment's channel, and a deployment on that channel still looks as it did.
-A change on `canary` does not reach `stable` deployments, and the reverse, because each channel has its own plugin ([TRO](../spec/tamanu/renderer-rollout.md#plugins)).
+A change on `canary` does not reach `stable` deployments, and the reverse, because each channel has its own plugin ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#plugins)).
 
 ## 2. Establish context
 
@@ -16,7 +16,7 @@ The deployment's channel and whether it is hibernated: [deployment context](../d
 ## 3. Investigate
 
 1. **Channel** of the Application (label `bes.tamanu/renderer-channel`). **[diagnose]**
-2. **Hibernation.** A promotion skips hibernated deployments on purpose ([TRO](../spec/tamanu/renderer-rollout.md#promotion)). **[diagnose]**
+2. **Hibernation.** A promotion skips hibernated deployments on purpose ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#promotion)). **[diagnose]**
 3. **The promotion run.** It fails when a cluster was not reached and names it. Look at the `infra-argo-tamanu-renderer promote` run in GitHub Actions. **[diagnose]**
 
 ## 4. Interpret

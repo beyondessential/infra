@@ -154,7 +154,7 @@ A group assigned to a GitHub Actions workflow MUST be named `tailscale:gha:` fol
 | `tailscale:tamanu-engineer` | The same people as `tailscale:engineer`. |
 | `tailscale:tamanu-deploy` | [Tamanu CD](../overview.md#tamanu-cd) and other automation that deploys Tamanu. |
 | `tailscale:gha:dbt-build` | The dbt build workflow, which port-forwards to a database pod. |
-| `tailscale:gha:renderer-promote` | The renderer promotion workflow, whose access [TRO](../tamanu/renderer-rollout.md#access) defines. |
+| `tailscale:gha:renderer-promote` | The renderer promotion workflow, whose access [K8STRO](tamanu/renderer-rollout.md#access) defines. |
 | `tailscale:gha:canopy` | The workflow that deploys Canopy. |
 
 The bindings in the following table MUST exist.

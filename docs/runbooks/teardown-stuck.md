@@ -15,7 +15,7 @@ Confirm the deployment is disposable: [deployment context](../deployment-context
 
 ## 3. Investigate
 
-Destroying the stub deletes the Application, and its finalizer deletes everything it created before the namespace is removed ([TDR](../spec/tamanu/deployment-rollout.md#application)).
+Destroying the stub deletes the Application, and its finalizer deletes everything it created before the namespace is removed ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#application)).
 Find what is blocking: **[diagnose]**
 
 ```sh

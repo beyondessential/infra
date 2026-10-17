@@ -23,7 +23,7 @@ kubectl -n tamanu-<stack> get jobs
 kubectl -n tamanu-<stack> logs job/central-migrator
 ```
 
-Hook Jobs are deleted and created again on the next sync, so read a failed Job's logs before anything triggers one ([TDR](../spec/tamanu/deployment-rollout.md#hook-jobs)).
+Hook Jobs are deleted and created again on the next sync, so read a failed Job's logs before anything triggers one ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)).
 For anything else that is Degraded, `kubectl -n tamanu-<stack> describe <kind>/<name>` shows its events.
 
 ## Reading the output

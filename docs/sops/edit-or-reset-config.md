@@ -1,7 +1,7 @@
 # SOP: Edit or reset the config ConfigMaps
 
 The three config ConfigMaps `config-central`, `config-facility-N` and `provisioning` are written once from the render, and Argo CD ignores their contents afterwards.
-A hand edit therefore survives every sync, and so does a stale value ([TDR](../spec/tamanu/deployment-rollout.md#ignored-differences)).
+A hand edit therefore survives every sync, and so does a stale value ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#ignored-differences)).
 Reading them is **[diagnose, sensitive-data]**: `provisioning` carries the initial admin login.
 Editing or deleting one is **[dev-OTS, sensitive-data]**.
 

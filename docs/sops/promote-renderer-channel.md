@@ -2,7 +2,7 @@
 
 Move a renderer channel to a build that exists, and make every deployment on it render with that build.
 **[dev-OTS]**: it changes the render of every deployment on the channel on every cluster, and it is a developer's call.
-The requirements are in [TRO](../spec/tamanu/renderer-rollout.md#promotion).
+The requirements are in [K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#promotion).
 
 ## Canary
 
@@ -32,4 +32,4 @@ Run the workflow again with the same `channel` and `sha`, `clusters` set to the 
 ## Trying a renderer change on one deployment
 
 Give the deployment the `canary` channel and update it ([change a deployment's config](change-deployment-config.md), key `rendererChannel`, or Tamanu CD's `channel` option).
-To go back, update again without it, and the Application is rendered by `stable` again without a refresh ([TRO](../spec/tamanu/renderer-rollout.md#channels)).
+To go back, update again without it, and the Application is rendered by `stable` again without a refresh ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#channels)).

@@ -19,7 +19,7 @@ const ROUNDS: u32 = 3;
 /// stacks keep whatever data the restored snapshot came with.
 const MIN_VERSION: &str = "2.65.0-0";
 
-// spec: TDR#seed-top-up
+// spec: K8STDR#seed-top-up
 fn job_name(image_tag: &str) -> String {
 	let digest = Sha256::digest(image_tag.as_bytes());
 	let suffix: String = digest[..4].iter().map(|b| format!("{b:02x}")).collect();

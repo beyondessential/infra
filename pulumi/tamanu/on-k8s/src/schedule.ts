@@ -27,7 +27,7 @@ import { namespaceName } from './namespace.ts';
 // All RBAC is namespace-scoped: this avoids needing
 // ClusterRole/ClusterRoleBinding, which the gha deploy role can't create.
 
-// spec: TSD#time-to-live
+// spec: K8STSD#time-to-live
 export function setupTtlHibernation(namespace: Output<string>): void {
   if (ttlHours === 0) return;
 
@@ -92,7 +92,7 @@ const CONTAINER_RESOURCES = {
   limits: { memory: '128Mi' },
 };
 
-// spec: TSD#hibernation
+// spec: K8STSD#hibernation
 function hibernateCronJob(
   name: string,
   namespace: Output<string>,
@@ -155,7 +155,7 @@ function hibernateCronJob(
   });
 }
 
-// spec: TSD#waking
+// spec: K8STSD#waking
 function wakeJob(
   namespace: Output<string>,
   sa: k8s.core.v1.ServiceAccount,

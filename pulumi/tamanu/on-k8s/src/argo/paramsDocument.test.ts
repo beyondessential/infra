@@ -38,7 +38,7 @@ function document(channel: (typeof CHANNELS)[number]): string {
 
 // The renderer's own tests and CI read these files, so the shape each channel's renderer has to
 // accept is reviewed as a diff of them. Regenerate with UPDATE_FIXTURES=1.
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 for (const channel of CHANNELS) {
   test(`the ${channel} fixture is what the stub sends to ${channel}`, () => {
     const file = new URL(`${channel}.json`, fixtures);
@@ -49,14 +49,14 @@ for (const channel of CHANNELS) {
   });
 }
 
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 test('canary receives the newest shape, and stable the one its renderer accepts', () => {
   const params = buildParams(sample);
   assert.deepEqual(forChannel('canary', params), params);
   assert.deepEqual(forChannel('stable', params), params);
 });
 
-// spec: TRO#parameters
+// spec: K8STRO#parameters
 test('the channel setting is not passed to the renderer', () => {
   const config = selectStackConfig(
     {

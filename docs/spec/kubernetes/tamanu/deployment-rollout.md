@@ -1,10 +1,10 @@
 ---
-id: TDR
+id: K8STDR
 ---
 
 # Tamanu deployment rollout
 
-The requirements in this spec apply to every [deployment](../overview.md#tamanu-deployment): the objects the [renderer](../overview.md#renderer) produces for it, and the Application that the [stub](../overview.md#stub) creates to apply them.
+The requirements in this spec apply to every [deployment](../../overview.md#tamanu-deployment): the objects the [renderer](../../overview.md#renderer) produces for it, and the Application that the [stub](../../overview.md#stub) creates to apply them.
 In this spec, `<server>` is `central` or `facility-N`, where N numbers the facilities of a deployment from 1.
 
 ## Borrowed terms
@@ -49,7 +49,7 @@ Deleting the Application MUST delete every resource it created.
 
 A deployment that restores its central database from a seed snapshot MUST have a copy of the snapshot in its namespace before the Application is created.
 
-Which renderer renders an Application is specified in [TRO](renderer-rollout.md).
+Which renderer renders an Application is specified in [K8STRO](renderer-rollout.md).
 
 ## Sync order
 
@@ -93,7 +93,7 @@ That Argo CD MUST report a database cluster as Healthy while the cluster carries
 That Argo CD MUST give the health of a hibernated database cluster the message `Hibernated`.
 
 > [!NOTE]
-> A [promotion](../overview.md#promotion) reads that message to tell a hibernated deployment from an awake one.
+> A [promotion](../../overview.md#promotion) reads that message to tell a hibernated deployment from an awake one.
 
 That Argo CD MUST report any other database cluster as Progressing.
 
@@ -219,9 +219,9 @@ A deployment with capacity `spot` SHOULD give those pods a toleration of the tai
 
 The database clusters of a deployment MUST follow the capacity of the deployment.
 
-A database cluster of a deployment on capacity `spot` MUST be placed as a [K8SPGC](../kubernetes/postgres.md#scheduling-and-disruption) cluster that opts into neither the critical database pool nor on-demand placement.
+A database cluster of a deployment on capacity `spot` MUST be placed as a [K8SPGC](../postgres.md#scheduling-and-disruption) cluster that opts into neither the critical database pool nor on-demand placement.
 
-A database cluster of a deployment on capacity `ondemand` MUST be placed as a [K8SPGC](../kubernetes/postgres.md#scheduling-and-disruption) cluster that opts into on-demand placement.
+A database cluster of a deployment on capacity `ondemand` MUST be placed as a [K8SPGC](../postgres.md#scheduling-and-disruption) cluster that opts into on-demand placement.
 
 The instances of a database cluster SHOULD run on nodes with the label `bes.node.arch=arm64`, whatever the architecture of the deployment.
 
@@ -268,7 +268,7 @@ The Application MUST ignore the differences in the following table, and MUST res
 > [!NOTE]
 > A sync that applied these fields would undo a scaledown and discard hand edits on every sync.
 
-Scaledown is specified in [TSD](scaledown.md).
+Scaledown is specified in [K8STSD](scaledown.md).
 
 ## Update completion
 

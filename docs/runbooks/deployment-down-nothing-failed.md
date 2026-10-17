@@ -26,10 +26,10 @@ Pull request deployments get a short time to live from Tamanu CD, so this is the
 
 | Evidence | Diagnosis | Action |
 |---|---|---|
-| Every Cluster `hibernation: "on"`, every Deployment `forced: "true"`, a `wake` CronJob exists | Hibernated at the end of its time to live. Expected ([TSD](../spec/tamanu/scaledown.md#hibernation)). | [Wake it](../sops/wake-deployment.md), or update the stack to wake it and set a new expiry. |
-| Deployments at zero replicas with no `force-downtime` annotation, Clusters not hibernated | Scaled down by hand, or the replica keys are `0`. Argo CD ignores replica counts, so it stays ([TDR](../spec/tamanu/deployment-rollout.md#ignored-differences)). | Check `*Replicas` in the [config](../reference/tamanu-deployment-config.md#replicas) and ask who scaled it. Scaling back is **[dev-OTS]**. |
+| Every Cluster `hibernation: "on"`, every Deployment `forced: "true"`, a `wake` CronJob exists | Hibernated at the end of its time to live. Expected ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#hibernation)). | [Wake it](../sops/wake-deployment.md), or update the stack to wake it and set a new expiry. |
+| Deployments at zero replicas with no `force-downtime` annotation, Clusters not hibernated | Scaled down by hand, or the replica keys are `0`. Argo CD ignores replica counts, so it stays ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#ignored-differences)). | Check `*Replicas` in the [config](../reference/tamanu-deployment-config.md#replicas) and ask who scaled it. Scaling back is **[dev-OTS]**. |
 | Only some objects carry the hibernation annotations | A hibernate or wake Job half-ran: its two steps are separate containers. | Wake it again; if the Job fails, escalate. |
-| No `wake` CronJob and no `ttl-hibernate-*` | The deployment has no time to live ([TSD](../spec/tamanu/scaledown.md#waking)). It is not hibernation. | Go to [stuck progressing](application-stuck-progressing.md) and [database not coming up](database-not-coming-up.md). |
+| No `wake` CronJob and no `ttl-hibernate-*` | The deployment has no time to live ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#waking)). It is not hibernation. | Go to [stuck progressing](application-stuck-progressing.md) and [database not coming up](database-not-coming-up.md). |
 
 ## 5. Resolve
 
@@ -37,7 +37,7 @@ Pull request deployments get a short time to live from Tamanu CD, so this is the
 - **Wake and reset the expiry**: update the stack, which wakes a deployment with a time to live every time ([change a deployment's config](../sops/change-deployment-config.md)) **[dev-OTS]**.
 - **Keep it up for longer**: raise `ttlHours`, or set it to `0` for never, and update **[dev-OTS]**.
 
-The expiry can run up to 20 minutes behind the configured hours, because hibernation runs on a 20 minute grid ([TSD](../spec/tamanu/scaledown.md#time-to-live)).
+The expiry can run up to 20 minutes behind the configured hours, because hibernation runs on a 20 minute grid ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#time-to-live)).
 
 ## 6. Escalate
 

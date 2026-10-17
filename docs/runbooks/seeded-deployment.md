@@ -27,9 +27,9 @@ The `seedSnapshot`, `configTemplate` and `nodeEnv` of the stack, and the Tamanu 
 | Warning `No ready seed snapshots` | The stub found none in `tamanu-seed` and starts with an empty database. | Seed snapshots are made by pgsnap ([PGS](../spec/pgsnap.md)): escalate if one should exist. |
 | Warning `falling back to newest` | No snapshot matches the deployment's major and minor version, so the newest is used and the migrator brings it forward. | Expected. |
 | Warning `No seed snapshot predates v...` | A release rehearsal (`rc` template) seeds from the newest snapshot from before its minor so its migrations run, and there is none, so it starts empty. | Expected, and the migrations run from scratch. |
-| Error `seedSnapshot writes fake clinical data` | `nodeEnv` is `production`. Refused on purpose ([TDR](../spec/tamanu/deployment-rollout.md#seed-top-up)). | Do not work around it. |
+| Error `seedSnapshot writes fake clinical data` | `nodeEnv` is `production`. Refused on purpose ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#seed-top-up)). | Do not work around it. |
 | A snapshot was changed and the data did not change | The central database is restored from the snapshot only when its cluster is first created. | Nothing to fix. A fresh deployment is the route, never a restore over this one. |
-| No `central-seed-top-up-*` Job | The top-up needs `seedSnapshot` and Tamanu 2.65.0 or later, and an unknown version counts as older ([TDR](../spec/tamanu/deployment-rollout.md#version-gated-steps)). | Check `appVersion`. |
+| No `central-seed-top-up-*` Job | The top-up needs `seedSnapshot` and Tamanu 2.65.0 or later, and an unknown version counts as older ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#version-gated-steps)). | Check `appVersion`. |
 | The top-up Job runs again after a new image | Expected: its name comes from the image tag, so each image runs it once and the old Job is pruned. | Nothing to fix. Do not run it by hand, since it adds records every run. |
 | `Seed snapshot ... not yet ready` repeating, or `missing driver or snapshotHandle` | The clone did not become ready, or the source snapshot is incomplete. | Escalate: `pulumi/tamanu/on-k8s/src/central/seedSnapshot.ts`. |
 

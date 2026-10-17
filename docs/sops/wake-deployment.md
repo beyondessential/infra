@@ -1,7 +1,7 @@
 # SOP: Wake a hibernated deployment
 
 Reverse a hibernation without an update.
-**[approved-mitigation]**: the spec lets a person do it, and the Argo CD default role grants the action to anyone who can reach the Argo CD server ([TSD](../spec/tamanu/scaledown.md#waking), [K8SNSP](../spec/kubernetes/namespaces.md#argo-cd-access)).
+**[approved-mitigation]**: the spec lets a person do it, and the Argo CD default role grants the action to anyone who can reach the Argo CD server ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#waking), [K8SNSP](../spec/kubernetes/namespaces.md#argo-cd-access)).
 It only applies to a deployment with a time to live, which is the only kind that has a `wake` CronJob.
 Confirm first that the deployment is hibernated and not scaled down by hand: [down but nothing failed](../runbooks/deployment-down-nothing-failed.md).
 
@@ -28,7 +28,7 @@ The `tamanu-engineer` role cannot create Jobs, so an engineer without the on-cal
 ## What the Job does
 
 It runs as the `tamanu-ttl` service account.
-It removes `downscaler/force-downtime` from every Deployment and sets `cnpg.io/hibernation=off` on every database cluster, then hard-refreshes the Application so the deployment renders with the current channel ([TSD](../spec/tamanu/scaledown.md#waking)).
+It removes `downscaler/force-downtime` from every Deployment and sets `cnpg.io/hibernation=off` on every database cluster, then hard-refreshes the Application so the deployment renders with the current channel ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#waking)).
 The databases start first and the servers after them.
 
 ## Check

@@ -24,14 +24,14 @@ const RENDERER_PATH = cfg.get('rendererPath') ?? '.';
 // The channel's plugin, which is what renders the deployment: the stable one keeps the name
 // Applications have always used, so those render without being redeployed. Naming another
 // channel's plugin is all a channel switch is: the spec changes, so Argo CD renders it afresh.
-// spec: TRO#channels
+// spec: K8STRO#channels
 const PLUGIN = pluginName(channel);
 const WAIT_MINUTES = cfg.getNumber('argoWaitMinutes') ?? 30;
 const POLL_SECONDS = 5;
 
 // Fields that something other than Argo changes on live objects, or that are
 // edited by hand and kept between deploys.
-// spec: TDR#ignored-differences
+// spec: K8STDR#ignored-differences
 function ignoreDifferences() {
   const configMaps = [
     'provisioning',
@@ -77,7 +77,7 @@ const LABELS = {
   // Pull request, release, branch or demo deployment, as Tamanu CD and the demos set it.
   'bes.tamanu/template': labelValue(configTemplate),
   // Which renderer channel renders it.
-  // spec: TRO#parameters
+  // spec: K8STRO#parameters
   'bes.tamanu/renderer-channel': channel,
 };
 
@@ -90,7 +90,7 @@ const LINKS = Object.fromEntries(
   ]),
 );
 
-// spec: TDR#application
+// spec: K8STDR#application
 export function application(params: Input<string>): k8s.apiextensions.CustomResource {
   return new k8s.apiextensions.CustomResource('tamanu-application', {
     apiVersion: 'argoproj.io/v1alpha1',
@@ -147,7 +147,7 @@ const CLOCK_SKEW_MS = 15_000;
  *
  * Skipped during a preview, since the Application does not exist yet.
  */
-// spec: TDR#update-completion
+// spec: K8STDR#update-completion
 export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<string> {
   if (runtime.isDryRun()) {
     return output('preview');

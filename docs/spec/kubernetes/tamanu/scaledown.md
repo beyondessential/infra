@@ -1,10 +1,10 @@
 ---
-id: TSD
+id: K8STSD
 ---
 
 # Tamanu deployment scaledown
 
-The requirements in this spec apply to every [deployment](../overview.md#tamanu-deployment) that has a [time to live](../overview.md#time-to-live), and to each cluster that hosts one.
+The requirements in this spec apply to every [deployment](../../overview.md#tamanu-deployment) that has a [time to live](../../overview.md#time-to-live), and to each cluster that hosts one.
 
 ## Borrowed terms
 
@@ -45,7 +45,7 @@ The stub MUST refuse a time to live that is not a non-negative whole number.
 
 On every update of a deployment that has a time to live, the stub MUST anchor the end of the time to live at the time of the update plus the time to live.
 
-The stub MUST schedule [hibernation](../overview.md#hibernation) at the first of the minutes 00, 20 and 40 of an hour, in UTC, at or after the end of the time to live.
+The stub MUST schedule [hibernation](../../overview.md#hibernation) at the first of the minutes 00, 20 and 40 of an hour, in UTC, at or after the end of the time to live.
 
 The stub SHOULD schedule a second hibernation 10 minutes after the first.
 
@@ -72,13 +72,13 @@ That service account MUST be able to get, list and patch Deployments and databas
 
 That service account MUST NOT be able to act outside that namespace or on any other kind of object.
 
-The Job that performs a step of hibernation SHOULD tolerate the spot taint of [K8SNOD](../kubernetes/nodes.md#node-identity).
+The Job that performs a step of hibernation SHOULD tolerate the spot taint of [K8SNOD](../nodes.md#node-identity).
 
-How a sync treats the objects that hibernation changes is specified in [TDR](deployment-rollout.md#ignored-differences) and [TDR](deployment-rollout.md#database-health).
+How a sync treats the objects that hibernation changes is specified in [K8STDR](deployment-rollout.md#ignored-differences) and [K8STDR](deployment-rollout.md#database-health).
 
 ## Waking
 
-[Waking](../overview.md#wake) a deployment MUST remove the annotation `downscaler/force-downtime` from every Deployment in its namespace.
+[Waking](../../overview.md#wake) a deployment MUST remove the annotation `downscaler/force-downtime` from every Deployment in its namespace.
 
 Waking a deployment MUST set the annotation `cnpg.io/hibernation=off` on every database cluster in its namespace.
 
@@ -111,6 +111,6 @@ A person MAY wake a hibernated deployment by creating a Job from its `wake` Cron
 
 The `wake` CronJob SHOULD allow one Job to run at a time.
 
-The Job created from the `wake` CronJob SHOULD tolerate the spot taint of [K8SNOD](../kubernetes/nodes.md#node-identity).
+The Job created from the `wake` CronJob SHOULD tolerate the spot taint of [K8SNOD](../nodes.md#node-identity).
 
 The Argo CD of each cluster that hosts deployments MUST allow the role that operates deployments to run the Create Job action on the CronJobs of Applications in the `tamanu` project.

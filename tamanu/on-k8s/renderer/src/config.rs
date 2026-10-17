@@ -396,7 +396,7 @@ enum Server {
 	Facility,
 }
 
-// spec: TDR#replicas
+// spec: K8STDR#replicas
 const MIN: ReplicaConfig = ReplicaConfig {
 	api: 0,
 	db: 2,

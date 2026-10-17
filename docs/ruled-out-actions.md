@@ -29,12 +29,12 @@ These destroy backups, volumes or secrets, or overwrite a live database, and can
 - **Restoring over a live database.** `pg_restore` or a `psql` replay into a running deployment's database, bootstrapping a `Cluster` from a snapshot or backup over existing data, or `scripts/clone-tamanu-k8s-databases.fish ... --execute` into a namespace that holds data (it replaces every database in the target).
   A seed snapshot is used only when a cluster is first created, so changing `seedSnapshot` on a running deployment does not restore anything ([seeded deployments](runbooks/seeded-deployment.md)).
 - **Deleting or editing volumes and snapshots.** `kubectl delete` or `edit` of a PersistentVolumeClaim, PersistentVolume, VolumeSnapshot or VolumeSnapshotContent that belongs to a database `Cluster`, to a seed snapshot in `tamanu-seed`, or to a blob store claim (`<server>-blobs`).
-  Hibernation is the supported way to stop a database and keep its volumes ([TSD](spec/tamanu/scaledown.md#hibernation)).
+  Hibernation is the supported way to stop a database and keep its volumes ([K8STSD](spec/kubernetes/tamanu/scaledown.md#hibernation)).
   Releasing a claim reclaims what its content occupied, so a deleted blob claim can take the shared directory with it ([K8SVOL](spec/kubernetes/volumes.md#reclaim)).
 - **Deleting a database `Cluster` outside a teardown.** The instance volumes of a deployment without `backupsEnabled` are the only copy.
   `kubectl cnpg destroy` is a developer operation, see [recoverable but dev-OTS](#consequential-but-recoverable-dev-ots).
 - **Changing config so that Argo CD prunes a database.** Lowering `facilities`, renaming or removing entries of `facilityNames`, or changing `namespace` on a long-lived deployment.
-  The Application prunes whatever the render no longer produces, which includes the removed facility's `Cluster` ([TDR](spec/tamanu/deployment-rollout.md#application)).
+  The Application prunes whatever the render no longer produces, which includes the removed facility's `Cluster` ([K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#application)).
 - **Destroying a long-lived deployment or its namespace.** Deleting its SubnamespaceAnchor in `tamanu-super`, `kubectl delete namespace`, `pulumi destroy`, `pulumi stack rm --force`, `scripts/tamanuStacks.fish --destroy --yes`, or removing the Application's finalizer.
   Deleting the anchor deletes the namespace and every object in it ([K8SNSP](spec/kubernetes/namespaces.md#deployment-namespaces)).
   The same actions on a disposable deployment are [dev-OTS](#consequential-but-recoverable-dev-ots), see [destroy a deployment](sops/destroy-deployment.md).
@@ -44,7 +44,7 @@ These destroy backups, volumes or secrets, or overwrite a live database, and can
   Do not put a secret in stack config either: the stub refuses it ([config reference](reference/tamanu-deployment-config.md#rules-that-apply-to-every-key)).
 - **Rewriting clinical data with the repo's scripts.** `scripts/rename-tamanu-facility.fish` and the `rename-tamanu-facility*.sql` and `repoint-tamanu-facility-config.fish` helpers rewrite facility identifiers across the databases.
   They are reviewed developer data fixes, the same class as the Tamanu pack's ban on bulk `UPDATE` of clinical tables.
-- **Forcing the seed top-up Job to run again by hand.** It adds generated records on every run, so it runs once per image on purpose ([TDR](spec/tamanu/deployment-rollout.md#seed-top-up)).
+- **Forcing the seed top-up Job to run again by hand.** It adds generated records on every run, so it runs once per image on purpose ([K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#seed-top-up)).
 
 ## Consequential but recoverable (dev-OTS)
 
@@ -56,7 +56,7 @@ Each needs a developer and the context for why.
   Run the update from fresh config, because a stale local config rolls the image tag back.
 - **Anything that changes rendering for many deployments at once**: restarting the Argo CD repo server, [promoting a renderer channel](sops/promote-renderer-channel.md), changing `rendererChannel`.
 - **A hard refresh of one Application**: [hard-refresh an Application](sops/hard-refresh-application.md).
-  Never on a hibernated deployment, which would run its hook Jobs against a database with no pods ([TRO](spec/tamanu/renderer-rollout.md#promotion)).
+  Never on a hibernated deployment, which would run its hook Jobs against a database with no pods ([K8STRO](spec/kubernetes/tamanu/renderer-rollout.md#promotion)).
 - **Restarting a server**, scaling a Deployment by hand, or deleting a pod: [restart services](sops/restart-services.md).
   Argo CD ignores replica counts, so a hand scale-down stays until someone scales back or the next update.
 - **Editing or deleting the config ConfigMaps** (`config-central`, `config-facility-N`, `provisioning`): [edit or reset config](sops/edit-or-reset-config.md).
@@ -64,7 +64,7 @@ Each needs a developer and the context for why.
 - **Changing `capacity`, `architecture`, `dbStorage` or `dbMemory`** on an existing deployment, which reschedules or restarts its database pods.
 - **`kubectl cnpg destroy`** on one instance of a database. The Tamanu pack classes it the same way ([connect-psql](https://github.com/beyondessential/tamanu/blob/main/docs/sops/connect-psql.md)).
 
-Waking a hibernated deployment is the one mutating step pre-signed here: [wake a deployment](sops/wake-deployment.md) is **approved-mitigation** ([TSD](spec/tamanu/scaledown.md#waking) lets a person do it, and the Argo CD default role allows it, [K8SNSP](spec/kubernetes/namespaces.md#argo-cd-access)).
+Waking a hibernated deployment is the one mutating step pre-signed here: [wake a deployment](sops/wake-deployment.md) is **approved-mitigation** ([K8STSD](spec/kubernetes/tamanu/scaledown.md#waking) lets a person do it, and the Argo CD default role allows it, [K8SNSP](spec/kubernetes/namespaces.md#argo-cd-access)).
 
 ## Sensitive-data handling
 
@@ -78,7 +78,7 @@ Tag these with **sensitive-data** on top of their class.
   Request paths and errors can carry patient identifiers, which is the Tamanu pack's rule for access logs.
   Job logs can too when a migration fails on a row.
 - **The config ConfigMaps and the render.** `provisioning` carries the initial admin login, and `config-*` carry integration settings, so `kubectl get configmap -o yaml` and the output of `infra-argo-tamanu-renderer` are both sensitive ([inspect the render](sops/inspect-render.md)).
-  The Application's `PARAMS` is not: the stub refuses secret values in it ([TRO](spec/tamanu/renderer-rollout.md#parameters)).
+  The Application's `PARAMS` is not: the stub refuses secret values in it ([K8STRO](spec/kubernetes/tamanu/renderer-rollout.md#parameters)).
 - **Account identifiers.** This repository is public.
   The `serviceAccount` and `barmanRoleArn` values contain an AWS account id, so redact them, and client names, when quoting config outside the team.
 

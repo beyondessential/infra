@@ -14,7 +14,7 @@ Commands use `<stack>` for the deployment's Pulumi stack name and `tamanu-<stack
 |---|---|---|
 | Pulumi stack | `bes/tamanu-on-k8s/<stack>`, one per deployment. Tamanu CD derives `<stack>` from the branch, pull request or demo name. | `pulumi/tamanu/on-k8s/Pulumi.yaml`, Tamanu CD `cd-up.yml` |
 | Namespace | `tamanu-` plus the stack name lowercased, other characters turned into `-`, cut to 56 characters. A `namespace` config key overrides it. | [K8SNSP](spec/kubernetes/namespaces.md#deployment-namespaces), `pulumi/tamanu/on-k8s/src/namespace.ts` |
-| Argo CD Application | Same name as the namespace, in `argocd-system` unless the cluster sets `argoNamespace`. | [TDR](spec/tamanu/deployment-rollout.md#application) |
+| Argo CD Application | Same name as the namespace, in `argocd-system` unless the cluster sets `argoNamespace`. | [K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#application) |
 | Cluster | The `k8s-core` stack config key, `bes/k8s-core/<cluster-stack>`. Tamanu deployments run on `tamanu-internal-main` and `shared-demos-demo`. | `pulumi/scripts/tamanuStacks.fish`, `.github/workflows/infra-argo-tamanu-renderer-promote.yml` |
 | Addresses | `central.<base>`, `<facility host>.<base>` and `portal.<base>`. `<base>` is `<stack>.cd.tamanu.app` on the main cluster and `<stack without -demo>.demos.tamanu.app` on the demo cluster, unless `domainBase` is set. | [config reference](reference/tamanu-deployment-config.md#identity-and-addresses) |
 
@@ -42,7 +42,7 @@ kubectl -n argocd-system get app tamanu-<stack> -o json | jq '{labels: .metadata
 | Sync and health | Application `status` | The command above, or the Argo CD UI. [Inspect an Application](sops/inspect-application.md) goes further. |
 | Tamanu version | Label `bes.tamanu/app-version` | The command above. |
 | Image tag, config as passed | `PARAMS` in `spec.source.plugin.env[0].value`: `imageTag`, `appVersion`, `config`, `cluster`. It holds no secrets. | `jq -r '.spec.source.plugin.env[0].value \| fromjson \| {imageTag, appVersion, config}'` on the Application JSON. |
-| Renderer channel | Label `bes.tamanu/renderer-channel`, or `spec.source.plugin.name` | `stable` unless the stack asks for `canary` ([TRO](spec/tamanu/renderer-rollout.md#channels)). |
+| Renderer channel | Label `bes.tamanu/renderer-channel`, or `spec.source.plugin.name` | `stable` unless the stack asks for `canary` ([K8STRO](spec/kubernetes/tamanu/renderer-rollout.md#channels)). |
 | Config template | Label `bes.tamanu/template` | `pr`, `rc`, `basic` or `demo`. |
 | Addresses | Annotations `link.argocd.argoproj.io/*` | In the Argo CD UI they are links on the Application. |
 | Workload state | Deployments in the namespace | `kubectl -n tamanu-<stack> get deploy`, [object names](reference/tamanu-deployment-objects.md). |
@@ -50,7 +50,7 @@ kubectl -n argocd-system get app tamanu-<stack> -o json | jq '{labels: .metadata
 
 ### Hibernation state
 
-A deployment with a time to live is hibernated when it expires ([TSD](spec/tamanu/scaledown.md#hibernation)).
+A deployment with a time to live is hibernated when it expires ([K8STSD](spec/kubernetes/tamanu/scaledown.md#hibernation)).
 
 ```sh
 kubectl -n tamanu-<stack> get clusters.postgresql.cnpg.io -o json \
@@ -60,8 +60,8 @@ kubectl -n tamanu-<stack> get deploy -o json \
 ```
 
 `hibernation: "on"` and `forced: "true"` on everything means hibernated.
-Argo CD reports a hibernated `Cluster` as Healthy with the message `Hibernated` ([TDR](spec/tamanu/deployment-rollout.md#database-health)).
-No `wake` CronJob in the namespace means the deployment has no time to live ([TSD](spec/tamanu/scaledown.md#waking)).
+Argo CD reports a hibernated `Cluster` as Healthy with the message `Hibernated` ([K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#database-health)).
+No `wake` CronJob in the namespace means the deployment has no time to live ([K8STSD](spec/kubernetes/tamanu/scaledown.md#waking)).
 
 When it expires is in the schedule of the `ttl-hibernate-*` CronJob, a single UTC slot as `minute,minute+10 hour day-of-month month *`:
 
@@ -70,7 +70,7 @@ kubectl -n tamanu-<stack> get cronjob -o json | jq '.items[] | select(.metadata.
 ```
 
 The slot is the first of minutes 00, 20 and 40 at or after the expiry, so it can lag the expiry by up to 20 minutes.
-Every `pulumi up` moves the expiry ([TSD](spec/tamanu/scaledown.md#time-to-live)).
+Every `pulumi up` moves the expiry ([K8STSD](spec/kubernetes/tamanu/scaledown.md#time-to-live)).
 
 ## Origin
 

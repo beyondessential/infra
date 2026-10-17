@@ -28,7 +28,7 @@ Which deployment, which Deployment's pods, and the `imageTag` in its config: [de
 ## 5. Resolve
 
 - Remove the option and update the stack ([change a deployment's config](../sops/change-deployment-config.md)) **[dev-OTS]**.
-- Scaling `synthetic-tests` to zero: `kubectl -n tamanu-<stack> scale deploy/synthetic-tests --replicas=0` **[dev-OTS]**. Argo CD ignores replica counts, so the scale-down stays ([TDR](../spec/tamanu/deployment-rollout.md#ignored-differences)).
+- Scaling `synthetic-tests` to zero: `kubectl -n tamanu-<stack> scale deploy/synthetic-tests --replicas=0` **[dev-OTS]**. Argo CD ignores replica counts, so the scale-down stays ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#ignored-differences)).
 
 ## 6. Escalate
 

@@ -7,7 +7,7 @@ Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 ## 1. When this applies
 
 `kubectl -n tamanu-<stack> get jobs` shows a failed `<server>-migrator`, `<server>-reporting-grants`, `central-provisioner` or `facility-N-setup-sync`.
-These are Argo CD hooks: they are deleted and created again on every sync, including a sync where the image did not change, so read the logs before anything triggers one ([TDR](../spec/tamanu/deployment-rollout.md#hook-jobs)).
+These are Argo CD hooks: they are deleted and created again on every sync, including a sync where the image did not change, so read the logs before anything triggers one ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)).
 
 ## 2. Establish context
 
@@ -26,9 +26,9 @@ Which Job, which server, the Tamanu version and what changed: [deployment contex
 | `<server>-migrator` (wave 1, 5 retries) | Runs `migrate`. | The database could not be migrated: the cluster is unhealthy, or the image version does not match the data (for example an older image against a newer schema). |
 | `<server>-reporting-grants` (wave 1) | Reconciles the `app` role's memberships and `CREATEROLE`, using `<server>-db-superuser` (`tamanu/on-k8s/renderer/src/postgres/reporting.rs`). | A database or permission problem. A pod that never starts means the Secret does not exist yet ([stuck progressing](application-stuck-progressing.md)). |
 | `central-provisioner` (wave 2, 2 retries) | Runs `provision --skip-if-not-needed` on the `provisioning` ConfigMap. | A hand edit broke `provisioning`, or the migrator did not finish. |
-| `facility-N-setup-sync` (wave 2, 5 retries) | Runs `setupSync` to seed the central address and credentials into the facility. | Needs the provisioning document and a reachable central. Only present for Tamanu 2.60.0 or later, and omitted when the version is unknown ([TDR](../spec/tamanu/deployment-rollout.md#version-gated-steps)). |
+| `facility-N-setup-sync` (wave 2, 5 retries) | Runs `setupSync` to seed the central address and credentials into the facility. | Needs the provisioning document and a reachable central. Only present for Tamanu 2.60.0 or later, and omitted when the version is unknown ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#version-gated-steps)). |
 
-A Job that fails only on a re-run against an unchanged image means its command is not safe to repeat, which [TDR](../spec/tamanu/deployment-rollout.md#hook-jobs) requires: that is a Tamanu fault.
+A Job that fails only on a re-run against an unchanged image means its command is not safe to repeat, which [K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs) requires: that is a Tamanu fault.
 
 ## 5. Resolve
 

@@ -7,7 +7,7 @@ Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 
 ## 1. When this applies
 
-`status.conditions` on the Application contains a `ComparisonError`, or `pulumi up` logged `Application <name>: <message>` while waiting ([TRO](../spec/tamanu/renderer-rollout.md#parameters) calls this a render error).
+`status.conditions` on the Application contains a `ComparisonError`, or `pulumi up` logged `Application <name>: <message>` while waiting ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#parameters) calls this a render error).
 
 ## 2. Establish context
 
@@ -27,7 +27,7 @@ The channel matters: `canary` rejects unknown keys and `stable` ignores them.
 | `app path does not exist` | The Application's source path is missing from its pinned revision. The stub sets both, so this is a stub fault. | Escalate: `pulumi/tamanu/on-k8s/src/argo/application.ts`. |
 | `plugin ... not found`, or the plugin never responds | The renderer sidecar on the repo server is not running or is the wrong version. | Check the pod's containers and the sidecar log. Escalate: the plugin setup is `pulumi/tamanu/k8s-infra/argo/index.ts`. |
 | `unknown config key(s): <keys>` | A key the `canary` renderer does not know, or a mistyped key. | Fix or remove the key ([config reference](../reference/tamanu-deployment-config.md)), or add support in `tamanu/on-k8s/renderer/src/params.rs`. |
-| `unknown field` while `parsing parameters` | The stub sent a shape that this channel's renderer does not accept ([TRO](../spec/tamanu/renderer-rollout.md#parameters)). | Escalate: `pulumi/tamanu/on-k8s/src/argo/paramsDocument.ts`. |
+| `unknown field` while `parsing parameters` | The stub sent a shape that this channel's renderer does not accept ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#parameters)). | Escalate: `pulumi/tamanu/on-k8s/src/argo/paramsDocument.ts`. |
 | `Invalid architecture` or `Invalid capacity` | The value is not `arm64`/`amd64` or `spot`/`ondemand`. | Fix the key. |
 | `Cannot have more facilityNames than facilities`, `Facility ids must be unique`, `Facility hosts must be unique`, `Facility entries must have an id` | `facilityNames` is inconsistent with `facilities`. | Fix the keys. |
 | `seedSnapshot writes fake clinical data` | `seedSnapshot` is on with `nodeEnv` `production`. Refused on purpose. | Do not work around it: [seeded deployments](seeded-deployment.md). |

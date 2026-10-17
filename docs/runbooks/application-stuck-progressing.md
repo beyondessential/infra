@@ -12,7 +12,7 @@ The Application's health is `Progressing` or `Degraded` for a long time, or a wa
 ## 2. Establish context
 
 Which deployment, which wave it is waiting in, what changed: [deployment context](../deployment-context.md). **[diagnose]**
-A hibernated deployment reports its database as Healthy, so it does not stick here ([TDR](../spec/tamanu/deployment-rollout.md#database-health)).
+A hibernated deployment reports its database as Healthy, so it does not stick here ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#database-health)).
 
 ## 3. Investigate
 
@@ -24,10 +24,10 @@ A hibernated deployment reports its database as Healthy, so it does not stick he
 
 | Evidence | Diagnosis | Action |
 |---|---|---|
-| A database `Cluster` is Progressing | Argo CD reports a cluster Healthy only once its Ready condition is true, and wave 0 waits for it ([TDR](../spec/tamanu/deployment-rollout.md#database-health)). | [Database not coming up](database-not-coming-up.md). |
+| A database `Cluster` is Progressing | Argo CD reports a cluster Healthy only once its Ready condition is true, and wave 0 waits for it ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#database-health)). | [Database not coming up](database-not-coming-up.md). |
 | A Deployment's pods are in `ImagePullBackOff` | The image tag does not exist. | [Image tag missing](image-pull-backoff.md). |
-| A `*-reporting-grants` pod stays in `ContainerCreating` | It reads a Secret the database operator creates with the cluster, and a missing Secret means the pod never starts, so the Job neither completes nor fails ([TDR](../spec/tamanu/deployment-rollout.md#sync-order)). | Check the database first: `<server>-db-superuser` exists once its cluster is created ([object names](../reference/tamanu-deployment-objects.md#created-by-cloudnativepg)). |
-| Pods `Pending` with a scheduling message | Servers need a node with `bes.node.purpose=workload` and the deployment's architecture, and replicas of a server must spread across nodes, so a pod that would break the spread stays unscheduled ([TDR](../spec/tamanu/deployment-rollout.md#placement)). | Read the pod's events. Capacity or architecture mismatches are a cluster matter: escalate. |
+| A `*-reporting-grants` pod stays in `ContainerCreating` | It reads a Secret the database operator creates with the cluster, and a missing Secret means the pod never starts, so the Job neither completes nor fails ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#sync-order)). | Check the database first: `<server>-db-superuser` exists once its cluster is created ([object names](../reference/tamanu-deployment-objects.md#created-by-cloudnativepg)). |
+| Pods `Pending` with a scheduling message | Servers need a node with `bes.node.purpose=workload` and the deployment's architecture, and replicas of a server must spread across nodes, so a pod that would break the spread stays unscheduled ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#placement)). | Read the pod's events. Capacity or architecture mismatches are a cluster matter: escalate. |
 | A hook Job pod is running for a long time | The migrator or provisioner is working or waiting on the database. | Read its logs ([read logs](../sops/read-logs.md#hook-jobs)). |
 | A claim `<server>-blobs` is `Pending` | Shared blob storage cannot be provisioned. | Escalate: [K8SVOL](../spec/kubernetes/volumes.md) and the `efs` storage class. |
 

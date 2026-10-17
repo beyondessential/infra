@@ -26,7 +26,7 @@ const namespace = new k8s.core.v1.Namespace('argocd-system', { metadata: { name:
 // library, so a script that searches or lowercases the phase fails with an error for
 // any cluster that is not healthy, and Argo then cannot compute the application's
 // health at all.
-// spec: TDR#database-health
+// spec: K8STDR#database-health
 const CNPG_CLUSTER_HEALTH = `
 local hs = {}
 local status = obj.status

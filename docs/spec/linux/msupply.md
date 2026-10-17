@@ -5,7 +5,7 @@ id: LNXMSP
 # mSupply on a Linux server
 
 The requirements in this spec apply to an mSupply instance on a [Linux server](../overview.md#linux-server).
-Where the instance runs on a server that also runs a Tamanu facility server, the shared host, container network, reverse proxy and certificates are the only coupling, and [LNXRUN](runtime.md) and [LNXTLS](tls.md) specify them.
+Where the instance runs on a server that also runs a Tamanu [facility server](../overview.md#facility-server), the shared host, container network, reverse proxy and certificates are the only coupling, and [LNXRUN](runtime.md) and [LNXTLS](tls.md) specify them.
 
 ## Borrowed terms
 
@@ -18,7 +18,7 @@ Where the instance runs on a server that also runs a Tamanu facility server, the
 ## Enablement
 
 A server MUST run mSupply where the inventory variable `msupply_enabled` is true.
-Where `msupply_enabled` is not set, a server MUST run mSupply where the instance tag `MsupplyFQDN` is set.
+Where `msupply_enabled` is not set, a server MUST run mSupply where the [instance tag](../overview.md#instance-tags) `MsupplyFQDN` is set.
 
 The variables in the following table configure mSupply.
 
@@ -40,8 +40,6 @@ mSupply MUST run as the quadlet `msupply` from the image `docker.io/msupplyfound
 The unit `msupply` MUST start at boot, and MUST restart whenever it exits.
 
 mSupply MUST run as the system user `msupply`, with its database in `/var/lib/msupply` with mode 0770, and its configuration in `/etc/msupply/env` and `/etc/msupply/local.yaml`.
-
-The files in `/etc/msupply` MUST NOT be edited by operators.
 
 mSupply MUST be reachable on port 8000 at the network alias `api.msupply.internal`.
 
@@ -72,8 +70,6 @@ The certificate of the site is given by [LNXTLS](tls.md).
 Where mSupply has a Tailscale service, the server MUST advertise that service from its Tailscale node once the node is ready.
 
 The advertised service MUST forward HTTPS on port 443 and HTTP on port 80 to port 8000 on `127.0.0.1`.
-
-Where mSupply has no Tailscale service, the server MUST NOT advertise one for mSupply.
 
 ## Installation and upgrades
 
