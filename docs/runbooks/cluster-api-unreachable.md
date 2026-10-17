@@ -13,7 +13,7 @@ These are guards, not faults: they stop a run pointed at the wrong target ([clus
 
 | message | meaning | fix |
 |---|---|---|
-| `Incorrect account: expected <id> but got <id>` (k8s-core) | The aws-sso profile in use is for a different account. | Use the profile for this stack's account. |
+| `Incorrect account: expected <id> but got <id>` (any stack that references a core, `pulumi/common/coreRef.ts`) | The aws-sso profile in use is for a different account. | Use the profile for this stack's account. |
 | `Incorrect cluster: expected <stack> but got <name>` | The kubeconfig points at another cluster's tailnet host. | Select the right context. **[diagnose]** `kubectl config current-context` |
 | `Incorrect cluster: expected <endpoint> but got <server>` | The kubeconfig points at neither this cluster's tailnet host nor its EKS endpoint. | Select the right context. |
 | `No current cluster`, with "This usually means your kubeconfig is broken" | No current context, or the kubeconfig cannot be read. | Fix `~/.kube/config`. |

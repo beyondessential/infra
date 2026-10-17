@@ -146,7 +146,9 @@ The file `local.json5` MUST NOT be edited by operators.
 
 ## Server key
 
-Each Tamanu server MUST have a [server key](../overview.md#server-key), held as the podman secret `tamanu-config-key`.
+The [server key](../overview.md#server-key) is the per-server secret that encrypts the values Tamanu stores as secrets.
+
+Each Tamanu server MUST have a server key, held as the podman secret `tamanu-config-key`.
 
 The server key MUST be mounted into every Tamanu container at `/run/secrets/tamanu-config-key` with mode 0400.
 

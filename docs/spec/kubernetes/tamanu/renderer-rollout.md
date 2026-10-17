@@ -4,6 +4,8 @@ id: K8STRO
 
 # Tamanu renderer rollout
 
+The requirements in this spec apply to how a build of the [renderer](../../overview.md#renderer) reaches the deployments it renders, through [channels](../../overview.md#channel) and [promotion](../../overview.md#promotion).
+
 ## Borrowed terms
 
 | term | meaning |
@@ -16,9 +18,12 @@ id: K8STRO
 
 ## Channels
 
-A deployment MUST be rendered by exactly one [channel](../../overview.md#channel).
+The renderer is the image Argo CD runs as a plugin to turn the parameters of a Tamanu deployment into its Kubernetes objects.
+A channel is a named stream of renderer builds, `canary` or `stable`, that a Tamanu deployment is rendered by.
 
-The [renderer](../../overview.md#renderer) image MUST be published under two channel tags, `canary` and `stable`.
+A deployment MUST be rendered by exactly one channel.
+
+The renderer image MUST be published under two channel tags, `canary` and `stable`.
 
 Each channel tag MUST name one build of the renderer at a time.
 
@@ -26,7 +31,7 @@ A deployment that names no channel MUST be rendered by `stable`.
 
 A deployment MUST be rendered by `canary` only when its configuration says so.
 
-A deployment that names a channel other than `canary` or `stable` MUST be refused before anything changes, with a message that lists the accepted channels.
+The [stub](../../overview.md#stub) MUST refuse a deployment that names a channel other than `canary` or `stable` before anything changes, with a message that lists the accepted channels.
 
 Changing the channel of a deployment MUST cause it to be rendered by the other channel the next time the deployment is applied, without a manual refresh.
 
@@ -37,7 +42,7 @@ Each channel MUST run as its own Argo CD plugin, registered under a plugin name 
 The `stable` plugin MUST register under the name `infra-argo-tamanu-renderer-v1`, and the `canary` plugin under the name `infra-argo-tamanu-renderer-canary-v1`.
 
 > [!NOTE]
-> Existing Applications refer to the `stable` name, and they are long-lived: they are not redeployed on any schedule the rollout controls.
+> An Application names the plugin that renders it, and Applications outlive renderer builds.
 
 A sidecar MUST pull the renderer image at the tag of its channel every time it starts.
 
@@ -68,7 +73,7 @@ An Application MUST carry its channel in the label `bes.tamanu/renderer-channel`
 
 ## Promotion
 
-A channel tag MUST move only by [promoting](../../overview.md#promotion) a renderer image that has already been built and is identified by its commit.
+A channel tag MUST move only by promoting a renderer image that has already been built and is identified by its commit.
 
 A promotion MUST NOT rebuild the renderer.
 

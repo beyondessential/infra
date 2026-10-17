@@ -28,17 +28,12 @@ Anything beyond that is an AWS-side failure for a developer with AdminAccess: re
 ## 3. Nodes are not rolling after the control-plane upgrade
 
 Karpenter replaces nodes when the `bottlerocket@latest` AMI changes, so nothing happens until EKS publishes one for the new version, and then drift detection takes minutes to an hour. **[diagnose]**
-
-```
-kubectl get nodeclaims -L karpenter.sh/nodepool --sort-by=.metadata.creationTimestamp
-kubectl get events -A --field-selector reason=DisruptionTerminating
-kubectl -n kube-system logs -l app.kubernetes.io/name=karpenter --tail=100 | rg -i 'drift|disrupt'
-```
+How it rolls, what it respects, and the commands to watch it are in [update a Kubernetes cluster, nodes roll by themselves](../sops/update-k8s-cluster.md#3-nodes-roll-by-themselves).
 
 | evidence | cause | action |
 |---|---|---|
 | No drift lines, nodes on the old AMI | AMI not published yet, or still inside Karpenter's reconcile interval. | Wait. |
-| Drift lines, replacement is slow | Budgets and PodDisruptionBudgets are doing their job: Karpenter's default 10% per pool, one at a time on `ingress-arm`, and one at a time on `db-critical`. | Wait. |
+| Drift lines, replacement is slow | The disruption budgets and PodDisruptionBudgets listed in that SOP section are doing their job. | Wait. |
 | Only `db-critical` nodes remain on the old AMI | Replacement happens only between 14:00 and 16:00 UTC. | Wait for the window. |
 | Only `db-replica` nodes remain | Replica pods carry `karpenter.sh/do-not-disrupt` and are replaced on each restore cycle, so only empty nodes are reclaimed. | Wait for the cycle, or ask a developer. |
 | A pod blocks a drain | Its PodDisruptionBudget allows no disruption. | Find the PodDisruptionBudget (`kubectl get pdb -A`); ask the owner before touching it. |

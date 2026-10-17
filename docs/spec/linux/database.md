@@ -38,7 +38,7 @@ The path `/var/lib/postgresql/current` MUST be a symbolic link to the data direc
 
 The packages `postgresql-<major version>` and `postgresql-client-<major version>` MUST be held against unattended upgrade.
 
-The cluster listed as online under the name `main` MUST be exactly one, and its data directory MUST be the directory that `/var/lib/postgresql/current/main` resolves to.
+The cluster listed as online under the name `main` MUST be exactly one, and its data directory MUST be the directory that `/var/lib/postgresql/current` resolves to.
 
 > [!NOTE]
 > The backup resolves the cluster by the name `main`, so a second online cluster or a data directory elsewhere makes the backup capture the wrong files.
@@ -93,6 +93,8 @@ The cluster MUST have the values in the following table for the parameters that 
 
 ## Roles and credentials
 
+The [credential seed](../overview.md#credential-seed) is the secret value from which, with the machine identifier, the database passwords of a server derive.
+
 A Tamanu server MUST have a database named `tamanu`, owned by a role of the same name.
 
 A Tamanu server MUST connect to its database over the Unix socket directory `/var/run/postgresql`.
@@ -101,7 +103,7 @@ The role that owns the Tamanu database MUST have the `CREATEROLE` attribute.
 
 The roles `reporting` and `raw` MUST exist on a Tamanu server, each with a derived password.
 
-The [credential seed](../overview.md#credential-seed) of a deployment MUST be a secret variable and MUST NOT be a host tag.
+The credential seed of a deployment MUST be a secret variable and MUST NOT be a host tag.
 
 The password of a role MUST be a function of the machine identifier of the server, the credential seed, and the name of the role, so that provisioning the server again yields the same password.
 
@@ -130,8 +132,8 @@ The cluster MUST also have the values in the following table, which bestool's tu
 | `effective_io_concurrency` | `200` |
 | `io_method` | `io_uring`, from major version 18 |
 | `archive_timeout` | `300` |
-| `archive_mode` | reset to the PostgreSQL default |
-| `archive_command` | reset to the PostgreSQL default |
+| `archive_mode` | the PostgreSQL default |
+| `archive_command` | the PostgreSQL default |
 | `temp_file_limit` | the value of `postgresql_tune_temp_file_limit` where set, otherwise `postgresql_tune_temp_file_limit_percent` percent of the temporary-file basis, which is 25 percent unless the inventory sets another |
 
 The temporary-file basis MUST be the lower of the size of the filesystem that holds `/var/lib/postgresql` and the referenced-space limit of the `@postgres` subvolume where that limit is set, and the size of the filesystem otherwise.

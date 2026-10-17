@@ -27,7 +27,7 @@ HNC's upstream image is amd64 only, so each pod's init container `build` clones 
 | `Init:Error` or `Init:CrashLoopBackOff`; `build` log shows a `git clone` failure | `github.com` is unreachable from the node when the pod starts. | Restore egress, then restart the pod (below). |
 | `build` init container `OOMKilled` | The compile exceeded its 2Gi limit. | Escalate: fix in `pulumi/k8s-essentials/hnc/specs.ts`. |
 | `Init` is running for a long time but progressing | The compile takes a while on cold start; the startup probe allows for it. | Wait. |
-| Pod stuck `ContainerCreating`, event names the secret `webhook-server-cert` | The serving certificate has not been issued: the self-signed Issuer or cert-manager is not working. `get certificate` shows `READY` false. | Fix cert-manager first (`kubectl -n cert-manager get pods`). |
+| Pod stuck `ContainerCreating`, event names the secret `webhook-server-cert` | The serving certificate has not been issued: the self-signed Issuer or cert-manager is not working. `get certificate` shows `READY` false. | Fix cert-manager first (`kubectl -n cert-manager get pods`). **[dev-OTS]** |
 | One webhooks pod Pending, the other Running | Required anti-affinity by zone, and no `system` node in a second zone. | The remaining pod still answers, but the cluster has lost its redundancy: see [nodes-not-provisioning](nodes-not-provisioning.md). |
 | Both webhooks pods down | Writes in managed namespaces are refused. | Restart per below; escalate at once if they do not come back. |
 

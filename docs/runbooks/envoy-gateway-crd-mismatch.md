@@ -38,7 +38,7 @@ Upgrade the CRDs before raising either version.
 ## A different Envoy error
 
 An apply rejected with "ClientTrafficPolicy must set spec.http3", or "must not set spec.enableProxyProtocol", is the admission policy doing its job, not a version problem: with merged gateways, one policy without HTTP/3 silently breaks HTTP/3 for every gateway, and the PROXY protocol breaks QUIC ([K8SING](../spec/kubernetes/ingress.md#envoy-proxy)).
-Fix the policy in the stack that declares it.
+Fix the policy in the stack that declares it. **[dev-OTS]**
 
 ## Escalate
 

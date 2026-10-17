@@ -29,6 +29,9 @@ In this spec, `<server>` is `central` or `facility-N`, where N numbers the facil
 
 ## Application
 
+A Tamanu deployment is the central server, facility servers and patient portal of one namespace, with their databases, applied by one Argo CD Application.
+The stub is the per-deployment program that creates what the renderer cannot render, and the Application that applies the render.
+
 The stub MUST create one Application for each deployment.
 
 The Application MUST be named as the namespace of the deployment, and MUST belong to the `tamanu` project.

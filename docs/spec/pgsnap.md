@@ -79,6 +79,8 @@ pgsnap MUST add the annotation `pgsnap.bes.au/created-at`, holding the UTC time 
 
 ## Snapshot creation
 
+An ephemeral cluster is a single-instance CloudNativePG cluster that pgsnap creates for one Job and deletes afterwards.
+
 A Job managed by pgsnap MUST be created suspended.
 
 pgsnap MUST unsuspend the Job only once the database accepts connections and the connection Secret exists.

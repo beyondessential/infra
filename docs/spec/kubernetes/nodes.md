@@ -20,6 +20,8 @@ The requirements in this spec apply to every worker node of a cluster, whichever
 
 ## Node identity
 
+A [node pool](../overview.md#node-pool) is a set of nodes provisioned from one shared configuration, whether by a managed nodegroup or by a Karpenter NodePool.
+
 Every node MUST carry each of the labels in the following table, with a value permitted for it.
 
 | label | values | meaning |
@@ -27,7 +29,7 @@ Every node MUST carry each of the labels in the following table, with a value pe
 | `bes.node.purpose` | `workload`, `ingress`, `system`, `tailscale-exit` | What the node is for. Drives workload affinity and cost attribution. |
 | `bes.node.schedule` | `spot`, `ondemand` | The EC2 capacity type backing the instance. |
 | `bes.node.arch` | `arm64`, `amd64` | The CPU architecture of the node. |
-| `bes.node.group` | the name of a [node pool](../overview.md#node-pool) | The node pool that created the node. Used for cost attribution and filtering. |
+| `bes.node.group` | the name of a node pool | The node pool that created the node. Used for cost attribution and filtering. |
 
 The value of `bes.node.schedule` MUST be the capacity type that backs the node's instance.
 
@@ -74,6 +76,8 @@ Where a spot system pool also exists, the replicas of the autoscaler controller 
 > Spreading the replicas keeps a simultaneous loss of spot nodes from taking down all of them.
 
 ## Workload capacity
+
+A [general workload pool](../overview.md#general-workload-pool) is a node pool with purpose `workload` that is not a dedicated pool.
 
 A workload SHOULD run on spot capacity wherever it tolerates the spot taint.
 
@@ -129,7 +133,9 @@ A spot workload pool MUST NOT consolidate an underutilised node until the pods o
 
 ## Database pools
 
-The database replica pool and the critical database pool are [dedicated pools](../overview.md#dedicated-pool).
+A [dedicated pool](../overview.md#dedicated-pool) is a node pool that only workloads which explicitly opt in can use.
+
+The database replica pool and the critical database pool are dedicated pools.
 
 The database replica pool MUST offer memory-dense node shapes, sized so that one database replica fills a node.
 
@@ -162,6 +168,8 @@ The critical database pool MUST replace nodes only within a daily maintenance wi
 The nodes of the critical database pool MUST be attributable as critical database capacity in cost reporting.
 
 ## Exit node
+
+An exit node is a Tailscale node that forwards the internet traffic of connected clients, run as a workload in the cluster.
 
 An exit node MUST run on a node with no workload other than daemonsets.
 

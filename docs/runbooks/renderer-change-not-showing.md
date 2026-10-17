@@ -34,7 +34,7 @@ A promotion clears it for every Application on the channel.
 
 ## 5. Resolve
 
-[Hard-refresh an Application](../sops/hard-refresh-application.md) for one, or `tamanu/on-k8s/renderer/tools/refresh-channel.sh <stable|canary>` for a whole channel on a cluster **[dev-OTS]**.
+[Hard-refresh an Application](../sops/hard-refresh-application.md) for one, or the whole-channel refresh at the end of that SOP for every awake Application of a channel on a cluster **[dev-OTS]**.
 
 ## 6. Escalate
 

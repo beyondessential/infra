@@ -4,6 +4,8 @@ id: K8SVOL
 
 # Persistent volumes
 
+The requirements in this spec apply to the persistent volumes that a cluster offers to its workloads, and to the [shared filesystem](../overview.md#shared-filesystem) among them.
+
 ## Borrowed terms
 
 | term | meaning |
@@ -13,9 +15,11 @@ id: K8SVOL
 
 ## Multi-node access
 
+A shared filesystem is a filesystem whose volumes several nodes mount read-write at once.
+
 Where a cluster hosts a workload that holds content on disk and either serves it from more than one replica or hands it between separate processes, the cluster MUST offer a storage class whose volumes mount read-write from several nodes at once.
 
-A [shared filesystem](../overview.md#shared-filesystem) volume MUST be mountable from every availability zone in which the cluster places workloads.
+A shared filesystem volume MUST be mountable from every availability zone in which the cluster places workloads.
 
 > [!NOTE]
 > Pods are scheduled against capacity and not against storage locality, so a volume reachable from only some zones turns a spot capacity shift into a mount failure.

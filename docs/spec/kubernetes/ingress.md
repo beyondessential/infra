@@ -4,6 +4,8 @@ id: K8SING
 
 # Kubernetes ingress
 
+The requirements in this spec apply to the load balancer, Gateway, certificates, DNS and proxy that bring internet traffic to the services of a cluster.
+
 ## Borrowed terms
 
 | term | meaning |
@@ -58,11 +60,11 @@ For a hostname at a zone apex, external-dns MUST create a Route 53 ALIAS record 
 
 The Envoy proxy pods MUST be scheduled on nodes with `bes.node.purpose=ingress`.
 
-The Envoy proxy pods MUST NOT place more than one replica in the same availability zone.
+The Envoy proxy pods MUST be spread so that no two of them run in one availability zone.
 
 The Gateway MUST NOT use the PROXY protocol.
 
-Backends MUST receive the original client IP of requests from IPv6 clients.
+The Gateway MUST convey the original client address of a request from an IPv6 client to the backend.
 
 A backend MUST NOT rely on the client IP of a request from an IPv4 client.
 

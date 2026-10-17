@@ -17,12 +17,12 @@ Which stack, which cluster the kubeconfig points at, and whether the deployment 
 
 | Message | Cause | Action |
 |---|---|---|
-| `Incorrect cluster: expected X but got Y`, `No current cluster` | The kubeconfig's current cluster is not the stack's `k8s-core` cluster, or it is broken (`pulumi/common/k8s/coreRef.ts`). | Switch context ([connect to the cluster](../sops/connect-to-k8s-cluster.md)) and rerun. |
+| `Incorrect cluster: expected X but got Y`, `No current cluster` | The kubeconfig's current cluster is not the stack's `k8s-core` cluster, or it is broken (`pulumi/common/k8s/coreRef.ts`). | Switch context ([connect to the cluster](../sops/connect-to-k8s-cluster.md)) and rerun. **[dev-OTS]** |
 | `Argo CD is not installed on the cluster that <ns> runs on` | The cluster has no `argoproj.io` API. Nothing was changed. | Escalate: Argo CD, the renderer plugin and the `tamanu` project must be installed first ([K8SNSP](../spec/kubernetes/namespaces.md#argo-cd-access)). |
 | `<ns> was deployed by the previous program and is not marked for the move to Argo CD` | A deployment made by the previous Pulumi program is handed over in two steps and the first was not run. | See the handover below. |
 | `Legacy objects were still present after 10 minutes` | The handover could not remove the previous program's objects in time. | Escalate. |
 | `ttlHours must be a non-negative integer` | Bad `ttlHours` ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#time-to-live)). | Fix the key. |
-| `<key> is a secret, which cannot be passed to the renderer` | A secret was set in the stack config. | Remove it and set it as a plain value only if it is not a secret. Secrets do not go in stack config. |
+| `<key> is a secret, which cannot be passed to the renderer` | A secret was set in the stack config. | Remove it and set it as a plain value only if it is not a secret. Secrets do not go in stack config. **[dev-OTS]** |
 | `rendererChannel "<x>" is not a renderer channel; use stable or canary` | Bad channel ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#channels)). | Fix the key. |
 | `could not read the version of the image tagged <tag>`, `has no version label; set appVersion`, `appVersion ... is not a valid version` | The stub reads the Tamanu version from the image, and the tag is missing, unlabelled, or `appVersion` is invalid. | Fix the tag or set `appVersion` ([config reference](../reference/tamanu-deployment-config.md#identity-and-addresses)). |
 | `Namespace name ... is reserved`, `Cannot have more facilityNames than facilities`, `Facility ... must be unique` | Config the stub validates itself. | Fix the key. |

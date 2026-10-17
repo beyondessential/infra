@@ -30,7 +30,7 @@ A host-level or node-level memory figure MUST NOT be used as a basis.
 
 A change to the memory request MUST change every memory-derived parameter, except where a floor or cap in this spec applies.
 
-Tuning MUST NOT set a parameter below the value PostgreSQL uses by default.
+Tuning MUST NOT set a memory-derived parameter below the value PostgreSQL uses by default.
 
 ## Memory parameters
 
@@ -47,12 +47,16 @@ A cluster MUST set each parameter in the following table to the value given for 
 
 ## Storage-derived limits
 
+A cluster MUST set each parameter in the following table to the value given for it.
+
 | parameter | value |
 |---|---|
 | `temp_file_limit` | A quarter of the volume size of the cluster. |
 | `max_slot_wal_keep_size` | Thirty percent of the volume size of the cluster, at least 1GB. |
 
 ## Workload parameters
+
+A cluster MUST set each parameter in the following table to the value given for it.
 
 | parameter | value |
 |---|---|

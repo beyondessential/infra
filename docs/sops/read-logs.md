@@ -18,6 +18,17 @@ kubectl -n tamanu-<stack> logs -f deploy/facility-1-sync
 Name a pod (`kubectl -n tamanu-<stack> get pods`, then `logs <pod>`) to read a specific replica.
 The Tamanu pack's [read-logs](https://github.com/beyondessential/tamanu/blob/main/docs/sops/read-logs.md) covers the other platforms.
 
+### Caddy access log
+
+On a Linux server Caddy logs JSON lines to the journal, access entries and runtime events together. **[diagnose]**
+This keeps the runtime events, where certificate renewal failures appear, and drops the access entries, which carry a `status`:
+
+```sh
+journalctl -u caddy -o cat | jq -Rr 'fromjson? | select(.status == null) | [(.ts|todate), .level, .logger, .msg] | @tsv'
+```
+
+Leave out the `select` to read the access entries too; they are **[sensitive-data]** like any server log.
+
 ## Hook Jobs
 
 ```sh

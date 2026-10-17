@@ -18,7 +18,7 @@ Which name, from the browser's error and the instance tags or inventory ([instan
 
 On the host. **[diagnose]**
 
-1. Caddy's runtime events, where renewal failures appear and the access log never shows them: `journalctl -u caddy -o cat | jq -Rr 'fromjson? | select(.status == null) | [(.ts|todate), .level, .logger, .msg] | @tsv'`.
+1. Caddy's runtime events, where renewal failures appear and the access log never shows them: the one-liner in [read logs, Caddy access log](../sops/read-logs.md#caddy-access-log).
 2. The bestool daemon, which serves Canopy certificates to Caddy: `systemctl status bestool-alertd`, and `bestool --version`. A site names the daemon's endpoint only for `bestool` 2.2.0 or later.
 3. Caddy is admitted to the endpoint: `systemctl cat bestool-alertd` shows `Environment=BESTOOL_PERMIT_CERT_USER=caddy` in `20-caddy-certificates.conf`.
 4. Which issuer applies: `cat /etc/caddy/config/issuer`. A `dns route53` block means DNS-01 through the credentials in `/var/lib/caddy/.aws/credentials`. Do not print that file.

@@ -163,6 +163,7 @@ The bindings in the following table MUST exist.
 | `tailscale:tamanu-deploy` | `tamanu-deploy-system` | `tamanu-system` |
 | `tailscale:tamanu-deploy` | `tamanu-deploy-cluster` | cluster-wide |
 | `tailscale:tamanu-deploy` | `tamanu-deploy`, a Role over `applications` | the namespace of Argo CD |
+| `tailscale:gha:renderer-promote` | `renderer-promote`, a Role over `applications` and the repo server Deployment | the namespace of Argo CD |
 | `tailscale:gha:dbt-build` | `tamanu-gha-dbt-build` | the subtree of the super namespace |
 | `tailscale:gha:canopy` | `cluster-admin` | the namespace of the Canopy deployment |
 | `tailscale:gha:canopy` | `tamanu-meta-gha-canopy-ns` | cluster-wide |
@@ -188,13 +189,16 @@ The bounds in the following table hold for every version of a role.
 | `tamanu-deploy-cluster` | The cluster-scoped permissions that a deployment needs. | Limited to patching namespaces and managing VolumeSnapshotContents, as [Deployer limits](#deployer-limits) states. |
 | `tamanu-deploy-system` | Letting the deployer read the shared configuration. | MUST be bound only in `tamanu-system`. MUST be read-only. |
 | `tamanu-gha-dbt-build` | Letting the data build job reach a database. | MUST NOT change any object. |
+| `renderer-promote` | Letting the renderer promotion workflow refresh Applications and restart the Argo CD repo server, as [K8STRO](tamanu/renderer-rollout.md#access) requires. | MUST be bound only in the namespace of Argo CD. MUST NOT be able to create or delete an Application. |
 | `tamanu-meta-gha-canopy-ns` | Letting the Canopy deployment workflow create its own namespaces. | MUST NOT be able to change any object other than namespaces. |
 
 The roles that can read Secrets MUST be `oncall`, `data-engineer`, `tamanu-engineer`, `tamanu-deploy` and `tamanu-deploy-system`, and the roles that `tamanu-gha-dbt-build` grants for reading the Secret of one database.
 
 ## Deployer limits
 
-The [deployer](../overview.md#deployer) MUST NOT be able to create or delete a namespace.
+The [deployer](../overview.md#deployer) is the identity, in the access group `tailscale:tamanu-deploy`, that creates and changes the objects of a Tamanu deployment.
+
+The deployer MUST NOT be able to create or delete a namespace.
 
 The deployer MUST NOT hold a permission in a namespace other than the subtree of the super namespace, `tamanu-seed`, `tamanu-system` and the namespace of Argo CD.
 

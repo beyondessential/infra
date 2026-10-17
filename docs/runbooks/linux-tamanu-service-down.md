@@ -25,7 +25,7 @@ On the host over SSH. **[diagnose]**
 3. The boot and roll units: `systemctl status tamanu-boot.service tamanu-roll-on-postgres.service`.
 4. Versions on disk, without the password line: `grep -E '^(TAMANU|TZ)' /etc/tamanu/env`, `ls -l /etc/tamanu/current`, `podman images`.
 5. The server key exists: `sudo podman secret ls`. **[diagnose]**
-6. Caddy's side: `journalctl -u caddy -o cat | jq -Rr 'fromjson? | select(.status == null) | [(.ts|todate), .level, .msg] | @tsv'`.
+6. Caddy's side: the one-liner in [read logs, Caddy access log](../sops/read-logs.md#caddy-access-log).
 7. The database: [database not reachable](linux-database-not-reachable.md) if the log says it cannot connect.
 
 ## 4. Interpret

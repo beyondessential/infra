@@ -4,7 +4,7 @@ The `disk_free`, `btrfs` or `inodes` check fails, a write fails with `ENOSPC`, P
 The layouts and volumes are in [LNXSRV](../spec/linux/server.md#storage-layout).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
-**Never delete files under `/var/lib/postgresql`, a snapshot, or a btrfs subvolume to free space**, and never shrink or repartition a disk ([disk work](../sops/linux-convert-disk-layout.md)).
+**Never delete files under `/var/lib/postgresql` to free space.** Do not delete a snapshot or a btrfs subvolume except as this runbook pre-signs below, and never shrink or repartition a disk ([disk work](../sops/linux-convert-disk-layout.md)).
 Deep disk and AWS-level work is for developers and ops.
 
 ## 1. When this applies
