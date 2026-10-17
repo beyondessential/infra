@@ -1,7 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../superns.ts';
 
-// spec: K8SNSP#tamanu-engineer
+// spec: K8SNSP#roles
 const role = new k8s.rbac.v1.ClusterRole('tamanu-engineer', {
   metadata: {
     name: 'tamanu-engineer',
@@ -94,7 +94,7 @@ new k8s.rbac.v1.RoleBinding('tamanu-super-engineer', {
 });
 
 // Cluster-level permissions for UI navigation and overview
-// spec: K8SNSP#tamanu-engineer-cluster
+// spec: K8SNSP#roles
 const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-engineer-cluster', {
   metadata: {
     name: 'tamanu-engineer-cluster',

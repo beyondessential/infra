@@ -181,109 +181,24 @@ A binding of an access group to `cluster-admin` MUST be a RoleBinding.
 
 ## Roles
 
-In the tables of this section, `read` stands for the verbs `get`, `list` and `watch`, and `write` stands for the verbs `create`, `update`, `patch` and `delete`.
-The API group `core` is the group with the empty name.
+Each role MUST grant the permissions its purpose needs and no others.
 
-A role MUST grant the permissions in its table and no others.
+The permissions of a role are defined once, in the cluster stacks that create it, and are not restated here.
+The bounds in the following table hold for every version of a role.
 
-### oncall
-
-| api group | resources | verbs |
+| role | purpose | bounds |
 |---|---|---|
-| core | `nodes`, `namespaces`, `persistentvolumes` | read |
-| core | `pods`, `pods/log`, `pods/exec`, `pods/portforward`, `services`, `endpoints`, `configmaps`, `secrets`, `serviceaccounts`, `persistentvolumeclaims`, `events` | read, write |
-| apps | `deployments`, `statefulsets`, `daemonsets`, `replicasets` | read, write |
-| batch | `jobs`, `cronjobs` | read, write |
-| networking.k8s.io | `ingresses`, `networkpolicies` | read, write |
-| postgresql.cnpg.io | every resource | read, write |
-| hnc.x-k8s.io | every resource | read, `create`, `update`, `patch` |
-| bes.au | every resource | read, write |
-| rbac.authorization.k8s.io | `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings` | read |
-| cert-manager.io | `certificates`, `certificaterequests`, `issuers`, `clusterissuers` | read, write |
-| snapshot.storage.k8s.io | `volumesnapshots`, `volumesnapshotcontents` | read, `create`, `delete` |
-| gateway.networking.k8s.io | every resource | read, write |
-| gateway.envoyproxy.io | every resource | read, write |
-| autoscaling | `horizontalpodautoscalers` | read, write |
-| apiextensions.k8s.io | `customresourcedefinitions` | read |
+| `oncall` | Operating a cluster during an incident. | MAY change workloads, configuration, Secrets, database clusters, certificates and gateway resources. MUST NOT change Roles, RoleBindings or ClusterRoles. MUST NOT change nodes or namespaces. |
+| `data-engineer` | Reading from a database through the cluster. | MUST NOT change any object. MAY open a port-forward or an exec session to a pod. |
+| `tamanu-engineer` | Investigating a Tamanu deployment and applying small fixes. | MAY read most objects of a deployment, edit its ConfigMaps and Secrets, delete its pods, and update or patch its Deployments and StatefulSets. MUST NOT create or delete a workload. |
+| `tamanu-engineer-cluster` | Cluster-wide read access that `tamanu-engineer` needs. | MUST be read-only. |
+| `tamanu-deploy` | Creating and changing the objects of a Tamanu deployment in its namespace. | MUST be bound only in the namespaces of deployments. MUST NOT hold `escalate` or `bind`. |
+| `tamanu-deploy-cluster` | The cluster-scoped permissions that a deployment needs. | Limited to patching namespaces and managing VolumeSnapshotContents, as [Deployer limits](#deployer-limits) states. |
+| `tamanu-deploy-system` | Letting the deployer read the shared configuration. | MUST be bound only in `tamanu-system`. MUST be read-only. |
+| `tamanu-gha-dbt-build` | Letting the data build job reach a database. | MUST NOT change any object. |
+| `tamanu-meta-gha-canopy-ns` | Letting the Canopy deployment workflow create its own namespaces. | MUST NOT be able to change any object other than namespaces. |
 
-### data-engineer
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `pods`, `services`, `endpoints`, `namespaces` | read |
-| core | `pods/portforward` | `get`, `create` |
-| core | `pods/exec` | `create` |
-| core | `secrets` | read |
-| postgresql.cnpg.io | `clusters` | read |
-| gateway.networking.k8s.io | `gateways`, `httproutes` | read |
-
-### tamanu-engineer
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `pods`, `pods/log`, `services`, `endpoints`, `serviceaccounts`, `persistentvolumeclaims`, `events` | read |
-| core | `pods/exec`, `pods/portforward` | read, `create` |
-| core | `configmaps`, `secrets` | read, write |
-| core | `pods` | `delete` |
-| apps | `deployments`, `replicasets`, `statefulsets` | read, `update`, `patch` |
-| batch | `jobs`, `cronjobs` | read |
-| networking.k8s.io | `ingresses` | read |
-| gateway.networking.k8s.io | `gateways`, `httproutes` | read |
-| gateway.envoyproxy.io | `clienttrafficpolicies` | read |
-| postgresql.cnpg.io | every resource | read |
-
-### tamanu-engineer-cluster
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `namespaces`, `events`, `nodes` | read |
-| metrics.k8s.io | `nodes`, `pods` | read |
-
-### tamanu-deploy
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `secrets`, `configmaps`, `services`, `serviceaccounts`, `persistentvolumeclaims` | read, write |
-| core | `endpoints` | read |
-| core | `pods/exec` | `create` |
-| apps | `deployments` | read, write |
-| policy | `poddisruptionbudgets` | read, write |
-| batch | `jobs`, `cronjobs` | read, write |
-| rbac.authorization.k8s.io | `roles`, `rolebindings` | read, write |
-| networking.k8s.io | `ingresses` | read, write |
-| postgresql.cnpg.io | `clusters`, `scheduledbackups`, `backups` | read, write |
-| barmancloud.cnpg.io | `objectstores` | read, write |
-| hnc.x-k8s.io | `subnamespaceanchors` | read, write |
-| gateway.networking.k8s.io | `gateways`, `httproutes` | read, write |
-| gateway.envoyproxy.io | `clienttrafficpolicies` | read, write |
-| snapshot.storage.k8s.io | `volumesnapshots` | read, write |
-
-### tamanu-deploy-cluster
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `namespaces` | read, `patch` |
-| snapshot.storage.k8s.io | `volumesnapshotcontents` | read, write |
-
-### tamanu-deploy-system
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `secrets`, `configmaps` | read |
-
-### tamanu-gha-dbt-build
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `pods` | read |
-| core | `pods/portforward` | read, `create` |
-| core | `secrets`, `services` | `get` |
-
-### tamanu-meta-gha-canopy-ns
-
-| api group | resources | verbs |
-|---|---|---|
-| core | `namespaces` | read, `create`, `update`, `patch` |
+The roles that can read Secrets MUST be `oncall`, `data-engineer`, `tamanu-engineer`, `tamanu-deploy` and `tamanu-deploy-system`, and the roles that `tamanu-gha-dbt-build` grants for reading the Secret of one database.
 
 ## Deployer limits
 

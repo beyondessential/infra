@@ -4,7 +4,7 @@ import { namespace } from './namespace.ts';
 // Deployer needs read access to tamanu-system to read secrets and config templates
 // that get copied into deployment namespaces.
 // Note: The built-in 'view' ClusterRole excludes secrets, so we need a custom role.
-// spec: K8SNSP#tamanu-deploy-system
+// spec: K8SNSP#roles
 const deploySystemRole = new k8s.rbac.v1.Role('tamanu-deploy-system', {
   metadata: {
     name: 'tamanu-deploy-system',

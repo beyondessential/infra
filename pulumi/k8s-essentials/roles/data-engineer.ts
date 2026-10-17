@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 
-// spec: K8SNSP#data-engineer
+// spec: K8SNSP#roles
 const role = new k8s.rbac.v1.ClusterRole('data-engineer', {
   metadata: {
     name: 'data-engineer',

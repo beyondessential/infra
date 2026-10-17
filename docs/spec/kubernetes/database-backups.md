@@ -13,7 +13,7 @@ Tuning, scheduling and the resource requests of the archiving sidecar are define
 |---|---|
 | cluster | A CloudNativePG `Cluster` resource, a PostgreSQL primary with its replicas ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). Within this spec the word never means a Kubernetes cluster. |
 | object store | A Barman Cloud plugin `ObjectStore` resource, which holds the destination, credentials method, compression and retention policy that a cluster archives under ([Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/)). |
-| scheduled backup | A CloudNativePG `ScheduledBackup` resource, which takes base backups on a cron schedule ([CloudNativePG backup](https://cloudnative-pg.io/documentation/current/backup/)). |
+| scheduled backup | A CloudNativePG `ScheduledBackup` resource, which takes base backups on a cron schedule. The schedule is a six-field expression whose first field is seconds, so `0 0 2 * * *` is 02:00:00 every day ([CloudNativePG backup](https://cloudnative-pg.io/documentation/current/backup/)). |
 | WAL archiving | PostgreSQL's copying of each completed write-ahead log segment to storage outside the server ([PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html)). |
 | base backup | A file-level copy of the data directory of a cluster, from which WAL replay starts ([PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html)). |
 | recovery window | The period back from the present within which a cluster can be restored to any moment; the retention policy of an object store sets it ([Barman Cloud plugin retention policies](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/)). |
@@ -47,7 +47,7 @@ The scheduled backup MUST take base backups through the Barman Cloud plugin.
 
 The scheduled backup MUST take a base backup every day.
 
-The scheduled backup SHOULD use the schedule `0 0 2 * * *`, a six-field expression whose first field is seconds.
+The scheduled backup SHOULD take its base backup at 02:00.
 
 The scheduled backup SHOULD take a base backup when it is created, without waiting for the first scheduled time.
 

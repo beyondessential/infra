@@ -18,7 +18,7 @@ new k8s.rbac.v1.RoleBinding('gha-canopy', {
 // Pulumi's Namespace resource is cluster-scoped, so it can't be reached by the
 // in-namespace RoleBinding above. Grant just enough to refresh, create, and
 // patch it — no delete, to keep the blast radius narrow.
-// spec: K8SNSP#tamanu-meta-gha-canopy-ns
+// spec: K8SNSP#roles
 const nsClusterRole = new k8s.rbac.v1.ClusterRole('tamanu-meta-gha-canopy-ns', {
   rules: [
     {

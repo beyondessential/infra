@@ -3,7 +3,7 @@ import { namespace } from '../superns.ts';
 
 // Minimal cluster-level permissions for namespace operations.
 // With SubnamespaceAnchors, we only need to read namespaces (HNC creates them).
-// spec: K8SNSP#tamanu-deploy-cluster
+// spec: K8SNSP#roles
 const clusterRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy-cluster', {
   metadata: {
     name: 'tamanu-deploy-cluster',
@@ -43,7 +43,7 @@ new k8s.rbac.v1.ClusterRoleBinding('tamanu-deploy-cluster', {
 
 // Permissions needed for a tamanu/on-k8s deployment.
 // Bound via RoleBinding in tamanu-super and propagated by HNC to child namespaces.
-// spec: K8SNSP#tamanu-deploy
+// spec: K8SNSP#roles
 // spec: K8SNSP#deployer-limits
 const deployRole = new k8s.rbac.v1.ClusterRole('tamanu-deploy', {
   metadata: {

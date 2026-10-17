@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 
-// spec: K8SNSP#oncall
+// spec: K8SNSP#roles
 const role = new k8s.rbac.v1.ClusterRole('oncall', {
   metadata: {
     name: 'oncall',
