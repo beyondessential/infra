@@ -122,12 +122,12 @@ The renderer MUST refuse a deployment that is configured to be topped up with ge
 
 ## Update strategy
 
-The central task runner, the task runner of each facility, the sync server of each facility and the FHIR workers of each facility MUST be updated by recreation.
+The central task runner, the task runner of each facility and the sync server of each facility MUST be updated by recreation.
 
 > [!NOTE]
 > Each of these runs scheduled work or sync, which two instances at once would run twice.
 
-An API server and a web frontend MUST be updated by rolling update.
+An API server, a web frontend and a FHIR worker MUST be updated by rolling update.
 
 ## Server health
 
