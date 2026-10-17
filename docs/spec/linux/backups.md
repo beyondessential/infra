@@ -69,31 +69,11 @@ The `tamanu-postgres` definition of a server in a clone deployment MUST contain 
 | post-restore | 1 | Remove from the database the identity it holds as the source server. |
 | post-restore | 2 | Replace the server key with a new random one. |
 | post-restore | 3 | Start the Tamanu services. |
-| post-restore | 4 | Run the clone setup script, where the server has one. |
+| post-restore | 4 | Run the clone setup script of [LNXANS](ansible.md#clone-setup), where the server has one. |
 
 The identity removal MUST be fatal where it fails.
 
 The identity removal SHOULD call the database function that Tamanu provides for forgetting a server identity, where the function exists.
-
-The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facilities, and MUST report failure where any step fails.
-
-The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility.
-
-A clone setup script MUST pass a password to its command in the environment, and MUST NOT put it in a process argument.
-
-## Clone sync accounts
-
-A facility server of a clone deployment MUST have a synchronisation account on the central server, where the central server is in the same inventory and runs Tamanu 2.60.0 or later.
-
-Where that does not hold, the sync accounts MUST be set up by hand and provisioning MUST warn that they are.
-
-The password of a sync account MUST be 32 random bytes in hexadecimal, generated on the central server, and MUST NOT be derived from the inventory or written on the control host.
-
-The password MUST be generated once, and replaced only where its stored copy is deleted.
-
-The central server MUST keep each password where only the database user can read it, and the facility server MUST keep its own where only its administrator can read it.
-
-The sync account of a facility MUST be named from the inventory host name in lower case, with every character outside `a-z`, `0-9` and `-` replaced by `-`.
 
 ## Repository bucket
 
@@ -170,9 +150,9 @@ The trust policy of the maintenance role MUST NOT allow the issuer of Canopy.
 
 ### Without Canopy infrastructure
 
-Where the stack does not name the Canopy infrastructure stack, the trust policy of the device role MUST allow the EC2 service principal.
+Where the stack does not name the Canopy infrastructure stack, the trust policy of the device role MAY allow the EC2 service principal.
 
-Where the stack does not name the Canopy infrastructure stack, the device role MUST grant the actions of the table in [With Canopy infrastructure](#with-canopy-infrastructure) except `s3:GetBucketObjectLockConfiguration`, together with `s3:PutObjectRetention`.
+Where the stack does not name the Canopy infrastructure stack, the device role MAY grant the actions of the table in [With Canopy infrastructure](#with-canopy-infrastructure) except `s3:GetBucketObjectLockConfiguration`, together with `s3:PutObjectRetention`.
 
 Where the stack does not name the Canopy infrastructure stack, it MAY create one IAM user for each server, holding the same grant as the device role.
 

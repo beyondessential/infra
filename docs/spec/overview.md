@@ -23,7 +23,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Envoy HTTP headers](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers) | The `x-forwarded-client-cert` header. Used by [K8SING](kubernetes/ingress.md). |
 | [Network Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html) | The AWS NLB. Used by [K8SING](kubernetes/ingress.md). |
 | [Choosing between alias and non-alias records](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-choosing-alias-non-alias.html) | Route 53 ALIAS records. Used by [K8SING](kubernetes/ingress.md). |
-| [Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html) | IMDSv2 and the metadata options of an instance. Used by [K8SNOD](kubernetes/nodes.md). |
+| [Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html) | IMDSv2 and the metadata options of an instance. Used by [K8SNOD](kubernetes/nodes.md) and [LNXAWS](linux/aws.md). |
 | [Spot Instance interruptions](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html) | The warning EC2 gives before reclaiming a Spot instance. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Spot Instance Advisor](https://aws.amazon.com/ec2/spot/instance-advisor/) | The published interruption frequency of each instance type. Used by [K8SNOD](kubernetes/nodes.md). |
 | [Service-linked role for Spot Instance requests](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/service-linked-roles-spot-instance-requests.html) | The `AWSServiceRoleForEC2Spot` role. Used by [K8SNOD](kubernetes/nodes.md). |
@@ -67,14 +67,15 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Tailscale Kubernetes operator API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), [grants](https://tailscale.com/kb/1324/grants) and [workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation) | Authenticated access to the API server over the tailnet. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) | Mapping IAM principals to Kubernetes permissions. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md) and [how-to](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md) | Namespace trees, subnamespace anchors and propagation. Used by [K8SNSP](kubernetes/namespaces.md). |
-| [cloud-init](https://cloudinit.readthedocs.io/en/latest/) | First-boot user data. Used by [LNXSRV](linux/server.md). |
-| [Work with instance tags in instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) | Instance tags through the metadata service. Used by [LNXSRV](linux/server.md). |
-| [General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html) | The gp3 volume type. Used by [LNXSRV](linux/server.md). |
-| [Tailscale tags](https://tailscale.com/kb/1068/tags), [SSH](https://tailscale.com/kb/1193/tailscale-ssh) and [HTTPS](https://tailscale.com/kb/1153/enabling-https) | Tailnet tags, Tailscale SSH and node certificates. Used by [LNXSRV](linux/server.md) and [LNXTLS](linux/tls.md). |
+| [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [user data](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) | First-boot commands from user data. Used by [LNXAWS](linux/aws.md). |
+| [Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html), [Elastic IP addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html) and [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html) | Instances, static public addresses and packet filters. Used by [LNXAWS](linux/aws.md) and [LNXSRV](linux/server.md). |
+| [Work with instance tags in instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) | Instance tags through the metadata service. Used by [LNXAWS](linux/aws.md). |
+| [General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html) | The gp3 volume type. Used by [LNXAWS](linux/aws.md). |
+| [Tailscale tags](https://tailscale.com/kb/1068/tags), [SSH](https://tailscale.com/kb/1193/tailscale-ssh) and [HTTPS](https://tailscale.com/kb/1153/enabling-https) | Tailnet tags, Tailscale SSH and node certificates. Used by [LNXSRV](linux/server.md), [LNXAWS](linux/aws.md) and [LNXTLS](linux/tls.md). |
 | [btrfs subvolumes](https://btrfs.readthedocs.io/en/latest/Subvolumes.html) and [quota groups](https://btrfs.readthedocs.io/en/latest/Qgroups.html) | Subvolumes and qgroup limits. Used by [LNXSRV](linux/server.md) and [LNXDB](linux/database.md). |
 | [systemd.slice](https://www.freedesktop.org/software/systemd/man/latest/systemd.slice.html), [systemd.resource-control](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html), [journald.conf](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html) and [systemd.socket](https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html) | Slices, resource weights, the journal, template units and socket activation. Used by [LNXSRV](linux/server.md) and [LNXRUN](linux/runtime.md). |
 | [chrony](https://chrony-project.org/documentation.html), [IP sysctl](https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html), [UFW](https://help.ubuntu.com/community/UFW) and [Munin](https://munin-monitoring.org/) | Clock, TCP tuning, host firewall and metrics. Used by [LNXSRV](linux/server.md). |
-| [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) | Backup plans and vaults. Used by [LNXSRV](linux/server.md) and [LNXBAK](linux/backups.md). |
+| [What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html) | Backup plans and vaults. Used by [LNXBAK](linux/backups.md). |
 | [PostgreSQL clusters](https://www.postgresql.org/docs/current/creating-cluster.html), [pg_hba.conf](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html), [peer authentication](https://www.postgresql.org/docs/current/auth-peer.html), [user name maps](https://www.postgresql.org/docs/current/auth-username-maps.html), [password authentication](https://www.postgresql.org/docs/current/auth-password.html), [ALTER SYSTEM](https://www.postgresql.org/docs/current/sql-altersystem.html), [pg_upgrade](https://www.postgresql.org/docs/current/pgupgrade.html) and [pg_checksums](https://www.postgresql.org/docs/current/app-pgchecksums.html) | Cluster layout, authentication, parameters and upgrade. Used by [LNXDB](linux/database.md). |
 | [podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) and [podman-secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html) | Quadlets and secrets. Used by [LNXRUN](linux/runtime.md) and [LNXMSP](linux/msupply.md). |
 | [Caddy documentation](https://caddyserver.com/docs/), [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [the tls directive](https://caddyserver.com/docs/caddyfile/directives/tls) | The reverse proxy, snippets and certificate retrieval. Used by [LNXRUN](linux/runtime.md) and [LNXTLS](linux/tls.md). |
@@ -87,6 +88,9 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Ansible playbooks](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html), [tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html), [check mode](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_checkmode.html), [inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html) and [basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html) | Playbooks, plays, tags, check mode, inventory sources and the control node. Used by [LNXANS](linux/ansible.md). |
 | [Tailscale Services](https://tailscale.com/kb/1552/tailscale-services) and [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) | Named services on the tailnet. Used by [LNXMSP](linux/msupply.md). |
 | [Canopy INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md) | What an inventory contains, reaching a machine and run leases. Used by [LNXANS](linux/ansible.md). |
+| [linux-images disk images](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md) | The partition layout, btrfs configuration, packages, firewall, Tailscale setup and AMI publication of the BES Linux image. Used by [LNXSRV](linux/server.md), [LNXAWS](linux/aws.md) and [LNXDB](linux/database.md). |
+| [bestool PGT](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/pg-tune.md) | The PostgreSQL tuning values and the resource budget they derive from. Used by [LNXDB](linux/database.md). |
+| [bestool MET](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/metrics.md) | The metrics endpoint and the Munin plugin of the bestool daemon. Used by [LNXSRV](linux/server.md). |
 | [bestool workload and healthchecks](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/substrate.md), [bestool logs](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/logs.md) and [bestool healthchecks](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/healthchecks.md) | How bestool supervises the Tamanu workload, finds logs and grades health. Used by [LNXRUN](linux/runtime.md) and [LNXANS](linux/ansible.md). |
 | [Tamanu configuration sources](https://github.com/beyondessential/tamanu/blob/main/specs/administration/settings/overview.md#configuration-sources) and [secret encryption](https://github.com/beyondessential/tamanu/blob/main/specs/administration/settings/secret-encryption.md#storage) | Where Tamanu reads its configuration and how it stores secrets. Used by [LNXRUN](linux/runtime.md). |
 
@@ -134,10 +138,10 @@ Defined by this gloss alone.
 
 ### bestool
 
-The BES operator tool installed on Linux servers, which controls Tamanu services and runs the alert daemon.
+The BES operator tool installed on Linux servers, which controls Tamanu services and runs the bestool daemon.
 Defined by this gloss alone.
 
-### Alert daemon
+### bestool daemon
 
 The bestool service that runs health checks and backups and serves Canopy certificates to the proxy.
 Defined by this gloss alone.
@@ -145,12 +149,12 @@ Defined by this gloss alone.
 ### Linux server
 
 A host, managed by the Ansible playbooks, that runs a Tamanu central or facility server with its database and reverse proxy.
-Defined in [LNXSRV](linux/server.md#server-types).
+Defined in [LNXSRV](linux/server.md#platform).
 
 ### External server
 
 A Linux server that runs outside the deployment's AWS account and has only DNS records and certificate credentials provisioned for it.
-Defined in [LNXSRV](linux/server.md#provisioning).
+Defined in [LNXAWS](linux/aws.md#instances-and-external-servers).
 
 ### Node pool
 
@@ -295,7 +299,7 @@ Defined in [LNXSRV](linux/server.md#storage-layout).
 ### Instance tags
 
 The EC2 tags that provisioning writes and the playbooks read.
-Defined in [LNXSRV](linux/server.md#instance-tags).
+Defined in [LNXAWS](linux/aws.md#instance-tags).
 
 ### Resource class
 
@@ -319,7 +323,7 @@ Defined in [LNXRUN](linux/runtime.md#server-key).
 
 ### Backup definition
 
-A file that names one backup type for the alert daemon to run.
+A file that names one backup type for the bestool daemon to run.
 Defined in [LNXBAK](linux/backups.md#backup-definitions).
 
 ### Clone deployment

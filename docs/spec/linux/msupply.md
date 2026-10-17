@@ -33,6 +33,23 @@ Where the instance tag `MsupplyFQDN` is set, its value MUST be the hostname of m
 Where `msupply_tailscale_service` is set, it MUST take precedence over the instance tag `MsupplyTailscaleService`.
 The value of the Tailscale service MAY omit the prefix `svc:`.
 
+## Provisioning
+
+The mSupply hostname of a server MUST be `msupply.<subdomain>.<domain base>`, or `<prefix>.<domain base>` where a prefix is configured, where the subdomain and the domain base are those of [LNXAWS](aws.md#naming).
+
+The mSupply Tailscale service of a server MUST be named `svc:<Tailscale name>-svc-msupply`.
+
+A deployment MUST publish a CNAME record from the mSupply hostname to the hostname of its server, with a time to live of 300 seconds.
+
+An instance of a server that has mSupply configured MUST carry the instance tags in the following table.
+
+| tag | value |
+|---|---|
+| `MsupplyFQDN` | the mSupply hostname |
+| `MsupplyTailscaleService` | the mSupply Tailscale service name |
+
+The playbooks MUST read the instance tags `MsupplyFQDN` and `MsupplyTailscaleService` as [LNXAWS](aws.md#instance-tags) requires of the other instance tags.
+
 ## Service
 
 mSupply MUST run as the quadlet `msupply` from the image `docker.io/msupplyfoundation/omsupply:<tag>`, whose tag is the value of `msupply_version_arm64` on an arm64 host and of `msupply_version_amd64` otherwise.

@@ -166,7 +166,7 @@ A Linux server MUST run [Caddy](#borrowed-terms) from the BES package, held agai
 
 The proxy MUST be started by socket activation on `[::]:80` and `[::]:443` over TCP and `[::]:443` over UDP, and its service unit MUST NOT be enabled directly.
 
-The proxy's service unit MUST be ordered after the [alert daemon](../overview.md#alert-daemon).
+The proxy's service unit MUST be ordered after the [bestool daemon](../overview.md#bestool-daemon).
 
 The proxy MUST read its site configuration from the directories in the following table.
 
@@ -218,10 +218,10 @@ The proxy MUST expose its metrics with a series for each host, as bestool's [tra
 
 ## Health monitoring
 
-A Linux server MUST run the alert daemon as the unit `bestool-alertd.service`, enabled at boot.
+A Linux server MUST run the bestool daemon as the unit `bestool-alertd.service`, enabled at boot.
 
-The alert daemon grades this arrangement with the checks that [bestool](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/healthchecks.md) defines.
+The bestool daemon grades this arrangement with the checks that [bestool](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/healthchecks.md) defines.
 
-The alert daemon MUST read the container runtime through the Podman API socket, and the unit `podman.socket` MUST be enabled.
+The bestool daemon MUST read the container runtime through the Podman API socket, and the unit `podman.socket` MUST be enabled.
 
-The alert daemon MUST connect to PostgreSQL over the local socket as the role that [LNXDB](database.md#roles-and-credentials) gives it, to the database `postgres` and, where the Tamanu database exists, to that database.
+The bestool daemon MUST connect to PostgreSQL over the local socket as the role that [LNXDB](database.md#roles-and-credentials) gives it, to the database `postgres` and, where the Tamanu database exists, to that database.

@@ -33,7 +33,7 @@ The same command without `--check`. **[dev-OTS]**
 | New server | `base-install.yml`, then `tamanu-install.yml`, per [provision a server](linux-provision-server.md). |
 | Bring a server in line with the inventory | `tamanu-install.yml --limit <host>`. It is idempotent. |
 | One concern | `--tags` with a role tag from [the roles page](../reference/linux-roles.md), such as `caddy`, `postgres`, `munin`, `bestool`. `base` is everything that is not the Tamanu app; `app` is the Tamanu app and mSupply. |
-| Skip the app | `--skip-tags app`. The `bestool` role is tagged `base`, so the alert daemon is still set up. |
+| Skip the app | `--skip-tags app`. The `bestool` role is tagged `base`, so the bestool daemon is still set up. |
 | Upgrade | [Upgrade Tamanu](linux-upgrade-tamanu.md). |
 
 Handlers are tagged `always`, so a tag-limited run still reloads or restarts what it changed.

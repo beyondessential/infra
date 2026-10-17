@@ -243,7 +243,7 @@ The Munin data directory `/var/lib/munin` on a btrfs filesystem SHOULD be a subv
 
 Where the Munin node is installed, a Linux server SHOULD enable the Munin plugins of its database and of Caddy.
 
-The Munin plugin of the [alert daemon](../overview.md#alert-daemon) is specified by bestool's [metrics](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/metrics.md#the-endpoint).
+The Munin plugin of the [bestool daemon](../overview.md#bestool-daemon) is specified by bestool's [metrics](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/metrics.md#the-endpoint).
 
 ## Endpoint security agent
 

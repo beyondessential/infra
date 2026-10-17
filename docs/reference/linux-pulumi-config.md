@@ -1,7 +1,7 @@
 # Reference: Linux deployment stack config and outputs
 
 The `tamanu-on-linux` Pulumi stack (`pulumi/tamanu/on-linux`) provisions one deployment: its instances, DNS, security group, instance snapshots, backup bucket and roles, and DNS-01 users.
-The requirements are in [LNXSRV](../spec/linux/server.md#provisioning) and [LNXBAK](../spec/linux/backups.md#repository-bucket).
+The requirements are in [LNXAWS](../spec/linux/aws.md), [LNXMSP](../spec/linux/msupply.md#provisioning) and [LNXBAK](../spec/linux/backups.md#repository-bucket).
 Stack config (`Pulumi.<stack>.yaml`) is gitignored: values go in with `pulumi config set`, secrets with `--secret`, never in source.
 Run previews as `pulumi preview --policy-pack <path to pulumi/policies>` after `npm run build` in `pulumi/policies`; never `pulumi up` from an agent ([ruled-out actions](../ruled-out-actions.md#consequential-but-recoverable-dev-ots)).
 All keys are under the namespace `tamanu-on-linux:` except `billing:`.
@@ -22,7 +22,7 @@ Tailscale ACLs, tags and auto-approvals live in the BES tailnet policy repositor
 | `tailscaleTags` | `tag:server`, `tag:server-tamanu`, `tag:server-tamanu-<root>`, `tag:server-tamanu-<type>` | Comma-separated. The tags are declared in the BES tailnet policy repository. |
 | `msupplyTailscaleTags` | `tag:server-msupply`, plus `-<root>` and `-<type>` | Tags of the mSupply Tailscale service. |
 | `disk`, `disks.root` | `50` | Root volume size in GiB. |
-| `legacyDisk` | `false` | `true` selects the [split layout](../spec/linux/server.md#storage-layout) and the tag `Partitioning=split-data-logs`. |
+| `legacyDisk` | `false` | `true` selects the [split layout](../spec/linux/aws.md#partitioning) and the tag `Partitioning=split-data-logs`. |
 | `hardDelete` | `false` | `true` turns off termination protection. |
 | `cloneOf` | unset | A `tamanu-on-linux` stack reference. Skips this stack's bucket, roles and users and re-exports the source's. Writes the tag `TamanuCloneOf`. |
 | `canopyInfra` | unset | A `canopy-infra` stack reference. Switches the backup roles to Canopy trust ([roles](../spec/linux/backups.md#repository-roles)). |

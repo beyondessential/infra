@@ -1,7 +1,7 @@
 # Runbook: a clone deployment's facility does not sync after a restore
 
 A clone deployment restored its servers from another deployment's backups, and a facility server cannot sync with the clone central, or Tamanu stayed stopped.
-What the restore does is in [LNXBAK](../spec/linux/backups.md#clone-restore) and [clone sync accounts](../spec/linux/backups.md#clone-sync-accounts).
+What the restore does is in [LNXBAK](../spec/linux/backups.md#clone-restore) and [clone setup](../spec/linux/ansible.md#clone-setup).
 For fkey conflicts after a restore, the Tamanu pack's [facility restored from backup](https://github.com/beyondessential/tamanu/blob/main/docs/runbooks/facility-restored-from-backup.md) is a different problem: read it if sync errors name foreign keys.
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).

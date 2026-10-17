@@ -29,6 +29,8 @@ An inventory source MUST include only the machines that carry the variable `mana
 
 An inventory source MUST make a machine a member of the group named for each product that runs on it and for each role those products play, and MUST make a machine whose application type names no role a member of the group `standalone`.
 
+The inventory of a deployment MUST contain its [central server](../overview.md#central-server) as a member of the group `central` and each of its [facility servers](../overview.md#facility-server) as a member of the group `facility`.
+
 The address of a machine is defined by [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#reaching-a-machine).
 An address MUST be a host name or an IP address that does not begin with a hyphen.
 
@@ -100,12 +102,12 @@ A run selects parts of a playbook with the tags in the following table.
 
 | tag | selects |
 |---|---|
-| `base` | the arrangement of a host that is not the Tamanu application, including the alert daemon |
+| `base` | the arrangement of a host that is not the Tamanu application, including the bestool daemon |
 | `app` | the applications that run on the server |
 | `pre` | in an upgrade, the provisioning of the new version |
 | `go` | in an upgrade, the stopping, migrating and starting of services |
 
-A run that skips the tag `app` MUST still set up the [alert daemon](../overview.md#alert-daemon).
+A run that skips the tag `app` MUST still set up the [bestool daemon](../overview.md#bestool-daemon).
 
 A run limited by tags MUST still apply the reloads and restarts that its changes call for.
 
@@ -134,6 +136,28 @@ Provisioning MUST create the [server key](../overview.md#server-key) of a server
 An existing server key MUST NOT be replaced by provisioning.
 
 The server key MUST be 32 bytes read from the kernel random source, and MUST NOT pass through the control node or an inventory variable.
+
+## Clone setup
+
+Provisioning MUST install a clone setup script at `/etc/bestool/clone-setup.sh` on a server of a [clone deployment](../overview.md#clone-deployment).
+
+The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facilities, and MUST report failure where any step fails.
+
+The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility.
+
+A clone setup script MUST pass a password to its command in the environment, and MUST NOT put it in a process argument.
+
+A facility server of a clone deployment MUST have a synchronisation account on the central server, where the central server is in the same inventory and runs Tamanu 2.60.0 or later.
+
+Where that does not hold, the sync accounts MUST be set up by hand and provisioning MUST warn that they are.
+
+The password of a sync account MUST be 32 random bytes in hexadecimal, generated on the central server, and MUST NOT be derived from the inventory or written on the control node.
+
+The password MUST be generated once, and replaced only where its stored copy is deleted.
+
+The central server MUST keep each password where only the database user can read it, and the facility server MUST keep its own where only its administrator can read it.
+
+The sync account of a facility MUST be named from the inventory host name in lower case, with every character outside `a-z`, `0-9` and `-` replaced by `-`.
 
 ## Central server address
 
@@ -193,6 +217,6 @@ A playbook SHOULD make no change to a server in check mode.
 
 ## Provisioning handoff
 
-A playbook takes a server as [provisioning](server.md#provisioning) leaves it, with its Tailscale membership, its volumes and its [instance tags](../overview.md#instance-tags).
+A playbook takes a server as [provisioning](aws.md#provisioning) leaves it, with its Tailscale membership, its volumes and its [instance tags](../overview.md#instance-tags).
 
 A playbook MUST NOT create or change the cloud resources that provisioning manages.

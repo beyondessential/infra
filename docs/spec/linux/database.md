@@ -6,7 +6,7 @@ id: LNXDB
 
 The requirements in this spec apply to the PostgreSQL server of every [Linux server](../overview.md#linux-server).
 Backups of the database are specified by [LNXBAK](backups.md) and [PPB](../postgres-physical-backup.md).
-The memory parameters follow the algorithm of [K8SPGC](../kubernetes/postgres.md#memory-parameters) with the basis and floors that [Tuning](#tuning) gives.
+The tuning of a PostgreSQL cluster in Kubernetes is specified by [K8SPGC](../kubernetes/postgres.md).
 
 ## Borrowed terms
 
@@ -21,6 +21,7 @@ The memory parameters follow the algorithm of [K8SPGC](../kubernetes/postgres.md
 | `pg_upgrade` | The tool that upgrades a cluster to a new major version, by copying, linking or cloning files ([pg_upgrade](https://www.postgresql.org/docs/current/pgupgrade.html)). |
 | data checksums | Page checksums that a cluster is initialised with or converted to ([pg_checksums](https://www.postgresql.org/docs/current/app-pgchecksums.html)). |
 | server parameters | The configuration parameters of PostgreSQL ([PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html)). |
+| BES Linux image | The disk image that BES's linux-images repository builds ([disk images](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#variants)). |
 | btrfs quota group | The accounting unit that btrfs uses to limit the space a subvolume references ([btrfs quota groups](https://btrfs.readthedocs.io/en/latest/Qgroups.html)). |
 
 ## Version and layout
@@ -48,16 +49,18 @@ A system-wide `psqlrc` SHOULD define the shortcut `lsf` as a query of `local_sys
 
 ## Data directory
 
-On a server in the single layout, `/var/lib/postgresql` MUST be the btrfs subvolume `@postgres` of the root filesystem, mounted through an `/etc/fstab` entry with the options `compress=zstd:1,subvol=@postgres`.
+On a server in the single layout, `/var/lib/postgresql` SHOULD be the btrfs subvolume `@postgres` of the root filesystem, as [`image.btrfs.subvolumes`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) requires of an image.
+
+Where the root filesystem is btrfs with the subvolume `@` and `/var/lib/postgresql` is not a mount point, provisioning MUST create the subvolume `@postgres` and mount it at `/var/lib/postgresql` through an `/etc/fstab` entry.
 
 Where `/var/lib/postgresql` already holds data when the subvolume is created, the data MUST be copied into the subvolume with ownership, ACLs, extended attributes and hard links preserved, with the cluster stopped.
 
-On a btrfs filesystem, the compression level of every `/etc/fstab` entry for the filesystem that holds `/var/lib/postgresql` MUST be `zstd:1`, and the live mount MUST be remounted at that level.
-
-On a btrfs filesystem the cluster MUST set `wal_init_zero` and `wal_recycle` to `off`.
+On a btrfs filesystem, the compression level of every `/etc/fstab` entry for the filesystem that holds `/var/lib/postgresql` MUST be `zstd:1`, as [`image.btrfs.compression`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) requires of an image, and the live mount MUST be remounted at that level.
 
 > [!NOTE]
 > btrfs applies the mount options of the first mount to the whole filesystem, so entries that disagree make the effective level unpredictable.
+
+On a btrfs filesystem the cluster SHOULD set `wal_init_zero` and `wal_recycle` to `off`.
 
 Where the inventory variable `postgresql_btrfs_quota_percent` is set and the filesystem is btrfs with quotas enabled, the referenced-space limit of the `@postgres` subvolume MUST be that percentage of the size of the filesystem.
 
@@ -76,11 +79,14 @@ The cluster MUST accept connections as the `pg_hba.conf` entries in the followin
 | local | `tamanu` | `reporting`, `raw`, `tamanu_reporting` and `tamanu_raw` | not applicable | `scram-sha-256` |
 | host | all | all | `100.64.0.0/10` and `fd7a:115c:a1e0::/56` | `scram-sha-256` |
 
-The cluster MUST restrict `ssl_ciphers` to `HIGH:!SSLv3:!TLSv1`.
+The cluster MUST have the values in the following table for the parameters that protect its connections.
 
-The cluster MUST set `scram_iterations` to 50000.
+| parameter | value |
+|---|---|
+| `ssl_ciphers` | `HIGH:!SSLv3:!TLSv1` |
+| `scram_iterations` | `50000` |
 
-`listen_addresses` and `ssl_ciphers` MUST be set in `postgresql.conf`, and every parameter that [Tuning](#tuning) names MUST be set with `ALTER SYSTEM`.
+`listen_addresses` and `ssl_ciphers` MUST be set in `postgresql.conf`, and every other parameter that this spec sets MUST be set with `ALTER SYSTEM`.
 
 > [!NOTE]
 > A parameter set with `ALTER SYSTEM` is stored in the data directory and is carried by a backup of it, while a parameter in `postgresql.conf` belongs to the machine.
@@ -114,72 +120,29 @@ Where the Munin node is installed, its PostgreSQL plugins MUST connect over the 
 
 A Linux server SHOULD tune its cluster as this section requires, unless the inventory variable `postgresql_tune_enabled` is false.
 
-The tuning MUST derive from an effective memory and an effective CPU count, which are computed from the host's memory and CPU count by the rules in the following table.
+The cluster MUST have the values of bestool's [tuning values](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/pg-tune.md#tuning-values), computed from the [resource budget](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/pg-tune.md#resource-budget) of the server with its memory budget set to its cache budget.
 
-| quantity | rule |
-|---|---|
-| effective memory | the host memory less 4 GiB where the host has 8 GiB or more, otherwise half the host memory |
-| effective CPU count | the host CPU count where it is 1, 2 where it is 2 to 4, 4 where it is 5 to 7, and the host CPU count less 4 where it is 8 or more |
-
-A cluster MUST set each parameter in the following table to the value given for it.
+The cluster MUST also have the values in the following table, which bestool's tuning values do not give.
 
 | parameter | value |
 |---|---|
 | `max_connections` | 100, or the value of `postgresql_tune_max_connections` |
-| `shared_buffers` | a quarter of the effective memory |
-| `effective_cache_size` | three quarters of the effective memory |
-| `maintenance_work_mem` | a sixteenth of the effective memory, at most 8 GiB |
-| `work_mem` | the effective memory less `shared_buffers`, divided by three times the sum of `max_connections` and the worker budget, and at least 4 MiB |
-| `wal_buffers` | three percent of `shared_buffers`, at least 32 kiB and at most 16 MiB, and 16 MiB where the computed value is more than 14 MiB |
-| `checkpoint_completion_target` | `0.9` |
-| `default_statistics_target` | `100` |
-| `random_page_cost` | `1.1` |
 | `effective_io_concurrency` | `200` |
-| `huge_pages` | `try` where `shared_buffers` is 2 GiB or more, otherwise `off` |
-| `min_wal_size` | `2GB` |
-| `max_wal_size` | `8GB` |
+| `io_method` | `io_uring`, from major version 18 |
 | `archive_timeout` | `300` |
 | `archive_mode` | reset to the PostgreSQL default |
 | `archive_command` | reset to the PostgreSQL default |
 | `temp_file_limit` | the value of `postgresql_tune_temp_file_limit` where set, otherwise `postgresql_tune_temp_file_limit_percent` percent of the temporary-file basis, which is 25 percent unless the inventory sets another |
-| `autovacuum_work_mem` | 2 GiB where `maintenance_work_mem` is 2 GiB or more, otherwise unset |
-| `autovacuum_max_workers` | 5 where the effective CPU count is 32 or more, 4 where it is 16 or more, otherwise unset |
-
-The worker budget MUST be the effective CPU count where the effective CPU count is 4 or more, and 8 otherwise.
 
 The temporary-file basis MUST be the lower of the size of the filesystem that holds `/var/lib/postgresql` and the referenced-space limit of the `@postgres` subvolume where that limit is set, and the size of the filesystem otherwise.
 
-A cluster whose effective CPU count is 4 or more MUST set the parameters in the following table.
-
-| parameter | value |
-|---|---|
-| `max_worker_processes` | the effective CPU count |
-| `max_parallel_workers` | the effective CPU count |
-| `max_parallel_workers_per_gather` | half the effective CPU count rounded up, at most 4 |
-| `max_parallel_maintenance_workers` | half the effective CPU count rounded up, at most 4 |
-
-A cluster MUST set the parameters in the following table where its major version is at least the version given.
-
-| parameter | value | from major version |
-|---|---|---|
-| `jit` | `off` | 12 |
-| `wal_compression` | `on` | 10 |
-| `wal_compression` | `lz4` | 15 |
-| `io_method` | `io_uring` | 18 |
-| `io_workers` | the effective CPU count divided by 4, at most 32, set only where the result is more than 3 | 18 |
-
-> [!NOTE]
-> The table is read in order, so the later row of `wal_compression` replaces the earlier one.
-
-A change to `max_connections`, `shared_buffers`, `wal_buffers`, `huge_pages`, `max_worker_processes`, `io_method`, `autovacuum_max_workers` or `listen_addresses` takes effect only at a restart.
-
 Provisioning MUST treat a server as a [production server](../overview.md#production-server) where its Tailscale name contains the text `prod`.
 
-A restart that such a change requires MAY be performed by provisioning on a server that is not a production server.
+A restart that a parameter change requires MAY be performed by provisioning on a server that is not a production server.
 
 Provisioning MUST NOT restart PostgreSQL on a production server, and MUST report that a restart is pending.
 
-A change to any other parameter of the cluster that provisioning makes MUST be applied by a reload.
+A parameter change that takes effect without a restart MUST be applied by a reload.
 
 ## Major version upgrades
 
@@ -191,19 +154,15 @@ An upgrade MUST be performed only where `/var/lib/postgresql` is on a btrfs file
 
 Before an upgrade changes the cluster, it MUST create a read-only btrfs snapshot of the subvolume that holds `/var/lib/postgresql`, at the top level of the filesystem, named `<subvolume>-pre-pgupgrade-<old major version>-to-<new major version>-<timestamp>`.
 
-An upgrade MUST convert a cluster that has no data checksums to data checksums before upgrading it.
+An upgrade MUST convert a cluster that has no data checksums to data checksums before it upgrades the cluster.
 
-An upgrade MUST run a compatibility check with `--check` and MUST stop if it fails.
+An upgrade MUST run the compatibility check of `pg_upgrade` before it upgrades the cluster, and MUST stop if the check fails.
 
-An upgrade SHOULD use file cloning, and MUST fall back to copying where cloning fails.
+An upgrade MUST carry the configuration of the old version over to the new version.
 
-An upgrade MUST copy the configuration of the old version into the configuration directory of the new version, and MUST set `data_directory`, `cluster_name`, `external_pid_file`, `hba_file` and `ident_file` in it to the paths of the new version.
-
-After an upgrade the symbolic links `/etc/postgresql/current` and `/var/lib/postgresql/current` MUST name the new version, and the statistics of all databases MUST be rebuilt in stages.
+After an upgrade the symbolic links `/etc/postgresql/current` and `/var/lib/postgresql/current` MUST name the new version, and the statistics of all databases MUST be rebuilt.
 
 The data of the old cluster MUST be removed only where the inventory variable `postgresql_cleanup_old_cluster` is true.
-
-After an upgrade the packages of the old version MUST be removed and the packages of the new version MUST be held against unattended upgrade.
 
 A read-only check of whether an upgrade is needed and permitted MUST report one of the values in the following table.
 

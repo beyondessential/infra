@@ -17,9 +17,9 @@ Reading `/etc/tamanu/env` and `local.json5` prints database passwords: tag it **
 | `tamanu-roll-on-postgres.service` | Oneshot that rolls running Tamanu services when PostgreSQL starts | Skips when no frontend is active, so a deliberately stopped Tamanu stays stopped. |
 | `postgresql@<version>-main` | The cluster | Slice `critical.slice`, restarts after 30 seconds on failure. |
 | `caddy.socket`, `caddy.service` | Proxy | The socket is enabled; the service starts on first connection. |
-| `bestool-alertd.service` | Alert daemon, backups, certificate endpoint on `127.0.0.1:8271` | Runs as root with a reduced capability set. |
+| `bestool-alertd.service` | bestool daemon, backups, certificate endpoint on `127.0.0.1:8271` | Runs as root with a reduced capability set. |
 | `tailscaled.service` | Tailscale | |
-| `podman.socket` | Rootful Podman API for the alert daemon | |
+| `podman.socket` | Rootful Podman API for the bestool daemon | |
 | `podman-images-clean.timer` | Daily dangling image prune | |
 | `btrfs-balance.timer`, `btrfs-scrub.timer` | Weekly balance, monthly scrub | |
 | `chrony.service` | Time | `systemd-timesyncd` is masked. |
@@ -39,7 +39,7 @@ Containers run as `systemd-<unit>`, so the journal identifier of a service is `s
 | `/etc/tamanu/<version>/default.json5` | Copy of the image's defaults, for reference | `tamanu:tamanu` 0440 |
 | `/usr/local/bin/tamanu-run` | Run a command in a server container: `tamanu-run current <command>` or `tamanu-run <tag> <command>` | 0755 |
 | `/etc/containers/systemd/` | Quadlets and the `tamanu-.container.d` drop-ins (`crypto-secret.conf`, `noipv6.conf`, `host-ca-certs.conf`) | |
-| `/etc/bestool/` | Alert daemon and backup configuration, group `tamanu`, setgid | `root:tamanu` 2775 |
+| `/etc/bestool/` | bestool daemon and backup configuration, group `tamanu`, setgid | `root:tamanu` 2775 |
 | `/etc/bestool/backups/*.toml` | [Backup definitions](../spec/linux/backups.md#backup-definitions) | `root:root` 0644 |
 | `/etc/bestool/clone-setup.sh`, `/etc/bestool/clone-sync/` | Clone setup script and sync accounts | root, postgres |
 | `/etc/tamanu/clone-sync-password` | A clone facility's sync password | `root:root` 0400 |
@@ -66,7 +66,7 @@ The Podman secret `tamanu-config-key` is the [server key](../spec/linux/runtime.
 | TCP 5432 | PostgreSQL on `localhost` and the Tailscale addresses |
 | TCP 3000 | Every Tamanu container, on its network alias |
 | TCP 8000 | mSupply |
-| `127.0.0.1:8271` | The alert daemon's certificate endpoint |
+| `127.0.0.1:8271` | The bestool daemon's certificate endpoint |
 | `10.100.0.1` | Podman gateway and container DNS, aardvark on port 53 |
 
 ## Hostnames

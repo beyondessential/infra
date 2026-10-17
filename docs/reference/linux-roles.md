@@ -1,7 +1,7 @@
 # Reference: Linux playbooks and roles
 
 What each playbook runs on a Linux Tamanu server, and what each role is for.
-The requirements are in [LNXSRV](../spec/linux/server.md), [LNXDB](../spec/linux/database.md), [LNXRUN](../spec/linux/runtime.md), [LNXANS](../spec/linux/ansible.md), [LNXMSP](../spec/linux/msupply.md) and [LNXBAK](../spec/linux/backups.md); the procedures are [run the playbooks](../sops/linux-run-playbooks.md) and [upgrade Tamanu](../sops/linux-upgrade-tamanu.md).
+The requirements are in [LNXAWS](../spec/linux/aws.md), [LNXSRV](../spec/linux/server.md), [LNXDB](../spec/linux/database.md), [LNXRUN](../spec/linux/runtime.md), [LNXANS](../spec/linux/ansible.md), [LNXMSP](../spec/linux/msupply.md) and [LNXBAK](../spec/linux/backups.md); the procedures are [run the playbooks](../sops/linux-run-playbooks.md) and [upgrade Tamanu](../sops/linux-upgrade-tamanu.md).
 Everything here is under `ansible/`.
 
 ## Playbooks
@@ -16,7 +16,7 @@ Everything here is under `ansible/`.
 | `check-linux-lpe-2026.yml` | all | Read-only report of exposure to the blocked kernel modules. `-e lpe_fail_on_exposed=true` fails the play on exposure. | none |
 | `convert-three-disk-to-btrfs.yml` | all | Staged conversion of the split layout to a single btrfs root. [Procedure](../sops/linux-convert-disk-layout.md). | per phase |
 
-`tamanu-install.yml` and `tamanu-upgrade.yml` read EC2 instance tags through the metadata service where the host is an EC2 instance ([instance tags](../spec/linux/server.md#instance-tags)).
+`tamanu-install.yml` and `tamanu-upgrade.yml` read EC2 instance tags through the metadata service where the host is an EC2 instance ([instance tags](../spec/linux/aws.md#instance-tags)).
 
 ## Roles
 
@@ -53,7 +53,7 @@ A host older than a gate gets the older behaviour, which matters when a play beh
 | below 1.8.0 | `local.json5` keeps Tamanu's own status sender on. |
 | below 1.11.0 | A `bestool-doctor` timer runs `bestool tamanu doctor --send` every minute. At 1.11.0 or later the timer and service are removed. |
 | below 1.21.0 | Install and upgrade refuse to run. |
-| below 1.22.7 | The alert daemon unit runs `bestool tamanu alertd run` instead of `bestool alertd run`. |
+| below 1.22.7 | The bestool daemon unit runs `bestool tamanu alertd run` instead of `bestool alertd run`. |
 | below 1.23.0 | The upgrade omits `--ignore-unmatched` from `start` and `restart`. |
 | below 1.26.0 | The role writes the whole `bestool-alertd.service`. From 1.26.0 the package ships it and the role writes drop-ins. |
 | below 2.2.0 | Sites never name the Canopy certificate endpoint. |

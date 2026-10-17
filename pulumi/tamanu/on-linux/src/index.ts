@@ -1,7 +1,7 @@
 import { all, interpolate } from '@pulumi/pulumi';
 
 import { instances, patientPortalDomain, redirects, retired, type Server } from './config.ts';
-// spec: LNXSRV#provisioning
+// spec: LNXAWS#instances-and-external-servers
 import { failIfIncorrectAccount } from '../../../common/coreRef.ts';
 failIfIncorrectAccount();
 

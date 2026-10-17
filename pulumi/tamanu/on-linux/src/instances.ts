@@ -33,7 +33,7 @@ import { alertsTopicArn } from '../../../common/coreRef.ts';
 import { workloadAlertsCentralArn } from '../../../common/alertsHubRef.ts';
 //import { ec2StatusAlarms } from '../../../common/ec2StatusAlarms.ts';
 
-// spec: LNXSRV#provisioning
+// spec: LNXAWS#partitioning
 const LEGACY_DISKS = [
   {
     name: 'logs',
@@ -53,14 +53,14 @@ const records: Map<string, Omit<aws.route53.RecordArgs, 'zoneId'>> = new Map();
 for (const [i, inst] of instances.entries()) {
   if (inst.external) continue;
 
-  // spec: LNXSRV#provisioning
+  // spec: LNXAWS#first-boot
   const authKey = tailscaleKey(inst.id, {
     tags: tailscaleTags,
     expirySecs: 6 * 60 * 60, // excessive but it lets us deal with most problems eg. EIP quotas
     description: `tamanu ${normalizedStack} ${inst.id}`.substring(0, 50),
   });
 
-  // spec: LNXSRV#instance-tags
+  // spec: LNXAWS#instance-tags
   const tags: { [key: string]: Input<string> } = {
     Name: `${namePrefix}${inst.name}`,
     FQDN: inst.fqdn,
@@ -75,7 +75,7 @@ for (const [i, inst] of instances.entries()) {
   };
 
   if (cloneOf) {
-    // spec: LNXSRV#instance-tags
+    // spec: LNXAWS#instance-tags
     tags.TamanuCloneOf = cloneOf;
   }
 
@@ -84,10 +84,12 @@ for (const [i, inst] of instances.entries()) {
   }
 
   if (inst.msupplyFqdn) {
+    // spec: LNXMSP#provisioning
     tags.MsupplyFQDN = inst.msupplyFqdn;
   }
 
   if (inst.msupplyTailscaleService) {
+    // spec: LNXMSP#provisioning
     tags.MsupplyTailscaleService = inst.msupplyTailscaleService;
   }
 
@@ -96,7 +98,7 @@ for (const [i, inst] of instances.entries()) {
     {
       ami: AMI_UBUNTU_ARM64[region],
       instanceType: inst.instance,
-      // spec: LNXSRV#provisioning
+      // spec: LNXAWS#provisioning
       disableApiTermination: !hardDelete,
       monitoring: true,
       rootBlockDevice: {
@@ -104,7 +106,7 @@ for (const [i, inst] of instances.entries()) {
         volumeType: 'gp3',
         encrypted: true,
       },
-      // spec: LNXSRV#provisioning
+      // spec: LNXAWS#provisioning
       metadataOptions: {
         httpTokens: 'required', // IMDSv2
         httpProtocolIpv6: 'enabled',
@@ -112,7 +114,7 @@ for (const [i, inst] of instances.entries()) {
       },
       subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[i % ids.length]),
       vpcSecurityGroupIds: [sg.id],
-      // spec: LNXSRV#provisioning
+      // spec: LNXAWS#first-boot
       userData: all([authKey.key, tailscaleTags, inst.tailscaleName, inst.fqdn]).apply(
         ([key, tags, name, fqdn]) =>
           secret(
@@ -127,7 +129,7 @@ for (const [i, inst] of instances.entries()) {
       tags,
     },
     {
-      // spec: LNXSRV#provisioning
+      // spec: LNXAWS#provisioning
       ignoreChanges: ['ami', 'rootBlockDevice', 'userData'],
       deleteBeforeReplace: true,
     },
@@ -191,7 +193,7 @@ for (const [i, inst] of instances.entries()) {
     },
   });
 
-  // spec: LNXSRV#dns-records
+  // spec: LNXAWS#dns-records
   records.set(`${inst.id}-v4`, {
     name: inst.fqdn,
     type: aws.route53.RecordType.A,
@@ -208,7 +210,7 @@ for (const [i, inst] of instances.entries()) {
     });
 
   if (patientPortalDomain && inst.id === 'central') {
-    // spec: LNXSRV#dns-records
+    // spec: LNXAWS#dns-records
     records.set('patient-portal-cname', {
       name: patientPortalDomain,
       type: aws.route53.RecordType.CNAME,
@@ -218,6 +220,7 @@ for (const [i, inst] of instances.entries()) {
   }
 
   if (inst.msupplyFqdn) {
+    // spec: LNXMSP#provisioning
     records.set(`${inst.id}-msupply-cname`, {
       name: inst.msupplyFqdn,
       type: aws.route53.RecordType.CNAME,
@@ -261,6 +264,7 @@ for (const inst of instances) {
   }
 
   if (inst.msupplyFqdn) {
+    // spec: LNXMSP#provisioning
     records.set(`${inst.id}-msupply-cname`, {
       name: inst.msupplyFqdn,
       type: aws.route53.RecordType.CNAME,

@@ -10,7 +10,7 @@ The Tamanu pack's [restart services](https://github.com/beyondessential/tamanu/b
    sudo -u postgres psql -X -c "SELECT name, setting, pending_restart FROM pg_settings WHERE pending_restart;"
    ```
 
-   The parameters that need a restart are in [LNXDB](../spec/linux/database.md#tuning).
+   The rows are the parameters that need a restart. Provisioning's restart rules are in [LNXDB](../spec/linux/database.md#tuning).
 2. Confirm the Tamanu services are up, so the roll has something to do. `tamanu-roll-on-postgres` only runs when a frontend instance is active. `systemctl is-active tamanu-frontend@a tamanu-frontend@b` **[diagnose]**
 3. Restart the cluster. **[dev-OTS]**
 

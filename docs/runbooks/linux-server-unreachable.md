@@ -20,7 +20,7 @@ Which server; EC2 instance or external; new or long-running; whether your own ta
 **[diagnose]**
 
 1. Your side: `tailscale status` shows you connected and the target in the list.
-2. The public side: an instance answers ICMP and HTTPS on its public hostname whether or not Tailscale is up, because the security group opens ICMP, 80 and 443 ([network exposure](../spec/linux/server.md#network-exposure)). `ping <public hostname>` and `curl -sI https://<public hostname>`.
+2. The public side: an instance answers ICMP and HTTPS on its public hostname whether or not Tailscale is up, because the security group opens ICMP, 80 and 443 ([network exposure](../spec/linux/aws.md#network-exposure)). `ping <public hostname>` and `curl -sI https://<public hostname>`.
 3. Canopy: the server's Tailscale status and last-seen time.
 4. A new instance: the join key is single-use and valid for 6 hours, so an instance that failed to join within that window never will without a new key ([provision a server](../sops/linux-provision-server.md)).
 5. Login user: the playbooks connect as the inventory's `ansible_user`; a banner on `ubuntu` names the right one ([LNXSRV](../spec/linux/server.md#access)).
@@ -30,7 +30,7 @@ Which server; EC2 instance or external; new or long-running; whether your own ta
 | Evidence | Diagnosis | Action |
 |---|---|---|
 | Public hostname answers, tailnet does not | `tailscaled` is down or the node is expired or removed. | A developer reaches the host another way (below) and checks `systemctl status tailscaled`. |
-| Public hostname does not answer either | The instance or its network is down, or DNS changed. | AWS instance status, security group, the DNS records ([DNS records](../spec/linux/server.md#dns-records)). Escalate. |
+| Public hostname does not answer either | The instance or its network is down, or DNS changed. | AWS instance status, security group, the DNS records ([DNS records](../spec/linux/aws.md#dns-records)). Escalate. |
 | New instance, never appeared | First-boot join failed. | Check the AWS system log of the instance; the key may have expired. Escalate. |
 | Only you cannot reach it | Your tailnet access. | Check your Tailscale login and ACL tags. |
 

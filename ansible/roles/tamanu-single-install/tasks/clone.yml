@@ -15,7 +15,7 @@
         group: postgres
         mode: "0700"
 
-    # spec: LNXBAK#clone-sync-accounts
+    # spec: LNXANS#clone-setup
     - name: Generate clone sync password on central
       delegate_to: "{{ tamanu_clone_central }}"
       ansible.builtin.shell:
@@ -55,7 +55,7 @@
         mode: "0400"
       no_log: true
 
-# spec: LNXBAK#clone-sync-accounts
+# spec: LNXANS#clone-setup
 - name: Install clone setup script
   become: true
   ansible.builtin.template:

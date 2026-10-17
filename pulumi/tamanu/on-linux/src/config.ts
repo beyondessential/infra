@@ -21,7 +21,7 @@ const zoneRoot = zone.name.apply((name) => {
   return root;
 });
 
-// spec: LNXSRV#naming
+// spec: LNXAWS#naming
 export const domainBase = all([zone.name, zoneRoot]).apply(([name, root]) => {
   const domain = cfg.get('domainBase');
   if (domain && !domain?.includes('.')) {
@@ -85,7 +85,7 @@ export const billingTags = makeBillingTags({
   deployment: billingCfg.get('deployment'),
 });
 
-// spec: LNXSRV#naming
+// spec: LNXAWS#first-boot
 export const tailscaleTags: Output<string[]> = zoneRoot.apply((root) => {
   const tags = cfg.get('tailscaleTags')?.split(/,\s*/);
   if (tags) {
@@ -172,7 +172,7 @@ export const facilities: Server[] = (cfg.requireObject('facilities') as Facility
   .map((facility) => ({
     ...facility,
     fqdn: interpolate`${facility.subdomain}.${domainBase}`,
-    // spec: LNXSRV#naming
+    // spec: LNXMSP#provisioning
     msupplyFqdn: facility.msupply
       ? typeof facility.msupply === 'string'
         ? interpolate`${facility.msupply}.${domainBase}`
@@ -224,7 +224,7 @@ export const instances: Server[] = [...(central ? [central] : []), ...facilities
  * keep their subdomain label unless `retiredHostMap` remaps it, which is needed
  * where the replacement names its servers differently.
  */
-// spec: LNXSRV#retired-deployments
+// spec: LNXAWS#retired-deployments
 export const retired = cfg.getBoolean('retired') ?? false;
 const retiredTargetBase = cfg.get('retiredTargetBase');
 const retiredHostMap: { [label: string]: string } = cfg.getObject('retiredHostMap') ?? {};
@@ -252,7 +252,7 @@ const servedLabels: string[] = [
 // Then add `retiredTargetBase`, which puts the redirects at those names. A
 // deployment being retired with nothing to redirect to simply never gets the
 // second step.
-// spec: LNXSRV#retired-deployments
+// spec: LNXAWS#retired-deployments
 export const redirects: RedirectEntry[] =
   retired && retiredTargetBase
     ? servedLabels.map((label) => ({
