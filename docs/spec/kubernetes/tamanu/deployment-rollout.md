@@ -56,7 +56,7 @@ The renderer MUST order the sync waves of the resources of a deployment as the f
 
 | order | resources |
 |---|---|
-| 1 | The rendered configuration ConfigMaps, the application service account, the claim of each shared blob store, and the database clusters with their backup resources. |
+| 1 | The rendered configuration ConfigMaps, the application service account, the claim of each [shared filesystem](../../overview.md#shared-filesystem) volume, and the database clusters with their backup resources. |
 | 2 | The `<server>-reporting-grants` and `<server>-migrator` Jobs. |
 | 3 | The `central-provisioner` Job and the `facility-N-setup-sync` Jobs. |
 | 4 | Deployments, Services, Gateways with their traffic policies, HTTPRoutes, PodDisruptionBudgets, the `central-db-tailscale` Service, the seed top-up Job, the synthetic tests Deployment, and the `wake` CronJob. |

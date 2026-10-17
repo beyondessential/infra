@@ -13,7 +13,7 @@ Nothing here is pre-signed.
 | ZeroSSL key | `caddy_zerossl_api_key` | Same path as above. | Adds or removes an issuer. |
 | Elastic enrolment token | `elastic_agent_enrollment_token`, a secret | Update in Canopy and run the `elastic` tag. | Absent token with the agent enabled removes the agent. |
 | Tailscale join key | Instance user data, single use, 6 hours | Not rotated. It exists only for first boot. | Ordinary membership is renewed by Tailscale. |
-| Backup credentials | Short-lived, issued by Canopy per run; static IAM users only on stacks without `canopyInfra` | Canopy issues them. | See [LNXBAK](../spec/linux/backups.md#repository-roles). |
+| Backup credentials | Short-lived, issued by Canopy per run | Canopy issues them. | See [LNXBAK](../spec/linux/backups.md#repository-roles). |
 | Clone sync passwords | `/etc/bestool/clone-sync/<name>.password` on the clone central, copied to `/etc/tamanu/clone-sync-password` on the facility | Delete the password file on the central, re-run `tamanu-install.yml`, then run `/etc/bestool/clone-setup.sh` on the central and on the facility. | The facility cannot sync until setup completes. |
 
 The IAM access keys of the `acmeDnsUsers` can change only `_acme-challenge` TXT records for that server's names ([LNXTLS](../spec/linux/tls.md#dns-01-users)); treat them as secrets anyway.

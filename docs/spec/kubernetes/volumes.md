@@ -37,6 +37,10 @@ A new claim MUST start empty, including where an earlier claim had the same name
 
 Releasing a claim MUST leave the content of every other claim untouched.
 
+## Snapshots
+
+A cluster that runs [pgsnap](../pgsnap.md) MUST offer a VolumeSnapshotClass named `ebs-retain` whose snapshots outlive the volume they were taken from.
+
 ## Reclaim
 
 Releasing a claim MUST reclaim the space its content occupied.

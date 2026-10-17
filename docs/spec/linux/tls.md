@@ -59,7 +59,7 @@ The issuer of Caddy MUST be an ACME issuer with the contact address `tls-renewal
 
 Caddy MUST use ZeroSSL as an additional issuer, with the key in the inventory variable `caddy_zerossl_api_key`, where that variable is set.
 
-The ACME issuer MUST prove control of names by DNS-01 through Route 53, with up to 10 retries, where the inventory variable `tamanu_caddy_tls_dns_iam` is set.
+The ACME issuer MUST prove control of names by DNS-01 through Route 53, retrying a failed challenge, where the inventory variable `tamanu_caddy_tls_dns_iam` is set.
 
 ## DNS-01 credentials
 

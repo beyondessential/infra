@@ -7,8 +7,6 @@ import './instances.ts';
 
 export {
   backupBucket,
-  backupReadOnlyUser,
-  backupUsers,
   deviceRoleArn,
   maintenanceRoleArn,
   bucketArn,

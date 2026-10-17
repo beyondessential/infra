@@ -98,7 +98,7 @@ A Linux server MUST be configured with the package repositories in the following
 | `https://pkgs.tailscale.com/stable/ubuntu <release> main` | 900 | Tailscale; the repository that [`image.packages.tailscale`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image |
 | `https://artifacts.elastic.co/packages/9.x/apt stable main` | 900 | The Elastic Agent, where it is enabled |
 
-The playbooks MUST configure each repository in the table on a server that is not built from an image.
+The playbooks MUST configure each repository in the table that the server does not already have, whether or not the server is built from an image.
 
 A Linux server MUST have each repository's signing key installed under `/etc/apt/keyrings` or `/usr/share/keyrings` and name it in `signed-by`.
 
@@ -220,9 +220,9 @@ The SSH port MUST be the port that the SSH daemon is configured to listen on.
 
 ## Metrics
 
-A Linux server SHOULD run the Munin node, bound to `127.0.0.1`.
+A Linux server SHOULD run the Munin node, listening on the loopback address only.
 
-A Linux server that runs the Munin node SHOULD serve the Munin graphs over HTTPS on its Tailscale hostname at TCP port 4950, from `/var/cache/munin/www`.
+A Linux server that runs the Munin node SHOULD serve the Munin graphs over HTTPS on its Tailscale hostname, reachable from the tailnet only.
 
 The Munin data directory `/var/lib/munin` on a btrfs filesystem SHOULD be a subvolume with copy-on-write disabled.
 

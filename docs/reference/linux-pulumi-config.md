@@ -25,8 +25,8 @@ Tailscale ACLs, tags and auto-approvals live in the BES tailnet policy repositor
 | `legacyDisk` | `false` | `true` selects the [split layout](../spec/linux/aws.md#partitioning) and the tag `Partitioning=split-data-logs`. |
 | `hardDelete` | `false` | `true` turns off termination protection. |
 | `cloneOf` | unset | A `tamanu-on-linux` stack reference. Skips this stack's bucket, roles and users and re-exports the source's. Writes the tag `TamanuCloneOf`. |
-| `canopyInfra` | unset | A `canopy-infra` stack reference. Switches the backup roles to Canopy trust ([roles](../spec/linux/backups.md#repository-roles)). |
-| `serverGroupId` | unset | Registers the bucket and roles with Canopy. Needs `canopyInfra`. |
+| `canopyInfra` | required | A `canopy-infra` stack reference. The backup roles trust Canopy's roles from it ([roles](../spec/linux/backups.md#repository-roles)). |
+| `serverGroupId` | unset | Registers the bucket and roles with Canopy. |
 | `retired`, `retiredTargetBase`, `retiredHostMap` | `false`, unset, empty | [Retire a deployment](../sops/linux-retire-deployment.md). |
 | `billing:product`, `billing:stage`, `billing:deployment` | `tamanu`, the type guessed from the stack name or `prod` when none can be, unset | Become `billing.*` tags on every resource. |
 | `keyName`, `ipAllowList` | `ops`, unset | Read into constants that nothing uses. |
@@ -72,8 +72,7 @@ tamanu-on-linux:facilities: [{ id: a, name: Facility A }]
 | `urls` | Public and Tailscale address of each server, patient portal and mSupply. |
 | `tailscaleTags` | Tags in force. |
 | `backupBucket`, `bucketArn` | The repository bucket. |
-| `deviceRoleArn`, `maintenanceRoleArn` | The two repository roles. The maintenance role exists only with `canopyInfra`. |
-| `backupUsers`, `backupReadOnlyUser` | IAM users, only without `canopyInfra`. |
+| `deviceRoleArn`, `maintenanceRoleArn` | The two repository roles. |
 | `acmeDnsUsers` | IAM user names for DNS-01. Create their access keys by hand ([rotate credentials](../sops/linux-rotate-credentials.md)). |
 | `redirectsTo` | Hostname to target map of a retired deployment. |
 
@@ -82,6 +81,6 @@ A retired deployment exports no server outputs; `facilities` is still required b
 ## Other stacks
 
 `pulumi/backups` makes a standalone Kopia repository bucket (`bes-kopia-backups-<stack>` unless `bucketName` is set) with the same lock, versioning and roles, for repositories that are not Tamanu deployments: one stack per repository.
-Its config keys are `bucketName`, `tags` (a map, on top of `Purpose: backups`) and `users` (names of IAM users to create, by convention one per server, and none once `canopyInfra` is set); it also takes `canopyInfra` and `serverGroupId`.
+Its config keys are `bucketName`, `tags` (a map, on top of `Purpose: backups`), the required `canopyInfra`, and `serverGroupId`.
 By convention a bucket name begins with `bes-` and contains `kopia-backups`, and avoids the prefix `bes-tamanu-kopia-backups`, which is the Tamanu deployment pattern.
 `pulumi/backup-monitoring` forwards failed, aborted and expired AWS Backup jobs from every account to a central event bus ([LNXBAK](../spec/linux/backups.md#backup-failure-notification)).

@@ -194,7 +194,7 @@ The proxy MUST read its site configuration from the directories in the following
 | `/etc/caddy/servers` | one site file for each application that the proxy serves |
 | `/etc/caddy/config` | the issuer and metrics configuration |
 
-The proxy SHOULD raise the kernel receive and send buffer maxima for UDP, `net.core.rmem_max` and `net.core.wmem_max`, to 2500000 bytes.
+The host SHOULD raise the kernel receive and send buffer maxima for UDP to what the proxy needs to serve HTTP/3.
 
 The proxy MUST serve the sites in the following table.
 The certificate of each HTTPS site is given by [LNXTLS](tls.md).

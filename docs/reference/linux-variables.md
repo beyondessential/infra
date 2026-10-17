@@ -13,7 +13,7 @@ Do not put a secret in a tag: `salt` and `elastic_agent_enrollment_token` are se
 | `salt` | none | Credential seed. Required for any play that derives a password. Secret. |
 | `public_hostname` | none | Primary hostname. A trailing `.local` is cut from the system hostname and serves HTTP only. |
 | `tamanu_central_canonical_url` | none | What facilities sync against. Its hostname feeds `tamanu_central_hostname`. |
-| `tamanu_version` | `v2.10.0` | Used only where neither `version` nor the inventory sets it. |
+| `tamanu_version` | none | Set by the inventory; nothing runs without it. |
 | `tamanu_frontend_version` | `tamanu_version` | `frontend_version` is the role-argument form. |
 | `tamanu_allow_downgrade` | unset | Set `true` to permit a lower `v` version. |
 | `tamanu_facility_id` | none | Facility identifier. |

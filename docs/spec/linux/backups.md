@@ -102,7 +102,7 @@ A repository bucket MUST contain the storage class configuration `.storageconfig
 
 A repository bucket MUST be tagged with `Purpose` set to `tamanu-backups` for a Tamanu deployment and `backups` for a repository stack, and a Tamanu deployment's bucket MUST also carry the tags `Stack` and `ManagedBy`.
 
-The outputs of the stack MUST include the bucket name, the bucket ARN, the ARN of the [device role](../overview.md#device-role), and the ARN of the [maintenance role](../overview.md#maintenance-role) where one exists.
+The outputs of the stack MUST include the bucket name, the bucket ARN, the ARN of the device role and the ARN of the maintenance role.
 
 A deployment that is a clone of another stack MUST NOT create a bucket, roles or users, and MUST export the outputs of the stack it clones.
 
@@ -111,13 +111,11 @@ A deployment that is a clone of another stack MUST NOT create a bucket, roles or
 
 ## Repository roles
 
-A repository bucket MUST have a device role.
+A repository bucket MUST have a [device role](../overview.md#device-role) and a [maintenance role](../overview.md#maintenance-role).
 
 The device role MUST be reachable only through the principals that its trust policy names.
 
-### With Canopy infrastructure
-
-Where the stack names the Canopy infrastructure stack, the device role MUST grant the actions in the following table on the bucket and on every object in it.
+The device role MUST grant the actions in the following table on the bucket and on every object in it, and no other action.
 
 | action |
 |---|
@@ -133,11 +131,9 @@ Where the stack names the Canopy infrastructure stack, the device role MUST gran
 | `s3:DeleteObject` |
 | `s3:GetBucketObjectLockConfiguration` |
 
-Where the stack names the Canopy infrastructure stack, the device role MUST NOT grant `s3:DeleteObjectVersion`, `s3:BypassGovernanceRetention` or `s3:PutObjectRetention`.
+The device role MUST NOT grant `s3:DeleteObjectVersion`, `s3:BypassGovernanceRetention` or `s3:PutObjectRetention`.
 
-Where the stack names the Canopy infrastructure stack, the trust policy of the device role MUST allow chained `AssumeRole` from the issuer, and from the private server, of [Canopy](../overview.md#canopy).
-
-Where the stack names the Canopy infrastructure stack, the bucket MUST have a maintenance role.
+The trust policy of the device role MUST allow chained `AssumeRole` from the issuer, and from the private server, of [Canopy](../overview.md#canopy), and MUST allow no other principal.
 
 The maintenance role MUST grant every S3 action on the bucket and every object in it, and `cloudwatch:GetMetricStatistics` and `cloudwatch:ListMetrics` on all resources.
 
@@ -148,21 +144,9 @@ The trust policy of the maintenance role MUST NOT allow the issuer of Canopy.
 > [!NOTE]
 > The issuer is reachable from the internet, so the delete and bypass permissions of the maintenance role stay out of its reach, and a compromised device can only write delete markers.
 
-### Without Canopy infrastructure
-
-Where the stack does not name the Canopy infrastructure stack, the trust policy of the device role MAY allow the EC2 service principal.
-
-Where the stack does not name the Canopy infrastructure stack, the device role MAY grant the actions of the table in [With Canopy infrastructure](#with-canopy-infrastructure) except `s3:GetBucketObjectLockConfiguration`, together with `s3:PutObjectRetention`.
-
-Where the stack does not name the Canopy infrastructure stack, it MAY create one IAM user for each server, holding the same grant as the device role.
-
-Where the stack does not name the Canopy infrastructure stack, it MAY create one read-only IAM user holding `s3:GetObject`, `s3:GetObjectAttributes`, `s3:GetBucketLocation`, `s3:GetObjectTorrent` and `s3:ListBucket` on the bucket and every object in it.
-
 ## Canopy registration
 
 Where the stack configures a server group identifier, it MUST register the bucket, its region, the ARN of the device role and the ARN of the maintenance role as the backup configuration of that group in Canopy.
-
-Registration MUST require that the stack names the Canopy infrastructure stack.
 
 The registration MUST be replaced where the group identifier or the bucket changes, and updated in place where the region or a role ARN changes.
 

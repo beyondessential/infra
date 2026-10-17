@@ -39,7 +39,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html) | The server parameters that [K8SPGC](kubernetes/postgres.md) sets. |
 | [pgtune](https://github.com/le0pard/pgtune) | The tuning algorithm that [K8SPGC](kubernetes/postgres.md) follows. |
 | [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) | Applications, projects, RBAC, config management plugins, the repo server, hard refresh, sync waves, hooks, health, automated sync, ignored differences and resource actions. Used by [K8STRO](kubernetes/tamanu/renderer-rollout.md), [K8STDR](kubernetes/tamanu/deployment-rollout.md), [K8STSD](kubernetes/tamanu/scaledown.md) and [K8SNSP](kubernetes/namespaces.md). |
-| [Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) | VolumeSnapshot and VolumeSnapshotClass. Used by [PGS](pgsnap.md). |
+| [Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) | VolumeSnapshot and VolumeSnapshotClass. Used by [PGS](pgsnap.md) and [K8SVOL](kubernetes/volumes.md). |
 | [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) and [owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) | Suspended Jobs and owner references. Used by [PGS](pgsnap.md). |
 | [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) | Version syntax and precedence. Used by [PGS](pgsnap.md). |
 | [Prometheus exposition formats](https://prometheus.io/docs/instrumenting/exposition_formats/) | The format of the metrics endpoint. Used by [PGS](pgsnap.md). |
@@ -99,7 +99,17 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 
 ### Canopy
 
-The BES control plane for backups, which tracks whether a backup was taken, persisted and restored.
+The BES control plane for servers, which holds their inventory, issues their certificates and schedules and tracks their backups.
+Defined by this gloss alone.
+
+### pollen
+
+The guided technical walkthrough for new Tamanu deployments, run as a workload with its own database.
+Defined by this gloss alone.
+
+### Stack
+
+One deployed instance of an infrastructure program, named for the deployment, cluster or account it provisions, whose name other names derive from.
 Defined by this gloss alone.
 
 ### pgro
