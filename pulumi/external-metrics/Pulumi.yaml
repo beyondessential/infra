@@ -1,6 +1,0 @@
-name: external-metrics
-description: Prometheus exporters for external sources
-runtime:
-  name: nodejs
-  options:
-    typescript: false

@@ -45,7 +45,6 @@ pulumi/
 ├── bestool-proxy/        # bestool update server
 ├── first-officer/        # on-call tooling
 ├── golinks/              # go/ short links
-├── external-metrics/
 ├── pollen/               # Pollen, guided technical walkthrough for new Tamanu deployments
 ├── security-monitoring/  # organisation-wide GuardDuty enablement and finding delivery to Slack
 ├── shared-amis/          # one-off setup for the account that publishes public shared AMIs
