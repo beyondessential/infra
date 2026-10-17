@@ -23,18 +23,12 @@ You also need a Kubernetes/kubectl connection config to the cluster (see below).
 - `ipAllowList` - Experimental, do not use.
 - `architecture` - Defaults to `arm64`.
 - `configTemplate` - Advanced usage, defaults to `basic`.
-- `schedule` - When the deployment should be running. One of:
-  - `business-hours` (default) — Mon-Fri 08:30-18:45 in **either** Pacific/Auckland
-    or Australia/Sydney (union, so it covers both regions including DST). Scaled
-    down nights and weekends.
-  - `weekdays` — running 24h Mon-Fri NZT, scaled down on weekends.
-  - `always-on` — never scaled down.
-
-  Storage (PVCs) is preserved regardless. Workload pods are scaled by the
-  cluster's [py-kube-downscaler] via annotations on the namespace; CNPG
-  databases are hibernated by per-namespace CronJobs that bracket the workload
-  window with margin (DB up before any user logs in, down after the latest
-  user logs off). See `docs/tamanu-on-k8s.md` §2.10 for details.
+- `ttlHours` - Hours the deployment stays up after its latest `pulumi up`, a
+  non-negative whole number. After that the deployment is hibernated: workloads
+  are scaled to zero by the cluster's [py-kube-downscaler] and the CNPG databases
+  are hibernated, with their volumes kept. Every `pulumi up` sets a new expiry
+  and wakes the deployment. `0` (the default) means it is never hibernated. See
+  `docs/tamanu-on-k8s.md` §2.10 for details.
 
 [py-kube-downscaler]: https://github.com/caas-team/py-kube-downscaler
 

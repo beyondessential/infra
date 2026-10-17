@@ -20,7 +20,7 @@ The renderer is pure: the same parameters and the same renderer image always giv
 
 ### What the stub creates
 
-- The namespace's schedule annotations, and the TTL hibernation machinery when `ttlHours` is set.
+- The TTL hibernation machinery, when `ttlHours` is set.
 - The crypto Secret `tamanu-crypto`, and copies of the Secrets kept in `tamanu-system`.
 - The password Secrets for the reporting roles, `<server>-raw-db` and `<server>-reporting-db`, and the auth secrets in `config-secrets-<server>`. The renderer refers to these by name and never sees their values.
 - For a seeded deployment, a clone of the seed snapshot (see below).

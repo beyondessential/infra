@@ -103,7 +103,7 @@ Under the `tamanu-on-k8s:` namespace.
 | `timezone` | `Pacific/Auckland` | `TZ` env in all containers. |
 | `nodeEnv` | `production` | `NODE_ENV`. Staging uses `staging`. |
 | `architecture` | `arm64` | `arm64` or `amd64`. Drives pod affinity. |
-| `schedule` | `business-hours` | When the deployment should be running — see §2.10. `business-hours` / `weekdays` / `always-on`. |
+| `ttlHours` | `0` | Hours the deployment stays up after its latest update — see §2.10. `0` means it is never hibernated. |
 
 #### Replicas
 
@@ -242,27 +242,29 @@ CI adds `imageTag` at deploy time (`pulumi config set -s {stack} imageTag sha-�
 - `externalNamespace: false`: `pulumi destroy` removes the namespace and everything in it.
 - `externalNamespace: true`: `pulumi destroy` removes Pulumi-managed objects, but the namespace survives until the SubnamespaceAnchor is deleted (usually via CI on PR close). Cascading delete will then clean up anything CI or operators left in there.
 
-### 2.10 Off-hours scaledown
+### 2.10 Time to live and hibernation
 
-These deployments are for testing — none of them are customer-facing — so by default they only run during business hours. Two mechanisms cooperate:
+These deployments are for testing, so a deployment can be given a time to live with `ttlHours`. Every `pulumi up` sets the expiry that many hours ahead and wakes the deployment. If the expiry passes without another update, the deployment is hibernated. With `ttlHours: 0` (the default) it is never hibernated.
 
-1. **Workload pods** (deployments, statefulsets, HPAs, cronjobs) are scaled to zero outside the uptime window by [`py-kube-downscaler`][kds] running cluster-wide in `k8s-essentials`. It reads a `downscaler/uptime` annotation set on the namespace and inherits to every workload inside.
-2. **CNPG `Cluster`s** are hibernated (`cnpg.io/hibernation=on`) by two `CronJob`s per namespace — one to wake before the workload window, one to hibernate after. Hibernation shuts down the Postgres pods but preserves the PVCs. CronJob spec [requires Kubernetes 1.27+][cron-tz] for the `timeZone` field.
+Hibernation has two parts, and both keep the volumes:
+
+1. **Workloads** are held at zero replicas. The hibernation Job sets `downscaler/force-downtime=true` on every Deployment in the namespace, and [`py-kube-downscaler`][kds], running cluster-wide in `k8s-essentials`, scales them to zero.
+2. **CNPG `Cluster`s** are hibernated (`cnpg.io/hibernation=on`). The Postgres pods stop and the PVCs stay.
 
 [kds]: https://github.com/caas-team/py-kube-downscaler
-[cron-tz]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#time-zones
 
-The `schedule` config picks the window:
+Argo CD ignores the replica count and these annotations, so a sync does not undo hibernation. The Argo CD health check reports a hibernated `Cluster` as Healthy, with the message `Hibernated`, and a renderer promotion skips hibernated deployments.
 
-| Value | Workload uptime | DB uptime |
-|---|---|---|
-| `business-hours` (default) | Mon-Fri 08:30-18:45 in **either** Pacific/Auckland **or** Australia/Sydney (union). Effectively 08:30 NZT - 20:45 NZT (= 06:30 Syd - 18:45 Syd). | Wake 08:00 NZT, hibernate 19:00 Syd (= 21:00 NZT). |
-| `weekdays` | Mon-Fri 24h NZT. | Wake Sun 23:45 NZT, hibernate Sat 00:15 NZT. |
-| `always-on` | (excluded from downscaling) | (no CronJobs, DB never hibernates) |
+The hibernation Job runs on a 20-minute grid in UTC (minutes 00, 20 and 40), at the first slot at or after the expiry, so it can lag the expiry by up to 20 minutes. A second run follows 10 minutes after the first.
 
-Wake-up is roughly 30s/Cluster for the Postgres pods plus another 30-60s for app pods to start and warm up — so on a fresh Mon morning, expect Tamanu to be reachable around 08:30 NZT but not necessarily _serving_ until ~08:32 NZT. For a tester who needs an environment up off-hours, set `schedule: always-on` on the relevant stack and `pulumi up`.
+To wake a deployment:
 
-The schedule is implemented in `pulumi/tamanu/on-k8s/src/schedule.ts`; it sets the namespace annotations (or `NamespacePatch` when `externalNamespace=true`) and creates the CNPG hibernation CronJobs with a namespace-scoped Role permitting `patch` on `clusters.postgresql.cnpg.io`.
+- Run `pulumi up` on its stack. This also sets a new expiry.
+- Or run the "Create Job" action on its suspended `wake` CronJob in the Argo CD UI, or `kubectl -n tamanu-<stack> create job --from=cronjob/wake wake-now`. This does not start a new time to live, so the deployment then stays up until the next update.
+
+Wake-up is roughly 30s/Cluster for the Postgres pods plus another 30-60s for app pods to start and warm up. For a tester who needs an environment up for longer, raise `ttlHours` (or set it to `0`) on the relevant stack and `pulumi up`.
+
+The hibernation and wake steps run as the `tamanu-ttl` service account, created by the stub in each namespace that has a time to live, with a namespace-scoped Role permitting `get`, `list` and `patch` on Deployments and `clusters.postgresql.cnpg.io`. The schedule is in `pulumi/tamanu/on-k8s/src/schedule.ts`, and the `wake` CronJob is rendered by the renderer.
 
 ---
 
@@ -346,7 +348,7 @@ For a request to `central.foo.cd.tamanu.app`:
 | DNS | external-dns watching Gateway HTTPRoutes |
 | TLS | cert-manager with LE/DNS-01 |
 | Direct DB access | Tailscale LB over CNPG primary, when `dbExpose: true` |
-| Off-hours scaledown | py-kube-downscaler (cluster-wide) + per-namespace CNPG hibernation CronJobs, picked by `schedule` |
+| Time-to-live hibernation | py-kube-downscaler (cluster-wide) + CNPG hibernation, run by the stub's hibernation Jobs when `ttlHours` is set |
 | Version/meta site | `tamanu/meta` |
 | IPS S3 publishing | `tamanu/ips-infra` + `tamanu/ips`, SA wired via `serviceAccount` |
 | PR preview lifecycle | GitHub Actions creates anchor + sets `imageTag`; `pulumi up -s {name}`; on close, CI deletes the anchor and HNC cascades. |
