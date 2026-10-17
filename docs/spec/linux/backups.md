@@ -90,7 +90,7 @@ A repository bucket MUST have Object Lock enabled with a default retention of 30
 
 A repository bucket MUST have versioning enabled.
 
-A repository bucket MUST be protected against destruction by infrastructure code.
+A repository bucket MUST be protected against destruction by infrastructure code, except in the run that removes it from a retired deployment as [LNXAWS](aws.md#retired-deployments) requires.
 
 A repository bucket MUST deny every request that is not sent over TLS.
 

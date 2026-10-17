@@ -28,7 +28,7 @@ The `tamanu-engineer` role cannot create Jobs, so an engineer without the on-cal
 ## What the Job does
 
 It runs as the `tamanu-ttl` service account.
-It removes `downscaler/force-downtime` from every Deployment and sets `cnpg.io/hibernation=off` on every database cluster, then hard-refreshes the Application so the deployment renders with the current channel ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#waking)).
+It removes `downscaler/force-downtime` from every Deployment and sets `cnpg.io/hibernation=off` on every database cluster, ([K8STSD](../spec/kubernetes/tamanu/scaledown.md#waking)). A deployment woken by hand keeps its last render: a renderer promotion made while it was hibernated reaches it on its next update, or on a [hard refresh](hard-refresh-application.md).
 The databases start first and the servers after them.
 
 ## Check

@@ -93,7 +93,7 @@ A promotion MUST NOT refresh an Application whose database cluster Argo CD repor
 
 > [!NOTE]
 > A sync of a hibernated deployment runs its hook Jobs against a database that has no pods, and the sync fails.
-> [Waking](scaledown.md#waking) the deployment refreshes its Application, so it renders with the current channel.
+> The next update of the deployment wakes it and applies its Application again, which renders it with the current channel.
 
 A promotion MUST apply to every cluster that runs Tamanu deployments.
 

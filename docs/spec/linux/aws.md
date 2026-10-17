@@ -164,6 +164,10 @@ The DNS record of an mSupply hostname is given by [LNXMSP](msupply.md#provisioni
 
 A retired deployment MUST have no instances, security group, instance backup plan, repository bucket or ACME users.
 
+The repository bucket of a retired deployment MUST be removed by a run after the run that removes its servers, with the protection that [LNXBAK](backups.md#repository-bucket) requires lifted for that run alone.
+
+The repository bucket MUST NOT be removed while any object in it is within its Object Lock retention.
+
 Where a retired deployment names a replacement domain base, every hostname it served MUST answer with a permanent redirect with status 301 to the same path and query under the replacement.
 
 A hostname's label under the replacement domain base MUST be the label it had, unless a remapping for that label is configured.

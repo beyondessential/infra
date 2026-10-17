@@ -79,8 +79,6 @@ Waking a deployment MUST set the annotation `cnpg.io/hibernation=off` on every d
 
 Waking a deployment MUST NOT change the end of its time to live.
 
-After the steps above, waking a deployment MUST hard-refresh the Application of the deployment.
-
 The stub MUST wake a deployment that has a time to live on every update of it.
 
 The steps of waking MUST run as the service account `tamanu-ttl`, which has the permissions given under [hibernation](#hibernation).
