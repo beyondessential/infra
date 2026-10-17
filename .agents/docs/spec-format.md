@@ -1,5 +1,5 @@
 ---
-workhorse-version: 0.4.0
+workhorse-version: 0.6.0
 ---
 
 # Spec format and information architecture
