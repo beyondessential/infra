@@ -46,6 +46,10 @@ The Gateway MUST terminate TLS and forward requests to backend services as plain
 
 A TLS certificate MUST be provisioned by cert-manager, using the `letsencrypt` ClusterIssuer and the DNS-01 challenge resolved through Route 53.
 
+The permission cert-manager holds to change records MUST be limited to the zones that external-dns manages, as [DNS](#dns) lists them.
+
+cert-manager MUST hold no Route 53 permission beyond changing records in those zones, reading the status of its own changes, and listing hosted zones by name.
+
 ## DNS
 
 external-dns MUST manage the DNS records of the hostnames of HTTPRoutes.

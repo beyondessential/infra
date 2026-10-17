@@ -1,7 +1,7 @@
 # SOP: Check that a Linux server's backups are working
 
 Read-only. **[diagnose]**
-A restore refuses until a key backup exists, so a missing one matters before any restore ([key pairing](../spec/linux/backups.md#key-pairing)).
+A restore refuses until a key backup exists ([bestool BAK, restore](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#restore)), so a missing one matters before any restore; provisioning takes the first one ([key pairing](../spec/linux/backups.md#key-pairing)).
 Backups themselves are scheduled and retained by Canopy; this checks that the host does its part and that the infrastructure is in place.
 
 ## On the host

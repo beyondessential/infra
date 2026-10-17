@@ -46,7 +46,9 @@ The Application SHOULD retry a failed sync a bounded number of times, with a del
 
 Deleting the Application MUST delete every resource it created.
 
-A deployment that restores its central database from a seed snapshot MUST have a copy of the snapshot in its namespace before the Application is created.
+Where a deployment restores its central database from a snapshot that [pgsnap](../pgsnap.md) produced in `tamanu-seed`, the stub MUST create in the namespace of the deployment a VolumeSnapshot backed by the same underlying storage snapshot before the Application is created.
+
+Deleting that VolumeSnapshot MUST leave the underlying storage snapshot in place.
 
 Which renderer renders an Application is specified in [K8STRO](renderer-rollout.md).
 

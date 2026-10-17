@@ -135,7 +135,11 @@ A spot workload pool MUST NOT consolidate an underutilised node until the pods o
 
 A [dedicated pool](../overview.md#dedicated-pool) is a node pool that only workloads which explicitly opt in can use.
 
-The database replica pool and the critical database pool are dedicated pools.
+A dedicated pool MUST taint its nodes with `bes.node.group=<pool name>:NoSchedule`.
+
+A workload opts into a dedicated pool by tolerating that taint and requiring the label `bes.node.group=<pool name>`.
+
+The database replica pool and the critical database pool are dedicated pools, named `db-replica` and `db-critical`.
 
 The database replica pool MUST offer memory-dense node shapes, sized so that one database replica fills a node.
 
@@ -172,6 +176,8 @@ The nodes of the critical database pool MUST be attributable as critical databas
 An exit node is a Tailscale node that forwards the internet traffic of connected clients, run as a workload in the cluster.
 
 An exit node MUST run on a node with no workload other than daemonsets.
+
+A node with purpose `tailscale-exit` MUST carry the taint `bes.node.purpose=tailscale-exit:NoSchedule`.
 
 An exit node MUST run on on-demand capacity.
 

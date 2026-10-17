@@ -70,7 +70,7 @@ The user data of an instance MUST be held as a secret.
 > [!NOTE]
 > The user data contains the Tailscale key.
 
-The Tailscale tags of a deployment's servers SHOULD default to `tag:server`, `tag:server-tamanu`, `tag:server-tamanu-<root>` where the zone has a root name, and `tag:server-tamanu-<type>` where the stack is recognisable as a `demo`, `clone` or `prod` deployment.
+The Tailscale tags of a deployment's servers SHOULD default to `tag:server`, `tag:server-tamanu`, `tag:server-tamanu-<root>` where the zone has a root name, and `tag:server-tamanu-<type>` where the normalised stack name contains `demo`, `clone` or `prod`, with `<type>` the first of those it contains in that order.
 
 ## Partitioning
 

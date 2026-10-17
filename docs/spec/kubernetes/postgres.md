@@ -80,7 +80,7 @@ A cluster that opts out of its disruption budgets MUST let every node hosting it
 
 A cluster MUST be able to opt into the [critical database pool](../overview.md#critical-database-pool).
 
-A cluster that opts into the critical database pool MUST run its instances only on that pool, each on its own node.
+A cluster that opts into the critical database pool MUST run its instances only on that pool, each on its own node, by tolerating and requiring the pool as [K8SNOD](nodes.md#database-pools) gives.
 
 A cluster MUST be able to opt into on-demand placement.
 
