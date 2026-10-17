@@ -48,7 +48,8 @@ const plugins = CHANNELS.map((channel) =>
 );
 
 // Applications are limited to the render repository and to Tamanu deployment
-// namespaces. `tamanu-meta-*` hold the version and meta servers and are not
+// namespaces. `tamanu-meta-*` hold the version and meta servers, and
+// `tamanu-super`, `tamanu-system` and `tamanu-seed` are shared; none of them are
 // deployed this way. No cluster-scoped kind is allowed.
 new k8s.apiextensions.CustomResource('argo-project-tamanu', {
   apiVersion: 'argoproj.io/v1alpha1',
@@ -61,6 +62,9 @@ new k8s.apiextensions.CustomResource('argo-project-tamanu', {
     destinations: [
       { server: 'https://kubernetes.default.svc', namespace: 'tamanu-*' },
       { server: '*', namespace: '!tamanu-meta-*' },
+      { server: '*', namespace: '!tamanu-super' },
+      { server: '*', namespace: '!tamanu-system' },
+      { server: '*', namespace: '!tamanu-seed' },
     ],
     clusterResourceWhitelist: [],
   },

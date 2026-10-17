@@ -330,7 +330,7 @@ The default role MUST NOT allow any other action.
 
 The `tamanu` AppProject MUST accept only the repository `https://github.com/beyondessential/infra` as a source.
 
-The `tamanu` AppProject MUST accept only destination namespaces of the cluster that runs Argo CD whose names match `tamanu-*`, other than those that begin `tamanu-meta-`.
+The `tamanu` AppProject MUST accept only destination namespaces of the cluster that runs Argo CD whose names match `tamanu-*`, other than those that begin `tamanu-meta-` and the shared namespaces `tamanu-super`, `tamanu-system` and `tamanu-seed`.
 
 The `tamanu` AppProject MUST accept no cluster-scoped kind.
 
