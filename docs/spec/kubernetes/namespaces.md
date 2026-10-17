@@ -293,6 +293,14 @@ The deployer MUST NOT hold a permission in a namespace other than the subtree of
 
 The deployer MUST NOT hold a cluster-scoped permission other than those of the `tamanu-deploy-cluster` role.
 
+The deployer SHOULD be able to patch only the namespaces of Tamanu deployments.
+
+The deployer SHOULD be able to create, change and delete only the VolumeSnapshotContents of Tamanu deployments.
+
+> [!NOTE]
+> Role-based access control cannot limit a cluster-scoped permission to objects by name pattern.
+> The deployer can therefore patch any namespace and manage any VolumeSnapshotContent in the cluster.
+
 The deployer MUST NOT change the objects of `tamanu-system`.
 
 The deployer MUST NOT hold the verbs `escalate` or `bind`.
