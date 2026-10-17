@@ -1,0 +1,2 @@
+# CANOPY_GROUP=<group> CANOPY_RANK=<rank> ansible-playbook -i inventory/canopy.yml <playbook>
+plugin: canopy
