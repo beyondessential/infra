@@ -16,6 +16,7 @@ Workhorse keeps this section, the skills, and the reference docs current automat
 
 - This repository is public. Never commit secrets or credentials, and keep client-identifying names out of code, comments, commits and PRs beyond the deployment names already present. Stack config (`Pulumi.<stack>.yaml`) is gitignored and must stay so: values go in via `pulumi config set` (`--secret` for secrets), never in source.
 - If you write a script, always remind the user to carefully review the script before running it.
+- Developer orientation is in `docs/dev/`: `pulumi-organisation.md` for how `pulumi/` is laid out and the conventions every stack follows, and `pulumi-core.md` for the per-account core stack. What each part of the system must do is in `docs/spec/`.
 - When writing or changing specs in `docs/spec/` or plans in `docs/plans/` or `.workhorse/plans/`, follow the spec and plan rules in [.workhorse/rules.md](.workhorse/rules.md). Run `node scripts/check-spec-links.mjs` after editing specs or `spec:` citations.
 - Assume these tools are available, you can use them all the time instead of more standard tools like grep etc:
   - rg
@@ -31,7 +32,6 @@ Workhorse keeps this section, the skills, and the reference docs current automat
 - You can run commands using `[accountname]:ReadAccess` profiles with aws-sso, but never directly run commands with other access levels: instead ask the user to run commands or scripts.
 - The general calling form for aws-sso is `aws-sso exec -p [profile] -- [command]`. You'll need to look up the account list to get the profiles with `aws-sso list`.
 - You can run previews with pulumi, but never directly run `up` or other destructive actions.
-- GuardDuty resources belong only to the `security-monitoring` stack; the policy pack rejects them elsewhere. Two stacks owning the delegated administrator would disassociate every member account when either is destroyed.
 - Note that about half of our pulumi stacks DO NOT require AWS access at all, and so should not use aws-sso at all.
 - If `aws-sso` says that you need to run `aws-sso login`, pause and ask the user to do so, then repeat the commands and resume.
 - If you're about to run a command that uses AdminAccess, immediately stop yourself. Even if a ReadAccess doesn't exist where you expect it, ask the user to fix the situation instead of running an AdminAccess command yourself.

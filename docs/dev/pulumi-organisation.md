@@ -1,6 +1,6 @@
 # Pulumi Repo Organisation
 
-How `pulumi/` is laid out, the conventions every stack follows, and the shared utilities in `common/`. For the `core` stack itself see `docs/pulumi-core.md`; for the K8s clusters see `docs/kubernetes.md`.
+How `pulumi/` is laid out, the conventions every stack follows, and the shared utilities in `common/`. For the `core` stack itself see `docs/dev/pulumi-core.md`; for the K8s clusters see `docs/kubernetes.md`.
 
 ---
 
@@ -17,7 +17,7 @@ pulumi/
 ├── common/               # shared utilities (see §4)
 ├── constants/            # hard-coded IDs, AMIs, public endpoints (see §5)
 │
-├── core/                 # foundational per-AWS-account stack (see docs/pulumi-core.md)
+├── core/                 # foundational per-AWS-account stack (see docs/dev/pulumi-core.md)
 ├── primary/              # tiny stack for the primary billing account
 │
 ├── k8s-core/             # EKS cluster per K8s cluster (see docs/kubernetes.md)

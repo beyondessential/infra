@@ -1,6 +1,6 @@
 # PostgreSQL physical backups: why restores were dirty
 
-Analysis behind the requirements in [PPB](spec/postgres-physical-backup.md), written when backups were taken by the Ansible `kopia-backup-postgres-*` scripts on Linux and by pointing Kopia at the live directory on Windows.
+Analysis behind the requirements in [PPB](../spec/postgres-physical-backup.md), written when backups were taken by the Ansible `kopia-backup-postgres-*` scripts on Linux and by pointing Kopia at the live directory on Windows.
 It records the evidence for the requirements and is not itself a requirement.
 
 

@@ -8,7 +8,7 @@ A physical backup is a restorable file-level image of a PostgreSQL cluster's dat
 The backup MUST run on Windows and on Linux.
 
 > [!NOTE]
-> The evidence behind these requirements is in [the restore failure analysis](../postgres-physical-backup-diagnosis.md).
+> The evidence behind these requirements is in [the restore failure analysis](../reference/postgres-physical-backup-diagnosis.md).
 
 ## Borrowed terms
 

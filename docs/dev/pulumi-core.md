@@ -4,7 +4,7 @@
 
 Internal doc with the full context: <https://beyond-essential.slab.com/posts/aws-account-core-39tz152u>.
 
-Every other stack in this repo that provisions AWS resources (or K8s workloads that need AWS) reads from a core stack via `cfg.require('core')`. See `docs/pulumi-organisation.md` for that mechanism.
+Every other stack in this repo that provisions AWS resources (or K8s workloads that need AWS) reads from a core stack via `cfg.require('core')`. See `docs/dev/pulumi-organisation.md` for that mechanism.
 
 ---
 
@@ -88,7 +88,7 @@ Under the `core:` namespace.
 
 ## 3. What it exports
 
-Consumed by downstream stacks via the `CrossStack` wrapper (see `docs/pulumi-organisation.md`).
+Consumed by downstream stacks via the `CrossStack` wrapper (see `docs/dev/pulumi-organisation.md`).
 
 | Export | Purpose |
 |---|---|
@@ -167,4 +167,4 @@ tamanu-backups:core: bes/core/tamanu-internal
 
 The stack then imports `common/coreRef.ts` (or `common/k8s/coreRef.ts` for K8s workloads) to get typed accessors to everything core exports, plus `failIfIncorrectAccount()` which bails out early if the AWS creds don't match the core's `accountId`.
 
-See `docs/pulumi-organisation.md` for the plumbing.
+See `docs/dev/pulumi-organisation.md` for the plumbing.
