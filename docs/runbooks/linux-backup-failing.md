@@ -17,13 +17,11 @@ Which server and backup type, how old the last good one is, and whether the serv
 ## 3. Investigate
 
 Start with [check backups](../sops/linux-check-backups.md). **[diagnose]**
-Then:
+Run that SOP in full, then:
 
 1. The error the daemon logged for that type: `journalctl -u bestool-alertd --since "2 days ago" | grep -i backup`. **[sensitive-data]**
-2. The cluster resolves: `pg_lsclusters` (exactly one online `main`).
-3. The filesystem: is the data on btrfs, and is there free space? A snapshot backup needs btrfs; the fallback needs about the cluster's size free.
-4. Privileges: the daemon runs as root with `CAP_SYS_ADMIN` for the btrfs snapshot.
-5. The key backup: `tamanu-secrets` is missing on a restore refusal ([key pairing](../spec/linux/backups.md#key-pairing)).
+2. Privileges: the daemon runs as root with `CAP_SYS_ADMIN`, granted for the `btrfs device stats` doctor check (`ansible/roles/bestool/templates/bestool-alertd.service.j2`).
+3. The key backup: `tamanu-secrets` is missing on a restore refusal ([key pairing](../spec/linux/backups.md#key-pairing)).
 
 ## 4. Interpret
 
@@ -34,7 +32,7 @@ Then:
 | Definitions present, daemon inactive | `bestool-alertd` is down. | `journalctl -u bestool-alertd`; escalate. Restarting it is **[dev-OTS]**. |
 | Backup falls back to `pg_basebackup`, then fails for space | Not btrfs, or the staging directory has no room. | Free space ([disk pressure](linux-disk-pressure.md)) or escalate. |
 | `AccessDenied` or credential errors fetching the repository | Canopy's issued credentials, or the role's trust or policy, is wrong ([roles](../spec/linux/backups.md#repository-roles)). | Escalate to whoever owns Canopy and the stack. Do not widen a policy. |
-| Restore refused: no key snapshot | `tamanu-secrets` never ran. | `bestool canopy backup --type tamanu-secrets` takes it. **[dev-OTS]** |
+| Restore refused: no key snapshot | `tamanu-secrets` never ran. | `bestool canopy backup --type tamanu-secrets` takes it, not on a clone deployment, which carries no `tamanu-secrets` definition. **[dev-OTS]** |
 | AWS Backup job failed | An instance snapshot problem, not the Canopy repository. | Read the job in AWS Backup; escalate. |
 | An external server has no AWS Backup coverage | By design. | Rely on the Canopy repository. |
 

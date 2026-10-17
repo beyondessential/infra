@@ -17,9 +17,9 @@ Which server, whether it is a production server by name, and when the run happen
 
 **[diagnose]**
 
-1. The pending settings: `sudo -u postgres psql -X -c "SELECT name, setting, pending_restart FROM pg_settings WHERE pending_restart;"`.
+1. The pending settings: the pending query in step 1 of [restart PostgreSQL](../sops/linux-restart-postgres.md).
 2. The value in force: `sudo -u postgres psql -X -c "SHOW shared_buffers;"` (or the named setting).
-3. The stored value: `sudo grep -E 'shared_buffers|max_connections|io_method|huge_pages' /var/lib/postgresql/current/main/postgresql.auto.conf`.
+3. The stored value: `sudo grep -E 'shared_buffers|max_connections|io_method|huge_pages' /var/lib/postgresql/current/postgresql.auto.conf`.
 4. The host's memory and CPU count, to check the tuning arithmetic against [LNXDB](../spec/linux/database.md#tuning): `free -k`, `nproc`.
 
 ## 4. Interpret
@@ -29,7 +29,7 @@ Which server, whether it is a production server by name, and when the run happen
 | `pending_restart` true for `shared_buffers`, `max_connections`, `wal_buffers`, `huge_pages`, `max_worker_processes`, `io_method` or `autovacuum_max_workers` | A tuning change waits for a restart. | [Restart PostgreSQL](../sops/linux-restart-postgres.md) in a planned window. |
 | `listen_addresses` lacks the Tailscale addresses | The server joined the tailnet after PostgreSQL was configured, or the change is pending. | The same restart. Until then remote tailnet clients cannot connect. |
 | No pending rows, but a value differs from the rules | Tuning is off for the host (`postgresql_tune_enabled`), or the host's memory or CPUs changed since the last run. | Re-run `tamanu-install.yml --tags postgres --limit <host>` ([run the playbooks](../sops/linux-run-playbooks.md)). **[dev-OTS]** |
-| A non-production server shows a pending restart | The run restarted it, or was tag-limited and skipped the handler. | Run again, or restart ([SOP](../sops/linux-restart-postgres.md)). |
+| A non-production server shows a pending restart | The run restarted it. | Run again, or restart ([SOP](../sops/linux-restart-postgres.md)). |
 
 ## 5. Resolve
 

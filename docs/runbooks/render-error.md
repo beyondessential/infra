@@ -7,7 +7,7 @@ Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 
 ## 1. When this applies
 
-`status.conditions` on the Application contains a `ComparisonError`, or `pulumi up` logged `Application <name>: <message>` while waiting ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#parameters) calls this a render error).
+`status.conditions` on the Application contains a `ComparisonError`, or `pulumi up` logged `Application <name>: <message>` while waiting ([K8STRO](../spec/kubernetes/tamanu/renderer-rollout.md#borrowed-terms) calls this a render error).
 
 ## 2. Establish context
 

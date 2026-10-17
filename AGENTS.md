@@ -14,6 +14,7 @@ Workhorse keeps this section, the skills, and the reference docs current automat
 
 # Other rules
 
+- In this repository the specs live at `docs/spec/`, and that is where the Workhorse section's `.workhorse/specs/` should be read as pointing.
 - This repository is public. Never commit secrets or credentials, and keep client-identifying names out of code, comments, commits and PRs beyond the deployment names already present. Stack config (`Pulumi.<stack>.yaml`) is gitignored and must stay so: values go in via `pulumi config set` (`--secret` for secrets), never in source.
 - If you write a script, always remind the user to carefully review the script before running it.
 - Troubleshooting and procedures are in the support pack at `docs/`: [docs/README.md](docs/README.md) indexes the runbooks, SOPs and reference pages, `docs/ruled-out-actions.md` is the hard filter on suggested actions, and `docs/deployment-context.md` says how to work out which deployment is affected. When a change alters something a runbook or SOP describes, update it, following the `curate-support-docs` skill.

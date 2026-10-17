@@ -112,6 +112,10 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 - [Reference: Linux deployment stack config and outputs](reference/linux-pulumi-config.md)
 - [Reference: Linux playbooks and roles](reference/linux-roles.md)
 - [Reference: Linux playbook variables](reference/linux-variables.md)
-- [PostgreSQL physical backups: why restores were dirty](reference/postgres-physical-backup-diagnosis.md)
 - [Reference: Tamanu deployment stack config](reference/tamanu-deployment-config.md)
 - [Reference: objects of a Tamanu deployment](reference/tamanu-deployment-objects.md)
+
+## Developer orientation
+
+- [Pulumi Repo Organisation](dev/pulumi-organisation.md)
+- [The Core Account Stack](dev/pulumi-core.md)
