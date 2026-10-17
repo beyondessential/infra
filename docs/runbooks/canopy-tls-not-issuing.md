@@ -40,12 +40,12 @@ kubectl --context=<context> -n tamanu-meta-prod get pods -l task=domains -o json
 ```
 
 An empty result means no zone reached Canopy: set `dnsZoneStacks` and apply ([procedure](../sops/enable-canopy-tls-core.md#2-add-the-zone-to-canopy)).
-The domains pod reads the list once at start-up, so it must restart to pick up a change ([managed zones](../spec/canopy/tls-issuance.md#managed-zones)).
+The domains pod reads the list once at start-up, so it must restart to pick up a change ([DOM, Managed zones](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#managed-zones)).
 
 ## C. Claim shows no zone
 
 The claim's zone has left the configuration, or the claim is on a name no configured apex covers.
-A claim still excludes other groups from overlapping names, but Canopy writes no record beneath it ([domain claims](../spec/canopy/tls-issuance.md#domain-claims)).
+A claim still excludes other groups from overlapping names, but Canopy writes no record beneath it ([DOM, When the zone configuration changes](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#when-the-zone-configuration-changes)).
 Read `canopy:dnsZoneStacks` (`pulumi config -s bes/canopy/prod`) and compare to the claim. **[diagnose]**
 A subzone delegated out of a configured zone needs its own entry ([zone delegation](../spec/canopy/tls-issuance.md#zone-delegation)).
 
@@ -72,9 +72,9 @@ Add the subzone's core stack to `dnsZoneStacks` ([procedure, step 4](../sops/ena
 
 - No ACME account key configured: Canopy publishes addresses and issues nothing, and reports it once at start-up. Check that `canopy:acmeAccountKey` is set; do not read or paste it.
 - `canopy:acmeDirectory` set to a staging URL: certificates chain to an untrusted root by design. Move to production in step 5 of the procedure.
-- Throttling: Canopy treats a rate-limit response as fleet-wide and holds off new orders for 10 minutes ([rate limits](../spec/canopy/tls-issuance.md#rate-limits)). Every group under one registered domain shares one allowance.
+- Throttling: Canopy treats a rate-limit response as fleet-wide and holds off new orders for 10 minutes ([CRT, When issuance fails](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md#when-issuance-fails)). Every group under one registered domain shares one allowance.
 
-Canopy files its own alerts for a group domain outside the configured zones and for whether it can reach the authority ([reporting](../spec/canopy/tls-issuance.md#reporting)); check them before debugging by hand.
+Canopy files its own alerts for a group domain outside the configured zones and for whether it can reach the authority ([DOM, When the zone configuration changes](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#when-the-zone-configuration-changes), [CRT, When issuance fails](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md#when-issuance-fails)); check them before debugging by hand.
 
 ## Escalate
 

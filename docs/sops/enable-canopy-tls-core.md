@@ -68,7 +68,7 @@ The expected lines name the zones it manages and then an ACME account ready for 
 ## 3. Grant it to a group
 
 In Canopy's admin UI, on the group's detail page, claim a domain at or under one of the configured apexes.
-The group then controls that name and everything beneath it, and no other group can claim anything overlapping ([domain claims](../spec/canopy/tls-issuance.md#domain-claims)).
+The group then controls that name and everything beneath it, and no other group can claim anything overlapping ([DOM, Exclusivity within Canopy](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#exclusivity-within-canopy)).
 Then set the TLS grant on each application that should ask.
 The grant control appears only once the group holds a claim, so its absence is not a broken deploy.
 
@@ -93,5 +93,5 @@ pulumi config rm canopy:acmeDirectory -s bes/canopy/prod
 pulumi up -s bes/canopy/prod --policy-pack ../policies
 ```
 
-Canopy finds or creates its ACME account from `canopy:acmeAccountKey` at every start, so the same key yields a separate account at each directory and nothing needs migrating ([staging and production](../spec/canopy/tls-issuance.md#staging-and-production)).
-Let's Encrypt limits are per registered domain, so every group beneath one domain shares one allowance ([rate limits](../spec/canopy/tls-issuance.md#rate-limits)).
+Canopy finds or creates its ACME account from `canopy:acmeAccountKey` at every start, so the same key yields a separate account at each directory and nothing needs migrating; the directory is the only setting that changes ([staging and production](../spec/canopy/tls-issuance.md#staging-and-production)).
+Let's Encrypt limits are per registered domain, so every group beneath one domain shares one allowance ([CRT, When issuance fails](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md#when-issuance-fails)).

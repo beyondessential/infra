@@ -9,7 +9,7 @@
     mode: "0700"
   when: tamanu_caddy_tls_dns_iam is defined
 
-# spec: LNXAPP#certificates
+# spec: LNXTLS#dns-01-credentials
 - name: Configure AWS credentials for ACME DNS
   become: true
   diff: false

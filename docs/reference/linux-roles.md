@@ -40,7 +40,7 @@ Everything here is under `ansible/`.
 | `tamanu-single-install` | `central`, `facility` | Config directories and files, quadlets and drop-ins, boot and roll-on-postgres units, reporting roles, clone setup, backup definitions, Caddy sites. | [application](../spec/linux/application.md) |
 | `tamanu-single-upgrade` | `central`, `facility` | The ordered upgrade. | [upgrades](../spec/linux/application.md#upgrades) |
 | `tamanu-single-frontend-upgrade` | `central`, `facility` | The frontend-only upgrade. | [upgrades](../spec/linux/application.md#upgrades) |
-| `bestool` | `central`, `facility` | The `bestool-alertd` daemon: unit or drop-ins, database URLs, admission of Caddy to the certificate endpoint, Munin plugin, a connect check. | [application](../spec/linux/application.md#certificates) |
+| `bestool` | `central`, `facility` | The `bestool-alertd` daemon: unit or drop-ins, database URLs, admission of Caddy to the certificate endpoint, Munin plugin, a connect check. | [tls](../spec/linux/tls.md#certificate-endpoint) |
 | `msupply-common`, `msupply-install`, `msupply-upgrade` | `facility` | Open mSupply as a quadlet with its Caddy site and optional Tailscale service. | [mSupply](../spec/linux/application.md#msupply) |
 
 ## Version gates on `bestool`

@@ -16,5 +16,5 @@ Nothing here is pre-signed.
 | Backup credentials | Short-lived, issued by Canopy per run; static IAM users only on stacks without `canopyInfra` | Canopy issues them. | See [LNXBAK](../spec/linux/backups.md#repository-roles). |
 | Clone sync passwords | `/etc/bestool/clone-sync/<name>.password` on the clone central, copied to `/etc/tamanu/clone-sync-password` on the facility | Delete the password file on the central, re-run `tamanu-install.yml`, then run `/etc/bestool/clone-setup.sh` on the central and on the facility. | The facility cannot sync until setup completes. |
 
-The IAM access keys of the `acmeDnsUsers` can change only `_acme-challenge` TXT records for that server's names ([LNXAPP](../spec/linux/application.md#certificates)); treat them as secrets anyway.
+The IAM access keys of the `acmeDnsUsers` can change only `_acme-challenge` TXT records for that server's names ([LNXTLS](../spec/linux/tls.md#dns-01-users)); treat them as secrets anyway.
 Keep client and host names out of any note about the change.

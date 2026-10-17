@@ -14,7 +14,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 
 | document | what it covers |
 |---|---|
-| [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | The ACME directory, account lookup by key and the DNS-01 challenge. Used by [K8SING](kubernetes/ingress.md) and [CTLS](canopy/tls-issuance.md). |
+| [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | The ACME directory, account lookup by key and the DNS-01 challenge. Used by [K8SING](kubernetes/ingress.md) [CTLS](canopy/tls-issuance.md) and [LNXTLS](linux/tls.md). |
 | [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) and [RFC 9114](https://www.rfc-editor.org/rfc/rfc9114) | QUIC and HTTP/3. Used by [K8SING](kubernetes/ingress.md). |
 | [PROXY protocol specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) | The header that conveys a client address through a load balancer. Used by [K8SING](kubernetes/ingress.md). |
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | GatewayClass, Gateway, listeners and HTTPRoute. Used by [K8SING](kubernetes/ingress.md). |
@@ -44,14 +44,12 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Kopia documentation](https://kopia.io/docs/) | The snapshot repository. Used by [PPB](postgres-physical-backup.md). |
 | [Volume Shadow Copy Service](https://learn.microsoft.com/en-us/windows-server/storage/file-server/volume-shadow-copy-service) | Windows shadow copies. Used by [PPB](postgres-physical-backup.md). |
 | [lvmthin](https://man7.org/linux/man-pages/man7/lvmthin.7.html) | LVM thin provisioning. Used by [PPB](postgres-physical-backup.md). |
-| [RFC 2986](https://www.rfc-editor.org/rfc/rfc2986) | PKCS #10 certification requests. Used by [CTLS](canopy/tls-issuance.md). |
 | [RFC 5958](https://www.rfc-editor.org/rfc/rfc5958) | PKCS #8 private-key syntax. Used by [CTLS](canopy/tls-issuance.md). |
-| [RFC 8446](https://www.rfc-editor.org/rfc/rfc8446) | TLS 1.3, including client authentication. Used by [CTLS](canopy/tls-issuance.md). |
 | [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md). |
 | [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) | Route 53 hosted zones. Used by [CTLS](canopy/tls-issuance.md). |
 | [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) and [IAM roles terms and concepts](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html) | Role assumption and trust policies. Used by [CTLS](canopy/tls-issuance.md). |
-| [Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) | Route 53 record-set condition keys. Used by [CTLS](canopy/tls-issuance.md). |
-| [Let's Encrypt rate limits](https://letsencrypt.org/docs/rate-limits/) and [staging environment](https://letsencrypt.org/docs/staging-environment/) | The registered-domain allowance and the untrusted-root staging authority. Used by [CTLS](canopy/tls-issuance.md). |
+| [Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) | Route 53 record-set condition keys. Used by [CTLS](canopy/tls-issuance.md) and [LNXTLS](linux/tls.md). |
+| [Let's Encrypt staging environment](https://letsencrypt.org/docs/staging-environment/) | The untrusted-root staging authority. Used by [CTLS](canopy/tls-issuance.md). |
 | [Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/) and [resource names](https://www.pulumi.com/docs/iac/concepts/resources/names/) | Policy packs, enforcement levels and URNs. Used by [GRD](policies/guardrails.md). |
 | [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) | Deployment strategy and rollout. Used by [GRD](policies/guardrails.md), [TDR](tamanu/deployment-rollout.md) and [TSD](tamanu/scaledown.md). |
 | [Amazon EFS access points](https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html) and [EFS CSI driver parameters](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md) | Access points and the storage class parameters of the EFS driver. Used by [GRD](policies/guardrails.md). |
@@ -81,6 +79,11 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) and [podman-secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html) | Quadlets and secrets. Used by [LNXAPP](linux/application.md). |
 | [Caddy documentation](https://caddyserver.com/docs/), [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [the tls directive](https://caddyserver.com/docs/caddyfile/directives/tls) | The reverse proxy, snippets and certificate retrieval. Used by [LNXAPP](linux/application.md). |
 | [Kopia repositories](https://kopia.io/docs/repositories/), [storage tiers](https://kopia.io/docs/advanced/storage-tiers/) and [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) | The repository, its storage configuration and lock modes. Used by [LNXBAK](linux/backups.md). |
+| [Canopy DOM](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#managed-zones) and [Canopy CRT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md) | How Canopy reads its managed zones, and how it issues and renews certificates. Used by [CTLS](canopy/tls-issuance.md). |
+| [bestool TLS](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md), [bestool TLSD](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificate-delivery.md) and [bestool CHK-CCT](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/caddy-certs.md) | How bestool obtains certificates from Canopy and delivers them to the proxy. Used by [LNXTLS](linux/tls.md). |
+| [bestool BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md) and [Canopy BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md) | How bestool takes and restores backups, and how Canopy schedules, retains and credentials them. Used by [LNXBAK](linux/backups.md). |
+| [Caddy global options](https://caddyserver.com/docs/caddyfile/options#cert-issuer) and [Caddy certificates on Tailscale](https://tailscale.com/kb/1190/caddy-certificates) | The certificate issuer option and Tailscale-issued certificates. Used by [LNXTLS](linux/tls.md). |
+| [AWS shared config and credentials files](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html), [IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users.html) and [managed and inline policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html) | Credential files, users and policies. Used by [LNXTLS](linux/tls.md). |
 
 ## Terminology
 
@@ -229,30 +232,10 @@ Defined in [PPB](postgres-physical-backup.md#base-backup-strategy).
 The foundational infrastructure of one AWS account, which owns the account's public DNS zone.
 Defined in [CTLS](canopy/tls-issuance.md#managed-zones).
 
-### Managed zone
-
-A DNS zone in which Canopy may write records.
-Defined in [CTLS](canopy/tls-issuance.md#managed-zones).
-
 ### Zone role
 
 The role a core creates for Canopy to assume in order to write records in that core's zone.
 Defined in [CTLS](canopy/tls-issuance.md#zone-access).
-
-### Group
-
-The set of servers and applications that Canopy administers as one customer unit.
-Defined in [CTLS](canopy/tls-issuance.md#domain-claims).
-
-### Domain claim
-
-A group's exclusive control of a domain name and every name beneath it.
-Defined in [CTLS](canopy/tls-issuance.md#domain-claims).
-
-### TLS grant
-
-The per-application setting that permits Canopy to issue certificates to the servers of that application.
-Defined in [CTLS](canopy/tls-issuance.md#domain-claims).
 
 ### Backup bucket
 

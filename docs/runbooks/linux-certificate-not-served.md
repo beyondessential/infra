@@ -1,7 +1,7 @@
 # Runbook: a Linux server's certificate is wrong or missing
 
 Browsers or integrations get TLS errors from a Linux server, the `caddy_certs` check fails, or a certificate is close to expiry.
-Where certificates come from is in [LNXAPP](../spec/linux/application.md#certificates); the Canopy side of issuance is [Canopy TLS not issuing](canopy-tls-not-issuing.md).
+Where certificates come from is in [LNXTLS](../spec/linux/tls.md#certificate-sources); the Canopy side of issuance is [Canopy TLS not issuing](canopy-tls-not-issuing.md).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 Access to the DNS-01 keys and any ZeroSSL key is **sensitive-data**; never print them ([rotate credentials](../sops/linux-rotate-credentials.md)).

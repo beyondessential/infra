@@ -59,7 +59,7 @@ The issuer of Caddy MUST be an ACME issuer with the contact address `tls-renewal
 
 Caddy MUST use ZeroSSL as an additional issuer, with the key in the inventory variable `caddy_zerossl_api_key`, where that variable is set.
 
-The ACME issuer MUST prove control of names by [DNS-01](#borrowed-terms) through Route 53, with up to 10 retries, where the inventory variable `tamanu_caddy_tls_dns_iam` is set.
+The ACME issuer MUST prove control of names by DNS-01 through Route 53, with up to 10 retries, where the inventory variable `tamanu_caddy_tls_dns_iam` is set.
 
 ## DNS-01 credentials
 
@@ -73,7 +73,7 @@ The shared credentials file and its directory MUST be removed where `tamanu_cadd
 
 ## DNS-01 users
 
-A server that lists any external IP address MUST have an [IAM user](#borrowed-terms) for DNS-01, whose managed policy and inline policy are those in the following table.
+A server that lists any external IP address MUST have an IAM user for DNS-01, whose managed policy and inline policy are those in the following table.
 
 | policy | actions | resource | condition |
 |---|---|---|---|
