@@ -76,7 +76,8 @@ The cluster MUST accept connections as the `pg_hba.conf` entries in the followin
 | local | replication | all | not applicable | `peer` |
 | local | all | `alertd`, with the user name map `alertd` | not applicable | `peer` |
 | local | the Tamanu database | the owner of the Tamanu database | not applicable | `scram-sha-256` |
-| local | `tamanu` | `reporting`, `raw`, `tamanu_reporting` and `tamanu_raw` | not applicable | `scram-sha-256` |
+| local | `tamanu` | `tamanu_reporting` and `tamanu_raw`, on a Tamanu server at version 2.60.0 or later | not applicable | `scram-sha-256` |
+| local | `tamanu` | `reporting` and `raw`, on a Tamanu server at a version lower than 2.60.0 | not applicable | `scram-sha-256` |
 | host | all | all | `100.64.0.0/10` and `fd7a:115c:a1e0::/56` | `scram-sha-256` |
 
 The cluster MUST have the values in the following table for the parameters that protect its connections.
@@ -101,7 +102,9 @@ A Tamanu server MUST connect to its database over the Unix socket directory `/va
 
 The role that owns the Tamanu database MUST have the `CREATEROLE` attribute.
 
-The roles `reporting` and `raw` MUST exist on a Tamanu server, each with a derived password.
+The roles `reporting` and `raw` MUST exist on a Tamanu server at a version lower than 2.60.0, each with a derived password.
+
+A Tamanu server at version 2.60.0 or later MUST leave the roles `tamanu_reporting` and `tamanu_raw` to Tamanu, which creates and manages them, as [K8STDR](../kubernetes/tamanu/deployment-rollout.md#version-gated-steps) gives for the same release.
 
 The credential seed of a deployment MUST be a secret variable and MUST NOT be a host tag.
 

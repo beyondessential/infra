@@ -4,8 +4,8 @@ id: LNXMSP
 
 # mSupply on a Linux server
 
-The requirements in this spec apply to an mSupply instance on a [Linux server](../overview.md#linux-server).
-Where the instance runs on a server that also runs a Tamanu [facility server](../overview.md#facility-server), the shared host, container network, reverse proxy and certificates are the only coupling, and [LNXRUN](runtime.md) and [LNXTLS](tls.md) specify them.
+The requirements in this spec apply to an mSupply instance on a [Linux server](../overview.md#linux-server) that runs a Tamanu [facility server](../overview.md#facility-server).
+The shared host, container network, reverse proxy and certificates are the only coupling between the two, and [LNXRUN](runtime.md) and [LNXTLS](tls.md) specify them.
 
 ## Borrowed terms
 

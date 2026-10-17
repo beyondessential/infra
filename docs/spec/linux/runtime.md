@@ -134,7 +134,7 @@ The file `local.json5` MUST set the keys in the following table.
 | `db.name`, `db.username`, `db.password` | the database, its owner and the password of the owner, as [LNXDB](database.md#roles-and-credentials) gives them |
 | `db.host`, `db.port` | the socket directory `/var/run/postgresql`, and `null` |
 | `db.migrateOnStartup` | `false` |
-| `db.reportSchemas.connections.raw`, `db.reportSchemas.connections.reporting` | the user name and the derived password of the roles `raw` and `reporting` |
+| `db.reportSchemas.connections.raw`, `db.reportSchemas.connections.reporting` | the user name and the derived password of the roles `raw` and `reporting`, on a server at a Tamanu version lower than 2.60.0, and absent otherwise |
 | `schedules.sendStatusToMetaServer.enabled` | `false`, where the installed [bestool](../overview.md#bestool) sends the status to the meta server |
 | `disk.diskPath` | `/var/lib/postgresql`, on a central server |
 | `patientPortal.portalUrl` | `https://` followed by the patient portal hostname, on a central server with the patient portal enabled |
