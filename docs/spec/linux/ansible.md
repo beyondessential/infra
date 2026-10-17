@@ -139,7 +139,11 @@ The server key MUST be 32 bytes read from the kernel random source, and MUST NOT
 
 ## Clone setup
 
-Provisioning MUST install a clone setup script at `/etc/bestool/clone-setup.sh` on a server of a [clone deployment](../overview.md#clone-deployment).
+Provisioning MUST set up the servers of a [clone deployment](../overview.md#clone-deployment) where the central server is in the same inventory and runs Tamanu 2.60.0 or later.
+
+Where that does not hold, the servers of a clone deployment MUST be set up by hand and provisioning MUST warn that they are.
+
+Provisioning MUST install a clone setup script at `/etc/bestool/clone-setup.sh` on each server that it sets up.
 
 The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facilities, and MUST report failure where any step fails.
 
@@ -147,9 +151,7 @@ The clone setup script of a facility server MUST configure synchronisation again
 
 A clone setup script MUST pass a password to its command in the environment, and MUST NOT put it in a process argument.
 
-A facility server of a clone deployment MUST have a synchronisation account on the central server, where the central server is in the same inventory and runs Tamanu 2.60.0 or later.
-
-Where that does not hold, the sync accounts MUST be set up by hand and provisioning MUST warn that they are.
+Provisioning MUST give each facility server that it sets up a synchronisation account on the central server.
 
 The password of a sync account MUST be 32 random bytes in hexadecimal, generated on the central server, and MUST NOT be derived from the inventory or written on the control node.
 
