@@ -49,7 +49,7 @@
     state: absent
   notify: Reload systemd
 
-# spec: LNXAPP#services
+# spec: LNXRUN#services
 - name: Install specific container quadlets
   become: true
   with_fileglob: tamanu-{{ tamanu_server_type }}*.container
@@ -66,7 +66,7 @@
     state: directory
     mode: "0755"
 
-# spec: LNXAPP#services
+# spec: LNXRUN#server-key
 - name: Mount the tamanu config key secret into containers
   become: true
   ansible.builtin.copy:
@@ -85,7 +85,7 @@
     state: absent
   notify: Reload systemd
 
-# spec: LNXAPP#services
+# spec: LNXRUN#container-runtime
 - name: Disable IPv6 for quadlets
   when: not (tamanu_ipv6 | bool)
   become: true
@@ -146,7 +146,7 @@
     state: directory
     mode: "0755"
 
-# spec: LNXAPP#services
+# spec: LNXSRV#resource-classes
 - name: Install critical QoS drop-ins
   become: true
   when: tamanu_server_type == item.server_type

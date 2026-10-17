@@ -1,7 +1,7 @@
 # SOP: Upgrade Tamanu on Linux servers
 
 Move a deployment to a new Tamanu version, or only its frontend.
-The sequence the playbook follows is in [LNXAPP](../spec/linux/application.md#upgrades).
+The sequence the playbook follows is in [LNXANS](../spec/linux/ansible.md#upgrades).
 An upgrade is **[dev-OTS]**: it stops services and migrates the database.
 
 ## Before

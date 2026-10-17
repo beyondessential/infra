@@ -1,7 +1,7 @@
 # Reference: Linux server paths, units and ports
 
 Where things are on a Linux Tamanu server, for troubleshooting.
-What each one must hold is in the specs: [LNXSRV](../spec/linux/server.md), [LNXDB](../spec/linux/database.md), [LNXAPP](../spec/linux/application.md), [LNXBAK](../spec/linux/backups.md).
+What each one must hold is in the specs: [LNXSRV](../spec/linux/server.md), [LNXDB](../spec/linux/database.md), [LNXRUN](../spec/linux/runtime.md), [LNXANS](../spec/linux/ansible.md), [LNXMSP](../spec/linux/msupply.md), [LNXBAK](../spec/linux/backups.md).
 For frontline commands (`bestool tamanu doctor`, `status`, `logs`, `htop`, `podman ps`) use the Tamanu pack's [maintain Tamanu on Linux](https://github.com/beyondessential/tamanu/blob/main/docs/reference/maintain-tamanu-on-linux.md).
 Reading `/etc/tamanu/env` and `local.json5` prints database passwords: tag it **sensitive-data**.
 
@@ -55,7 +55,7 @@ Containers run as `systemd-<unit>`, so the journal identifier of a service is `s
 | `/root/.disk-conversion-metadata-v2.json` | Progress of the disk conversion | |
 | `/.swap/swap.img` | Swap file on a btrfs root | |
 
-The Podman secret `tamanu-config-key` is the [server key](../spec/linux/application.md#server-key): `sudo podman secret ls` shows that it exists, and nothing should print its value.
+The Podman secret `tamanu-config-key` is the [server key](../spec/linux/runtime.md#server-key): `sudo podman secret ls` shows that it exists, and nothing should print its value.
 
 ## Ports and addresses
 
@@ -71,5 +71,5 @@ The Podman secret `tamanu-config-key` is the [server key](../spec/linux/applicat
 
 ## Hostnames
 
-Container names resolve in `tamanu.internal` (and `msupply.internal`), for example `api.central.tamanu.internal`, through the resolver route that `podman` writes in `/etc/systemd/network/podman.network` ([aliases](../spec/linux/application.md#container-runtime)).
+Container names resolve in `tamanu.internal` (and `msupply.internal`), for example `api.central.tamanu.internal`, through the resolver route that `podman` writes in `/etc/systemd/network/podman.network` ([aliases](../spec/linux/runtime.md#container-runtime)).
 The Caddy sites resolve those names through the Podman gateway, not through the host resolver.

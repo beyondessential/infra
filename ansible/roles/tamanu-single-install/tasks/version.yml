@@ -2,7 +2,7 @@
 # Pull before anything points at the new version: the quadlets resolve their
 # image from TAMANU_VERSION in /etc/tamanu/env, so writing that first and then
 # failing to pull leaves the box unable to start after its next restart.
-# spec: LNXAPP#versions
+# spec: LNXANS#versions
 - name: Pull the Tamanu images
   become: true
   loop: "{{ [tamanu_image_server, tamanu_image_frontend] + ([tamanu_image_patient_portal] if patient_portal_enabled else []) }}"
@@ -18,7 +18,7 @@
     group: tamanu
     state: directory
 
-# spec: LNXAPP#configuration
+# spec: LNXANS#installation
 - name: Copy current app config to new version
   become: true
   ansible.builtin.copy:
@@ -56,7 +56,7 @@
     group: tamanu
     state: file
 
-# spec: LNXAPP#configuration
+# spec: LNXANS#installation
 - name: Move current symlink
   become: true
   ansible.builtin.file:
@@ -76,7 +76,7 @@
 # Per-server AES key for local_system_secrets encryption, kept as a podman secret.
 # Piped from /dev/urandom straight into podman so it never touches Ansible; never
 # regenerated (anything encrypted under it is lost if the host dies).
-# spec: LNXAPP#server-key
+# spec: LNXANS#server-key
 - name: Ensure tamanu config key podman secret exists
   become: true
   ansible.builtin.shell:

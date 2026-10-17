@@ -29,7 +29,7 @@ LEASE_ENV = "CANOPY_INVENTORY_LEASE"
 
 # Canopy's lease runs for 30 minutes. Extending well inside that leaves room
 # for one attempt to be lost without the environment falling open mid-run.
-# spec: LNXSRV#inventory
+# spec: LNXANS#inventory
 EXTEND_EVERY = 8 * 60
 TIMEOUT = 15
 

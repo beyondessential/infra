@@ -2,7 +2,7 @@
 # local.json5 is generated entirely by ansible — tamanu and operators only
 # read it, so lock down to read-only for the tamanu group. Root (running
 # ansible) ignores mode bits when rewriting.
-# spec: LNXAPP#configuration
+# spec: LNXRUN#configuration
 - name: Add tamanu local config
   become: true
   diff: false

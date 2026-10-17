@@ -1,7 +1,7 @@
 # Reference: Linux playbooks and roles
 
 What each playbook runs on a Linux Tamanu server, and what each role is for.
-The requirements are in [LNXSRV](../spec/linux/server.md), [LNXDB](../spec/linux/database.md), [LNXAPP](../spec/linux/application.md) and [LNXBAK](../spec/linux/backups.md); the procedures are [run the playbooks](../sops/linux-run-playbooks.md) and [upgrade Tamanu](../sops/linux-upgrade-tamanu.md).
+The requirements are in [LNXSRV](../spec/linux/server.md), [LNXDB](../spec/linux/database.md), [LNXRUN](../spec/linux/runtime.md), [LNXANS](../spec/linux/ansible.md), [LNXMSP](../spec/linux/msupply.md) and [LNXBAK](../spec/linux/backups.md); the procedures are [run the playbooks](../sops/linux-run-playbooks.md) and [upgrade Tamanu](../sops/linux-upgrade-tamanu.md).
 Everything here is under `ansible/`.
 
 ## Playbooks
@@ -27,21 +27,21 @@ Everything here is under `ansible/`.
 | `toolbox` | all | Operator tools: `bestool` package and daily update, `edit`, `starship`, tmux, htop, `tsw`. | [server](../spec/linux/server.md#package-sources-and-updates) |
 | `ebs-volume` | split layout | Finds an EBS volume by NVMe alias, formats it if empty, copies existing files, mounts by UUID, grows the filesystem. | [server](../spec/linux/server.md#storage-layout) |
 | `tailscale` | where `tailscale_name` is set | Repository, package, `ts-up` helper, and the Tailscale `listen_addresses` and `pg_hba` entries for PostgreSQL. | [server](../spec/linux/server.md#access) |
-| `podman` | all | Podman, crun, netavark and aardvark from the BES repository, the `podman0` network, the resolver route for `tamanu.internal`, daily dangling-image prune. | [application](../spec/linux/application.md#container-runtime) |
+| `podman` | all | Podman, crun, netavark and aardvark from the BES repository, the `podman0` network, the resolver route for `tamanu.internal`, daily dangling-image prune. | [runtime](../spec/linux/runtime.md#container-runtime) |
 | `postgres` | all | PGDG repository, version detection, `@postgres` subvolume, packages, access, `alertd` role, Munin plugins, btrfs tuning, quota, WAL settings, tuning, backup definitions, major upgrade. | [database](../spec/linux/database.md) |
 | `postgres-database` | `central`, `facility` | The `tamanu` database and its owner, with a derived password. | [database](../spec/linux/database.md#roles-and-credentials) |
-| `caddy` | all | Package at `caddy_version`, socket activation, issuer, DNS-01 credentials, UDP buffers, backup definition, Munin plugin. | [application](../spec/linux/application.md#reverse-proxy) |
+| `caddy` | all | Package at `caddy_version`, socket activation, issuer, DNS-01 credentials, UDP buffers, backup definition, Munin plugin. | [runtime](../spec/linux/runtime.md#reverse-proxy) |
 | `munin` | all unless `munin_enabled` is false | `munin` and `munin-node`, node on loopback, tailnet vhost on 4950, nodatacow `/var/lib/munin`. | [server](../spec/linux/server.md#metrics) |
 | `kopia` | all | Removes the upstream Kopia repository and the self-run Kopia timers and connection. The `kopia` package and user come from `baseline`. | [backups](../spec/linux/backups.md) |
 | `elastic-agent` | all | Installs and enrols the agent where enabled with a token, otherwise removes it. | [server](../spec/linux/server.md#endpoint-security-agent) |
 | `ufw` | all unless `dangerously_leave_ufw_alone` | Manages the rules where `ufw_managed`, otherwise stops and disables ufw. | [server](../spec/linux/server.md#host-firewall) |
 | `iti` | where `is_iti` is true | Raspberry Pi devices only. Not covered by the Tamanu server specs. | none |
-| `tamanu-single-common` | dependency of the `tamanu-single-*` roles | The `tamanu` user and group, `/etc/bestool` permissions, the `kopia` sudoers entry for `tamanu`, `/etc/tamanu/env`, image pruning. | [application](../spec/linux/application.md#configuration) |
-| `tamanu-single-install` | `central`, `facility` | Config directories and files, quadlets and drop-ins, boot and roll-on-postgres units, reporting roles, clone setup, backup definitions, Caddy sites. | [application](../spec/linux/application.md) |
-| `tamanu-single-upgrade` | `central`, `facility` | The ordered upgrade. | [upgrades](../spec/linux/application.md#upgrades) |
-| `tamanu-single-frontend-upgrade` | `central`, `facility` | The frontend-only upgrade. | [upgrades](../spec/linux/application.md#upgrades) |
+| `tamanu-single-common` | dependency of the `tamanu-single-*` roles | The `tamanu` user and group, `/etc/bestool` permissions, the `kopia` sudoers entry for `tamanu`, `/etc/tamanu/env`, image pruning. | [runtime](../spec/linux/runtime.md#configuration) |
+| `tamanu-single-install` | `central`, `facility` | Config directories and files, quadlets and drop-ins, boot and roll-on-postgres units, reporting roles, clone setup, backup definitions, Caddy sites. | [runtime](../spec/linux/runtime.md) and [installation](../spec/linux/ansible.md#installation) |
+| `tamanu-single-upgrade` | `central`, `facility` | The ordered upgrade. | [upgrades](../spec/linux/ansible.md#upgrades) |
+| `tamanu-single-frontend-upgrade` | `central`, `facility` | The frontend-only upgrade. | [frontend upgrades](../spec/linux/ansible.md#frontend-upgrades) |
 | `bestool` | `central`, `facility` | The `bestool-alertd` daemon: unit or drop-ins, database URLs, admission of Caddy to the certificate endpoint, Munin plugin, a connect check. | [tls](../spec/linux/tls.md#certificate-endpoint) |
-| `msupply-common`, `msupply-install`, `msupply-upgrade` | `facility` | Open mSupply as a quadlet with its Caddy site and optional Tailscale service. | [mSupply](../spec/linux/application.md#msupply) |
+| `msupply-common`, `msupply-install`, `msupply-upgrade` | `facility` | Open mSupply as a quadlet with its Caddy site and optional Tailscale service. | [mSupply](../spec/linux/msupply.md) |
 
 ## Version gates on `bestool`
 

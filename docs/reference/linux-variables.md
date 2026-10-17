@@ -2,7 +2,7 @@
 
 Variables the Linux playbooks read, with their defaults.
 Per-server values come from the Canopy inventory ([inventory](linux-inventory.md)); anything not listed there falls back to the role default shown here.
-The Tamanu-facing subset is also in [LNXAPP](../spec/linux/application.md#inventory-variables); the PostgreSQL subset is in [LNXDB](../spec/linux/database.md).
+The Tamanu-facing subset is also in [LNXANS](../spec/linux/ansible.md#inventory-variables); the PostgreSQL subset is in [LNXDB](../spec/linux/database.md).
 Do not put a secret in a tag: `salt` and `elastic_agent_enrollment_token` are secret variables.
 
 ## Identity and Tamanu

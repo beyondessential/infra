@@ -174,9 +174,9 @@ Where the stack does not name the Canopy infrastructure stack, the trust policy 
 
 Where the stack does not name the Canopy infrastructure stack, the device role MUST grant the actions of the table in [With Canopy infrastructure](#with-canopy-infrastructure) except `s3:GetBucketObjectLockConfiguration`, together with `s3:PutObjectRetention`.
 
-Where the stack does not name the Canopy infrastructure stack, there MUST be one IAM user for each server, holding the same grant as the device role.
+Where the stack does not name the Canopy infrastructure stack, it MAY create one IAM user for each server, holding the same grant as the device role.
 
-Where the stack does not name the Canopy infrastructure stack, there MUST be one read-only IAM user holding `s3:GetObject`, `s3:GetObjectAttributes`, `s3:GetBucketLocation`, `s3:GetObjectTorrent` and `s3:ListBucket` on the bucket and every object in it.
+Where the stack does not name the Canopy infrastructure stack, it MAY create one read-only IAM user holding `s3:GetObject`, `s3:GetObjectAttributes`, `s3:GetBucketLocation`, `s3:GetObjectTorrent` and `s3:ListBucket` on the bucket and every object in it.
 
 ## Canopy registration
 

@@ -1,7 +1,7 @@
 # Runbook: a Linux playbook refuses to run or stops early
 
 `ansible-playbook` exits before changing anything, or stops on an assertion.
-The inventory rules are in [LNXSRV](../spec/linux/server.md#inventory) and [inventory](../reference/linux-inventory.md); the upgrade rules are in [LNXAPP](../spec/linux/application.md#versions).
+The inventory rules are in [LNXANS](../spec/linux/ansible.md#inventory) and [inventory](../reference/linux-inventory.md); the upgrade rules are in [LNXANS](../spec/linux/ansible.md#versions).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 Reading a message and re-reading the inventory are **[diagnose]**; every change below is **[dev-OTS]**.

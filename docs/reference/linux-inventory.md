@@ -1,7 +1,7 @@
 # Reference: Linux inventory
 
 The Ansible inventory of a Linux deployment is served by Canopy, not by files in the repository.
-The spec is [LNXSRV](../spec/linux/server.md#inventory); this page is how to read it and what it contains.
+The spec is [LNXANS](../spec/linux/ansible.md#inventory); this page is how to read it and what it contains.
 The plugin is `ansible/inventory_plugins/canopy.py`, the lease keeper is `ansible/callback_plugins/canopy_lease.py`, and the one source file is `ansible/inventory/canopy.yml`, which names no deployment.
 
 ## Selecting a deployment

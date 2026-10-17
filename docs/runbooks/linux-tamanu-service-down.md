@@ -1,7 +1,7 @@
 # Runbook: a Tamanu service is down on a Linux server
 
 A Tamanu unit is not running, the site returns errors, or Canopy reports `tamanu_service`, `tamanu_http` or `version_drift` for a Linux server.
-The services and their units are in [LNXAPP](../spec/linux/application.md#services) and [paths and units](../reference/linux-paths-and-units.md#units).
+The services and their units are in [LNXRUN](../spec/linux/runtime.md#services) and [paths and units](../reference/linux-paths-and-units.md#units).
 
 Every action is tagged with its class ([ladder](../ruled-out-actions.md)).
 Frontline commands on the host are in the Tamanu pack's [maintain Tamanu on Linux](https://github.com/beyondessential/tamanu/blob/main/docs/reference/maintain-tamanu-on-linux.md).
@@ -33,9 +33,9 @@ On the host over SSH. **[diagnose]**
 | Evidence | Diagnosis | Action |
 |---|---|---|
 | Nothing running after a reboot, `tamanu-boot.service` failed | The oneshot that runs `bestool tamanu start` did not complete. | Read its journal. Start it again below. |
-| Services running only on one frontend or API instance | A [roll](../spec/linux/application.md#boot-and-restart) is part way, or one instance crashed. | Wait for the roll to end, then read the failed instance's log. |
+| Services running only on one frontend or API instance | A [roll](../spec/linux/runtime.md#boot-and-restart) is part way, or one instance crashed. | Wait for the roll to end, then read the failed instance's log. |
 | Services stopped, and `tamanu-roll-on-postgres` was skipped | The roll runs only when a frontend is active, so a Tamanu that was stopped stays stopped. | A person stopped it, or it crashed first. Find out which before starting it. |
-| `Missing podman secret tamanu-config-key`, or a crypto error at start | The [server key](../spec/linux/application.md#server-key) is gone or was replaced. | Escalate. Do not create a new key: values encrypted under the old one are lost. |
+| `Missing podman secret tamanu-config-key`, or a crypto error at start | The [server key](../spec/linux/runtime.md#server-key) is gone or was replaced. | Escalate. Do not create a new key: values encrypted under the old one are lost. |
 | `manifest unknown` or `unauthorized` on pull, or an image not found | The version in `/etc/tamanu/env` has no image on the host, or `ghcr.io` is unreachable. The playbooks pull before writing the env file, so a hand edit is the usual cause. | Escalate with the version shown. |
 | Caddy reports `no such host` or upstream timeouts for `*.tamanu.internal` | Container DNS is not answering on the Podman gateway. | `resolvectl status podman0`, `podman network ls`; escalate if aardvark-dns is down. |
 | An instance other than `a`/`b`, `1`/`2` is running | An experiment or leftover. | Reconciling removes it below. |

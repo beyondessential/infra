@@ -5,7 +5,7 @@ id: LNXTLS
 # TLS certificates on a Linux server
 
 The requirements in this spec apply to how a [Linux server](../overview.md#linux-server) obtains the certificates that Caddy serves, and to the AWS identities provisioned for that.
-The hostnames that Caddy serves over HTTPS are specified by [LNXAPP](application.md#reverse-proxy).
+The hostnames that Caddy serves over HTTPS are specified by [LNXRUN](runtime.md#reverse-proxy).
 The [alert daemon](../overview.md#alert-daemon) collects certificates from [Canopy](../overview.md#canopy) as [TLS](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md) specifies, and serves them to Caddy as [TLSD](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificate-delivery.md) specifies.
 The zones in which Canopy issues are provided as [CTLS](../canopy/tls-issuance.md) specifies.
 The healthcheck that grades the certificates Caddy serves is [CHK-CCT](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/tamanu/caddy-certs.md).

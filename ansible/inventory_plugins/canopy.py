@@ -121,7 +121,7 @@ KEEPER = "canopy_lease"
 LOOPBACK = ("localhost", "127.0.0.1", "::1")
 
 # Enough of ansible's namespace to say where a machine is and who to be there, nothing that says what to run.
-# spec: LNXSRV#inventory
+# spec: LNXANS#inventory
 ALLOWED_ANSIBLE_VARS = frozenset(
     {"ansible_host", "ansible_user", "ansible_port", "ansible_python_interpreter", "ansible_timeout"}
 )
@@ -242,7 +242,7 @@ class InventoryModule(BaseInventoryPlugin):
         except Exception as err:
             fatal(f"{path}: {type(err).__name__}: {err}")
 
-    # spec: LNXSRV#inventory
+    # spec: LNXANS#inventory
     def _populate(self, inventory):
         group = self.get_option("group")
         group_id = self.get_option("group_id")
