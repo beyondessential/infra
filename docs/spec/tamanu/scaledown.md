@@ -84,6 +84,12 @@ Waking a deployment MUST set the annotation `cnpg.io/hibernation=off` on every d
 
 Waking a deployment MUST NOT change the end of its time to live.
 
+After the steps above, waking a deployment MUST hard-refresh the Application of the deployment.
+
+> [!NOTE]
+> A promotion skips a hibernated deployment, so its Application can hold a render from an earlier renderer build.
+> The refresh makes the woken deployment render with the current channel.
+
 The stub MUST wake a deployment that has a time to live on every update of it.
 
 > [!NOTE]

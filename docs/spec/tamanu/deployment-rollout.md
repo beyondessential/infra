@@ -90,6 +90,11 @@ The Argo CD of each cluster that hosts deployments MUST report a database cluste
 
 That Argo CD MUST report a database cluster as Healthy while the cluster carries the annotation `cnpg.io/hibernation=on`.
 
+That Argo CD MUST give the health of a hibernated database cluster the message `Hibernated`.
+
+> [!NOTE]
+> A [promotion](../overview.md#promotion) reads that message to tell a hibernated deployment from an awake one.
+
 That Argo CD MUST report any other database cluster as Progressing.
 
 > [!NOTE]

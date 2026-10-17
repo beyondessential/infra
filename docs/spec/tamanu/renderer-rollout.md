@@ -116,6 +116,12 @@ A promotion MUST NOT refresh an Application rendered by the other channel.
 > [!NOTE]
 > An Application rendered by the other channel keeps serving its cached render.
 
+A promotion MUST NOT refresh an Application whose database cluster Argo CD reports with the health message `Hibernated`, as [TDR](deployment-rollout.md#database-health) specifies.
+
+> [!NOTE]
+> A sync of a hibernated deployment runs its hook Jobs against a database that has no pods, and the sync fails.
+> [Waking](scaledown.md#waking) the deployment refreshes its Application, so it renders with the current channel.
+
 A promotion MUST apply to every cluster that runs Tamanu deployments.
 
 A promotion that does not reach every cluster MUST fail and name the clusters it did not reach.

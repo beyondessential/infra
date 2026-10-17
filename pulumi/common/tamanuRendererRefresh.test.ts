@@ -112,6 +112,34 @@ test('the repo server has restarted and rolled out before the first Application 
   assert.ok(at('rollout status') < at('annotate'));
 });
 
+const HIBERNATED = {
+  resources: [
+    { group: 'postgresql.cnpg.io', kind: 'Cluster', health: { status: 'Healthy', message: 'Hibernated' } },
+  ],
+};
+const AWAKE = {
+  resources: [
+    { group: 'postgresql.cnpg.io', kind: 'Cluster', health: { status: 'Healthy', message: 'Cluster in healthy state' } },
+  ],
+};
+
+// spec: TRO#promotion
+test('an Application whose database is hibernated is not refreshed', () => {
+  const result = run('canary', [
+    app('asleep', CANARY, HIBERNATED),
+    app('awake', CANARY, AWAKE),
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.annotated, ['awake']);
+});
+
+// spec: TRO#promotion
+test('a hibernated Application does not fail the promotion', () => {
+  const result = run('canary', [app('asleep', CANARY, HIBERNATED)]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.annotated, []);
+});
+
 test('a channel with no Applications has nothing to refresh', () => {
   const result = run('canary', [app('stable-1', STABLE)]);
   assert.equal(result.status, 0, result.stderr);

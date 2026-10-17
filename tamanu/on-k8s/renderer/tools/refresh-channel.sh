@@ -40,17 +40,23 @@ kubectl -n "$ns" rollout status "deploy/$server" --timeout="${wait_minutes}m"
 
 # spec: TRO#promotion
 # Only Applications rendered by this channel's plugin are refreshed. The others keep serving
-# the render they have cached.
+# the render they have cached. An Application whose database Argo CD reports as hibernated is
+# not refreshed either: a sync would run its hooks against a database with no pods. Waking the
+# deployment refreshes it.
 mapfile -t apps < <(
   kubectl -n "$ns" get applications.argoproj.io -o json |
     jq -r --arg project "$project" --arg plugin "$plugin" '
       .items[]
       | select(.spec.project == $project and .spec.source.plugin.name == $plugin)
+      | select(
+          [.status.resources[]?
+           | select(.group == "postgresql.cnpg.io" and .kind == "Cluster" and .health.message == "Hibernated")]
+          | length == 0)
       | .metadata.name'
 )
 
 if [ "${#apps[@]}" -eq 0 ]; then
-  echo "No $project Applications are rendered by $plugin, so there is nothing to refresh"
+  echo "No awake $project Applications are rendered by $plugin, so there is nothing to refresh"
   exit 0
 fi
 
