@@ -6,7 +6,7 @@ An upgrade is **[dev-OTS]**: it stops services and migrates the database.
 
 ## Before
 
-1. Set `tamanu_version` (and `tamanu_frontend_version` if it differs) in Canopy. A production deployment also needs an open upgrade plan in Canopy, or the read is refused ([inventory](../reference/linux-inventory.md#upgrade-intent)).
+1. Set `tamanu_version` (and `tamanu_frontend_version` if it differs) in Canopy. A production deployment also needs an open upgrade plan in Canopy, or the read is refused ([inventory](../reference/linux-inventory.md#upgrade-intent)). **[dev-OTS]**
 2. Confirm a recent backup of the database and the server key exists ([check backups](linux-check-backups.md)). **[diagnose]**
 3. Confirm the versions do not go down: the plays refuse a lower `v` version unless `tamanu_allow_downgrade` is set. **[diagnose]**
 4. If PostgreSQL is also changing, finish [upgrade PostgreSQL](linux-upgrade-postgres.md) first.
@@ -19,7 +19,7 @@ Read the inventory with the intent `upgrade`; the playbook asserts it.
 ```sh
 cd ansible
 CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> CANOPY_INTENT=upgrade \
-  ansible-playbook -i inventory/canopy.yml tamanu-upgrade.yml
+  uv run ansible-playbook -i inventory/canopy.yml tamanu-upgrade.yml
 ```
 
 | phase | tag | what happens |

@@ -17,7 +17,7 @@ All of this is **[dev-OTS]** except the checks.
 
 - A clone restore runs hooks: Tamanu stops, the identity scrub removes the source's sync identity and secrets, a fresh server key replaces the old one, Tamanu starts, and `/etc/bestool/clone-setup.sh` sets up each facility's sync account ([clone restore](../spec/linux/backups.md#clone-restore)).
 - A restore of the `tamanu-secrets` type restarts the Tamanu services so containers pick up the restored key.
-- A machine rebuild changes the machine id, which changes every derived database password: run `tamanu-install.yml` afterwards ([credentials](linux-rotate-credentials.md)).
+- A machine rebuild changes the machine id; what that does to the derived database passwords, and what to run afterwards, is in [credentials](linux-rotate-credentials.md).
 
 ## Afterwards
 

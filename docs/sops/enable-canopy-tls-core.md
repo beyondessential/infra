@@ -31,6 +31,7 @@ pulumi config set canopyInfra bes/canopy-infra/prod -s bes/core/<stack>        #
 
 `p-run` reads `core:ssoProfile` from the stack and wraps the command in `aws-sso exec`.
 A stack with no `ssoProfile` takes the long form: `aws-sso exec -p <Account>:AdminAccess -- pulumi preview -s bes/core/<stack> --policy-pack ../policies`.
+An agent runs the preview with a `ReadAccess` profile only; the AdminAccess form is for a human, and an agent never initiates it.
 
 Expect two new resources: `aws-native:iam:Role canopy-dns` and `aws-native:iam:ManagedPolicy canopy-dns`.
 Read the whole preview before `up`: a core stack that has not been deployed for a while has other pending changes, and they land with this one.

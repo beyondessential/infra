@@ -27,11 +27,16 @@ pulumi/
 │   ├── on-linux/         # Tamanu on EC2 (docs/spec/linux/)
 │   ├── on-k8s/           # Tamanu on K8s (docs/reference/tamanu-deployment-config.md)
 │   ├── k8s-infra/        # Tamanu-scoped cluster-wide infra
-│   ├── meta/             # meta.tamanu.app
+│   ├── dhis2/            # Tamanu DHIS2 server
 │   ├── ips/, ips-infra/  # International Patient Summary
 │   └── infra/, artifacts/
 │
+├── canopy/               # Canopy control plane (the Tamanu meta server)
+├── canopy-infra/         # AWS-side IAM for the Canopy control plane (IRSA roles)
+├── canopy-recovery-vault/ # compliance-locked Canopy secret recovery vault (write-only, separate account)
+│
 ├── backups/              # Kopia backup infra
+├── backups-shared/       # cross-account IAM for Canopy-provisioned shared backup buckets
 ├── backup-monitoring/
 ├── data/                 # data team workloads
 ├── drata/                # Drata compliance integration
@@ -41,7 +46,12 @@ pulumi/
 ├── first-officer/        # on-call tooling
 ├── golinks/              # go/ short links
 ├── external-metrics/
+├── pollen/               # Pollen, guided technical walkthrough for new Tamanu deployments
+├── security-monitoring/  # organisation-wide GuardDuty enablement and finding delivery to Slack
+├── shared-amis/          # one-off setup for the account that publishes public shared AMIs
+├── tailzero/             # Border0 tailzero connector, single-instance on K8s
 ├── ts-relay/             # Tailscale userspace relay
+├── ts-relay-verify/      # disposable client box that proves the peer relay carries traffic
 └── …
 ```
 
@@ -91,7 +101,7 @@ The glue is `common/CrossStack.ts`: a thin typed wrapper around Pulumi's `StackR
 
 The `$core.name.split('/')[2]` trick derives the trailing part of a stack name (`bes/core/tamanu-internal` → `tamanu-internal`). That feeds `coreStackName`, and any current-stack name that starts with it is stripped (`tamanu-internal-main` → `main`). This is how downstream stacks get a compact name of their own position within a core — useful for tagging and resource naming.
 
-`failIfIncorrectCluster()` has a nice extra trick: it recognises Tailscale MagicDNS kubeconfigs (`https://k8s-operator-{name}.tail{hex}.ts.net`) and matches on the cluster name embedded in the hostname, so you can run `k8s-essentials` pulumi over the Tailscale proxy without AWS creds — see `docs/sops/connect-to-k8s-cluster.md` §1.
+`failIfIncorrectCluster()` has a nice extra trick: it recognises Tailscale MagicDNS kubeconfigs (`https://k8s-operator-{name}.tail{hex}.ts.net`) and matches on the cluster name embedded in the hostname, so you can run `k8s-essentials` pulumi over the Tailscale proxy without AWS creds — see "Over the tailnet" in `docs/sops/connect-to-k8s-cluster.md`.
 
 ---
 
@@ -203,7 +213,7 @@ One-file stack per region (`Pulumi.ap-southeast-2.yaml`, `Pulumi.eu-central-2.ya
 
 **`failIfIncorrectAccount` / `failIfIncorrectCluster` run early.** Both use `all([...]).apply(…)` so they bind into Pulumi's output graph. The check happens during apply, not planning, which means a stack pointed at the wrong account will *plan* cleanly but *fail before touching anything*. Good enough.
 
-**`CLAUDE.md` / `AGENTS.md` codify rules.** The repo-level `AGENTS.md` (loaded automatically into agent conversations) has hard constraints worth reading: never run AdminAccess commands directly, always use ReadAccess for exploration, don't edit readmes, prefer scripts/Pulumi over manual per-account changes, use `aws-sso exec` for cross-account work.
+**`CLAUDE.md` / `AGENTS.md` codify rules.** The repo-level `AGENTS.md` (loaded automatically into agent conversations) has hard constraints worth reading: an agent runs commands only with `[accountname]:ReadAccess` profiles through `aws-sso exec`, never with other access levels, and stops before any AdminAccess command and asks the user instead; previews are fine but never `pulumi up`; prefer scripts or Pulumi over manual per-account changes.
 
 ---
 

@@ -9,7 +9,7 @@ It stops the database for the length of the upgrade: **[dev-OTS]**, with downtim
 ```sh
 cd ansible
 CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> \
-  ansible-playbook -i inventory/canopy.yml postgres-upgrade-check.yml
+  uv run ansible-playbook -i inventory/canopy.yml postgres-upgrade-check.yml
 ```
 
 **[diagnose]** Read the line it prints for each host.
@@ -26,7 +26,7 @@ CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> \
 
 - Take or confirm a recent backup ([check backups](linux-check-backups.md)). **[diagnose]**
 - Confirm free space: `df -h /var/lib/postgresql` and `btrfs filesystem usage /var/lib/postgresql`. The upgrade clones files on btrfs and falls back to copying when cloning fails, which needs room for a second copy of the data. **[diagnose]**
-- Set `postgresql_version` to the new major version and `postgresql_upgrade_enabled: true` in Canopy. A downgrade is refused.
+- Set `postgresql_version` to the new major version and `postgresql_upgrade_enabled: true` in Canopy. A downgrade is refused. **[dev-OTS]**
 
 ## 3. Upgrade
 

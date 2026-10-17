@@ -19,7 +19,7 @@ The plugin stops if the callback is not loaded, because nothing would give the l
 
 ```sh
 cd ansible
-CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> ansible-playbook -i inventory/canopy.yml <playbook>
+CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> uv run ansible-playbook -i inventory/canopy.yml <playbook>
 ```
 
 Reading the inventory needs Canopy administrator access, because the answer carries the deployment's secret variables.

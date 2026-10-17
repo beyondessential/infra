@@ -6,7 +6,7 @@ The blocked modules are in [LNXSRV](../spec/linux/server.md#kernel-hardening).
 ```sh
 cd ansible
 CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> \
-  ansible-playbook -i inventory/canopy.yml check-linux-lpe-2026.yml
+  uv run ansible-playbook -i inventory/canopy.yml check-linux-lpe-2026.yml
 ```
 
 Each host gets a line per issue with one of these verdicts.

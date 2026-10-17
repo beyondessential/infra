@@ -28,7 +28,7 @@ Tailscale ACLs, tags and auto-approvals live in the BES tailnet policy repositor
 | `canopyInfra` | unset | A `canopy-infra` stack reference. Switches the backup roles to Canopy trust ([roles](../spec/linux/backups.md#repository-roles)). |
 | `serverGroupId` | unset | Registers the bucket and roles with Canopy. Needs `canopyInfra`. |
 | `retired`, `retiredTargetBase`, `retiredHostMap` | `false`, unset, empty | [Retire a deployment](../sops/linux-retire-deployment.md). |
-| `billing:product`, `billing:stage`, `billing:deployment` | `tamanu`, guessed type, unset | Become `billing.*` tags on every resource. |
+| `billing:product`, `billing:stage`, `billing:deployment` | `tamanu`, the type guessed from the stack name or `prod` when none can be, unset | Become `billing.*` tags on every resource. |
 | `keyName`, `ipAllowList` | `ops`, unset | Read into constants that nothing uses. |
 
 ## Servers

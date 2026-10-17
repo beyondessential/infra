@@ -53,7 +53,7 @@ The AWS identity needs an EKS access entry; the repo does not declare which prin
    aws-sso exec -p <profile> -- aws eks update-kubeconfig --name <cluster> --alias <context>
    ```
 
-   `--alias` makes the context name match `kubernetes:context` in the stack config.
+   `--alias` only names the context for you; no stack reads it. The stacks check the current kubeconfig's cluster server against this cluster's tailnet operator hostname or its EKS endpoint (`failIfIncorrectCluster()` in `pulumi/common/k8s/coreRef.ts`).
 
 2. Wrap the token command, because there are no AWS credentials outside an aws-sso session. In `~/.kube/config`, find the user named `arn:aws:eks:...:cluster/<cluster>` and change `command: aws` to `command: aws-sso`, with these arguments placed before the existing ones. **[diagnose]**
 

@@ -1,13 +1,7 @@
 # Ruled-out actions and sensitive-data handling
 
 This is the hard pre-filter for the infra support pack. Check it before suggesting or running any action.
-The classification ladder is the one the Tamanu pack defines, and every action in this pack carries one of its tags:
-
-- **diagnose**: read-only inspection. Suggest freely.
-- **approved-mitigation**: mutating, pre-signed in a runbook or SOP. Run as written.
-- **any-OTS**: mutating, needs a second person.
-- **dev-OTS**: mutating, needs a developer over the shoulder. This is the default for anything mutating that a source does not pre-sign.
-- **ruled-out**: never suggested, not even with an OTS. Escalate to a developer instead.
+Every action in this pack carries a tag from [the action-classification ladder](README.md#the-action-classification-ladder) the README defines, which is the one the Tamanu pack uses.
 
 The **sensitive-data** flag is separate from the class and marks any step that touches personal or credential data, read-only steps included.
 The Tamanu pack's [ruled-out list](https://github.com/beyondessential/tamanu/blob/main/docs/ruled-out-actions.md) also applies on a Kubernetes deployment (for example mass `UPDATE` or `DELETE` of clinical tables from psql).

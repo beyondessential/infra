@@ -14,6 +14,8 @@ cd pulumi/<project>
 pulumi config refresh -s bes/<project>/<stack>
 ```
 
+`<project>` is the Pulumi project name from the directory's `Pulumi.yaml`, which is not always the directory name: `pulumi/tamanu/on-k8s` is `tamanu-on-k8s`.
+
 **[diagnose]** **[sensitive-data]**: the file holds encrypted secrets and writes only to your machine.
 It leaves a `.bak` of any file it replaces.
 

@@ -45,7 +45,7 @@ That is deliberate, and it is also why a manual scale-up during an incident surv
    The console does the same under the cluster, Compute, Node groups, edit scaling configuration.
    AWS drains and terminates the instances; pods are rescheduled onto Karpenter nodes either way.
 
-4. Remove the `k8s-core:bootstrap` key from the stack config ([bootstrap](bootstrap-k8s-cluster.md#7-wind-down)).
+4. Remove the `k8s-core:bootstrap` key from the stack config ([bootstrap](bootstrap-k8s-cluster.md#7-wind-down)). **[dev-OTS]**
 
 ## Recall as a recovery handle
 

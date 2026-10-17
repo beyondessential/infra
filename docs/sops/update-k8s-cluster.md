@@ -31,7 +31,7 @@ The Cluster resource ignores that key, so it never upgrades AWS; the step at the
    pulumi up --policy-pack ../policies                                 # k8s-essentials, over the tailnet
    ```
 
-   Preview each first with the policy pack (`npm run build` in `pulumi/policies` beforehand). **[diagnose]**
+   Preview each first with the policy pack (`npm run build` in `pulumi/policies` beforehand). **[diagnose]** An agent runs the preview with a `ReadAccess` profile only; the AdminAccess form is for a human, and an agent never initiates it.
 
 ## 2. Upgrade in the AWS console
 

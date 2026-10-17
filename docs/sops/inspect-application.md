@@ -17,13 +17,9 @@ kubectl -n argocd-system get app tamanu-<stack> -o json \
 # What failed in the last sync
 kubectl -n argocd-system get app tamanu-<stack> -o json \
   | jq '.status.operationState.syncResult.resources[] | select(.hookPhase == "Failed")'
-
-# The Jobs, and a failed one's output
-kubectl -n tamanu-<stack> get jobs
-kubectl -n tamanu-<stack> logs job/central-migrator
 ```
 
-Hook Jobs are deleted and created again on the next sync, so read a failed Job's logs before anything triggers one ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)).
+The Jobs themselves and a failed one's output: [read logs, hook Jobs](read-logs.md#hook-jobs), before anything triggers another sync.
 For anything else that is Degraded, `kubectl -n tamanu-<stack> describe <kind>/<name>` shows its events.
 
 ## Reading the output

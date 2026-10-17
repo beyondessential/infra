@@ -9,6 +9,7 @@ Every action is tagged with its class from the ladder in [README](../README.md).
 Check [ruled-out-actions](../ruled-out-actions.md) before running anything mutating.
 Every `pulumi up` below is **[dev-OTS]**, and a human runs it: it needs an AdminAccess profile, which an agent never initiates.
 A preview is **[diagnose]**; run it as `pulumi preview --policy-pack <repo>/pulumi/policies` after `npm run build` in `pulumi/policies` ([GRD](../spec/policies/guardrails.md#application-to-stacks)).
+An agent runs the preview with a `ReadAccess` profile only; the AdminAccess form is for a human, and an agent never initiates it.
 
 ## Before you start
 
@@ -24,7 +25,7 @@ A preview is **[diagnose]**; run it as `pulumi preview --policy-pack <repo>/pulu
    The three flags that matter on first bring-up: `bootstrap: "true"` (the bootstrap nodegroups start at one node each so Karpenter has somewhere to run), `useKarpenter: "true"`, `envoyGatewayEnabled: "true"`.
    Set `tailscaleProxyDefaultTags` here, in k8s-core: k8s-essentials reads the proxy tags from this stack.
 
-2. Preview, then apply. **[diagnose]** then **[dev-OTS]**
+2. Preview, then apply. **[diagnose]** then **[dev-OTS]** An agent runs the preview with a `ReadAccess` profile only; the AdminAccess form is for a human, and an agent never initiates it.
 
    ```
    cd pulumi/k8s-core
@@ -76,7 +77,7 @@ You need its client id and audience for the next step.
    Then confirm the context you will use points at the tailnet host and does not still exec `aws-sso` (`kubectl config view --minify`, **[sensitive-data]**, redact before sharing).
    If it does, use the tailnet context from [connect-to-k8s-cluster](connect-to-k8s-cluster.md#over-the-tailnet) instead.
 
-2. Add `kubernetes:cluster: <the tailnet cluster entry name in your kubeconfig>` to the k8s-essentials stack config so later runs pin to it. `failIfIncorrectCluster()` accepts either the direct endpoint or the matching tailnet host, so switching mid-way breaks nothing.
+2. Nothing pins later runs in the stack config: `failIfIncorrectCluster()` reads the current kubeconfig's cluster server and accepts either this cluster's tailnet operator hostname or its EKS endpoint (`pulumi/common/k8s/coreRef.ts`), so switching mid-way breaks nothing.
 
 From here no AWS credentials are needed except to change `k8s-core`.
 

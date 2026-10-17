@@ -19,7 +19,7 @@ It still takes the run lease, so another operator is refused while it runs.
 ```sh
 cd ansible
 CANOPY_URL=<canopy url> CANOPY_GROUP=<group> CANOPY_RANK=<rank> \
-  ansible-playbook -i inventory/canopy.yml tamanu-install.yml --check --diff --limit <host>
+  uv run ansible-playbook -i inventory/canopy.yml tamanu-install.yml --check --diff --limit <host>
 ```
 
 Some tasks cannot be predicted in check mode (clone sync passwords, for one), so read a check run as a guide, not a guarantee.

@@ -13,14 +13,14 @@ Every other stack in this repo that provisions AWS resources (or K8s workloads t
 Order of operations in `src/index.ts`:
 
 1. IAM account password policy (`src/passwords.ts`).
-2. SNS alerts topic + CloudWatch alarms (`src/alerts.ts`).
-3. Default EBS encryption (`src/ebs-encryption.ts`).
-4. CloudTrail trail + S3 bucket (`src/cloudtrail.ts`).
-5. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
-6. Route53 zone + management policy (`src/zone.ts`).
-7. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
-8. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
-9. Spot Data Feed S3 bucket (`src/spot-data-feed.ts`).
+2. Default EBS encryption (`src/ebs-encryption.ts`).
+3. CloudTrail trail + S3 bucket (`src/cloudtrail.ts`).
+4. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
+5. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
+6. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
+7. Route53 zone + management policy, the Canopy DNS role and any extra zones (`src/zone.ts`).
+8. Spot Data Feed S3 bucket (`src/spot-data-feed.ts`).
+9. SNS alerts topic + CloudWatch alarms (`src/alerts.ts`).
 
 ### 1.1 Network
 
@@ -82,6 +82,8 @@ Under the `core:` namespace.
 | `tags` | object | `{}` | Extra tags applied to everything, merged into the default set. |
 | `domain` | string \| `false` | derived | Zone root. Derivation: `tamanu-internal` → `tamanu.app`, `tupaia-internal` → `tamanu.org`, `data-internal` → `data.bes.au`, `tamanu-{x}[-prod]` → `{x}.tamanu.app`, otherwise required. `domain: false` disables the zone. |
 | `zoneImport` | string | — | Zone ID to import instead of creating. |
+| `extraZones` | string[] | `[]` | Further hosted zones to create in this account, each a fully-qualified apex of its own; its NS must be delegated from the parent zone by hand. For accounts shared by several deployments that need distinct apex domains. |
+| `canopyInfra` | string | — | A `canopy-infra` stack reference. Set when Canopy manages this account's zone: it creates a role Canopy assumes to write the records it manages there. Unset means Canopy has no access. |
 | `trailBucket` | string | `bes-{stack}-cloudtrail` | CloudTrail bucket name. |
 
 ---
@@ -99,9 +101,12 @@ Consumed by downstream stacks via the `CrossStack` wrapper (see `docs/dev/pulumi
 | `ipv4`, `ipv6` | Feature flags so downstream can branch (e.g. turn on dual-stack NLB listeners). |
 | `zoneId`, `zoneName`, `zoneNS` | Route53 zone primitives. |
 | `zoneMgmtPolicy` | Managed policy ARN to attach to cert-manager, external-dns, ACME users, etc. |
+| `canopyDnsRoleArn` | ARN of the role Canopy assumes to write records in the zone. Undefined unless `canopyInfra` is set. |
+| `extraZoneIds`, `extraZoneNS` | Maps from each `extraZones` domain to its zone ID and its name servers. |
 | `ghaOidc` | OIDC provider ARN + URL for GitHub Actions role trust. |
 | `eksCniV6Policy` | IPv6 CNI policy ARN. Null when not EKS or not IPv6. |
 | `spotDataFeed` | Bucket name + ARN for OpenCost. |
+| `alertsTopicArn` | ARN of the `workload-alerts` SNS topic, for stacks that publish their own alarms to it. |
 
 ---
 

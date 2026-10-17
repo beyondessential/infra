@@ -15,7 +15,7 @@ The stack config reference is [Linux stack config](../reference/linux-pulumi-con
 ## 2. An external server
 
 1. On the host, as root, run `check-server-ready.sh` from the repository root. **[diagnose]** It checks Ubuntu 24.04 or later, a btrfs root mounted from `@`, a btrfs `@postgres` mounted at `/var/lib/postgresql`, Tailscale and `netcheck`, IPv6, NTP, and HTTPS to the hosts the install needs. It exits non-zero only for disk or operating system failures; network failures are warnings. It prints what to do for each failure.
-2. For a root that is ext4 on LVM with at least 15 GB free, `convert-from-lvm-ext4-to-btrfs.sh` describes an in-place conversion, but the script says to run each block by hand and a reinstall is preferred.
+2. For a root that is ext4 on LVM, see [convert a disk layout, LVM and ext4 to btrfs](linux-convert-disk-layout.md#lvm-and-ext4-to-btrfs).
 3. Create access keys for the IAM user named in the `acmeDnsUsers` output and store them as the secret variable `tamanu_caddy_tls_dns_iam` in Canopy ([rotate credentials](linux-rotate-credentials.md)). **[dev-OTS, sensitive-data]**
 
 ## 3. Canopy and inventory
