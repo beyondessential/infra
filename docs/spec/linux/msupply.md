@@ -4,8 +4,8 @@ id: LNXMSP
 
 # mSupply on a Linux server
 
-The requirements in this spec apply to an mSupply instance on a [Linux server](../overview.md#linux-server) that runs a Tamanu [facility server](../overview.md#facility-server).
-The shared host, container network, reverse proxy and certificates are the only coupling between the two, and [LNXRUN](runtime.md) and [LNXTLS](tls.md) specify them.
+The requirements in this spec apply to an mSupply instance on a [Linux server](../overview.md#linux-server).
+The container network, reverse proxy and certificates that mSupply uses are those of the server, which [LNXRUN](runtime.md) and [LNXTLS](tls.md) specify.
 
 ## Borrowed terms
 
@@ -90,6 +90,6 @@ The advertised service MUST forward HTTPS on port 443 and HTTP on port 80 to the
 
 ## Installation and upgrades
 
-The installation playbook of [LNXANS](ansible.md#playbooks) MUST set up mSupply on every server of the group `facility` where it is enabled, and MUST be selectable with the tag `msupply`.
+The installation playbook of [LNXANS](ansible.md#playbooks) MUST set up mSupply on every server where it is enabled, and MUST be selectable with the tag `msupply`.
 
-The upgrade playbook of [LNXANS](ansible.md#upgrades) MUST restart the mSupply service and reload the proxy on every server of the group `facility` where mSupply is enabled.
+The upgrade playbook of [LNXANS](ansible.md#upgrades) MUST restart the mSupply service and reload the proxy on every server where mSupply is enabled.
