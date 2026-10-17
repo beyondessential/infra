@@ -4,8 +4,10 @@ id: LNXBAK
 
 # Backups of Linux servers
 
-The requirements in this spec apply to the backups of every [Linux server](../overview.md#linux-server): the [backup definitions](../overview.md#backup-definition) it carries, the restore of a [clone deployment](../overview.md#clone-deployment), the S3 bucket and roles that hold its backups, and the snapshots of its instances.
-How a PostgreSQL backup is captured and restored is specified by [PPB](../postgres-physical-backup.md), and how backups are scheduled and retained is the responsibility of [Canopy](../overview.md#canopy).
+The requirements in this spec apply to the backups of every [Linux server](../overview.md#linux-server): the [backup definitions](../overview.md#backup-definition) it carries, the restore setup of a [clone deployment](../overview.md#clone-deployment), the S3 bucket and roles that hold its backups, and the snapshots of its instances.
+
+How bestool takes and restores a backup is specified by bestool's [BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md), and how [Canopy](../overview.md#canopy) schedules, retains and credentials backups is specified by Canopy's [BAK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/backup.md).
+How a PostgreSQL backup is captured and restored is specified by [PPB](../postgres-physical-backup.md).
 
 ## Borrowed terms
 
@@ -24,29 +26,25 @@ How a PostgreSQL backup is captured and restored is specified by [PPB](../postgr
 
 ## Backup definitions
 
-A Linux server MUST carry the [backup definitions](../overview.md#backup-definition) in the following table, each as a file in `/etc/bestool/backups` that names its type.
+A Linux server MUST carry a [backup definition](../overview.md#backup-definition) of each type in the following table that the table says it carries.
+The format of a definition is specified by bestool's [BAK](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/backup.md#backup-definitions).
 
-| type | file | content | carried by |
-|---|---|---|---|
-| `tamanu-postgres` | `tamanu-postgres.toml` | a PostgreSQL backup of the cluster named `main` | every server that runs PostgreSQL |
-| `postgres-config` | `postgres-config.toml` | the tag `area` with the value `postgres-config`, and a file backup of `/etc/postgresql` | every server that runs PostgreSQL |
-| `tamanu-config` | `tamanu-config.toml` | a file backup of `/etc/tamanu` | every Tamanu server |
-| `tamanu-secrets` | `tamanu-secrets.toml` | the server key, ordered after `tamanu-postgres`, with a post-restore hook that restarts the Tamanu services | every Tamanu server that is not in a clone deployment |
-| `caddy-config` | `caddy-config.toml` | the tag `area` with the value `caddy-config`, and a file backup of `/etc/caddy` | every server that runs Caddy |
-
-The directory `/etc/bestool/backups` and each definition in it MUST be owned by `root:root`, with mode 0755 for the directory and 0644 for a definition.
-
-The [alert daemon](../overview.md#alert-daemon) MUST be reloaded when a definition changes.
-
-The backup of a cluster MUST connect to PostgreSQL as the superuser `postgres` over the local socket, as [LNXDB](database.md#access) allows.
+| type | content | carried by |
+|---|---|---|
+| `tamanu-postgres` | A PostgreSQL backup of the cluster named `main`. | every server that runs PostgreSQL |
+| `postgres-config` | The PostgreSQL configuration files, tagged `area=postgres-config`. | every server that runs PostgreSQL |
+| `tamanu-config` | The Tamanu configuration files. | every Tamanu server |
+| `tamanu-secrets` | The server key, ordered after `tamanu-postgres`, with a post-restore hook that restarts the Tamanu services. | every Tamanu server that is not in a clone deployment |
+| `caddy-config` | The reverse proxy configuration files, tagged `area=caddy-config`. | every server that runs Caddy |
 
 The `tamanu-postgres` definition MUST satisfy [PPB](../postgres-physical-backup.md).
 
 ## Key pairing
 
-A restore of the database of a server MUST be refused until a backup of the server key exists to pair with it.
-
 Provisioning MUST take the first backup of type `tamanu-secrets` when the definition of that type is first installed on a server that already has the `tamanu-postgres` definition, and MUST warn where that backup fails.
+
+> [!NOTE]
+> A database backup is only restorable together with the server key that encrypts its secrets.
 
 ## Clone deployments
 
@@ -68,24 +66,20 @@ The `tamanu-postgres` definition of a server in a clone deployment MUST contain 
 | phase | order | action |
 |---|---|---|
 | pre-restore | 1 | Stop the Tamanu services. |
-| post-restore | 1 | Run the identity scrub on the database `tamanu` as the user `postgres`, with errors fatal. |
-| post-restore | 2 | Replace the podman secret `tamanu-config-key` with 32 new random bytes. |
+| post-restore | 1 | Remove from the database the identity it holds as the source server. |
+| post-restore | 2 | Replace the server key with a new random one. |
 | post-restore | 3 | Start the Tamanu services. |
-| post-restore | 4 | Run `/etc/bestool/clone-setup.sh` where it exists. |
+| post-restore | 4 | Run the clone setup script, where the server has one. |
 
-The identity scrub MUST call the database function `public.forget_server_identity()` within a transaction in which the setting `tamanu.this_is_a_copy` is `true`, where the function exists.
+The identity removal MUST be fatal where it fails.
 
-Where that function does not exist, the identity scrub MUST do the following.
+The identity removal SHOULD call the database function that Tamanu provides for forgetting a server identity, where the function exists.
 
-1. Delete every row of `public.local_system_secrets` where the table exists.
-1. Delete every row of `public.local_system_facts` whose key is `syncHost`, `syncEmail`, `facilityIds`, `deviceId` or `metaServerId`, or whose value matches `^S1:[^:]*:[^:]*$`.
-1. Mark as deleted every undeleted row of `public.settings` whose value is a string that matches `^S1:[^:]*:[^:]*$`.
+The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facilities, and MUST report failure where any step fails.
 
-The setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the SQL file of every facility sync account in `/etc/bestool/clone-sync` whose password file holds at least 64 characters, and MUST report failure where any step fails.
+The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility.
 
-The setup script of a facility server MUST run the `setupSync` command of the facility image with `--force`, with the synchronisation URL formed from the scheme and host of `tamanu_central_canonical_url`, the user name `clone.<name>@sync.tamanu` and the password in `/etc/tamanu/clone-sync-password`, and with `TAMANU_FACILITY_IDS` set to the facility identifier.
-
-The setup script MUST pass the password to its command in the environment and MUST NOT put it in a process argument.
+A clone setup script MUST pass a password to its command in the environment, and MUST NOT put it in a process argument.
 
 ## Clone sync accounts
 
@@ -93,19 +87,13 @@ A facility server of a clone deployment MUST have a synchronisation account on t
 
 Where that does not hold, the sync accounts MUST be set up by hand and provisioning MUST warn that they are.
 
-The name `<name>` of a facility's sync account MUST be the inventory host name in lower case with every character outside `a-z`, `0-9` and `-` replaced by `-`.
+The password of a sync account MUST be 32 random bytes in hexadecimal, generated on the central server, and MUST NOT be derived from the inventory or written on the control host.
 
-The password of a sync account MUST be 32 random bytes in hexadecimal, generated on the central server into `/etc/bestool/clone-sync/<name>.password` with mode 0400 owned by `postgres`, and MUST NOT be derived from the inventory or written on the control host.
+The password MUST be generated once, and replaced only where its stored copy is deleted.
 
-The directory `/etc/bestool/clone-sync` MUST have mode 0700 and be owned by `postgres`.
+The central server MUST keep each password where only the database user can read it, and the facility server MUST keep its own where only its administrator can read it.
 
-The password MUST be generated once, and replaced only where its file is deleted.
-
-The facility server MUST receive the password in `/etc/tamanu/clone-sync-password`, with mode 0400 owned by `root`.
-
-The SQL file of a sync account MUST create or update, in the table `users`, the row whose email is `clone.<name>@sync.tamanu`, with the display name `System: <facility identifier> sync (clone)`, the role `admin`, the kind `sync`, a bcrypt hash of the password with cost 10, visible and not deleted.
-
-The SQL file MUST change nothing where the password is shorter than 64 characters.
+The sync account of a facility MUST be named from the inventory host name in lower case, with every character outside `a-z`, `0-9` and `-` replaced by `-`.
 
 ## Repository bucket
 
