@@ -144,7 +144,7 @@ The deployment name MUST be the value that the following table gives for the own
 
 | owner of the cluster | deployment name |
 |---|---|
-| Tamanu deployment | The stack name of the deployment. |
+| Tamanu deployment | The stack name of the deployment in lower case, with each run of characters other than letters, digits and hyphens replaced by one hyphen, and cut to at most 56 characters with leading and trailing hyphens removed. |
 | Canopy meta database | `tamanu-meta-` followed by the stack name. |
 | pollen database | `pollen-` followed by the stack name. |
 
