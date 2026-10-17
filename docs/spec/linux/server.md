@@ -36,7 +36,7 @@ A Linux server MAY have an amd64 or an arm64 processor.
 
 A Linux server MAY be built from a [BES Linux image](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#variants).
 
-A requirement of this spec that cites a requirement of the BES Linux image is satisfied by a server built from that image through the image requirement.
+A server built from a BES Linux image satisfies the requirements of this spec that cite an image requirement through the image.
 
 A Linux server SHOULD have a btrfs root filesystem with the subvolume `@` mounted at `/`, as [`image.btrfs.format`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) and [`image.btrfs.subvolumes`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) require of an image.
 
@@ -62,9 +62,9 @@ Where a Linux server has a Tailscale name, the playbooks MUST install Tailscale 
 
 ## Storage layout
 
-A Linux server SHOULD have the single layout, in which `/var/log` is on the root volume and `/var/lib/postgresql` is the btrfs subvolume `@postgres` of the root volume.
+A Linux server SHOULD have the single layout, in which `/var/log` is on the root volume and `/var/lib/postgresql` is the btrfs subvolume `@postgres` of the root volume, as [`image.btrfs.subvolumes`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) requires of an image.
 
-The single layout is the layout that [`image.btrfs.subvolumes`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) requires of an image, and [LNXDB](database.md#data-directory) specifies its data directory.
+[LNXDB](database.md#data-directory) specifies the data directory of the single layout.
 
 A Linux server MAY have the [split layout](../overview.md#split-layout), in which `/var/log` and `/var/lib/postgresql` are separate volumes.
 
@@ -151,7 +151,7 @@ The playbooks MUST install and enable systemd-resolved, and point `/etc/resolv.c
 
 ## Logging
 
-A Linux server MUST keep its journal on persistent storage, capped at 1 GiB.
+A Linux server MUST configure journald to keep the journal on persistent storage, capped at 1 GiB.
 
 ## Network tuning
 
@@ -180,7 +180,9 @@ A Linux server MUST run the services in the following table in the resource clas
 | the Tamanu FHIR workers of a central server | elevated |
 | package refreshes, btrfs balance and scrub, and image pruning | background |
 
-PostgreSQL SHOULD restart on failure after 30 seconds, and SHOULD continue running when one of its processes is killed for lack of memory.
+PostgreSQL SHOULD restart on failure after 30 seconds.
+
+PostgreSQL SHOULD continue running when one of its processes is killed for lack of memory.
 
 Caddy and the Tamanu API instances SHOULD be less likely than other processes to be chosen by the kernel's out-of-memory killer.
 
