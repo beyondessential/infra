@@ -409,7 +409,7 @@ A deployment MUST publish the DNS records in the following table, each with a ti
 
 A server MUST be an external server where its configuration says so or lists any external IP address.
 
-An [external server](../overview.md#external-server) MUST have no instance, volumes or security group.
+An [external server](../overview.md#external-server) MUST NOT have an instance or volumes provisioned for it.
 
 ## Retired deployments
 

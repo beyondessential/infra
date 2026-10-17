@@ -367,7 +367,7 @@ An external server MUST have an IAM user for DNS-01, whose managed policy and in
 | inline | `route53:ChangeResourceRecordSets` | the hosted zone of the core | record type `TXT` only, and only at `_acme-challenge.<name>` for the server hostname, the mSupply hostname where set, and the patient portal hostname on a central server |
 | inline | `route53:ListResourceRecordSets` | the hosted zone of the core | none |
 
-The IAM user MUST NOT be given access keys by infrastructure code.
+The access keys of the IAM user MUST be created by an operator.
 
 A server MAY be given an IAM user for DNS-01 by configuration, whether or not it is an external server.
 
