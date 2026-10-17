@@ -235,3 +235,16 @@ The Munin plugin of the [bestool daemon](../overview.md#bestool-daemon) is speci
 A Linux server MAY run the Elastic Agent, enrolled in a Fleet at a configurable URL with an enrolment token that is a secret variable.
 
 A Linux server on which the agent is disabled, or has no enrolment token, MUST have the agent stopped and removed with its data directory `/opt/Elastic`.
+
+## Inventory variables
+
+The variables in the following table configure the host arrangement of a Linux server.
+
+| variable | default | meaning |
+|---|---|---|
+| `ufw_managed` | `false` | Whether the [host firewall](#host-firewall) is managed. |
+| `dangerously_leave_ufw_alone` | `false` | Whether an unmanaged host firewall is left as the server has it. |
+| `munin_enabled` | `true` | Whether the Munin node of [Metrics](#metrics) runs. |
+| `elastic_agent_enabled` | `false` | Whether the [endpoint security agent](#endpoint-security-agent) runs. |
+| `elastic_agent_enrollment_token` | none | The enrolment token of the endpoint security agent, a secret variable. |
+| `elastic_agent_fleet_url` | the production Fleet | The URL of the Fleet that the endpoint security agent enrols in. |

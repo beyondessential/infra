@@ -62,22 +62,12 @@ The variables in the following table configure a Tamanu server.
 | `tamanu_version` | none | The image tag of the backend and patient portal. |
 | `tamanu_frontend_version` | `tamanu_version` | The image tag of the frontend. |
 | `tamanu_allow_downgrade` | `false` | Permits a version lower than the deployed version. |
-| `caddy_version` | selected by the playbooks | The package version of the proxy. |
 | `public_hostname` | none | The primary hostname of the server. |
 | `tamanu_facility_id` | none | The facility identifier of a facility server. |
 | `patient_portal_fqdn` | none | The patient portal hostname of a central server. |
 | `tamanu_central_ip` | `false` | An address for the central hostname on a facility server. |
-| `tamanu_caddy_tls` | `true` | Whether the proxy serves HTTPS on the public hostname. |
-| `tamanu_caddy_extra_hostnames` | none | Additional hostnames that the proxy serves. |
-| `tamanu_caddy_extra_hostnames_redirect` | `true` | Whether additional hostnames redirect to the public hostname. |
-| `tamanu_tailscale_tls` | `true` | Whether the proxy serves HTTPS on the Tailscale hostname. |
-| `tailnet` | `tail53aef` | The tailnet name used to form Tailscale hostnames. |
-| `tamanu_ipv6` | `true` | Whether Tamanu containers have IPv6. |
-| `tamanu_extra_certs` | `false` | Whether Tamanu containers trust the host certificate store. |
-| `podman_network_subnets_v4`, `podman_network_subnets_v6` | the subnets of [LNXRUN](runtime.md#container-runtime) | The subnets of the default Podman network. |
-| `elastic_agent_enabled`, `elastic_agent_enrollment_token`, `elastic_agent_fleet_url` | `false`, none, the production Fleet | The endpoint security agent of [LNXSRV](server.md#endpoint-security-agent). |
-| `ufw_managed`, `dangerously_leave_ufw_alone` | `false`, `false` | The host firewall of [LNXSRV](server.md#host-firewall). |
-| `munin_enabled` | `true` | Whether the Munin node runs, as [LNXSRV](server.md#metrics) gives it. |
+
+The variables that configure the host, the Tamanu services and their proxy, the database, the certificates and mSupply are given by [LNXSRV](server.md#inventory-variables), [LNXRUN](runtime.md#inventory-variables), [LNXDB](database.md#inventory-variables), [LNXTLS](tls.md#inventory-variables) and [LNXMSP](msupply.md#enablement).
 
 A name that is a secret variable in Canopy MUST NOT also be a tag of a host.
 

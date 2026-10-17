@@ -178,3 +178,18 @@ A read-only check of whether an upgrade is needed and permitted MUST report one 
 | `WILL_UPGRADE` | An upgrade is needed and the filesystem permits it. |
 | `UPGRADE_BLOCKED` | An upgrade is needed and the filesystem does not permit it. |
 | `UNKNOWN` | None of the above applies. |
+
+## Inventory variables
+
+The variables in the following table configure the database of a Linux server.
+
+| variable | default | meaning |
+|---|---|---|
+| `postgresql_version` | `18` | The major version of the cluster. |
+| `postgresql_tune_enabled` | `true` | Whether the cluster is tuned as [Tuning](#tuning) requires. |
+| `postgresql_tune_max_connections` | `100` | The value of `max_connections`. |
+| `postgresql_tune_temp_file_limit` | none | A value of `temp_file_limit` that replaces the derived limit. |
+| `postgresql_tune_temp_file_limit_percent` | `25` | The percentage of the temporary-file basis that the derived `temp_file_limit` is. |
+| `postgresql_btrfs_quota_percent` | none | The percentage of the filesystem at which the `@postgres` subvolume is capped. |
+| `postgresql_upgrade_enabled` | `false` | Whether [major version upgrades](#major-version-upgrades) are enabled. |
+| `postgresql_cleanup_old_cluster` | `false` | Whether the data of the old cluster is removed after an upgrade. |

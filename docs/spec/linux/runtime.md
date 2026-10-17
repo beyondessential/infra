@@ -79,7 +79,7 @@ The default Podman network of a server MUST be a bridge with the interface `podm
 
 The default Podman network MUST have an IPv4 subnet, and MUST have an IPv6 subnet where the host has a default IPv6 route.
 
-The inventory MAY override the subnets, through [the inventory variables](ansible.md#inventory-variables).
+The inventory MAY override the subnets, through [the inventory variables](#inventory-variables).
 
 The container DNS server MUST be reachable from containers at the gateway address of the network.
 
@@ -243,3 +243,19 @@ The bestool daemon grades this arrangement with the checks that [bestool](https:
 The bestool daemon MUST read the container runtime through the Podman API socket, and the unit `podman.socket` MUST be enabled.
 
 The bestool daemon MUST connect to PostgreSQL over the local socket as the role that [LNXDB](database.md#roles-and-credentials) gives it, to the database `postgres` and, where the Tamanu database exists, to that database.
+
+## Inventory variables
+
+The variables in the following table configure the Tamanu services and their proxy.
+
+| variable | default | meaning |
+|---|---|---|
+| `caddy_version` | selected by the playbooks | The package version of the proxy. |
+| `tamanu_caddy_tls` | `true` | Whether the proxy serves HTTPS on the public hostname. |
+| `tamanu_caddy_extra_hostnames` | none | Additional hostnames that the proxy serves. |
+| `tamanu_caddy_extra_hostnames_redirect` | `true` | Whether additional hostnames redirect to the public hostname. |
+| `tamanu_tailscale_tls` | `true` | Whether the proxy serves HTTPS on the Tailscale hostname. |
+| `tailnet` | `tail53aef` | The tailnet name used to form Tailscale hostnames. |
+| `tamanu_ipv6` | `true` | Whether Tamanu containers have IPv6. |
+| `tamanu_extra_certs` | `false` | Whether Tamanu containers trust the host certificate store. |
+| `podman_network_subnets_v4`, `podman_network_subnets_v6` | `10.100.0.1/16`, `fd62:6573:b558:f686::1/64` | The subnets of the default Podman network of the [container runtime](#container-runtime), each with its gateway. |
