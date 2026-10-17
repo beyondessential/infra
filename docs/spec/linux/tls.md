@@ -80,7 +80,7 @@ The managed policy and inline policy of such a user MUST be those in the followi
 | policy | actions | resource | condition |
 |---|---|---|---|
 | managed, shared by all such users | `route53:ListHostedZones`, `route53:ListHostedZonesByName`, `route53:GetChange` | all | none |
-| inline | `route53:ChangeResourceRecordSets` | the hosted zone of the [core](../overview.md#core) | record type `TXT` only, and only at `_acme-challenge.<name>` for the server hostname, the mSupply hostname where set, and the patient portal hostname on a central server |
+| inline | `route53:ChangeResourceRecordSets` | the hosted zone of the [core](../overview.md#core) ([CORE](../core.md#zone)) | record type `TXT` only, and only at `_acme-challenge.<name>` for the server hostname, the mSupply hostname where set, and the patient portal hostname on a central server |
 | inline | `route53:ListResourceRecordSets` | the hosted zone of the core | none |
 
 The access keys of the IAM user MUST be created by an operator.

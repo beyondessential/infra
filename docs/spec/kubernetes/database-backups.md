@@ -92,8 +92,10 @@ The backup role of a Kubernetes cluster MUST be assumable only through web ident
 
 The backup role of a Kubernetes cluster MUST be assumable from a service account of any name in any namespace of that Kubernetes cluster.
 
+Every workload on a Kubernetes cluster that can annotate a service account with the backup role can therefore reach every archive in the backup bucket of that Kubernetes cluster.
+
 > [!NOTE]
-> The operator creates the service account of a cluster in the namespace of the deployment that owns it, named for the cluster, so the trust cannot name one namespace or one account.
+> The operator creates the service account of a cluster in the namespace that owns it, named for the cluster, so the trust cannot name one namespace or one account.
 
 A backup role MUST be granted on its backup bucket and on every object in it the actions that the Barman Cloud plugin needs to list the archive, read objects, write objects, abort multipart uploads and delete an object without naming a version.
 

@@ -48,7 +48,7 @@ An instance MUST have the properties in the following table.
 | metadata | IMDSv2 required, IPv6 endpoint enabled, instance metadata tags enabled |
 | monitoring | detailed |
 | termination protection | on, unless the deployment sets hard delete |
-| subnet | a public workload subnet of the core, chosen by the position of the server among the deployment's servers |
+| subnet | a [public workload subnet](../overview.md#public-workload-subnet) of the core ([CORE](../core.md#network)), chosen by the position of the server among the deployment's servers |
 | security group | the deployment's security group |
 
 A change to the image, the root volume or the user data of an instance after its creation MUST NOT replace the instance.

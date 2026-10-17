@@ -10,6 +10,7 @@ let zone: aws.route53.HostedZone | undefined;
 let policy: aws.iam.ManagedPolicy | undefined;
 let canopyDnsRole: aws.iam.Role | undefined;
 let user: aws.iam.User | undefined;
+// spec: CORE#zone
 if (domain) {
   zone = new aws.route53.HostedZone(
     domain,
@@ -116,11 +117,12 @@ if (domain) {
   }
 }
 
+// spec: CORE#outputs
 export const zoneId = zone?.id;
-// spec: CTLS#zone-delegation
 export const zoneNS = zone?.nameServers;
 export const zoneMgmtPolicy = policy?.policyArn;
 
+// spec: CORE#zone
 const extraZoneResources = extraZones.map(
   (name) =>
     new aws.route53.HostedZone(

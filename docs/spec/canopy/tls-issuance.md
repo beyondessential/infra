@@ -25,8 +25,6 @@ Canopy's rules for domains, grants, issuance and renewal are specified by Canopy
 
 ## Managed zones
 
-A [core](../overview.md#core) is the foundational infrastructure of one AWS account, which owns the public DNS zone of the account.
-
 Canopy MUST receive its managed zones as a comma-separated list in the environment variable `CANOPY_DNS_ZONES`.
 
 An entry of the list MUST have one of the forms in the following table.
@@ -49,7 +47,7 @@ Every Canopy workload MUST receive the list, and not only the workload that writ
 
 A change to the list MUST roll every Canopy workload.
 
-A core MUST publish the name of its zone, the hosted zone id of its zone, the id of its account and, where it has a [zone role](../overview.md#zone-role), the ARN of its zone role.
+What a [core](../overview.md#core) publishes about its zone, its account and its [zone role](../overview.md#zone-role) is specified in [CORE](../core.md#outputs).
 
 The infrastructure MUST derive each entry of the list from the values that the core owning the zone publishes.
 
@@ -64,9 +62,7 @@ The infrastructure MUST refuse to produce a list where the Canopy DNS identity i
 
 ## Zone delegation
 
-A core MUST publish the name servers of its zone.
-
-The parent zone of the zone of a core MUST carry NS records that delegate the zone to the name servers of its hosted zone.
+The name servers a core publishes for its zone, and the delegation of that zone from its parent, are specified in [CORE](../core.md#zone).
 
 A zone that is delegated out of another managed zone MUST have its own entry in the list where Canopy is to issue certificates for names beneath it.
 

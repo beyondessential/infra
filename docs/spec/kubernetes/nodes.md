@@ -41,9 +41,9 @@ A node on spot capacity MUST carry the taint `spotInstance=true:PreferNoSchedule
 
 ## Placement
 
-A node with purpose `ingress` MUST be placed in a subnet tagged `Purpose: nat`.
+A node with purpose `ingress` MUST be placed in a subnet of the [core](../overview.md#core) tagged `Purpose: nat`, as specified in [CORE](../core.md#network).
 
-A node with purpose `workload`, `system` or `tailscale-exit` MUST be placed in a subnet tagged `Purpose: workload`.
+A node with purpose `workload`, `system` or `tailscale-exit` MUST be placed in a subnet of the core tagged `Purpose: workload`, as specified in [CORE](../core.md#network).
 
 Traffic that an [exit node](../overview.md#exit-node) forwards MUST egress through the NAT gateways, so that its source addresses are the Elastic IPs of those gateways.
 

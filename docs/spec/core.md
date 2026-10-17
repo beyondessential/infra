@@ -19,7 +19,7 @@ The requirements in this spec apply to the foundational infrastructure of one AW
 | zone, apex, delegation, parent | The DNS terms for a unit of administrative control, the name at which it begins, the creation of a separate zone beneath it, and the domain in which that zone is registered ([RFC 9499 section 7](https://www.rfc-editor.org/rfc/rfc9499#section-7)). |
 | name server | A server that answers for a zone from its own knowledge, named in an NS record of the zone ([RFC 9499 section 6](https://www.rfc-editor.org/rfc/rfc9499#section-6)). |
 | hosted zone | A Route 53 container of the records of one DNS zone, with the name servers Route 53 assigns to it ([Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html), [Routing traffic for subdomains](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-routing-traffic-for-subdomains.html)). |
-| output | A named value a [stack](../overview.md#stack) publishes for other stacks to read ([Stack outputs](https://www.pulumi.com/docs/iac/concepts/stacks/#outputs)). |
+| output | A named value a [stack](overview.md#stack) publishes for other stacks to read ([Stack outputs](https://www.pulumi.com/docs/iac/concepts/stacks/#outputs)). |
 
 ## Account
 

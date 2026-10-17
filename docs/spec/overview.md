@@ -46,8 +46,10 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [PostgreSQL backup documentation](https://www.postgresql.org/docs/current/backup-file.html) | File system level backup and crash recovery. Used by [PPB](postgres-physical-backup.md). |
 | [Kopia documentation](https://kopia.io/docs/) | The snapshot repository. Used by [PPB](postgres-physical-backup.md). |
 | [RFC 5958](https://www.rfc-editor.org/rfc/rfc5958) | PKCS #8 private-key syntax. Used by [CTLS](canopy/tls-issuance.md). |
-| [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md). |
-| [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) | Route 53 hosted zones. Used by [CTLS](canopy/tls-issuance.md). |
+| [RFC 9499](https://www.rfc-editor.org/rfc/rfc9499) | DNS terminology: zone, apex, delegation. Used by [CTLS](canopy/tls-issuance.md) and [CORE](core.md). |
+| [Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) and [Routing traffic for subdomains](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-routing-traffic-for-subdomains.html) | Route 53 hosted zones and the delegation of a zone to the name servers of its hosted zone. Used by [CTLS](canopy/tls-issuance.md) and [CORE](core.md). |
+| [Subnets for your VPC](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html), [Internet gateways](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html), [Egress-only internet gateways](https://docs.aws.amazon.com/vpc/latest/userguide/egress-only-internet-gateway.html) and [NAT gateways](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html) | VPCs, subnets, availability zones and the gateways through which subnets reach the internet. Used by [CORE](core.md). |
+| [Stack outputs](https://www.pulumi.com/docs/iac/concepts/stacks/#outputs) | The values a stack publishes for other stacks to read. Used by [CORE](core.md). |
 | [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) and [IAM roles terms and concepts](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html) | Role assumption and trust policies. Used by [CTLS](canopy/tls-issuance.md). |
 | [Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) | Route 53 record-set condition keys. Used by [CTLS](canopy/tls-issuance.md) and [LNXTLS](linux/tls.md). |
 | [Let's Encrypt staging environment](https://letsencrypt.org/docs/staging-environment/) | The untrusted-root staging authority. Used by [CTLS](canopy/tls-issuance.md). |
@@ -69,7 +71,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) | Mapping IAM principals to Kubernetes permissions. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md) and [how-to](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md) | Namespace trees, subnamespace anchors and propagation. Used by [K8SNSP](kubernetes/namespaces.md). |
 | [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [user data](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) | First-boot commands from user data. Used by [LNXAWS](linux/aws.md). |
-| [Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html), [Elastic IP addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html) and [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html) | Instances, static public addresses and packet filters. Used by [LNXAWS](linux/aws.md) and [LNXSRV](linux/server.md). |
+| [Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html), [Elastic IP addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html) and [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html) | Instances, static public addresses and packet filters. Used by [LNXAWS](linux/aws.md), [LNXSRV](linux/server.md) and [CORE](core.md). |
 | [Work with instance tags in instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) | Instance tags through the metadata service. Used by [LNXAWS](linux/aws.md). |
 | [General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html) | The gp3 volume type. Used by [LNXAWS](linux/aws.md). |
 | [Tailscale tags](https://tailscale.com/kb/1068/tags), [SSH](https://tailscale.com/kb/1193/tailscale-ssh) and [HTTPS](https://tailscale.com/kb/1153/enabling-https) | Tailnet tags, Tailscale SSH and node certificates. Used by [LNXSRV](linux/server.md), [LNXAWS](linux/aws.md) and [LNXTLS](linux/tls.md). |
@@ -240,7 +242,12 @@ Defined in [PGS](pgsnap.md#passthrough-annotations).
 ### Core
 
 The foundational infrastructure of one AWS account, which owns the account's public DNS zone.
-Defined in [CTLS](canopy/tls-issuance.md#managed-zones).
+Defined in [CORE](core.md#account).
+
+### Public workload subnet
+
+A subnet of a core whose instances have public addresses and route to the internet directly.
+Defined in [CORE](core.md#network).
 
 ### Zone role
 
