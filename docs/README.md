@@ -29,6 +29,30 @@ Anything mutating is **dev-OTS** until a human has assessed it lower. A runbook 
 
 An action may also carry a **sensitive-data** flag. It marks actions that touch personal or credential data even when they only read, such as copying a log off a server. See the sensitive-data section of [ruled-out actions](ruled-out-actions.md).
 
+## Writing a runbook
+
+A runbook covers one named symptom, the thing an engineer sees first, and is titled for it. Keep it under 80 lines; when it grows past that, split it along a symptom seam into two runbooks, each with its own entry in the index below.
+
+Open with the title, a line or two stating the symptom, and the line `Every action is tagged with its class ([ladder](../ruled-out-actions.md)).` Then six numbered sections, in this order ([hook-job-failed](runbooks/hook-job-failed.md) is the model):
+
+1. **When this applies**: the evidence that confirms the symptom, and the sibling runbook to use when it does not match.
+2. **Establish context**: which deployment or cluster, what changed, through [deployment context](deployment-context.md).
+3. **Investigate**: numbered read-only steps, each with its command or the SOP that holds it.
+4. **Interpret**: one table with the columns **Evidence** (what was seen), **Diagnosis** (what it means, with the citation) and **Action** (what to do, or which runbook to follow). One row per branch of the symptom.
+5. **Resolve**: the mutating steps, and what confirms they worked.
+6. **Escalate**: when to escalate, the state the runbook leaves the incident in, and what to hand over.
+
+These rules hold throughout:
+
+- Tag every action with its ladder class in bold brackets, `**[diagnose]**` or `**[dev-OTS]**`. Add `sensitive-data` when the action touches personal or credential data, even to read it: `**[diagnose, sensitive-data]**`.
+- Cite a SOP for a procedure rather than restating its commands. A runbook holds only the commands that exist nowhere else.
+- Cite the spec section by id and heading, as in `[K8STDR](spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)`, or the code file, for each claim about how the system behaves.
+- The Escalate section names the state in the terms of the [support-assist skill](../.agents/skills/support-assist/SKILL.md), which defines them:
+  - **workaround-in-place**: the user can keep working, and the cause can be handled on a normal timeline.
+  - **fix-required**: a code change is needed; name the code file and area.
+  - **still-diagnosing**: not enough signal yet; name the next diagnostic.
+- The Escalate section also says what to hand over, from the skill's escalation payload: the deployment or environment; tier, urgency and scope; a one-line symptom; what is established, with citations; the state, and the code area when fix-required; whether sensitive data is involved; and the specific ask of on-call. Name the evidence the runbook produced that fills those fields.
+
 ## Load by convention
 
 Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` together with `docs/runbooks/`. When both exist the pack is loaded, and `ruled-out-actions.md` is a hard filter on any suggested action.

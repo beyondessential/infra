@@ -35,7 +35,7 @@ The downscaler SHOULD run on a node with the label `bes.node.purpose=system`.
 
 ## Time to live
 
-A deployment MAY have a time to live.
+A deployment MAY have a time to live, given by the parameter `ttlHours`.
 
 A time to live is a whole number of hours, and zero means that the deployment has none.
 
@@ -43,9 +43,9 @@ The stub MUST refuse a time to live that is not a non-negative whole number.
 
 On every update of a deployment that has a time to live, the stub MUST anchor the end of the time to live at the time of the update plus the time to live.
 
-The stub MUST schedule [hibernation](../../overview.md#hibernation) at the first of the minutes 00, 20 and 40 of an hour, in UTC, at or after the end of the time to live.
+The stub MUST schedule [hibernation](../../overview.md#hibernation) to run shortly after the end of the time to live.
 
-The stub SHOULD schedule a second hibernation 10 minutes after the first.
+The stub SHOULD schedule a second hibernation shortly after the first, so that a failed first run does not leave the deployment up.
 
 ## Hibernation
 

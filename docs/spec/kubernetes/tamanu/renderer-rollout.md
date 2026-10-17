@@ -29,7 +29,7 @@ Each channel tag MUST name one build of the renderer at a time.
 
 A deployment that names no channel MUST be rendered by `stable`.
 
-A deployment MUST be rendered by `canary` only when its configuration says so.
+A deployment MUST be rendered by `canary` only when its parameter `rendererChannel` says so.
 
 The [stub](../../overview.md#stub) MUST refuse a deployment that names a channel other than `canary` or `stable` before anything changes, with a message that lists the accepted channels.
 

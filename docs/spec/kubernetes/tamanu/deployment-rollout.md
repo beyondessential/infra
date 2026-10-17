@@ -104,7 +104,7 @@ The Tamanu version of a deployment MUST be the version the stub read from the im
 
 ## Seed top-up
 
-A deployment MUST have a seed top-up Job only when it is configured to be topped up with generated data.
+A deployment MUST have a seed top-up Job only when it is configured to be topped up with generated data, by the parameter `seedSnapshot` being true.
 
 The seed top-up Job MUST run once for each image.
 
@@ -120,7 +120,7 @@ A sync of a new image MUST create the Job for that image and prune the Job of th
 > Each run adds more generated records.
 > A Job that runs on every sync, or that is recreated after it is cleaned up, grows the data on each sync.
 
-The renderer MUST refuse a deployment that is configured to be topped up with generated data when the environment setting of the deployment is `production`.
+The renderer MUST refuse a deployment that is configured to be topped up with generated data when the parameter `nodeEnv` of the deployment is `production`.
 
 ## Update strategy
 
@@ -163,12 +163,12 @@ How a sync treats the replica count of a live Deployment is specified under [ign
 
 ## Placement
 
-A deployment has the settings in the following table.
+A deployment has the settings in the following table, each given by the parameter named.
 
-| setting | values | default |
-|---|---|---|
-| capacity | `spot`, `ondemand` | `spot` |
-| architecture | `arm64`, `amd64` | `arm64` |
+| setting | parameter | values | default |
+|---|---|---|---|
+| capacity | `capacity` | `spot`, `ondemand` | `spot` |
+| architecture | `architecture` | `arm64`, `amd64` | `arm64` |
 
 The renderer MUST refuse a deployment whose capacity or architecture is not one of the listed values, with a message that names the value.
 
