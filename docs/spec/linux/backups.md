@@ -13,15 +13,10 @@ How a PostgreSQL backup is captured and restored is specified by bestool's [BAK,
 
 | term | meaning |
 |---|---|
-| Kopia repository | The content-addressed store, here in S3, that Kopia writes snapshots to ([Kopia repositories](https://kopia.io/docs/repositories/)). |
-| storage class configuration | The `.storageconfig` object that tells Kopia which S3 storage class to use for which blobs ([Kopia storage tiers](https://kopia.io/docs/advanced/storage-tiers/)). |
-| Object Lock | The S3 feature that prevents object versions from being deleted or overwritten for a retention period; governance mode lets a caller with a bypass permission shorten it ([S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html)). |
 | version, noncurrent version | A stored state of an S3 object, and a version that a later version or a delete marker has superseded ([S3 Versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html)). |
 | delete marker | The placeholder that S3 makes the current version of a versioned object when the object is deleted without naming a version ([S3 delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html)). |
 | lifecycle rule | A bucket rule that expires or transitions objects by age ([S3 lifecycle management](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)). |
-| incomplete multipart upload | An S3 multipart upload that has been neither completed nor aborted ([Deleting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html)). |
 | trust policy | The policy of an IAM role that names the principals that may assume it ([IAM roles terms and concepts](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html)). |
-| chained `AssumeRole` | The assumption of a role by a principal that is itself a role session ([AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)). |
 | AWS Backup | The AWS service that snapshots instances and volumes under backup plans, into backup vaults ([What is AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html)). |
 
 ## Backup definitions
@@ -40,7 +35,7 @@ The format of a definition is specified by bestool's [BAK](https://github.com/be
 The `tamanu-postgres` definition MUST be taken under the Canopy backup type `tamanu-postgres`.
 
 > [!NOTE]
-> pgro finds the snapshots it restores by filtering the repository on that type.
+> pgro finds the snapshots it restores by filtering the [repository](https://kopia.io/docs/repositories/) on that type.
 
 ## Key pairing
 
@@ -89,7 +84,7 @@ The name of a repository bucket MUST be the one that the following table gives f
 | a Tamanu deployment | `bes-tamanu-kopia-backups-<normalised stack name>` |
 | a repository stack | the configured name, or `bes-kopia-backups-<stack name>` |
 
-A repository bucket MUST have Object Lock enabled with a default retention of 30 days in governance mode.
+A repository bucket MUST have [Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) enabled with a default retention of 30 days in governance mode.
 
 A repository bucket MUST have versioning enabled.
 
@@ -97,11 +92,11 @@ A repository bucket MUST be protected against destruction by infrastructure code
 
 A repository bucket MUST deny every request that is not sent over TLS.
 
-A repository bucket MUST have a lifecycle rule that expires a noncurrent version 35 days after it becomes noncurrent, and one that aborts an incomplete multipart upload 7 days after it is initiated.
+A repository bucket MUST have a lifecycle rule that expires a noncurrent version 35 days after it becomes noncurrent, and one that aborts an [incomplete multipart upload](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) 7 days after it is initiated.
 
 A repository bucket of a repository stack MUST also have a lifecycle rule that removes a delete marker once no noncurrent version of its object remains.
 
-A repository bucket MUST contain the storage class configuration `.storageconfig`, which gives blobs under the prefix `p` the storage class `INTELLIGENT_TIERING` and every other object the storage class `STANDARD`.
+A repository bucket MUST contain the [storage class configuration](https://kopia.io/docs/advanced/storage-tiers/) `.storageconfig`, which gives blobs under the prefix `p` the storage class `INTELLIGENT_TIERING` and every other object the storage class `STANDARD`.
 
 A repository bucket MUST be tagged with `Purpose` set to `tamanu-backups` for a Tamanu deployment and `backups` for a repository stack, and a Tamanu deployment's bucket MUST also carry the tags `Stack` and `ManagedBy`.
 
@@ -136,7 +131,7 @@ The device role MUST grant the actions in the following table on the bucket and 
 
 The device role MUST NOT grant `s3:DeleteObjectVersion`, `s3:BypassGovernanceRetention` or `s3:PutObjectRetention`.
 
-The trust policy of the device role MUST allow chained `AssumeRole` from the issuer, and from the private server, of [Canopy](../overview.md#canopy), and MUST allow no other principal.
+The trust policy of the device role MUST allow [chained `AssumeRole`](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) from the issuer, and from the private server, of [Canopy](../overview.md#canopy), and MUST allow no other principal.
 
 The maintenance role MUST grant every S3 action on the bucket and every object in it, and `cloudwatch:GetMetricStatistics` and `cloudwatch:ListMetrics` on all resources.
 

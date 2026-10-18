@@ -9,6 +9,7 @@ const tags = {
   Purpose: 'audit-logging',
 };
 
+// spec: CORE#audit
 const bucket = new awsClassic.s3.Bucket('cloudtrail-bucket', {
   bucket: trailBucket,
   tags,

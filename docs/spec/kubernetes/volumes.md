@@ -11,13 +11,12 @@ The requirements in this spec apply to the persistent volumes that a cluster off
 | term | meaning |
 |---|---|
 | claim | A PersistentVolumeClaim, a workload's request for storage ([Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)). |
-| storage class | A named class of storage that claims select ([Kubernetes storage classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)). |
 
 ## Multi-node access
 
 A shared filesystem is a filesystem whose volumes several nodes mount read-write at once.
 
-Where a cluster hosts a workload that holds content on disk and either serves it from more than one replica or hands it between separate processes, the cluster MUST offer a storage class whose volumes mount read-write from several nodes at once.
+Where a cluster hosts a workload that holds content on disk and either serves it from more than one replica or hands it between separate processes, the cluster MUST offer a [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) whose volumes mount read-write from several nodes at once.
 
 A shared filesystem volume MUST be mountable from every availability zone in which the cluster places workloads.
 

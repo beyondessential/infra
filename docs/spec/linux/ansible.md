@@ -14,7 +14,6 @@ The arrangement that the playbooks produce is specified by [LNXRUN](runtime.md),
 | playbook, play | A playbook is a file of plays, and a play applies an ordered list of roles to a group of hosts ([Playbooks](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html)). |
 | inventory source | A plugin or file that supplies the hosts, groups and variables of an inventory ([Inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html)). |
 | tag | A label on a play or role by which a run selects or skips it ([Tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html)). |
-| check mode | A run that reports the changes it would make without making them ([Check mode](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_checkmode.html)). |
 | control node | The machine that runs the playbooks ([Basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html)). |
 | run lease | The permission, held by one operator at a time, to read the inventory of an environment ([Run leases](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#run-leases)). |
 
@@ -205,7 +204,7 @@ A frontend upgrade MUST refuse to run where `/etc/tamanu/env` has no `TAMANU_VER
 
 An installation playbook SHOULD make no change to a server that already matches the inventory.
 
-A playbook SHOULD make no change to a server in check mode.
+A playbook SHOULD make no change to a server in [check mode](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_checkmode.html).
 
 ## Provisioning handoff
 

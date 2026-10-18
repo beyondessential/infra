@@ -2,6 +2,7 @@ import * as awsClassic from '@pulumi/aws';
 import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../../constants/external.ts';
 import { withGithubOidc } from './config.ts';
 
+// spec: CORE#deployment-identity
 let oidcProvider: awsClassic.iam.OpenIdConnectProvider | undefined;
 if (withGithubOidc) {
   // Github Actions OIDC roles for CD

@@ -140,6 +140,7 @@ export class Network extends ComponentResource {
           )
         : undefined;
 
+    // spec: CORE#addressing
     // We use the first /24 for network appliances (NAT). However we don't
     // define an actual subnet for this, instead we create small /28s for each
     // AZ, which leaves a bunch of space reserved for future expansion. In a

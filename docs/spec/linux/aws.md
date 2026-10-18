@@ -12,15 +12,11 @@ The baseline of a server is specified by [LNXSRV](server.md), mSupply by [LNXMSP
 | term | meaning |
 |---|---|
 | instance | An EC2 instance ([Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html)). |
-| BES Linux image | The disk image that BES's linux-images repository builds, whose cloud variant is published as an AMI ([disk images](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#variants)). |
 | user data | The data an instance receives at launch, from which cloud-init runs a list of commands at first boot ([Run commands when you launch an instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html), [cloud-init documentation](https://cloudinit.readthedocs.io/en/latest/)). |
 | IMDSv2 | The session-oriented method of the EC2 instance metadata service ([Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)). |
-| instance metadata tags | The exposure of an instance's EC2 tags through the instance metadata service ([Work with instance tags in instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html)). |
 | gp3 | The general-purpose SSD volume type of EBS ([General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html)). |
 | Elastic IP address | A static public IPv4 address that is associated with an instance ([Elastic IP addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html)). |
 | security group | The stateful packet filter that controls the traffic to and from an instance ([Security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html)). |
-| Tailscale tag | An ACL tag that identifies a tailnet node by its role instead of its user ([Tailscale tags](https://tailscale.com/kb/1068/tags)). |
-| Tailscale SSH | SSH access to a node that tailscaled authenticates and authorises from the tailnet policy ([Tailscale SSH](https://tailscale.com/kb/1193/tailscale-ssh)). |
 
 ## Instances and external servers
 
@@ -45,7 +41,7 @@ An instance MUST have the properties in the following table.
 | instance type | `t4g.medium`, unless the server configures another |
 | root volume | gp3, encrypted, 50 GiB unless the server or the deployment configures another size |
 | public address | one static Elastic IP address |
-| metadata | IMDSv2 required, IPv6 endpoint enabled, instance metadata tags enabled |
+| metadata | IMDSv2 required, IPv6 endpoint enabled, [instance metadata tags](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html) enabled |
 | monitoring | detailed |
 | termination protection | on, unless the deployment sets hard delete |
 | subnet | a [public workload subnet](../overview.md#public-workload-subnet) of the core ([CORE](../core.md#network)), chosen by the position of the server among the deployment's servers |
@@ -58,7 +54,7 @@ A change to the image, the root volume or the user data of an instance after its
 An instance MUST run the following steps from its user data at first boot, in order.
 
 1. Set the hostname to the server's fully qualified domain name.
-1. Join the tailnet with a single-use, pre-authorised key that expires after 6 hours, advertising the Tailscale tags of the deployment, under the Tailscale name of the server, with Tailscale SSH enabled and the user `ubuntu` as the operator.
+1. Join the tailnet with a single-use, pre-authorised key that expires after 6 hours, advertising the [Tailscale tags](https://tailscale.com/kb/1068/tags) of the deployment, under the Tailscale name of the server, with [Tailscale SSH](https://tailscale.com/kb/1193/tailscale-ssh) enabled and the user `ubuntu` as the operator.
 1. Add the fixed emergency public key `emergency@tamanu` to the authorized keys of the user `ubuntu`.
 
 > [!NOTE]
@@ -76,7 +72,7 @@ The Tailscale tags of a deployment's servers SHOULD default to `tag:server`, `ta
 
 An instance SHOULD be provisioned in the single layout of [LNXSRV](server.md#storage-layout).
 
-An instance MAY be provisioned in the [split layout](../overview.md#split-layout).
+A new instance MUST NOT be provisioned in the [split layout](../overview.md#split-layout).
 
 An instance in the single layout MUST carry the [instance tag](#instance-tags) `Partitioning` with the value `single-btrfs`.
 

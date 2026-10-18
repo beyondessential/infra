@@ -16,10 +16,8 @@ The DNS zones Canopy writes to, the identity it writes with and the certificate 
 | IAM role for a service account | An IAM role that the pods of a Kubernetes service account assume by web identity through the OIDC provider of the Kubernetes cluster ([IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)). |
 | Deployment, Job, CronJob | The Kubernetes controllers for a long-running workload, a run-to-completion workload, and a workload run on a schedule ([Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/), [Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/), [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)). |
 | ClusterRole, RoleBinding, ClusterRoleBinding, `cluster-admin` | The RBAC objects of Kubernetes and the built-in role that permits every action ([Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)). |
-| workload identity, API server proxy | A credential issued to one run of a workflow, and the Tailscale operator mode that forwards Kubernetes API requests from the tailnet ([Tailscale workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation), [API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy)). |
 | cluster, Pooler | A CloudNativePG `Cluster` resource, and the `Pooler` resource that runs PgBouncer in front of one ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). Within this spec the word cluster alone never means a Kubernetes cluster. |
 | Gateway, listener, HTTPRoute | The Gateway API objects that terminate TLS for a hostname and route its requests ([Gateway API](https://gateway-api.sigs.k8s.io/)). |
-| IngressClass | The Kubernetes object that names the controller an Ingress is served by ([Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)). |
 | output | A named value a [stack](../overview.md#stack) publishes for other stacks to read ([Stack outputs](https://www.pulumi.com/docs/iac/concepts/stacks/#outputs)). |
 
 ## Instance
@@ -135,7 +133,7 @@ external-dns MUST publish the public hostnames and their aliases as [K8SING](ing
 
 ## Tailnet hostnames
 
-The private server MUST be reachable only through the tailnet, at an Ingress of the `tailscale` IngressClass whose hostname the stack configures.
+The private server MUST be reachable only through the tailnet, at an Ingress of the `tailscale` [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/) whose hostname the stack configures.
 
 > [!NOTE]
 > The Tailscale operator sets the caller's identity on each request, and the private server resolves administrators from it as [Canopy ADM](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/admin-access.md#who-is-an-administrator) specifies.
@@ -195,7 +193,7 @@ The permission of a role on the artifact store MUST be to list the bucket and to
 
 ## Access
 
-The access group `tailscale:gha:canopy` is held by the workflow that deploys Canopy, which builds the image, joins the tailnet with a workload identity, reaches the cluster through the API server proxy, and applies the Canopy stack with the image tag it built.
+The access group `tailscale:gha:canopy` is held by the workflow that deploys Canopy, which builds the image, joins the tailnet with a [workload identity](https://tailscale.com/kb/1581/workload-identity-federation), reaches the cluster through the [API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), and applies the Canopy stack with the image tag it built.
 
 The bindings of `tailscale:gha:canopy` are those [K8SNSP](namespaces.md#access-groups) gives.
 

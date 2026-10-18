@@ -12,18 +12,10 @@ The requirements on namespaces and roles apply to every cluster that hosts [Tama
 | term | meaning |
 |---|---|
 | Role, ClusterRole, RoleBinding, ClusterRoleBinding | The RBAC objects of Kubernetes. A RoleBinding grants a Role or ClusterRole within one namespace, and a ClusterRoleBinding grants a ClusterRole in every namespace and at cluster scope ([Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)). |
-| Kubernetes group | A name that the API server attaches to an authenticated caller and that a binding can use as its subject ([Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)). |
 | `view`, `cluster-admin` | The built-in ClusterRoles. `view` reads most objects of a namespace except Secrets, Roles and RoleBindings. `cluster-admin` permits every action on every resource ([Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)). |
-| `escalate`, `bind` | The verbs that let a caller create or update a Role or RoleBinding that grants permissions the caller does not itself hold ([Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)). |
 | API server proxy | The mode of the Tailscale operator in which it accepts Kubernetes API requests from the tailnet and forwards them to the API server as the Tailscale identity of the caller, with the Kubernetes groups that the tailnet policy assigns ([Tailscale Kubernetes operator API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy)). |
-| tailnet policy | The access policy of the tailnet, whose grants decide who may reach a device and which Kubernetes groups a caller carries ([Tailscale grants](https://tailscale.com/kb/1324/grants)). |
-| workload identity | A credential that a platform issues to one run of a workload and that Tailscale exchanges for a short-lived token ([Tailscale workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation)). |
-| EKS access entry | An EKS-managed mapping from an AWS IAM principal to Kubernetes permissions ([Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html)). |
 | HNC | The Hierarchical Namespace Controller, which arranges namespaces into trees ([HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md)). |
 | parent, child, descendant, subtree | The relations between namespaces in an HNC tree. A subtree is a namespace together with all of its descendants ([HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md)). |
-| subnamespace | A child namespace whose parent never changes and whose lifetime is bound to that parent ([HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md)). |
-| SubnamespaceAnchor | The object in a parent namespace whose creation makes HNC create the subnamespace of the same name, and whose deletion deletes that subnamespace ([HNC how-to](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md)). |
-| HierarchyConfiguration | The object named `hierarchy` in a namespace, whose `spec.parent` sets the parent of that namespace ([HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md)). |
 | propagation | HNC's copying of a source object in a namespace into every descendant namespace, and its keeping each copy in sync with the source ([HNC concepts](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md)). |
 | AppProject | The Argo CD grouping of Applications that limits their source repositories, destination namespaces and cluster-scoped kinds ([Argo CD projects](https://argo-cd.readthedocs.io/en/stable/user-guide/projects/)). |
 | default role | The Argo CD role that applies to a caller who has no role assigned ([Argo CD RBAC](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/)). |
@@ -43,7 +35,7 @@ A stack that manages the in-cluster resources of a cluster MUST refuse to apply 
 
 A stack that manages only in-cluster resources MUST be applicable with a tailnet identity and no AWS credentials.
 
-Automation SHOULD join the tailnet with a workload identity issued for the run, and SHOULD NOT use a stored credential.
+Automation SHOULD join the tailnet with a [workload identity](https://tailscale.com/kb/1581/workload-identity-federation) issued for the run, and SHOULD NOT use a stored credential.
 
 ## Tailscale operator
 
@@ -58,7 +50,7 @@ The operator SHOULD authenticate by exchanging an OIDC token that the cluster's 
 
 The OAuth client SHOULD carry only the scopes that the [Tailscale Kubernetes operator documentation](https://tailscale.com/kb/1236/kubernetes-operator) requires of it.
 
-The device of the operator, and the device of each proxy it creates, MUST carry tags that the tailnet policy defines.
+The device of the operator, and the device of each proxy it creates, MUST carry tags that the [tailnet policy](https://tailscale.com/kb/1324/grants) defines.
 
 ## Direct access
 
@@ -66,7 +58,7 @@ The control plane endpoint of a cluster MUST have both private and public access
 
 Before the API server proxy runs, an operator MUST be able to reach the control plane endpoint from outside the cluster's VPC with an AWS IAM identity.
 
-The control plane MUST accept EKS access entries as a source of authentication.
+The control plane MUST accept [EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) as a source of authentication.
 
 ## Namespace tree
 
@@ -106,9 +98,9 @@ A deployment namespace MUST NOT have the name of a namespace in the table in [Na
 
 A deployment namespace MUST exist before the objects of its deployment are applied.
 
-A deployment namespace SHOULD be created as a subnamespace, by creating a SubnamespaceAnchor of the same name in the super namespace.
+A deployment namespace SHOULD be created as a [subnamespace](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md), by creating a [SubnamespaceAnchor](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md) of the same name in the super namespace.
 
-A deployment namespace that is created by any other means MUST have its parent set to the super namespace by a HierarchyConfiguration.
+A deployment namespace that is created by any other means MUST have its parent set to the super namespace by a [HierarchyConfiguration](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/concepts.md).
 
 A stack that references a deployment namespace it did not create MUST leave the lifecycle of that namespace to its creator.
 
@@ -134,7 +126,7 @@ A binding whose scope is the subtree of the super namespace MUST be created once
 
 ## Access groups
 
-An [access group](../overview.md#access-group) MUST be a Kubernetes group whose name begins `tailscale:`.
+An [access group](../overview.md#access-group) MUST be a [Kubernetes group](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) whose name begins `tailscale:`.
 
 A group assigned to a GitHub Actions workflow MUST be named `tailscale:gha:` followed by the purpose of the workflow.
 
@@ -214,7 +206,7 @@ The deployer SHOULD be able to create, change and delete only the VolumeSnapshot
 
 The deployer MUST NOT change the objects of `tamanu-system`.
 
-The deployer MUST NOT hold the verbs `escalate` or `bind`.
+The deployer MUST NOT hold the verbs [`escalate`](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) or [`bind`](https://kubernetes.io/docs/reference/access-authn-authz/rbac/).
 
 The deployer MUST be able to create and release the claims of a workload, as [K8SVOL](volumes.md#provisioning-access) requires.
 

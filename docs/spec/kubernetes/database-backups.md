@@ -18,10 +18,7 @@ Tuning, scheduling and the resource requests of the archiving sidecar are define
 | base backup | A file-level copy of the data directory of a cluster, from which WAL replay starts ([PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html)). |
 | recovery window | The period back from the present within which a cluster can be restored to any moment; the retention policy of an object store sets it ([Barman Cloud plugin retention policies](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/)). |
 | version, noncurrent version | A stored state of an S3 object, and a version that a later version or a delete marker has superseded ([S3 Versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html)). |
-| delete marker | The placeholder that S3 makes the current version of a versioned object when the object is deleted without naming a version ([S3 delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html)). |
 | lifecycle rule | A bucket rule that expires or transitions objects by age ([S3 lifecycle management](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)). |
-| incomplete multipart upload | An S3 multipart upload that has been neither completed nor aborted ([Deleting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html)). |
-| IAM role for a service account | An IAM role that the pods of a Kubernetes service account assume by web identity through the OIDC provider of the Kubernetes cluster ([IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)). |
 
 ## WAL archiving
 
@@ -73,9 +70,9 @@ A noncurrent version in a backup bucket MUST be retained for at least 30 days af
 
 A backup bucket SHOULD have a lifecycle rule that permanently deletes a noncurrent version 30 days after it becomes noncurrent.
 
-A backup bucket SHOULD have a lifecycle rule that removes a delete marker once no noncurrent version of its object remains.
+A backup bucket SHOULD have a lifecycle rule that removes a [delete marker](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html) once no noncurrent version of its object remains.
 
-A backup bucket SHOULD have a lifecycle rule that aborts an incomplete multipart upload 7 days after it is initiated.
+A backup bucket SHOULD have a lifecycle rule that aborts an [incomplete multipart upload](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) 7 days after it is initiated.
 
 Objects in a backup bucket MUST be encrypted at rest.
 
@@ -86,7 +83,7 @@ Objects in a backup bucket MUST be encrypted at rest.
 
 ## Backup role
 
-A Kubernetes cluster MUST provide one [backup role](../overview.md#backup-role), which is an IAM role for a service account.
+A Kubernetes cluster MUST provide one [backup role](../overview.md#backup-role), which is an [IAM role for a service account](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html).
 
 The backup role of a Kubernetes cluster MUST be assumable only through web identity from the OIDC provider of that Kubernetes cluster, for the audience `sts.amazonaws.com`.
 

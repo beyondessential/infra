@@ -11,19 +11,13 @@ The requirements in this spec apply to the policy pack named `bes-guardrails` an
 | term | meaning |
 |---|---|
 | policy pack | A set of policies that the Pulumi engine evaluates during a preview or update ([Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/)). |
-| resource validation policy | A policy evaluated against each resource as the stack registers it ([Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/)). |
-| stack validation policy | A policy evaluated once against every resource of the stack after all have been registered ([Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/)). |
-| mandatory | The enforcement level at which a violation fails the preview or update ([Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/)). |
 | violation | A policy's report that a resource does not satisfy it ([Pulumi policy as code](https://www.pulumi.com/docs/iac/crossguard/core-concepts/)). |
-| URN | The unique name of a resource, of the form `urn:pulumi:<stack>::<project>::<type>::<name>` ([Pulumi resource names](https://www.pulumi.com/docs/iac/concepts/resources/names/)). |
 | project | The Pulumi project that declares a stack, the second segment of the URN of each of its resources ([Pulumi resource names](https://www.pulumi.com/docs/iac/concepts/resources/names/)). |
 | claim | A PersistentVolumeClaim, a workload's request for storage ([Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)). |
 | access mode | A member of the `accessModes` of a claim, such as `ReadWriteOnce`, `ReadWriteOncePod` or `ReadWriteMany`, stating how many nodes may mount the volume and with what permission ([Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)). |
 | storage class | A named class of storage that claims select ([Kubernetes persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)). |
 | deployment strategy | The `spec.strategy.type` of a Deployment, `RollingUpdate` by default or `Recreate` ([Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)). |
 | access point | An application-specific entry into an Amazon EFS filesystem that fixes the directory a client sees as its root ([Amazon EFS access points](https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html)). |
-| `subPathPattern`, `ensureUniqueDirectory`, `provisioningMode` | Parameters of a storage class served by the EFS CSI driver ([EFS CSI driver parameters](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md)). |
-| delegated administrator | The member account that manages GuardDuty for an AWS organisation ([GuardDuty and AWS Organizations](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_organizations.html)). |
 
 ## Rule set
 
@@ -31,11 +25,11 @@ The pack MUST contain the rules in the following table.
 
 | rule | subject | kind | section |
 |---|---|---|---|
-| `guardduty-single-owner` | Resources of the GuardDuty provider module. | Resource validation policy. | [GuardDuty ownership](#guardduty-ownership) |
-| `deployment-pvc-needs-recreate` | Deployments that mount a claim. | Stack validation policy. | [Deployment rollout strategy](#deployment-rollout-strategy) |
-| `efs-access-point-scoped` | EFS storage classes and EFS persistent volumes. | Stack validation policy. | [EFS access point scope](#efs-access-point-scope) |
+| `guardduty-single-owner` | Resources of the GuardDuty provider module. | [Resource validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [GuardDuty ownership](#guardduty-ownership) |
+| `deployment-pvc-needs-recreate` | Deployments that mount a claim. | [Stack validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [Deployment rollout strategy](#deployment-rollout-strategy) |
+| `efs-access-point-scoped` | EFS storage classes and EFS persistent volumes. | [Stack validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [EFS access point scope](#efs-access-point-scope) |
 
-Every rule MUST be mandatory.
+Every rule MUST be [mandatory](https://www.pulumi.com/docs/iac/crossguard/core-concepts/).
 
 A violation MUST fail the preview or update that reports it.
 
@@ -67,7 +61,7 @@ A preview or update that is meant to enforce the current rules SHOULD run agains
 
 The pack MUST reject a resource whose type token begins `aws:guardduty/` where the project that declares it is not `security-monitoring`.
 
-The pack MUST reject a resource whose type token begins `aws:guardduty/` where the project cannot be read from its URN.
+The pack MUST reject a resource whose type token begins `aws:guardduty/` where the project cannot be read from its [URN](https://www.pulumi.com/docs/iac/concepts/resources/names/).
 
 The pack MUST accept a resource whose type token begins `aws:guardduty/` where the project that declares it is `security-monitoring`.
 
@@ -76,7 +70,7 @@ The pack MUST NOT report a resource whose type token does not begin `aws:guarddu
 A violation report MUST name the type of the resource, the project that declares it, and the project that owns GuardDuty resources.
 
 > [!NOTE]
-> The delegated administrator, the detector and the organisation configuration are singletons per region, and Pulumi does not check ownership across stacks.
+> The [delegated administrator](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_organizations.html), the detector and the organisation configuration are singletons per region, and Pulumi does not check ownership across stacks.
 > A second stack that declares them shares them silently, and destroying either stack disassociates every member account.
 
 ## Deployment rollout strategy
@@ -113,9 +107,9 @@ The pack MUST reject a storage class whose provisioner is `efs.csi.aws.com` unle
 
 | parameter | required |
 |---|---|
-| `provisioningMode` | `efs-ap`. |
-| `subPathPattern` | Set, with at least two non-empty path segments, and referencing the claim name through `.PVC.name`. |
-| `ensureUniqueDirectory` | `true`. |
+| [`provisioningMode`](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md) | `efs-ap`. |
+| [`subPathPattern`](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md) | Set, with at least two non-empty path segments, and referencing the claim name through `.PVC.name`. |
+| [`ensureUniqueDirectory`](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/parameters.md) | `true`. |
 
 The pack MUST report each unmet row of that table, and each unmet requirement within the `subPathPattern` row, as its own violation.
 

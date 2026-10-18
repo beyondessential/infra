@@ -37,7 +37,8 @@ It does not index the other specs or restate their content.
 
 - A term coined here goes in the overview's `## Terminology` under its own `###` heading, as one sentence of gloss followed by `Defined in [ID](path#heading).`
   The glossary states no properties and no normative text, which belong in the owning spec.
-- A term defined by an external document goes in a `## Borrowed terms` table near the top of each spec that uses it, citing the document.
+- A term defined by an external document and used throughout a spec goes in a `## Borrowed terms` table near the top of that spec, citing the document.
+  A term used in only one sentence is instead linked inline to the document at that sentence.
 - A term is defined before any spec leans on it.
   Name a thing by its role, not by the artefact that carries it today.
 - Every external standard or product document a spec cites has a row in the overview's external-documents table.

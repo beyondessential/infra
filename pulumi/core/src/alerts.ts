@@ -18,6 +18,7 @@ new aws.sns.TopicSubscription(
   { parent: topic },
 );
 
+// spec: CORE#alerts
 new aws.cloudwatch.MetricAlarm('overall-high-cpu', {
   name: 'OverallHighCPU',
   alarmDescription: `[${getStack()}] When any EC2 instance exceeds 80% CPU utilization for more than 4 hours`,

@@ -13,16 +13,10 @@ The tuning of a PostgreSQL cluster in Kubernetes is specified by [K8SPGC](../kub
 | term | meaning |
 |---|---|
 | cluster | A PostgreSQL cluster, one data directory served by one server process ([PostgreSQL database clusters](https://www.postgresql.org/docs/current/creating-cluster.html)). |
-| `pg_hba.conf` | The file that selects the authentication method for each connection type, database, role and address ([The pg_hba.conf file](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html)). |
 | `peer` | Authentication of a local connection by the operating system user of the client ([Peer authentication](https://www.postgresql.org/docs/current/auth-peer.html)). |
 | user name map | A `pg_ident.conf` entry that maps an operating system user to a database role ([User name maps](https://www.postgresql.org/docs/current/auth-username-maps.html)). |
 | `scram-sha-256` | Password authentication by salted challenge-response ([Password authentication](https://www.postgresql.org/docs/current/auth-password.html)). |
-| `ALTER SYSTEM` | The command that stores a server parameter in `postgresql.auto.conf` ([ALTER SYSTEM](https://www.postgresql.org/docs/current/sql-altersystem.html)). |
-| `pg_upgrade` | The tool that upgrades a cluster to a new major version, by copying, linking or cloning files ([pg_upgrade](https://www.postgresql.org/docs/current/pgupgrade.html)). |
-| data checksums | Page checksums that a cluster is initialised with or converted to ([pg_checksums](https://www.postgresql.org/docs/current/app-pgchecksums.html)). |
 | server parameters | The configuration parameters of PostgreSQL ([PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html)). |
-| BES Linux image | The disk image that BES's linux-images repository builds ([disk images](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#variants)). |
-| btrfs quota group | The accounting unit that btrfs uses to limit the space a subvolume references ([btrfs quota groups](https://btrfs.readthedocs.io/en/latest/Qgroups.html)). |
 
 ## Version and layout
 
@@ -62,13 +56,13 @@ On a btrfs filesystem, the compression level of every `/etc/fstab` entry for the
 
 On a btrfs filesystem the cluster SHOULD set `wal_init_zero` and `wal_recycle` to `off`.
 
-Where the inventory variable `postgresql_btrfs_quota_percent` is set and the filesystem is btrfs with quotas enabled, the referenced-space limit of the `@postgres` subvolume MUST be that percentage of the size of the filesystem.
+Where the inventory variable `postgresql_btrfs_quota_percent` is set and the filesystem is btrfs with [quotas](https://btrfs.readthedocs.io/en/latest/Qgroups.html) enabled, the referenced-space limit of the `@postgres` subvolume MUST be that percentage of the size of the filesystem.
 
 ## Access
 
 The cluster MUST listen on `localhost`, and additionally on the IPv4 and IPv6 Tailscale addresses of the server where the server is a member of the tailnet.
 
-The cluster MUST accept connections as the `pg_hba.conf` entries in the following table require.
+The cluster MUST accept connections as the [`pg_hba.conf`](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html) entries in the following table require.
 
 | type | databases | roles | source | method |
 |---|---|---|---|---|
@@ -87,7 +81,7 @@ The cluster MUST have the values in the following table for the parameters that 
 | `ssl_ciphers` | `HIGH:!SSLv3:!TLSv1` |
 | `scram_iterations` | `50000` |
 
-`listen_addresses` and `ssl_ciphers` MUST be set in `postgresql.conf`, and every other parameter that this spec sets MUST be set with `ALTER SYSTEM`.
+`listen_addresses` and `ssl_ciphers` MUST be set in `postgresql.conf`, and every other parameter that this spec sets MUST be set with [`ALTER SYSTEM`](https://www.postgresql.org/docs/current/sql-altersystem.html).
 
 > [!NOTE]
 > A parameter set with `ALTER SYSTEM` is stored in the data directory and is carried by a backup of it, while a parameter in `postgresql.conf` belongs to the machine.
@@ -159,9 +153,9 @@ An upgrade MUST be performed only where `/var/lib/postgresql` is on a btrfs file
 
 Before an upgrade changes the cluster, it MUST create a read-only btrfs snapshot of the subvolume that holds `/var/lib/postgresql`, at the top level of the filesystem, named `<subvolume>-pre-pgupgrade-<old major version>-to-<new major version>-<timestamp>`.
 
-An upgrade MUST convert a cluster that has no data checksums to data checksums before it upgrades the cluster.
+An upgrade MUST convert a cluster that has no [data checksums](https://www.postgresql.org/docs/current/app-pgchecksums.html) to data checksums before it upgrades the cluster.
 
-An upgrade MUST run the compatibility check of `pg_upgrade` before it upgrades the cluster, and MUST stop if the check fails.
+An upgrade MUST run the compatibility check of [`pg_upgrade`](https://www.postgresql.org/docs/current/pgupgrade.html) before it upgrades the cluster, and MUST stop if the check fails.
 
 An upgrade MUST carry the configuration of the old version over to the new version.
 

@@ -11,12 +11,8 @@ The requirements in this spec apply to every worker node of a cluster, whichever
 | term | meaning |
 |---|---|
 | consolidation | Karpenter's removal or replacement of underutilised nodes by draining their pods onto other nodes ([Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/)). |
-| drift | The state of a node that no longer matches its configured specification ([Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/)). |
 | taint | A node attribute that repels pods which do not tolerate it ([Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)). |
-| IMDSv2 | The session-oriented method of the EC2 instance metadata service ([Amazon EC2 instance metadata service configuration](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)). |
-| spot interruption warning | The notice EC2 gives before it reclaims a Spot instance ([Spot Instance interruptions](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html)). |
 | interruption frequency | The reclaim rate band the Spot Instance Advisor publishes for an instance type in a region ([Spot Instance Advisor](https://aws.amazon.com/ec2/spot/instance-advisor/)). |
-| image garbage-collection high threshold | The disk usage, 85% by default, above which the kubelet begins deleting unused images ([Kubernetes garbage collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)). |
 
 ## Node identity
 
@@ -58,7 +54,7 @@ The subnets and security groups an autoscaler uses to provision a cluster's node
 
 ## Instance metadata
 
-A node MUST require IMDSv2.
+A node MUST require [IMDSv2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html).
 
 The instance metadata endpoint of a node MUST be reachable over IPv6.
 
@@ -119,7 +115,7 @@ Spot instance type selection for workload and ingress pools MUST exclude types w
 
 ## Interruption and consolidation
 
-On a spot interruption warning for a node, the cluster MUST cordon the node, drain its pods, and remove the node from service before the reclaim takes effect.
+On a [spot interruption warning](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html) for a node, the cluster MUST cordon the node, drain its pods, and remove the node from service before the reclaim takes effect.
 
 On an EC2 instance health event for a node, such as a scheduled hardware retirement, the cluster MUST replace the node.
 
@@ -163,7 +159,7 @@ The critical database pool MUST offer memory-dense node shapes.
 
 A node in the critical database pool MUST NOT expire on a fixed lifetime.
 
-A node in the critical database pool MUST be replaced only when it drifts from its configuration.
+A node in the critical database pool MUST be replaced only when it [drifts](https://karpenter.sh/docs/concepts/disruption/) from its configuration.
 
 The critical database pool MUST replace at most one node at a time.
 
@@ -192,7 +188,7 @@ The instance of the node running an exit node MUST carry the tag `bes.node.purpo
 
 ## Node storage
 
-A node with purpose `workload` MUST have a node-local data volume large enough for its steady-state usage, covering images, logs and ephemeral scratch, to stay below the image garbage-collection high threshold.
+A node with purpose `workload` MUST have a node-local data volume large enough for its steady-state usage, covering images, logs and ephemeral scratch, to stay below the [image garbage-collection high threshold](https://kubernetes.io/docs/concepts/architecture/garbage-collection/).
 
 The size of the data volume of a workload node MUST be configurable per cluster.
 

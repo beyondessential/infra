@@ -29,6 +29,7 @@ if (domain) {
         },
   );
 
+  // spec: CORE#zone
   // Attached from the identity side (the acme-dns IAM users name it in their own
   // managedPolicyArns), so the attachment has to be ignored here or a refresh
   // reads it back and CloudFormation detaches it.

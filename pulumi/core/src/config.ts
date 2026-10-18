@@ -20,6 +20,7 @@ const v4: string | boolean = v4Config;
 export { v4 };
 
 let stackName = getStack();
+// spec: CORE#zone
 let domain = cfg.get('domain');
 if (!domain) {
   if (stackName.startsWith('tamanu-')) {

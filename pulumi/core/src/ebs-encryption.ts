@@ -1,5 +1,6 @@
 import * as awsClassic from '@pulumi/aws';
 
+// spec: CORE#account-baseline
 // Enable EBS encryption by default for this region
 export const ebsEncryptionByDefault = new awsClassic.ebs.EncryptionByDefault(
   'ebs-encryption-default',

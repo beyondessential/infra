@@ -10,15 +10,11 @@ The requirements in this spec apply to every [deployment](../../overview.md#tama
 
 | term | meaning |
 |---|---|
-| Application | An Argo CD `Application`, the declaration of one deployment that Argo CD keeps in sync ([Argo CD declarative setup](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)). |
 | Deployment | The Kubernetes workload resource. The capitalised word never means a deployment of Tamanu ([Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)). |
 | database cluster | A CloudNativePG `Cluster`, a PostgreSQL primary with its replicas ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). |
 | downscaler | The cluster component that scales workloads to zero and back, as their annotations direct ([py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler)). |
 | forced downtime | The state of a workload that carries the annotation `downscaler/force-downtime` with the value `true`. The downscaler holds the workload at zero replicas and keeps its previous replica count in the annotation `downscaler/original-replicas` ([py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler)). |
-| exclusion | The annotation `downscaler/exclude` with the value `true`, which removes a workload, or every workload of a namespace, from the downscaler's attention ([py-kube-downscaler](https://github.com/caas-team/py-kube-downscaler)). |
 | database hibernation | The removal of the pods of a database cluster with its volumes retained, which the annotation `cnpg.io/hibernation=on` asks for and `cnpg.io/hibernation=off` reverses ([CloudNativePG declarative hibernation](https://cloudnative-pg.io/documentation/current/declarative_hibernation/)). |
-| suspended CronJob | A CronJob with `suspend` set, which the CronJob controller never runs on its schedule ([Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)). |
-| Create Job action | The Argo CD resource action that creates a Job from a CronJob ([Argo CD resource actions](https://argo-cd.readthedocs.io/en/stable/operator-manual/resource_actions/)). |
 
 ## Cluster downscaler
 
@@ -55,9 +51,9 @@ Hibernating a deployment MUST set the annotation `cnpg.io/hibernation=on` on eve
 
 Hibernation MUST retain the volumes of the database clusters.
 
-Hibernation MUST NOT remove or change any other object of the deployment, including its Services, Gateways, routes, configuration, the `wake` CronJob and the Application.
+Hibernation MUST NOT remove or change any other object of the deployment, including its Services, Gateways, routes, configuration, the `wake` CronJob and the [Application](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/).
 
-The namespace of a deployment MUST NOT carry a downscaler exclusion.
+The namespace of a deployment MUST NOT carry a downscaler [exclusion](https://github.com/caas-team/py-kube-downscaler).
 
 The stub MUST create a service account named `tamanu-ttl` in the namespace of each deployment that has a time to live.
 
@@ -87,11 +83,11 @@ The renderer MUST render a CronJob named `wake` for a deployment that has a time
 
 The renderer MUST NOT render a `wake` CronJob for a deployment that has none.
 
-The `wake` CronJob MUST be a suspended CronJob.
+The `wake` CronJob MUST be a [suspended CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/).
 
 A Job created from the `wake` CronJob MUST wake the deployment.
 
-A person MAY wake a hibernated deployment by running the Create Job action on its `wake` CronJob in Argo CD.
+A person MAY wake a hibernated deployment by running the [Create Job action](https://argo-cd.readthedocs.io/en/stable/operator-manual/resource_actions/) on its `wake` CronJob in Argo CD.
 
 A person MAY wake a hibernated deployment by creating a Job from its `wake` CronJob with the Kubernetes command line.
 

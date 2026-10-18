@@ -13,7 +13,6 @@ The requirements in this spec apply to how a build of the [renderer](../../overv
 | Application | An Argo CD `Application`, the declaration of one deployment that Argo CD keeps in sync ([Argo CD declarative setup](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)). |
 | plugin | An Argo CD config management plugin, which turns the parameters of an Application into Kubernetes objects ([Argo CD config management plugins](https://argo-cd.readthedocs.io/en/stable/operator-manual/config-management-plugins/)). |
 | repo server | The Argo CD component that renders Applications and caches the result ([Argo CD architecture](https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/)). |
-| hard refresh | A refresh of an Application that discards its cached render ([argocd app get](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_get/)). |
 | render error | The `ComparisonError` condition of an Application whose render failed. |
 
 ## Channels
@@ -85,7 +84,7 @@ Promotions MUST run one at a time.
 
 After a channel tag moves, a promotion MUST restart the Argo CD repo server of each cluster and wait for the restart to finish before it refreshes any Application.
 
-Once the repo server has restarted, a promotion MUST hard-refresh every Application in the `tamanu` project that is rendered by the plugin of the promoted channel.
+Once the repo server has restarted, a promotion MUST [hard-refresh](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_get/) every Application in the `tamanu` project that is rendered by the plugin of the promoted channel.
 
 A promotion MUST NOT refresh an Application rendered by the other channel.
 

@@ -12,9 +12,6 @@ pgsnap is a Kubernetes operator that creates PostgreSQL volume snapshots for Job
 |---|---|
 | CNPG Cluster | A CloudNativePG `Cluster` resource ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). |
 | VolumeSnapshot, VolumeSnapshotClass | The Kubernetes resources that request a snapshot of a volume and select how it is taken ([Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/)). |
-| `readyToUse` | The `VolumeSnapshot` status field that is true once the snapshot can be restored from ([Kubernetes volume snapshots](https://kubernetes.io/docs/concepts/storage/volume-snapshots/)). |
-| suspended Job | A Job whose `spec.suspend` is true, so that it creates no pods ([Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/#suspending-a-job)). |
-| owner reference | The metadata that makes Kubernetes delete an object when its owner is deleted ([Kubernetes owners and dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/)). |
 | semver | A version in the form `major.minor.patch`, with its precedence rules ([Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)). |
 | minor | The `major.minor` part of a semver version. |
 
@@ -81,7 +78,7 @@ pgsnap MUST add the annotation `pgsnap.bes.au/created-at`, holding the UTC time 
 
 An ephemeral cluster is a single-instance CloudNativePG cluster that pgsnap creates for one Job and deletes afterwards.
 
-A Job managed by pgsnap MUST be created suspended.
+A Job managed by pgsnap MUST be created [suspended](https://kubernetes.io/docs/concepts/workloads/controllers/job/#suspending-a-job).
 
 pgsnap MUST unsuspend the Job only once the database accepts connections and the connection Secret exists.
 
@@ -105,7 +102,7 @@ After the Job succeeds, pgsnap MUST create a VolumeSnapshot of the PVC of the ep
 
 pgsnap MUST label the VolumeSnapshot `pgsnap.bes.au/managed: "true"`.
 
-pgsnap MUST NOT consider creation complete until the `readyToUse` field of the VolumeSnapshot is true.
+pgsnap MUST NOT consider creation complete until the [`readyToUse`](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) field of the VolumeSnapshot is true.
 
 After the VolumeSnapshot is ready to use, or after the Job fails, or once the Job finishes with no snapshot requested, pgsnap MUST delete the ephemeral cluster.
 
@@ -113,7 +110,7 @@ The VolumeSnapshot MUST persist independently of the ephemeral cluster.
 
 If the Job fails, pgsnap MUST NOT create a VolumeSnapshot.
 
-The ephemeral cluster and the connection Secret MUST carry an owner reference to the Job.
+The ephemeral cluster and the connection Secret MUST carry an [owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) to the Job.
 
 ## Snapshot garbage collection
 

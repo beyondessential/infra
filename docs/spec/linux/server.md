@@ -11,16 +11,7 @@ The provisioning of servers in AWS is specified by [LNXAWS](aws.md), the databas
 
 | term | meaning |
 |---|---|
-| BES Linux image | The disk image that BES's linux-images repository builds, in the variants `metal`, `cloud` and `pi` ([disk images](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#variants)). |
 | instance | An EC2 instance ([Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html)). |
-| Tailscale tag | An ACL tag that identifies a tailnet node by its role instead of its user ([Tailscale tags](https://tailscale.com/kb/1068/tags)). |
-| Tailscale SSH | SSH access to a node that tailscaled authenticates and authorises from the tailnet policy ([Tailscale SSH](https://tailscale.com/kb/1193/tailscale-ssh)). |
-| btrfs subvolume | A separately mountable and snapshottable tree inside a btrfs filesystem ([btrfs subvolumes](https://btrfs.readthedocs.io/en/latest/Subvolumes.html)). |
-| slice | A systemd unit that groups services in the control group hierarchy so that resources are divided among groups ([systemd.slice](https://www.freedesktop.org/software/systemd/man/latest/systemd.slice.html)). |
-| CPUWeight, IOWeight, MemoryMin | The resource-control settings that share CPU time and I/O among slices and protect memory from reclaim ([systemd.resource-control](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html)). |
-| journald | The systemd journal, whose storage mode and size cap are set in `journald.conf` ([journald.conf](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html)). |
-| chrony | The NTP implementation that keeps the system clock ([chrony documentation](https://chrony-project.org/documentation.html)). |
-| BBR | The TCP congestion control algorithm, selected with `net.ipv4.tcp_congestion_control` ([IP sysctl](https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html)). |
 | ufw | The Uncomplicated Firewall front end to the kernel packet filter ([UFW](https://help.ubuntu.com/community/UFW)). |
 | Munin | The graphing system whose node daemon collects plugin metrics ([Munin](https://munin-monitoring.org/)). |
 
@@ -50,7 +41,7 @@ Where a Linux server has a Tailscale name, the playbooks MUST install Tailscale 
 
 ## Storage layout
 
-A Linux server SHOULD have the single layout, in which `/var/log` is on the root volume and `/var/lib/postgresql` is the btrfs subvolume `@postgres` of the root volume, as [`image.btrfs.subvolumes`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) requires of an image.
+A Linux server SHOULD have the single layout, in which `/var/log` is on the root volume and `/var/lib/postgresql` is the [btrfs subvolume](https://btrfs.readthedocs.io/en/latest/Subvolumes.html) `@postgres` of the root volume, as [`image.btrfs.subvolumes`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#btrfs-configuration) requires of an image.
 
 [LNXDB](database.md#data-directory) specifies the data directory of the single layout.
 
@@ -77,7 +68,7 @@ A btrfs root SHOULD be balanced weekly and scrubbed monthly, in the background [
 
 ## Access
 
-Where a Linux server has a Tailscale name, it MUST be a member of the tailnet under that name, advertising its Tailscale tags and accepting Tailscale SSH.
+Where a Linux server has a Tailscale name, it MUST be a member of the tailnet under that name, advertising its [Tailscale tags](https://tailscale.com/kb/1068/tags) and accepting [Tailscale SSH](https://tailscale.com/kb/1193/tailscale-ssh).
 
 The first boot of an instance joins it to the tailnet, as [LNXAWS](aws.md#first-boot) requires.
 
@@ -117,7 +108,7 @@ A Linux server SHOULD restart a service whose executable, or a shared library th
 
 ## Time and names
 
-A Linux server MUST synchronise its clock with chrony, as [`image.packages.chrony`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image.
+A Linux server MUST synchronise its clock with [chrony](https://chrony-project.org/documentation.html), as [`image.packages.chrony`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image.
 
 A Linux server MUST NOT run `systemd-timesyncd`.
 
@@ -139,19 +130,19 @@ The playbooks MUST install and enable systemd-resolved, and point `/etc/resolv.c
 
 ## Logging
 
-A Linux server MUST configure journald to keep the journal on persistent storage, capped at 1 GiB.
+A Linux server MUST configure [journald](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html) to keep the journal on persistent storage, capped at 1 GiB.
 
 ## Network tuning
 
-A Linux server SHOULD select BBR with the `fq` queue discipline.
+A Linux server SHOULD select [BBR](https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html) with the `fq` queue discipline.
 
 A Linux server SHOULD disable TCP slow start after idle.
 
 ## Resource classes
 
-A Linux server MUST define the three [resource classes](../overview.md#resource-class) in the following table as slices.
+A Linux server MUST define the three [resource classes](../overview.md#resource-class) in the following table as [slices](https://www.freedesktop.org/software/systemd/man/latest/systemd.slice.html).
 
-| class | slice | CPUWeight | IOWeight | MemoryMin |
+| class | slice | [CPUWeight](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html) | [IOWeight](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html) | [MemoryMin](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html) |
 |---|---|---|---|---|
 | critical | `critical.slice` | 200 | 200 | 512M |
 | elevated | `elevated.slice` | 150 | 150 | none |

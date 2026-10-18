@@ -5,6 +5,7 @@ import { accountId } from '../../common/awsAccount.ts';
 import { nativeTags } from '../../common/tags.ts';
 import { tags } from './config.ts';
 
+// spec: CORE#spot-data-feed
 const spotDataFeedBucket = new awsNative.s3.Bucket('spot-data-feed', {
   bucketName: interpolate`bes-spot-data-feed-${accountId}`,
   tags: nativeTags(tags, {

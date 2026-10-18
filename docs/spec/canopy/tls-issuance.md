@@ -14,14 +14,8 @@ Canopy's rules for domains, grants, issuance and renewal are specified by Canopy
 | managed zone | A DNS zone in which Canopy creates and changes records, configured by the infrastructure that provisions Canopy ([DOM, Managed zones](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/servers/domains.md#managed-zones)). |
 | ACME | The protocol by which a client obtains certificates from a certificate authority ([RFC 8555](https://www.rfc-editor.org/rfc/rfc8555)). |
 | directory | The ACME resource that lists the URLs of an authority ([RFC 8555 section 7.1.1](https://www.rfc-editor.org/rfc/rfc8555#section-7.1.1)). |
-| PKCS #8 | The syntax of a private key as a PEM file ([RFC 5958](https://www.rfc-editor.org/rfc/rfc5958)). |
 | zone, apex, delegation, parent | The DNS terms for a unit of administrative control, the name at which it begins, the creation of a separate zone beneath it, and the domain in which that zone is registered ([RFC 9499 section 7](https://www.rfc-editor.org/rfc/rfc9499#section-7)). |
-| authoritative server | A server that answers for a zone from its own knowledge, named in an NS record of the zone and also called a name server ([RFC 9499 section 6](https://www.rfc-editor.org/rfc/rfc9499#section-6)). |
 | hosted zone | A Route 53 container of the records of one DNS zone ([Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html)). |
-| `sts:AssumeRole` | The AWS action by which one identity obtains the temporary credentials of a role ([AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)). |
-| trust policy | The policy of an IAM role that names the principals that may assume it ([IAM roles terms and concepts](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html)). |
-| `route53:ChangeResourceRecordSets` | The Route 53 action that creates, replaces and deletes record sets, with a condition key that limits the record types of a change ([Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html)). |
-| staging environment | The Let's Encrypt authority that issues certificates chaining to an untrusted root ([Staging environment](https://letsencrypt.org/docs/staging-environment/)). |
 
 ## Managed zones
 
@@ -62,7 +56,7 @@ The infrastructure MUST refuse to produce a list where the Canopy DNS identity i
 
 ## Zone delegation
 
-The name servers a core publishes for its zone, and the delegation of that zone from its parent, are specified in [CORE](../core.md#zone).
+The [name servers](https://www.rfc-editor.org/rfc/rfc9499#section-6) a core publishes for its zone, and the delegation of that zone from its parent, are specified in [CORE](../core.md#zone).
 
 A zone that is delegated out of another managed zone MUST have its own entry in the list where Canopy is to issue certificates for names beneath it.
 
@@ -76,11 +70,11 @@ The Canopy workload that writes DNS records MUST run under its own identity in t
 
 A Canopy workload other than the one that writes DNS records MUST NOT be able to change the records of a managed zone.
 
-The Canopy DNS identity MUST be permitted to perform `sts:AssumeRole`.
+The Canopy DNS identity MUST be permitted to perform [`sts:AssumeRole`](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
 > [!NOTE]
 > The permission names no role.
-> The trust policy of each zone role is the gate that decides which zones the identity reaches.
+> The [trust policy](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html) of each zone role is the gate that decides which zones the identity reaches.
 
 For the zone in its own account, the Canopy DNS identity MUST hold the permission in the following table, and no other permission on the zone.
 
@@ -88,7 +82,7 @@ For the zone of its core, a zone role MUST grant the permission in the following
 
 | element | value |
 |---|---|
-| action | `route53:ChangeResourceRecordSets` |
+| action | [`route53:ChangeResourceRecordSets`](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) |
 | resource | The hosted zone of the one zone. |
 | condition | Every record type of a change is `A`, `AAAA` or `TXT`, by `route53:ChangeResourceRecordSetsRecordTypes`. |
 
@@ -111,7 +105,7 @@ The Canopy stack MUST accept the settings in the following table, and MUST pass 
 
 | setting | environment variable | value |
 |---|---|---|
-| account key | `CANOPY_ACME_ACCOUNT_KEY` | A private key in PKCS #8 PEM form. |
+| account key | `CANOPY_ACME_ACCOUNT_KEY` | A private key in [PKCS #8](https://www.rfc-editor.org/rfc/rfc5958) PEM form. |
 | directory | `CANOPY_ACME_DIRECTORY` | The URL of an ACME directory. |
 | contact | `CANOPY_ACME_CONTACT` | A `mailto:` URI at which the authority can reach an operator. |
 
@@ -129,7 +123,7 @@ A Canopy workload that neither orders certificates nor reports the authority MUS
 
 ## Staging and production
 
-A stack MAY configure the directory as the Let's Encrypt staging environment.
+A stack MAY configure the directory as the Let's Encrypt [staging environment](https://letsencrypt.org/docs/staging-environment/).
 
 A stack that configures no directory MUST select the Let's Encrypt production authority.
 

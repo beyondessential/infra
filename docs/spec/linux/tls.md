@@ -16,15 +16,9 @@ The healthcheck that grades the certificates Caddy serves is [TLS, The Caddy cer
 |---|---|
 | Caddy | The web server that terminates TLS and reverse proxies ([Caddy documentation](https://caddyserver.com/docs/)). |
 | issuer | A Caddy module that obtains certificates for the names Caddy manages, set by a global option ([Caddyfile global options](https://caddyserver.com/docs/caddyfile/options#cert-issuer)). |
-| `get_certificate` | The `tls` subdirective by which Caddy asks a manager, here a URL or `tailscale`, for the certificate of a handshake ([tls directive](https://caddyserver.com/docs/caddyfile/directives/tls)). |
 | certificate endpoint | The HTTP endpoint of the bestool daemon from which Caddy fetches the chain and key of a name during a handshake ([TLS, The certificate endpoint](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md#the-certificate-endpoint)). |
 | DNS-01 | The ACME challenge that proves control of a name by a DNS record ([RFC 8555 section 8.4](https://www.rfc-editor.org/rfc/rfc8555#section-8.4)). |
-| Tailscale certificate | A certificate for the Tailscale hostname of a node, issued through tailscaled ([Enabling HTTPS](https://tailscale.com/kb/1153/enabling-https)). |
-| `TS_PERMIT_CERT_UID` | The tailscaled setting that names the non-root user permitted to request certificates from tailscaled ([Caddy certificates on Tailscale](https://tailscale.com/kb/1190/caddy-certificates)). |
 | shared credentials file | The file in which AWS tools find access keys, with one profile per section ([Shared config and credentials files](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html)). |
-| IAM user | An AWS identity with long-lived access keys ([IAM users](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users.html)). |
-| managed policy, inline policy | A policy that is a resource of its own and attaches to many identities, and a policy embedded in one identity ([Managed policies and inline policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html)). |
-| `route53:ChangeResourceRecordSets` | The Route 53 action that creates, replaces and deletes record sets, with a condition key that limits the record types and names of a change ([Condition keys for record sets](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html)). |
 
 ## Certificate sources
 
@@ -40,7 +34,7 @@ The issuer of Caddy MUST remain configured for every site that names the certifi
 
 ## Certificate endpoint
 
-A site that obtains its certificate from the bestool daemon MUST name the certificate endpoint as a `get_certificate` source, as [TLS, Caddy configuration](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md#caddy-configuration) specifies.
+A site that obtains its certificate from the bestool daemon MUST name the certificate endpoint as a [`get_certificate`](https://caddyserver.com/docs/caddyfile/directives/tls) source, as [TLS, Caddy configuration](https://github.com/beyondessential/bestool/blob/main/.workhorse/specs/canopy/certificates.md#caddy-configuration) specifies.
 
 A site MUST name the certificate endpoint only where the installed bestool is version 2.2.0 or later and the inventory variable `caddy_canopy_certificates` is true.
 
@@ -73,21 +67,21 @@ The shared credentials file and its directory MUST be removed where `tamanu_cadd
 
 ## DNS-01 users
 
-A server MAY have an IAM user for DNS-01.
+A server MAY have an [IAM user](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users.html) for DNS-01.
 
-The managed policy and inline policy of such a user MUST be those in the following table.
+The [managed policy and inline policy](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html) of such a user MUST be those in the following table.
 
 | policy | actions | resource | condition |
 |---|---|---|---|
 | managed, shared by all such users | `route53:ListHostedZones`, `route53:ListHostedZonesByName`, `route53:GetChange` | all | none |
-| inline | `route53:ChangeResourceRecordSets` | the hosted zone of the [core](../overview.md#core) ([CORE](../core.md#zone)) | record type `TXT` only, and only at `_acme-challenge.<name>` for the server hostname, the mSupply hostname where set, and the patient portal hostname on a central server |
+| inline | [`route53:ChangeResourceRecordSets`](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) | the hosted zone of the [core](../overview.md#core) ([CORE](../core.md#zone)) | record type `TXT` only, and only at `_acme-challenge.<name>` for the server hostname, the mSupply hostname where set, and the patient portal hostname on a central server |
 | inline | `route53:ListResourceRecordSets` | the hosted zone of the core | none |
 
 The access keys of the IAM user MUST be created by an operator.
 
 ## Tailscale certificates
 
-Caddy MUST be permitted to use the certificates of tailscaled, by `TS_PERMIT_CERT_UID=caddy` in `/etc/default/tailscaled`.
+Caddy MUST be permitted to use the [certificates](https://tailscale.com/kb/1153/enabling-https) of tailscaled, by [`TS_PERMIT_CERT_UID=caddy`](https://tailscale.com/kb/1190/caddy-certificates) in `/etc/default/tailscaled`.
 
 ## Inventory variables
 

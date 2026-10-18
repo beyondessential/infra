@@ -12,9 +12,6 @@ The host is specified by [LNXSRV](server.md), the database by [LNXDB](database.m
 | term | meaning |
 |---|---|
 | quadlet | A systemd unit generated from a `.container` file that describes a Podman container ([podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)). |
-| network alias | A name under which the other containers of a Podman network resolve a container ([podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)). |
-| podman secret | A named secret that Podman stores and mounts into a container at `/run/secrets` ([podman-secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html)). |
-| socket activation | Starting a service on the first connection to a socket that systemd holds ([systemd.socket](https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html)). |
 | Caddy | The web server that terminates TLS, serves HTTP/3 and reverse proxies ([Caddy documentation](https://caddyserver.com/docs/)). |
 
 ## Services
@@ -91,7 +88,7 @@ Where the inventory enables the host certificate store for Tamanu containers, ev
 
 Container images that no container references and that carry no tag SHOULD be pruned daily in the background [resource class](../overview.md#resource-class).
 
-A Tamanu container MUST be reachable at the network aliases in the following table, where `<i>` is its instance and `<t>` the server type.
+A Tamanu container MUST be reachable at the [network aliases](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) in the following table, where `<i>` is its instance and `<t>` the server type.
 
 | service | alias | alias of an instance |
 |---|---|---|
@@ -148,7 +145,7 @@ The file `local.json5` MUST NOT be edited by operators.
 
 The [server key](../overview.md#server-key) is the per-server secret that encrypts the values Tamanu stores as secrets.
 
-Each Tamanu server MUST have a server key, held as the podman secret `tamanu-config-key`.
+Each Tamanu server MUST have a server key, held as the [podman secret](https://docs.podman.io/en/latest/markdown/podman-secret.1.html) `tamanu-config-key`.
 
 The server key MUST be mounted into every Tamanu container at `/run/secrets/tamanu-config-key` with mode 0400.
 
@@ -182,7 +179,7 @@ A rolling restart MUST restart API and frontend instances one at a time, keeping
 
 A Linux server MUST run [Caddy](#borrowed-terms) from the BES package, held against unattended upgrade at the version that the inventory names.
 
-The proxy MUST be started by socket activation on `[::]:80` and `[::]:443` over TCP and `[::]:443` over UDP, and its service unit MUST NOT be enabled directly.
+The proxy MUST be started by [socket activation](https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html) on `[::]:80` and `[::]:443` over TCP and `[::]:443` over UDP, and its service unit MUST NOT be enabled directly.
 
 The proxy's service unit MUST be ordered after the [bestool daemon](../overview.md#bestool-daemon).
 

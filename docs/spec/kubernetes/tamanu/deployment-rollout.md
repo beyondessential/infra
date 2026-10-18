@@ -12,19 +12,12 @@ In this spec, `<server>` is `central` or `facility-N`, where N numbers the facil
 | term | meaning |
 |---|---|
 | Application | An Argo CD `Application`, the declaration of one deployment that Argo CD keeps in sync ([Argo CD declarative setup](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)). |
-| sync wave | An integer on a resource that orders it within one sync. A wave starts when every resource of the lower waves is synced and healthy ([Argo CD sync phases and waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/)). |
 | sync hook | A resource that Argo CD runs during a sync instead of keeping applied. A hook that is deleted before it is created again runs afresh on every sync ([Argo CD resource hooks](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/)). |
 | Synced, Healthy | The sync status and the health status that Argo CD reports for an Application ([Argo CD resource health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/)). |
-| automated sync, prune, self-heal | The sync policy under which Argo CD applies changes without being asked, deletes resources the render no longer produces, and reverts drift of the live cluster ([Argo CD automated sync policy](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/)). |
-| ignored difference | A field that Argo CD leaves out of its comparison of the render with the live object ([Argo CD diffing customization](https://argo-cd.readthedocs.io/en/stable/user-guide/diffing/)). |
-| respect ignored differences | The sync option under which an ignored field also keeps its live value when Argo CD applies the render ([Argo CD sync options](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#respect-ignore-difference-configs)). |
 | Deployment | The Kubernetes workload resource. The capitalised word never means a deployment of Tamanu ([Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)). |
-| recreate | The Deployment update strategy that stops every old pod before it starts a new one ([Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)). |
 | node affinity | A required or preferred match of a pod against node labels ([Kubernetes assigning pods to nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)). |
 | topology spread constraint | A limit on how unevenly the pods of a workload sit across nodes ([Kubernetes pod topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)). |
-| toleration | The permission for a pod to run on a node with a matching taint ([Kubernetes taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)). |
 | PodDisruptionBudget | A limit on how many pods of a workload may be voluntarily disrupted at once ([Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)). |
-| startup probe, liveness probe | A startup probe holds back a container's readiness until the container has started, and a liveness probe restarts a container that has stopped responding ([Kubernetes probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)). |
 | database cluster | A CloudNativePG `Cluster`, a PostgreSQL primary with its replicas ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). |
 
 ## Application
@@ -38,7 +31,7 @@ The Application MUST be named as the namespace of the deployment, and MUST belon
 
 The Application MUST apply the render of the deployment to that namespace.
 
-The Application MUST use automated sync, with prune and self-heal.
+The Application MUST use [automated sync, with prune and self-heal](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/).
 
 The Application MUST use server-side apply and server-side diff.
 
@@ -54,7 +47,7 @@ Which renderer renders an Application is specified in [K8STRO](renderer-rollout.
 
 ## Sync order
 
-The renderer MUST order the sync waves of the resources of a deployment as the following table gives, earliest first.
+The renderer MUST order the [sync waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) of the resources of a deployment as the following table gives, earliest first.
 
 | order | resources |
 |---|---|
@@ -124,7 +117,7 @@ The renderer MUST refuse a deployment that is configured to be topped up with ge
 
 ## Update strategy
 
-The central task runner, the task runner of each facility and the sync server of each facility MUST be updated by recreation.
+The central task runner, the task runner of each facility and the sync server of each facility MUST be updated by [recreation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/).
 
 > [!NOTE]
 > Each of these runs scheduled work or sync, which two instances at once would run twice.
@@ -133,7 +126,7 @@ An API server, a web frontend and a FHIR worker MUST be updated by rolling updat
 
 ## Server health
 
-An API server, a facility sync server and a web frontend MUST declare a startup probe and a liveness probe, each of which fetches the root path of the server.
+An API server, a facility sync server and a web frontend MUST declare a [startup probe and a liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/), each of which fetches the root path of the server.
 
 ## Replicas
 
@@ -178,7 +171,7 @@ A deployment with capacity `ondemand` MUST run those pods only on nodes with the
 
 A deployment with capacity `spot` SHOULD run those pods on nodes with the label `bes.node.schedule=spot`.
 
-A deployment with capacity `spot` SHOULD give those pods a toleration of the taint `spotInstance=true:PreferNoSchedule`.
+A deployment with capacity `spot` SHOULD give those pods a [toleration](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) of the taint `spotInstance=true:PreferNoSchedule`.
 
 The database clusters of a deployment MUST follow the capacity of the deployment.
 
@@ -219,7 +212,7 @@ The database clusters of a deployment MUST NOT keep the disruption budgets of th
 
 ## Ignored differences
 
-The Application MUST ignore the differences in the following table, and MUST respect them when it syncs.
+The Application MUST [ignore the differences](https://argo-cd.readthedocs.io/en/stable/user-guide/diffing/) in the following table, and MUST [respect them](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#respect-ignore-difference-configs) when it syncs.
 
 | resource | ignored field | changed by |
 |---|---|---|

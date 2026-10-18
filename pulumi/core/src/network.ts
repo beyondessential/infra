@@ -25,6 +25,7 @@ const networkAws = new awsClassic.Provider('core-network-aws', {
   },
 });
 
+// spec: CORE#audit
 const logGroup = new awsClassic.cloudwatch.LogGroup('core-network-flow-logs', {
   name: '/aws/vpc/flowlogs/core-network',
   retentionInDays: 30,
@@ -33,6 +34,7 @@ const logGroup = new awsClassic.cloudwatch.LogGroup('core-network-flow-logs', {
 
 // spec: CORE#network
 // spec: CORE#egress
+// spec: CORE#addressing
 const $network = accountId.apply((id) => {
   const ipv4Cidr = v4 === true ? `10.${parseInt(id.slice(-2), 10)}.0.0/16` : v4;
 
@@ -89,6 +91,7 @@ network.vpc.apply((vpcId) => {
   });
 });
 
+// spec: CORE#network
 export const { arn: dbSubnetGroup } = privateSubnets
   ? new awsClassic.rds.SubnetGroup('core-workload', {
       subnetIds: network.workloadSubnetIds,
@@ -99,6 +102,7 @@ export const { arn: dbSubnetGroup } = privateSubnets
     })
   : { arn: undefined };
 
+// spec: CORE#egress
 $network.apply((net) => {
   new awsClassic.ec2.VpcEndpoint('core-endpoint-s3', {
     serviceName: interpolate`com.amazonaws.${region}.s3`,

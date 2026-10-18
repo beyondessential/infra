@@ -11,8 +11,6 @@ The container network, reverse proxy and certificates that mSupply uses are thos
 
 | term | meaning |
 |---|---|
-| quadlet | A systemd unit generated from a `.container` file that describes a Podman container ([podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)). |
-| network alias | A name under which the other containers of a Podman network resolve a container ([podman-systemd.unit](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)). |
 | Tailscale service | A name on the tailnet, not tied to one node, that a node advertises with Tailscale serve ([Tailscale Services](https://tailscale.com/kb/1552/tailscale-services), [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve)). |
 
 ## Enablement
@@ -52,13 +50,13 @@ The playbooks MUST read the instance tags `MsupplyFQDN` and `MsupplyTailscaleSer
 
 ## Service
 
-mSupply MUST run as the quadlet `msupply` from the image `docker.io/msupplyfoundation/omsupply:<tag>`, whose tag is the value of `msupply_version_arm64` on an arm64 host and of `msupply_version_amd64` otherwise.
+mSupply MUST run as the [quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) `msupply` from the image `docker.io/msupplyfoundation/omsupply:<tag>`, whose tag is the value of `msupply_version_arm64` on an arm64 host and of `msupply_version_amd64` otherwise.
 
 The unit `msupply` MUST start at boot, and MUST restart whenever it exits.
 
 mSupply MUST run as the system user `msupply`, with its database in `/var/lib/msupply` with mode 0770, and its configuration in `/etc/msupply/env` and `/etc/msupply/local.yaml`.
 
-mSupply MUST be reachable at the network alias `api.msupply.internal`.
+mSupply MUST be reachable at the [network alias](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) `api.msupply.internal`.
 
 The host resolver MUST route names under `msupply.internal` to the container DNS server of [LNXRUN](runtime.md#container-runtime).
 

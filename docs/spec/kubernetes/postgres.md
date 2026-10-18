@@ -14,8 +14,6 @@ Memory-derived parameters follow the [pgtune](https://github.com/le0pard/pgtune)
 |---|---|
 | cluster | A CloudNativePG `Cluster` resource, a PostgreSQL primary with its replicas ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). Within this spec the word never means a Kubernetes cluster. |
 | instance pod | A pod running one PostgreSQL instance of a cluster ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). |
-| disruption budget | A PodDisruptionBudget that the operator creates for a cluster ([Kubernetes disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)). |
-| switchover | The promotion of a replica to primary while the old primary is demoted, without data loss ([CloudNativePG documentation](https://cloudnative-pg.io/documentation/current/)). |
 | server parameters | The configuration parameters of PostgreSQL, such as `shared_buffers` ([PostgreSQL server configuration](https://www.postgresql.org/docs/current/runtime-config.html)). |
 
 ## Tuning basis
@@ -74,7 +72,7 @@ A backend that waits on a lock for longer than the deadlock timeout MUST log the
 
 ## Scheduling and disruption
 
-A cluster MUST keep the operator's disruption budgets unless it opts out.
+A cluster MUST keep the operator's [disruption budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) unless it opts out.
 
 A cluster that opts out of its disruption budgets MUST let every node hosting its instances be drained, including the node holding its primary.
 
@@ -88,7 +86,7 @@ A cluster that opts into on-demand placement MUST run its instances only on on-d
 
 A cluster that opts into neither the critical database pool nor on-demand placement MUST prefer spot capacity.
 
-A cluster with more than one instance MUST update its primary by first promoting an already-updated replica through a switchover.
+A cluster with more than one instance MUST update its primary by first promoting an already-updated replica through a [switchover](https://cloudnative-pg.io/documentation/current/).
 
 A cluster MUST NOT be reported ready to the resources that depend on it until its latest update has been accepted, its read-write service has a ready instance behind it, and its superuser credentials exist.
 
