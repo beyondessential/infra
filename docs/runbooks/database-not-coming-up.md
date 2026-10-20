@@ -37,6 +37,7 @@ Which server's cluster, whether the deployment is hibernated, whether this is it
 Support's own steps end at diagnosis.
 Restarting one instance with `kubectl cnpg destroy` is **[dev-OTS]** and recreates it from its replicas or backups: a developer decides.
 Restoring from a backup over a live database is ruled out.
+When the clusters are gone altogether, a developer restores them: [restore from backup](../sops/restore-databases-from-backup.md) **[dev-OTS]**.
 
 ## 6. Escalate
 
