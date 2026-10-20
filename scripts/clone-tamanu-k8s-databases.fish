@@ -2,15 +2,16 @@
 
 # Copy every CNPG database from one tamanu namespace into another.
 #
-# For moving a deployment to a new stack, where the new namespace has already
-# been stood up and provisioned and its data is to be replaced wholesale by the
-# old one's.
+# For moving a deployment to a new stack, or restoring one from recovered
+# clusters (docs/sops/restore-databases-from-backup.md), where the target
+# namespace has already been stood up and provisioned and its data is to be
+# replaced wholesale by the source's.
 #
 # Usage:
 #   scripts/clone-tamanu-k8s-databases.fish CONTEXT SRC_NS DST_NS [--execute]
 #
-# Read this through before running with --execute: it replaces the contents of
-# every database in DST_NS.
+# Read this through before running with --execute: it drops and recreates every
+# database in DST_NS.
 
 set -l dumpdir (mktemp -d)
 
@@ -41,9 +42,44 @@ end
 echo "Clusters to copy: $clusters"
 echo
 
-# The servers hold connections and take locks, and pg_restore --clean has to drop
-# every object it replaces. Scale them away first and put them back afterwards,
-# rather than racing them.
+# Argo CD's hook Jobs (migrators, reporting grants) write to the databases on every
+# sync, and a migrator that runs mid-restore leaves a mix of both schemas. Turn off
+# automated sync and stop any running operation first; the policy is put back at
+# the end, exactly as it was.
+set -l argo_ns argocd-system
+set -l automated
+if set -q _flag_execute; and kubectl --context=$context -n $argo_ns get application $dst >/dev/null 2>&1
+    echo "== stopping Argo CD for $dst"
+    set automated (kubectl --context=$context -n $argo_ns get application $dst \
+        -o jsonpath='{.spec.syncPolicy.automated}')
+    if test -n "$automated"
+        kubectl --context=$context -n $argo_ns patch application $dst --type json \
+            -p '[{"op":"remove","path":"/spec/syncPolicy/automated"}]' >/dev/null
+    end
+    set -l phase (kubectl --context=$context -n $argo_ns get application $dst \
+        -o jsonpath='{.status.operationState.phase}')
+    if test "$phase" = Running
+        kubectl --context=$context -n $argo_ns patch application $dst --type merge \
+            -p '{"status":{"operationState":{"phase":"Terminating"}}}' >/dev/null
+        for i in (seq 40)
+            set phase (kubectl --context=$context -n $argo_ns get application $dst \
+                -o jsonpath='{.status.operationState.phase}')
+            contains -- $phase Running Terminating; or break
+            sleep 3
+        end
+    end
+    if contains -- "$phase" Running Terminating
+        echo "  the Argo CD operation did not stop" >&2
+        exit 1
+    end
+    kubectl --context=$context -n $dst delete jobs --all --wait=true >/dev/null
+    echo "  automated sync off, operation $phase, hook Jobs deleted"
+    echo
+end
+
+# The servers hold connections and take locks, and each database is dropped before
+# it is restored. Scale them away first and put them back afterwards, rather than
+# racing them.
 set -l scaled
 if set -q _flag_execute
     echo "== quiescing $dst"
@@ -53,9 +89,24 @@ if set -q _flag_execute
         set -a scaled $entry
         kubectl --context=$context -n $dst scale deploy (string split '=' -- $entry)[1] --replicas=0 >/dev/null
     end
+    kubectl --context=$context -n $dst wait --for=delete pod -l '!cnpg.io/cluster' --timeout=300s >/dev/null 2>&1
+    set -l left (kubectl --context=$context -n $dst get pods --no-headers -l '!cnpg.io/cluster' 2>/dev/null | count)
+    if test $left -gt 0
+        echo "  $left non-database pod(s) still running" >&2
+        exit 1
+    end
     echo "  scaled down "(count $scaled)" deployment(s)"
     echo
 end
+
+# What must match between the two sides once a database is restored. The owner of
+# the tables matters as much as their count: the application connects as `app` and
+# cannot read tables owned by anyone else, so a clone that copied every row but not
+# its ownership looks complete and fails at startup.
+set -l summary "select (select count(*) from \"SequelizeMeta\") || ' migrations, '
+  || (select count(*) from pg_constraint c join pg_namespace n on n.oid = c.connamespace where n.nspname = 'public') || ' constraints, '
+  || (select count(*) from pg_indexes where schemaname = 'public') || ' indexes, '
+  || (select count(*) from pg_tables where schemaname = 'public' and tableowner = 'app') || ' tables owned by app';"
 
 for cluster in $clusters
     set -l src_pod (primary_of $context $src $cluster)
@@ -72,11 +123,11 @@ for cluster in $clusters
         continue
     end
 
-    # Custom format so the restore can --clean. Ownership and grants are carried
-    # across deliberately: CNPG names its roles the same in every namespace, so
-    # `app` exists on both sides, and the application connects as `app` — restore
-    # without them and every table lands owned by postgres with no grants, which
-    # the servers meet as "permission denied for table local_system_facts".
+    # Ownership and grants are carried across deliberately: CNPG names its roles
+    # the same in every namespace, so `app` exists on both sides, and the
+    # application connects as `app` — restore without them and every table lands
+    # owned by postgres with no grants, which the servers meet as "permission
+    # denied for table local_system_facts".
     kubectl --context=$context -n $src exec $src_pod -c postgres -- \
         pg_dump -U postgres -Fc app >$dumpdir/$cluster.dump
     or begin
@@ -85,32 +136,46 @@ for cluster in $clusters
     end
     echo "  dumped "(du -h $dumpdir/$cluster.dump | cut -f1)
 
-    # --clean --if-exists drops each object before recreating it, which is what
-    # replaces the freshly provisioned schema. pg_restore reports non-fatal
-    # errors for objects that were not there to drop, hence --exit-on-error is
-    # not used; the row counts below are the real check.
-    kubectl --context=$context -n $dst exec -i $dst_pod -c postgres -- \
-        pg_restore -U postgres --clean --if-exists -d app \
-        <$dumpdir/$cluster.dump 2>&1 | rg -c "^pg_restore: (error|warning)" \
-        | xargs -I{} echo "  restore reported {} error/warning line(s)"
+    # Restoring with --clean over the provisioned schema leaves behind whatever it
+    # cannot drop (an object something else depends on) and skips what then
+    # collides, so the target is recreated empty instead, with the encoding and
+    # locale it was created with.
+    set -l locale (kubectl --context=$context -n $dst exec $dst_pod -c postgres -- \
+        psql -U postgres -d postgres -tA -F ' ' -c \
+        "select pg_encoding_to_char(encoding), datcollate, datctype from pg_database where datname = 'app';" \
+        | string split ' ')
+    if test (count $locale) -ne 3
+        echo "  could not read the encoding and locale of $dst's app database" >&2
+        exit 1
+    end
+    printf '%s\n' \
+        "select pg_terminate_backend(pid) from pg_stat_activity where datname = 'app' and pid <> pg_backend_pid();" \
+        "drop database app;" \
+        "create database app owner app encoding '$locale[1]' lc_collate '$locale[2]' lc_ctype '$locale[3]' template template0;" \
+        | kubectl --context=$context -n $dst exec -i $dst_pod -c postgres -- \
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q >/dev/null
+    or begin
+        echo "  could not recreate the app database" >&2
+        exit 1
+    end
 
-    # Tables and their owner on both sides. The owner matters as much as the
-    # count: the application connects as `app` and cannot read tables owned by
-    # anyone else, so a clone that copied every row but not its ownership looks
-    # complete here and fails at startup.
-    for side in "src:$src_pod:$src" "dst:$dst_pod:$dst"
-        set -l parts (string split ':' -- $side)
-        # stderr is kept: a check that cannot report its own failure is worse than
-        # no check, because an empty line reads as "nothing wrong".
-        set -l owners (kubectl --context=$context -n $parts[3] exec $parts[2] -c postgres -- \
-            psql -U postgres -d app -tAc \
-            "select tableowner || ': ' || count(*) from pg_tables where schemaname='public' group by tableowner;" \
-            | string match -er . | string join '; ')
-        if test -z "$owners"
-            echo "  $parts[1] public tables by owner: (query returned nothing)" >&2
-        else
-            echo "  $parts[1] public tables by owner: $owners"
-        end
+    # Into an empty database there should be nothing to report, so every line is
+    # shown; the summary comparison below is the real check.
+    kubectl --context=$context -n $dst exec -i $dst_pod -c postgres -- \
+        pg_restore -U postgres -d app <$dumpdir/$cluster.dump 2>&1 \
+        | string match -r '^pg_restore: (?:error|warning).*' | string replace -r '^' '  '
+
+    # stderr is kept: a check that cannot report its own failure is worse than no
+    # check, because an empty line reads as "nothing wrong".
+    set -l want (kubectl --context=$context -n $src exec $src_pod -c postgres -- \
+        psql -U postgres -d app -tAc "$summary")
+    set -l got (kubectl --context=$context -n $dst exec $dst_pod -c postgres -- \
+        psql -U postgres -d app -tAc "$summary")
+    echo "  src: $want"
+    echo "  dst: $got"
+    if test -z "$want" -o "$want" != "$got"
+        echo "  $cluster does not match its source; stopping with $dst scaled down and Argo CD off" >&2
+        exit 1
     end
 
     # A facility database records the central it is bonded to, and the server
@@ -122,9 +187,8 @@ for cluster in $clusters
         psql -U postgres -d app -tAc \
         "select count(*) from local_system_facts where key = 'syncHost';" 2>/dev/null)
     if test "$synchost" = 1
-        set -l cm (kubectl --context=$context -n $dst get cm -o json \
-            | jq -r '.items[] | select(.metadata.labels["bes.tamanu/templated-from"]
-                     // "" | startswith("config-facility-template-")) | .metadata.name')
+        # facility-N-db reads its config from config-facility-N.
+        set -l cm config-(string replace -r -- '-db$' '' $cluster)
         set -l want (kubectl --context=$context -n $dst get cm $cm \
             -o jsonpath='{.data.local\.json5}' \
             | string match -gr "^\s+host: '(https://[^']+)'" | head -1)
@@ -152,9 +216,16 @@ if set -q _flag_execute
         kubectl --context=$context -n $dst scale deploy $parts[1] --replicas=$parts[2] >/dev/null
     end
     echo "  scaled "(count $scaled)" deployment(s) back"
+    # Re-enabling automated sync starts a sync, which runs the migrators against
+    # the restored databases before the servers roll.
+    if test -n "$automated"
+        kubectl --context=$context -n $argo_ns patch application $dst --type merge \
+            -p "{\"spec\":{\"syncPolicy\":{\"automated\":$automated}}}" >/dev/null
+        echo "  automated sync restored"
+    end
     echo
-    echo "The restored databases carry the source deployment's facility ids and"
-    echo "device facts. Rename them next, before the servers are trusted:"
+    echo "If $src belongs to another deployment, the restored databases carry its"
+    echo "facility ids and device facts. Rename them next, before the servers are trusted:"
     echo "  scripts/rename-tamanu-facility.fish $context $dst OLD_ID NEW_ID --execute"
     echo "  scripts/repoint-tamanu-facility-config.fish $context $dst OLD_ID NEW_ID --execute"
 else
