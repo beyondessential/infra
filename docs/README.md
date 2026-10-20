@@ -85,6 +85,7 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 - [Runbook: Application shows a render error](runbooks/render-error.md)
 - [Runbook: a renderer change does not show up](runbooks/renderer-change-not-showing.md)
 - [Runbook: a seeded deployment starts empty, with the wrong data, or refuses](runbooks/seeded-deployment.md)
+- [Runbook: settings fail to decrypt](runbooks/settings-decryption-failed.md)
 - [Runbook: the update is refused before anything changes](runbooks/stub-refuses-update.md)
 - [Runbook: teardown is stuck](runbooks/teardown-stuck.md)
 
@@ -115,6 +116,7 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 - [SOP: Pull stack config to your machine](sops/refresh-stack-config.md)
 - [SOP: Register a cluster's tags and operator identity in Tailscale](sops/register-cluster-in-tailscale.md)
 - [SOP: Restart services](sops/restart-services.md)
+- [SOP: Restore a deployment's databases from backup](sops/restore-databases-from-backup.md)
 - [SOP: Wind down or recall the bootstrap nodegroups](sops/scale-bootstrap-nodegroups.md)
 - [SOP: Update a Kubernetes cluster](sops/update-k8s-cluster.md)
 - [SOP: Wake a hibernated deployment](sops/wake-deployment.md)

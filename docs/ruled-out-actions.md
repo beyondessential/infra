@@ -22,6 +22,7 @@ These destroy backups, volumes or secrets, or overwrite a live database, and can
   Versioning and a role that cannot delete versions are what stop a compromised pod from destroying every backup ([K8SBAK](spec/kubernetes/database-backups.md#backup-bucket), [K8SBAK](spec/kubernetes/database-backups.md#backup-role)).
 - **Restoring over a live database.** `pg_restore` or a `psql` replay into a running deployment's database, bootstrapping a `Cluster` from a snapshot or backup over existing data, or `scripts/clone-tamanu-k8s-databases.fish ... --execute` into a namespace that holds data (it replaces every database in the target).
   A seed snapshot is used only when a cluster is first created, so changing `seedSnapshot` on a running deployment does not restore anything ([seeded deployments](runbooks/seeded-deployment.md)).
+  A deployment whose clusters are already gone is not this case: [restore from backup](sops/restore-databases-from-backup.md) is dev-OTS.
 - **Deleting or editing volumes and snapshots.** `kubectl delete` or `edit` of a PersistentVolumeClaim, PersistentVolume, VolumeSnapshot or VolumeSnapshotContent that belongs to a database `Cluster`, to a seed snapshot in `tamanu-seed`, or to a blob store claim (`<server>-blobs`).
   Hibernation is the supported way to stop a database and keep its volumes ([K8STSD](spec/kubernetes/tamanu/scaledown.md#hibernation)).
   Releasing a claim reclaims what its content occupied, so a deleted blob claim can take the shared directory with it ([K8SVOL](spec/kubernetes/volumes.md#reclaim)).
@@ -32,9 +33,11 @@ These destroy backups, volumes or secrets, or overwrite a live database, and can
 - **Destroying a long-lived deployment or its namespace.** Deleting its SubnamespaceAnchor in `tamanu-super`, `kubectl delete namespace`, `pulumi destroy`, `pulumi stack rm --force`, `scripts/tamanuStacks.fish --destroy --yes`, or removing the Application's finalizer.
   Deleting the anchor deletes the namespace and every object in it ([K8SNSP](spec/kubernetes/namespaces.md#deployment-namespaces), [HNC](https://github.com/kubernetes-sigs/hierarchical-namespaces/blob/master/docs/user-guide/how-to.md#delete-a-subnamespace)).
   The same actions on a disposable deployment are [dev-OTS](#consequential-but-recoverable-dev-ots), see [destroy a deployment](sops/destroy-deployment.md).
+  So is the destroy and update that [restore from backup](sops/restore-databases-from-backup.md) makes once a deployment's clusters are already gone.
 - **Destroying a cluster** (a `pulumi destroy` of a `k8s-core` or `k8s-essentials` stack, or deleting the EKS cluster).
 - **Creating, rotating, recreating or deleting secrets.** `tamanu-crypto`, `config-secrets-<server>`, `<server>-db-app`, `<server>-db-superuser`, `<server>-raw-db`, `<server>-reporting-db`, the Secrets copied from `tamanu-system`, and any API key or credential.
   Recreating `config-secrets-<server>` signs every user out, and `tamanu-crypto` holds the key file the servers use to decrypt secret values.
+  Putting `tamanu-crypto` back to the values its databases were written under is dev-OTS: [settings decryption failed](runbooks/settings-decryption-failed.md).
   Do not put a secret in stack config either: the stub refuses it ([config reference](reference/tamanu-deployment-config.md#rules-that-apply-to-every-key)).
 - **Rewriting clinical data with the repo's scripts.** `scripts/rename-tamanu-facility.fish` and the `rename-tamanu-facility*.sql` and `repoint-tamanu-facility-config.fish` helpers rewrite facility identifiers across the databases.
   They are reviewed developer data fixes, the same class as the Tamanu pack's ban on bulk `UPDATE` of clinical tables.
@@ -56,6 +59,8 @@ Each needs a developer and the context for why.
 - **Editing or deleting the config ConfigMaps** (`config-central`, `config-facility-N`, `provisioning`): [edit or reset config](sops/edit-or-reset-config.md).
 - **Lowering `backupRetentionDays`**, which shortens the recovery window and lets the archiver delete older base backups and WAL ([K8SBAK](spec/kubernetes/database-backups.md#recovery-window)).
 - **Changing `capacity`, `architecture`, `dbStorage` or `dbMemory`** on an existing deployment, which reschedules or restarts its database pods.
+- **Restoring a deployment whose database clusters are gone**: [restore from backup](sops/restore-databases-from-backup.md), including the [crypto key](runbooks/settings-decryption-failed.md).
+- **Dropping the `reporting` schema** to unblock a migrator: [a hook Job failed](runbooks/hook-job-failed.md).
 - **`kubectl cnpg destroy`** on one instance of a database. The Tamanu pack classes it the same way ([connect-psql](https://github.com/beyondessential/tamanu/blob/main/docs/sops/connect-psql.md)).
 
 Waking a hibernated deployment is the one mutating step pre-signed here: [wake a deployment](sops/wake-deployment.md) is **approved-mitigation** ([K8STSD](spec/kubernetes/tamanu/scaledown.md#waking) lets a person do it, and the Argo CD default role allows it, [K8SNSP](spec/kubernetes/namespaces.md#argo-cd-access)).

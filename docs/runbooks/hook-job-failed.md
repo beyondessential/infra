@@ -28,12 +28,22 @@ Which Job, which server, the Tamanu version and what changed: [deployment contex
 | `central-provisioner` (wave 2, 2 retries) | Runs `provision --skip-if-not-needed` on the `provisioning` ConfigMap. | A hand edit broke `provisioning`, or the migrator did not finish. |
 | `facility-N-setup-sync` (wave 2, 5 retries) | Runs `setupSync` to seed the central address and credentials into the facility. | Needs the provisioning document and a reachable central. Only present for Tamanu 2.60.0 or later, and omitted when the version is unknown ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#version-gated-steps)). |
 
+A `<server>-migrator` log of `cannot alter type of a column used by a view or rule`, naming `rule _RETURN on view reporting.<view>`, means a migration changes a column that a view in the `reporting` schema reads.
+Those views are built outside Tamanu's migrations, and the migrator Job does not drop them.
+
 The stub runs these Jobs on every sync ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)), so a Job that fails only on a re-run against an unchanged image has a command that is not safe to repeat: that is a Tamanu fault.
 
 ## 5. Resolve
 
 - Fix the cause: database health, image version, or the `provisioning` ConfigMap ([edit or reset config](../sops/edit-or-reset-config.md), **[dev-OTS, sensitive-data]**).
 - The next sync recreates the Job. To trigger it, update the stack ([change a deployment's config](../sops/change-deployment-config.md)) **[dev-OTS]**.
+- A migrator blocked by a `reporting` view: save the schema, then drop it, on that server's database ([connect to the database](../sops/connect-database.md)) **[dev-OTS, sensitive-data]**.
+  The migrator's retry then goes through; the views come back with the next reporting deploy, and the saved schema is there if they are needed before.
+
+  ```sh
+  pg_dump -U postgres -d app -s -n reporting > reporting-<stack>-<server>.sql
+  psql -U postgres -d app -c 'DROP SCHEMA reporting CASCADE;'
+  ```
 - A failed `facility-N-setup-sync` on a version that predates 2.60.0 cannot happen: the version is wrong or unknown, so check `appVersion`.
 
 ## 6. Escalate
