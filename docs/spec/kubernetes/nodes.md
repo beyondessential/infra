@@ -167,6 +167,29 @@ The critical database pool MUST replace nodes only within a daily maintenance wi
 
 The nodes of the critical database pool MUST be attributable as critical database capacity in cost reporting.
 
+## GPU pool
+
+A cluster MAY have a GPU pool, which is a dedicated pool named `gpu` offering nodes with NVIDIA GPUs.
+
+Whether a cluster has a GPU pool MUST be configurable per cluster.
+
+A node in the GPU pool MUST advertise its GPUs to the scheduler as the extended resource `nvidia.com/gpu`.
+
+A workload requests GPUs by setting a resource limit on `nvidia.com/gpu`, in addition to opting into the pool as for any dedicated pool.
+
+The GPU pool MUST run no nodes while no pod requests a GPU.
+
+The GPU pool MUST bound the number of GPUs it can provision.
+
+The GPU pool MUST remove a node only once no workload pods remain on it.
+
+> [!NOTE]
+> A batch job on a GPU node would otherwise be drained mid-run to repack it onto cheaper capacity.
+
+The GPU pool MUST use spot capacity only for instance types that meet the interruption frequency limit that applies to spot instance type selection.
+
+The nodes of the GPU pool MUST be attributable as GPU capacity in cost reporting.
+
 ## Exit node
 
 An exit node is a Tailscale node that forwards the internet traffic of connected clients, run as a workload in the cluster.
