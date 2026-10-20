@@ -14,6 +14,7 @@ The provisioning of servers in AWS is specified by [LNXAWS](aws.md), the databas
 | instance | An EC2 instance ([Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html)). |
 | ufw | The Uncomplicated Firewall front end to the kernel packet filter ([UFW](https://help.ubuntu.com/community/UFW)). |
 | Munin | The graphing system whose node daemon collects plugin metrics ([Munin](https://munin-monitoring.org/)). |
+| upki | The client that keeps a local copy of certificate revocation data and checks certificates against it ([upki](https://github.com/rustls/upki)). |
 
 ## Platform
 
@@ -84,7 +85,7 @@ A Linux server MUST be configured with the package repositories in the following
 
 | repository | pin priority | provides |
 |---|---|---|
-| `https://tools.ops.tamanu.io/apt stable main` | 999 for every package from the origin | [bestool](../overview.md#bestool), `caddy`, `podman`, `crun` and `kopia`; the repository that [`image.packages.bes-tools`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image |
+| `https://tools.ops.tamanu.io/apt stable main` | 999 for every package from the origin | [bestool](../overview.md#bestool), `caddy`, `podman`, `crun`, `kopia` and `upki`; the repository that [`image.packages.bes-tools`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image |
 | `https://apt.postgresql.org/pub/repos/apt <release>-pgdg main` | 900 | PostgreSQL |
 | `https://pkgs.tailscale.com/stable/ubuntu <release> main` | 900 | Tailscale; the repository that [`image.packages.tailscale`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image |
 | `https://artifacts.elastic.co/packages/9.x/apt stable main` | 900 | The Elastic Agent, where it is enabled |
@@ -102,9 +103,25 @@ A Linux server SHOULD upgrade the packages in the following table on the schedul
 | `bestool` | daily |
 | `openssh-server` | weekly |
 | `tzdata` | weekly |
+| `ca-certificates` | weekly |
+| `upki` | weekly |
 | `tailscale` | weekly, as [`image.tailscale.auto-update`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#tailscale) requires of an image |
 
 A Linux server SHOULD restart a service whose executable, or a shared library that it has mapped, a package operation replaced, as [`image.packages.service-restart`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image.
+
+## Certificate revocation data
+
+A Linux server MUST have upki installed, as [`image.packages.upki`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image.
+
+The playbooks MUST install upki on a server that does not have it, whether or not the server is built from an image.
+
+A Linux server MUST configure upki system-wide in `/etc/upki/config.toml`, with the cache directory `/var/cache/upki` and the fetch URL `https://upki.ubuntu.com/revocation/`.
+
+The revocation data in `/var/cache/upki` MUST be readable by every user of the server.
+
+A Linux server MUST refresh its revocation data shortly after boot and at least every 6 hours after that.
+
+A refresh MUST run as an unprivileged system user that can write to the cache directory and to no other system location.
 
 ## Time and names
 
@@ -154,7 +171,7 @@ A Linux server MUST run the services in the following table in the resource clas
 |---|---|
 | PostgreSQL | critical |
 | Caddy | critical |
-| package refreshes, btrfs balance and scrub, and image pruning | background |
+| package refreshes, revocation data refreshes, btrfs balance and scrub, and image pruning | background |
 
 PostgreSQL SHOULD restart on failure after 30 seconds.
 
