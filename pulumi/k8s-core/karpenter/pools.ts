@@ -19,6 +19,7 @@ import {
   ingressNodeClass,
   systemNodeClass,
   exitNodeClass,
+  gpuNodeClass,
 } from './classes.ts';
 
 // Instance type lists, mirroring what nodes/groups.ts uses for the equivalent
@@ -151,7 +152,7 @@ interface PoolArgs {
   // Taints to dedicate the pool; tolerating pods must opt in explicitly.
   extraTaints?: Taint[];
   capacityTypes: ('spot' | 'on-demand')[];
-  limits: { cpu: number; memory: string };
+  limits: { cpu: number; memory: string; 'nvidia.com/gpu'?: number };
   budgets?: DisruptionBudget[];
   // How long a node may live before it is replaced regardless of budgets.
   expireAfter?: string;
@@ -335,6 +336,37 @@ pool('db-critical', {
   limits: { cpu: 16, memory: '128Gi' },
   weight: 10,
 });
+
+// spec: K8SNOD#gpu-pool
+// Batch inference capacity that sits at zero nodes until a pod requests
+// `nvidia.com/gpu`. Every GPU type in ap-southeast-2 is in the advisor's >20%
+// interruption band, so the pool is on-demand only. Single-GPU shapes across
+// three generations (T4, A10G, L4); Karpenter takes the cheapest that fits,
+// and a pod can pin one with the `karpenter.k8s.aws/instance-gpu-name` label.
+// The GPU types are outside the general-purpose families the
+// instanceTypeGroups helpers admit, hence the literal list. WhenEmpty so a
+// running job is never drained for consolidation.
+if (gpuNodeClass) {
+  pool('gpu', {
+    purpose: 'workload',
+    schedule: 'ondemand',
+    arch: 'amd64',
+    nodeClassRef: gpuNodeClass,
+    instanceTypes: [
+      'g4dn.xlarge',
+      'g4dn.2xlarge',
+      'g6.xlarge',
+      'g6.2xlarge',
+      'g5.xlarge',
+      'g5.2xlarge',
+    ],
+    capacityTypes: ['on-demand'],
+    extraTaints: [{ key: 'bes.node.group', value: 'gpu', effect: 'NoSchedule' }],
+    consolidationPolicy: 'WhenEmpty',
+    limits: { cpu: 16, memory: '64Gi', 'nvidia.com/gpu': 2 },
+    weight: 10,
+  });
+}
 
 // Slower consolidation for ingress — LB target churn is expensive. The fleet
 // is small (typically 2-3 nodes), so a percentage budget rounds badly; cap to

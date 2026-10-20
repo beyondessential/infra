@@ -157,9 +157,46 @@ export const dbCriticalNodeClass = new k8s.apiextensions.CustomResource(
   { provider, dependsOn: [karpenter] },
 );
 
+// spec: K8SNOD#gpu-pool
 // spec: K8SNOD#placement
 // spec: K8SNOD#node-storage
-export const ingressNodeClass = new k8s.apiextensions.CustomResource(
+// Opt-in per cluster. The bottlerocket alias resolves to the NVIDIA variant on
+// GPU instance types, which ships the driver and the device plugin, so nodes
+// advertise `nvidia.com/gpu` with nothing else installed. CUDA images and model
+// weights are large, hence a data volume sized apart from the workload one.
+const gpuPoolEnabled = cfg.getBoolean('gpuPool') ?? false;
+const gpuDiskGi = cfg.getNumber('gpuDiskGi') ?? 100;
+
+export const gpuNodeClass = gpuPoolEnabled
+  ? new k8s.apiextensions.CustomResource(
+      'nodeclass-gpu',
+      {
+        apiVersion: 'karpenter.k8s.aws/v1',
+        kind: 'EC2NodeClass',
+        metadata: { name: 'gpu' },
+        spec: {
+          role: nodeRoleName,
+          amiSelectorTerms: [{ alias: 'bottlerocket@latest' }],
+          subnetSelectorTerms: workloadSubnetTerms,
+          securityGroupSelectorTerms: clusterSgTerm,
+          metadataOptions: commonMetadataOptions,
+          blockDeviceMappings: ebs(`${gpuDiskGi}Gi`),
+          kubelet: { maxPods: 15 },
+          tags: {
+            'bes.node.purpose': 'workload',
+            Name: `${namePrefix} gpu`,
+            Purpose: 'k8s-gpu',
+            ...inheritedTags,
+          },
+        },
+      },
+      { provider, dependsOn: [karpenter] },
+    )
+  : undefined;
+
+// spec: K8SNOD#placement
+// spec: K8SNOD#node-storage
+export const ingressNodeClass =new k8s.apiextensions.CustomResource(
   'nodeclass-ingress',
   {
     apiVersion: 'karpenter.k8s.aws/v1',

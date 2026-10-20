@@ -22,6 +22,10 @@ All pools are arm64 except the two `x86` ones.
 | `db-replica` | workload | spot, falls back to on-demand | 10 | `bes.node.group=db-replica:NoSchedule`, spot | `x8g.medium`, `x8g.large`, `r6g.large`; `WhenEmpty`; limit 100 CPU, 1600Gi |
 | `db-critical` | workload | on-demand | 10 | `bes.node.group=db-critical:NoSchedule` | `r8g.large`, `r7g.large`, `r6g.large`; never expires; replaced on drift only, 1 node at a time, 14:00 to 16:00 UTC; limit 16 CPU, 128Gi |
 | `tailscale-exit` | tailscale-exit | on-demand | 10 | `bes.node.purpose=tailscale-exit:NoSchedule` | `t4g.small`, `t4g.medium`; limit 4 CPU, 8Gi |
+| `gpu` (only with `gpuPool: true`) | workload (amd64) | on-demand | 10 | `bes.node.group=gpu:NoSchedule` | `g4dn`, `g6`, `g5` at `xlarge` and `2xlarge`; `WhenEmpty`; limit 2 GPUs, 16 CPU, 64Gi |
+
+A pod gets a GPU node by tolerating `bes.node.group=gpu:NoSchedule`, selecting `bes.node.group: gpu`, and setting `resources.limits["nvidia.com/gpu"]`.
+Karpenter takes the cheapest type that fits (usually `g4dn.xlarge`, T4); a pod can pin a GPU model with the node label `karpenter.k8s.aws/instance-gpu-name` (`t4`, `a10g`, `l4`).
 
 Only a pod that tolerates the `NoSchedule` taint of a dedicated pool can land there ([dedicated pools](../spec/kubernetes/nodes.md#database-pools)).
 Spot instance types are filtered by price against on-demand and by interruption frequency (10% or less) from the curated price list `pulumi/common/instances.json` (refreshed by hand with `pulumi/common/refreshInstances.sh`), so the type list changes only when the list or the stack is updated.
@@ -38,6 +42,9 @@ All classes use `bottlerocket@latest`, IMDSv2 with IPv6 enabled and hop limit 2,
 | `ingress` | NAT | 15Gi | default | `k8s-ingress` |
 | `system` | workload | 15Gi | default | `k8s-system` |
 | `tailscale-exit` | workload | 15Gi | 15 | `k8s-tailscale-exit` |
+| `gpu` (only with `gpuPool: true`) | workload | `gpuDiskGi` (100) | 15 | `k8s-gpu` |
+
+On GPU instance types `bottlerocket@latest` resolves to the Bottlerocket NVIDIA variant, which carries the driver and the device plugin.
 
 Tag values on a class propagate to the IAM instance profile Karpenter creates, so they must use only characters IAM accepts ([runbook](../runbooks/nodes-not-provisioning.md)).
 
