@@ -21,9 +21,10 @@ Canopy side: card F5, PR #666. Item 1 (the path rename) blocks Canopy shipping.
 - [ ] CI step validating the file against the 2020-12 metaschema.
 - [ ] Short LLM guidance in `AGENTS.md` / the ansible docs on updating the catalogue when a playbook or variable table changes (the standing rule already says to update the schema).
 - [ ] `tamanu_facility_id` takes a string or a list and always renders as a list: update the facility template (`serverFacilityIds`), `TAMANU_FACILITY_IDS` in the clone setup script (comma-joined), the sync account display name, and the test in `tests/test_clone_restore.py`. The schema entry and specs are done.
-- [ ] Decide `tamanu_cache_central_dns` (read by no playbook or template): remove it from the 5 hosts, or add the behaviour it was meant to carry.
+- `tamanu_cache_central_dns` is removed, not carried: nothing in this repo or in Canopy PR 666 mentions it, so it is dropped from the 5 hosts in Canopy after the inventory import.
 
 ## Open
 
-- Whether `for_group` serves the lease's intent, or refuses a read whose declared intent differs from the lease's. Without one of those, `CANOPY_INTENT=upgrade` on a lease taken to configure would bypass the upgrade-plan check at take time.
-- Whether the run command also sets `CANOPY_URL`, `CANOPY_GROUP` and `CANOPY_RANK` beside `CANOPY_LEASE`, or the lease alone names the environment.
+- Canopy PR 666 does not refuse a mismatched intent: `for_group` takes only `lease_id`, takes the group, rank and intent from the lease, and its response (`AnsibleView`) carries no intent. A plugin that sets `canopy_intent` from `CANOPY_INTENT` alone could claim `upgrade` on a lease taken to configure, skipping the production upgrade-plan check made at take time. Needs `intent` added to `AnsibleView` in Canopy, after which a handed lease's `canopy_intent` is the served intent and `CANOPY_INTENT` is only used when taking a lease.
+- A handed lease names the environment, so the plugin checks the served `group`/`group_id` and `rank` against `CANOPY_GROUP`/`CANOPY_GROUP_ID` and `CANOPY_RANK` and stops on a mismatch.
+- The reference doc shows the run command Canopy hands over: `CANOPY_URL=… CANOPY_GROUP=… CANOPY_RANK=… CANOPY_LEASE=<id> uv run ansible-playbook -i inventory/canopy.yml <playbook> --limit '<pattern>' --tags <tags>`, with `CANOPY_INTENT=upgrade` added for an upgrade.

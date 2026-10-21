@@ -24,6 +24,7 @@ The content of an inventory, the run lease, and the administrator access that re
 
 A run MUST read the inventory under the run lease that the environment variable `CANOPY_LEASE` hands to it, and MUST take a run lease of its own where that variable is not set.
 A run MUST NOT take a second run lease where it was handed one.
+A run MUST stop where the environment served under a handed run lease is not the group and rank that the run names.
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
 A run MUST do so for a run lease that was handed to it as for one that it took.
@@ -43,7 +44,7 @@ An address MUST be a host name or an IP address that does not begin with a hyphe
 
 An inventory source MUST accept only the Ansible variables `ansible_host`, `ansible_user`, `ansible_port`, `ansible_python_interpreter` and `ansible_timeout` from Canopy.
 
-An inventory source MUST set the variable `canopy_intent` to the intent of the run, `configure` or `upgrade`, and the variable `tamanu_clone` to true where the deployment has the rank `clone`.
+An inventory source MUST set the variable `canopy_intent` to the intent that the run lease declares, `configure` or `upgrade`, and the variable `tamanu_clone` to true where the deployment has the rank `clone`.
 
 An inventory source MUST send its requests over HTTPS, except to a loopback address.
 
