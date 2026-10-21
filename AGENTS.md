@@ -28,6 +28,8 @@ Workhorse keeps this section, the skills, and the reference docs current automat
   - tree
 - When available, use the `skim` tool to read code more efficiently.
 
+- When updating the Ansible playbooks, also update the variables.schema.json
+
 ## AWS
 
 - We have an AWS organisation with over 25 member accounts. Avoid suggestions that involve editing things manually as that gets extremely tedious and error-prone. Prefer instead to write scripts that apply changes to all accounts, or to use Pulumi, or both.
