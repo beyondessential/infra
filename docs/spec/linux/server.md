@@ -123,8 +123,6 @@ A Linux server SHOULD attempt a refresh of its revocation data shortly after boo
 
 A Linux server SHOULD attempt a refresh of its revocation data at least every 6 hours.
 
-A refresh MUST run as an unprivileged system user that can write to the cache directory and its own state directory, and to no other system location.
-
 ## Time and names
 
 A Linux server MUST synchronise its clock with [chrony](https://chrony-project.org/documentation.html), as [`image.packages.chrony`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image.

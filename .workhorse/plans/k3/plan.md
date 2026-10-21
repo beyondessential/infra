@@ -18,8 +18,7 @@ Three PRs, landing in this order:
 - Backport Ubuntu's source package (`ubuntu/devel` on `git.launchpad.net/ubuntu/+source/upki`, currently `1.0.0~beta.3+repack-0ubuntu2`) unchanged, so the user, paths, units and AppArmor profile match the archive package on 26.10+.
 - Only the `upki` binary package is needed; skip `libupki*` and `upki-mirror`.
 - Ubuntu's packaging provides: `/etc/upki/config.toml` (cache `/var/cache/upki`, fetch URL `https://upki.ubuntu.com/revocation/`), the `upki` system user via sysusers, tmpfiles for the cache and state dirs, and a sandboxed `upki-fetch.service` run as `upki` from `upki-fetch.timer` (10 min after boot, then 6h after each run).
-  The unit makes `/var/lib/upki` (`StateDirectory`) and the cache writable, and the AppArmor profile narrows writes to the cache, which meets the spec's confinement as shipped.
-  The only override is the `background.slice` drop-in on the ansible side.
+  The fetch's user and sandboxing are left as the package ships them; the only override is the `background.slice` drop-in on the ansible side.
 - The BES repo is a single `stable` suite serving noble, resolute and later, so build on the oldest supported release (noble) for amd64 and arm64.
   Check that noble has a new enough rustc for the vendored crates (noble-updates carries versioned `rustc-1.xx` packages if the default is too old).
 - Version as Ubuntu's version plus a `~bes` suffix.
