@@ -3,6 +3,7 @@
 ## Package
 
 - [x] The deb installs on 24.04: `upki` user created, `upki-fetch.timer` enabled; remove masks the timer; purge removes `/var/cache/upki` and `/var/lib/upki` (local container run)
+- [x] `upki fetch` run as root refuses with a pointer to `upki-fetch.service`, and runs as a normal user (local build with the ported patch)
 - [ ] The apt-repo smoke tests on 24.04 and 26.04 pass once the deb is published: `upki --version`, user, `/var/cache/upki/revocation` owned by `upki`, timer enabled and active
 - [ ] On a server with AppArmor enforcing, `upki-fetch.service` completes a fetch with no AppArmor denials in the journal, and `/var/cache/upki/revocation` fills
 
