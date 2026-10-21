@@ -18,7 +18,7 @@ Three PRs, landing in this order:
 - Backport Ubuntu's source package (`ubuntu/devel` on `git.launchpad.net/ubuntu/+source/upki`, currently `1.0.0~beta.3+repack-0ubuntu2`) unchanged, so the user, paths, units and AppArmor profile match the archive package on 26.10+.
 - Only the `upki` binary package is needed; skip `libupki*` and `upki-mirror`.
 - Ubuntu's packaging provides: `/etc/upki/config.toml` (cache `/var/cache/upki`, fetch URL `https://upki.ubuntu.com/revocation/`), the `upki` system user via sysusers, tmpfiles for the cache and state dirs, and a sandboxed `upki-fetch.service` run as `upki` from `upki-fetch.timer` (10 min after boot, then 6h after each run).
-  The fetch's user and sandboxing are left as the package ships them; the only override is the `background.slice` drop-in on the ansible side.
+  LNXSRV leaves the config, cache, fetch URL, schedule, user and sandboxing to the package; the only override is the `background.slice` drop-in on the ansible side.
 - The BES repo is a single `stable` suite serving noble, resolute and later, so build on the oldest supported release (noble) for amd64 and arm64.
   Check that noble has a new enough rustc for the vendored crates (noble-updates carries versioned `rustc-1.xx` packages if the default is too old).
 - Version as Ubuntu's version plus a `~bes` suffix.
@@ -34,18 +34,16 @@ Three PRs, landing in this order:
 
   ```
   r[image.packages.upki]
-  upki must be installed from the bes-tools repo, configured system-wide to
-  fetch revocation data from `https://upki.ubuntu.com/revocation/` into
-  `/var/cache/upki`, with its periodic fetch enabled.
+  upki must be installed from the bes-tools repo, with its periodic fetch
+  enabled.
   ```
 
-- Cover it in `tests/test-image-structure.sh`: binary present, config present, timer enabled.
+- Cover it in `tests/test-image-structure.sh`: binary present, timer enabled.
 
 ## Ansible (infra)
 
 - [ ] Install `upki` in the baseline packages task (the bes-tools repo is already configured before it).
 - [ ] Ensure `upki-fetch.timer` is enabled and started.
-- [ ] Check that starting the timer on a server that has been up longer than `OnBootSec` triggers a fetch straight away; if not, start `upki-fetch.service` once after install.
 - [ ] Add a drop-in for `upki-fetch.service` putting it in `background.slice`.
 - [ ] Weekly upgrade of `upki` and `ca-certificates`, alongside the existing `openssh-server` weekly cron.
 - [ ] `spec: LNXSRV#certificate-revocation-data` citations on the new tasks.

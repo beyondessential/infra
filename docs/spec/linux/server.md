@@ -115,13 +115,7 @@ A Linux server MUST have upki installed, as [`image.packages.upki`](https://gith
 
 The playbooks MUST install upki on a server that does not have it, whether or not the server is built from an image.
 
-A Linux server MUST configure upki system-wide in `/etc/upki/config.toml`, with the cache directory `/var/cache/upki` and the fetch URL `https://upki.ubuntu.com/revocation/`.
-
-The revocation data in `/var/cache/upki` MUST be readable by every user of the server.
-
-A Linux server SHOULD attempt a refresh of its revocation data shortly after boot and shortly after upki is installed.
-
-A Linux server SHOULD attempt a refresh of its revocation data at least every 6 hours.
+A Linux server MUST have the periodic refresh of upki's revocation data enabled.
 
 ## Time and names
 
