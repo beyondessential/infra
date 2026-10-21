@@ -7,7 +7,7 @@ Nothing on the box consumes the cache yet: consumers such as bestool via `rustls
 
 ## Repos and order
 
-Three PRs, landing in this order:
+Three PRs, landing in this order (the image build and the ansible install both need the deb published):
 
 1. `beyondessential/third-party-builds`: build and publish the `upki` deb to `tools.ops.tamanu.io/apt`.
 2. `beyondessential/linux-images`: add `image.packages.upki` and install the package in every variant.
@@ -15,36 +15,33 @@ Three PRs, landing in this order:
 
 ## Package (third-party-builds)
 
-- Backport Ubuntu's source package (`ubuntu/devel` on `git.launchpad.net/ubuntu/+source/upki`, currently `1.0.0~beta.3+repack-0ubuntu2`) unchanged, so the user, paths, units and AppArmor profile match the archive package on 26.10+.
-- Only the `upki` binary package is needed; skip `libupki*` and `upki-mirror`.
-- Ubuntu's packaging provides: `/etc/upki/config.toml` (cache `/var/cache/upki`, fetch URL `https://upki.ubuntu.com/revocation/`), the `upki` system user via sysusers, tmpfiles for the cache and state dirs, and a sandboxed `upki-fetch.service` run as `upki` from `upki-fetch.timer` (10 min after boot, then 6h after each run).
-  LNXSRV leaves the config, cache, fetch URL, schedule, user and sandboxing to the package; the only override is the `background.slice` drop-in on the ansible side.
-- The BES repo is a single `stable` suite serving noble, resolute and later, so build on the oldest supported release (noble) for amd64 and arm64.
-  Check that noble has a new enough rustc for the vendored crates (noble-updates carries versioned `rustc-1.xx` packages if the default is too old).
-- Version as Ubuntu's version plus a `~bes` suffix.
-  The origin pin of 999 makes our build win over the archive's on 26.10+ regardless of version, which is fine while we track Ubuntu's source.
-- Follow the existing workflow shape (matrix of native runners, publish to the CDN, `apt-repo.yml` rebuild).
+Built on the `upki` bookmark in `beyondessential/third-party-builds` (not pushed).
+
+- Follows the repo's convention rather than rebuilding Ubuntu's source package: noble's rustc (1.75) is below upki's MSRV (1.85), and Ubuntu's source wants unversioned rustc/cargo, dh-cargo >= 24 and cargo-c.
+- Upstream `v1.0.1` (Ubuntu's archive has `1.0.0~beta.3`), built with rustup on 22.04 runners for a glibc 2.35 floor, amd64 and arm64, default features (rustls), packaged as `1.0.1-bes1`.
+- `upki-files/` carries Ubuntu's config, `upki-fetch.service`/`.timer`, sysusers, tmpfiles and AppArmor profile verbatim, so the package matches the archive one on 26.10+.
+  Maintainer scripts are hand-written equivalents of the debhelper snippets: sysusers, tmpfiles, AppArmor load, timer enable on install, mask on remove, purge of the cache and state dirs.
+- Ubuntu's patches don't apply to 1.0.1 and aren't carried; the 32-bit overflow fix is upstream.
+  Ubuntu's refuse-fetch-as-root patch is not upstream: without it, `sudo upki fetch` leaves root-owned files that the AppArmor profile's `owner` rules stop the `upki` user replacing, so the timer's fetches fail until they're removed.
+  Nothing we run fetches as root; porting the patch (a `geteuid` check in `upki-cli/src/bin/upki.rs`) is open.
+- Depends on `systemd (>= 250)` as Ubuntu's does, which keeps it off 22.04.
+- `apt-repo.yml` and `scripts/rebuild-apt-repo.sh` pick up `upki/`; the 24.04 and 26.04 smoke tests install it and check the user, cache ownership and timer.
+- Verified locally: builds, and in a 24.04 container installs (user created, timer enabled), removes (timer masked) and purges cleanly.
 
 ## Image (linux-images)
 
-- Add `upki` to the common `PACKAGES` list in `image/packages.sh`, so metal, cloud and pi all get it.
-- Make sure `upki-fetch.timer` is enabled in the built image (the chroot build may not run the package's preset).
-- No pre-fetched cache in the image: it would be stale, and the timer fetches 10 min after first boot.
-- Draft requirement for `docs/spec/disk-images.md` under `## Packages`:
+Built on the `upki` bookmark in `beyondessential/linux-images` (not pushed).
 
-  ```
-  r[image.packages.upki]
-  upki must be installed from the bes-tools repo, with its periodic fetch
-  enabled.
-  ```
-
-- Cover it in `tests/test-image-structure.sh`: binary present, timer enabled.
+- `r[image.packages.upki]`: pre-installed from the bes-tools repo, with its periodic refresh enabled.
+- Installed in `image/scripts/setup-bes-tools.sh` alongside bestool (the common `PACKAGES` list installs before the bes-tools repo exists), and pinned to 999 there like bestool.
+- The package's postinst enables `upki-fetch.timer` offline in the chroot; no pre-fetched cache in the image.
+- `tests/test-image-structure.sh` checks the binary and the enabled timer.
 
 ## Ansible (infra)
 
-- [ ] Install `upki` in the baseline packages task (the bes-tools repo is already configured before it).
-- [ ] Ensure `upki-fetch.timer` is enabled and started.
-- [ ] Add a drop-in for `upki-fetch.service` putting it in `background.slice`.
-- [ ] Weekly upgrade of `upki` and `ca-certificates`, alongside the existing `openssh-server` weekly cron.
-- [ ] `spec: LNXSRV#certificate-revocation-data` citations on the new tasks.
-- [ ] Check the support pack (`docs/`) for anything describing the scheduled upgrades or background jobs, and update it.
+- [x] Install `upki` in the baseline (`roles/baseline/tasks/upki.yml`, run after the QoS slices exist).
+- [x] Ensure `upki-fetch.timer` is enabled and started.
+- [x] Add a drop-in for `upki-fetch.service` putting it in `background.slice`.
+- [x] Weekly upgrade of `upki` and `ca-certificates`, alongside the existing `openssh-server` weekly cron.
+- [x] `spec: LNXSRV#…` citations on the new tasks.
+- [x] Check the support pack (`docs/`) for anything describing the scheduled upgrades or background jobs: nothing to update.
