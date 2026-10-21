@@ -15,22 +15,30 @@ The arrangement that the playbooks produce is specified by [LNXRUN](runtime.md),
 | inventory source | A plugin or file that supplies the hosts, groups and variables of an inventory ([Inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html)). |
 | tag | A label on a play or role by which a run selects or skips it ([Tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html)). |
 | control node | The machine that runs the playbooks ([Basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html)). |
-| run lease | The permission, held by one operator at a time, to read the inventory of an environment ([Run leases](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#run-leases)). |
+| run lease | The permission, held by one operator at a time, to read the inventory of an environment ([Run leases](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/runs.md#run-leases)). |
 
 ## Inventory
 
-The inventory of a deployment MUST be read from [Canopy](../overview.md#canopy), for one group and one rank, by an inventory source that takes the run lease of the environment.
-The content of an inventory, the run lease, and the administrator access that reading requires are defined by Canopy's [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#what-an-inventory-contains).
+The inventory of a deployment MUST be read from [Canopy](../overview.md#canopy), for one group and one rank, by an inventory source that reads under the run lease of the environment.
+The content of an inventory, the run lease, and the administrator access that reading requires are defined by Canopy's [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#what-a-run-is-served).
+
+A run MUST read the inventory under the run lease that the environment variable `CANOPY_LEASE` hands to it, and MUST take a run lease of its own where that variable is not set.
+A run MUST NOT take a second run lease where it was handed one.
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
+A run MUST do so for a run lease that was handed to it as for one that it took.
 
 An inventory source MUST include only the machines that carry the variable `managed_by_ansible`.
 
 An inventory source MUST make a machine a member of the group named for each product that runs on it and for each role those products play, and MUST make a machine whose application type names no role a member of the group `standalone`.
+An inventory source MUST group a machine that has no application and is served with an assigned application type as it groups a machine with an application of that type.
+
+An inventory source MUST name each host by the host name that Canopy serves for the machine.
+An inventory source MUST stop the run where two served machines carry the same host name.
 
 The inventory of a deployment MUST contain its [central server](../overview.md#central-server) as a member of the group `central` and each of its [facility servers](../overview.md#facility-server) as a member of the group `facility`.
 
-The address of a machine is defined by [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#reaching-a-machine).
+The address and the host name of a machine are defined by [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#reaching-a-machine).
 An address MUST be a host name or an IP address that does not begin with a hyphen.
 
 An inventory source MUST accept only the Ansible variables `ansible_host`, `ansible_user`, `ansible_port`, `ansible_python_interpreter` and `ansible_timeout` from Canopy.
@@ -72,6 +80,23 @@ A name that is a secret variable in Canopy MUST NOT also be a tag of a host.
 
 A [central server](../overview.md#central-server) MUST have its patient portal enabled where the [instance tag](../overview.md#instance-tags) `PatientPortalFQDN` or the variable `patient_portal_fqdn` is set.
 Where both are set, the instance tag MUST take precedence.
+
+## Variable catalogue
+
+The repository MUST publish a catalogue of the inventory variables at `ansible/variables.schema.json` on its main branch, readable without credentials.
+Canopy reads the catalogue from that path, as [ANSVAR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/variables.md#catalogue) defines.
+
+The catalogue MUST be a valid JSON Schema document of draft 2020-12.
+
+The catalogue MUST describe each variable of the tables headed Inventory variables in this spec, [LNXSRV](server.md#inventory-variables), [LNXRUN](runtime.md#inventory-variables), [LNXDB](database.md#inventory-variables) and [LNXTLS](tls.md#inventory-variables), and the variables of [LNXMSP](msupply.md#enablement).
+The catalogue MUST also describe `managed_by_ansible`, each `ansible_*` variable that an inventory source accepts, and the reserved variables `canopy_intent` and `tamanu_clone`.
+
+For each variable the catalogue MUST give its type, its default, its meaning, whether it is secret, the scopes it may be set at, the application types it configures, and whether it is reserved to the inventory source.
+
+For each playbook that Canopy can start, the catalogue MUST give the intent it is run with, the application types it configures, and its tags.
+The tags of a playbook in the catalogue MUST be the tags that Ansible lists for it, other than `always` and `never`.
+
+The checks that the repository runs on a change MUST fail where the tags of a playbook in the catalogue differ from the tags that Ansible lists for it, and where the catalogue is not a valid document of the schema draft above.
 
 ## Playbooks
 
