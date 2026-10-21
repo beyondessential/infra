@@ -18,12 +18,11 @@ Three PRs, landing in this order (the image build and the ansible install both n
 PR: beyondessential/third-party-builds#27.
 
 - Follows the repo's convention rather than rebuilding Ubuntu's source package: noble's rustc (1.75) is below upki's MSRV (1.85), and Ubuntu's source wants unversioned rustc/cargo, dh-cargo >= 24 and cargo-c.
-- Upstream `v1.0.1` (Ubuntu's archive has `1.0.0~beta.3`), built with rustup on 22.04 runners for a glibc 2.35 floor, amd64 and arm64, default features (rustls), packaged as `1.0.1-bes1`.
+- Upstream `v1.0.1` (Ubuntu's archive has `1.0.0~beta.3`), built with rustup on 24.04 runners, amd64 and arm64, default features (rustls), packaged as `1.0.1-bes1`.
 - `upki-files/` carries Ubuntu's config, `upki-fetch.service`/`.timer`, sysusers, tmpfiles and AppArmor profile verbatim, so the package matches the archive one on 26.10+.
   Maintainer scripts are hand-written equivalents of the debhelper snippets: sysusers, tmpfiles, AppArmor load, timer enable on install, mask on remove, purge of the cache and state dirs.
 - Ubuntu's patches don't apply to 1.0.1 as-is; the 32-bit overflow fix is upstream.
   Ubuntu's refuse-fetch-as-root patch is ported to 1.0.1 (`upki-files/refuse-fetch-as-root.patch`, applied before the build): without it, `sudo upki fetch` leaves root-owned files that the AppArmor profile's `owner` rules stop the `upki` user replacing.
-- Depends on `systemd (>= 250)` as Ubuntu's does, which keeps it off 22.04.
 - `apt-repo.yml` and `scripts/rebuild-apt-repo.sh` pick up `upki/`; the 24.04 and 26.04 smoke tests install it and check the user, cache ownership and timer.
 - Verified locally: builds, and in a 24.04 container installs (user created, timer enabled), removes (timer masked) and purges cleanly.
 
