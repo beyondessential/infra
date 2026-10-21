@@ -18,7 +18,7 @@ The host is specified by [LNXSRV](server.md), the database by [LNXDB](database.m
 
 A Tamanu server MUST be either a [central server](../overview.md#central-server) or a [facility server](../overview.md#facility-server).
 
-A facility server MUST have a facility identifier.
+A facility server MUST have at least one facility identifier.
 
 A Linux server that runs Tamanu MUST be able to reach the hosts in the following table over HTTPS.
 

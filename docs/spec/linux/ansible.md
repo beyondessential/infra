@@ -70,11 +70,13 @@ The variables in the following table configure a Tamanu server.
 | `tamanu_frontend_version` | `tamanu_version` | The image tag of the frontend. |
 | `tamanu_allow_downgrade` | `false` | Permits a version lower than the deployed version. |
 | `public_hostname` | none | The primary hostname of the server. |
-| `tamanu_facility_id` | none | The facility identifier of a facility server. |
+| `tamanu_facility_id` | none | The facility identifier of a facility server, or a list of the identifiers of the facilities that it serves. |
 | `patient_portal_fqdn` | none | The patient portal hostname of a central server. |
 | `tamanu_central_ip` | `false` | An address for the central hostname on a facility server. |
 
 The variables that configure the host, the Tamanu services and their proxy, the database, the certificates and mSupply are given by [LNXSRV](server.md#inventory-variables), [LNXRUN](runtime.md#inventory-variables), [LNXDB](database.md#inventory-variables), [LNXTLS](tls.md#inventory-variables) and [LNXMSP](msupply.md#enablement).
+
+A facility server MUST be configured with the list of its facility identifiers, which is a list of one where `tamanu_facility_id` is a single identifier.
 
 A name that is a secret variable in Canopy MUST NOT also be a tag of a host.
 
@@ -159,9 +161,9 @@ Where that does not hold, the servers of a clone deployment MUST be set up by ha
 
 Provisioning MUST install a clone setup script at `/etc/bestool/clone-setup.sh` on each server that it sets up.
 
-The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facilities, and MUST report failure where any step fails.
+The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facility servers, and MUST report failure where any step fails.
 
-The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility.
+The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility server.
 
 A clone setup script MUST pass a password to its command in the environment, and MUST NOT put it in a process argument.
 

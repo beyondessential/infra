@@ -20,7 +20,7 @@ Canopy side: card F5, PR #666. Item 1 (the path rename) blocks Canopy shipping.
 - [ ] CI step in `.github/workflows/ansible-check.yml` running the check.
 - [ ] CI step validating the file against the 2020-12 metaschema.
 - [ ] Short LLM guidance in `AGENTS.md` / the ansible docs on updating the catalogue when a playbook or variable table changes (the standing rule already says to update the schema).
-- [ ] Decide `tamanu_facility_id`, then fix the schema entry, the facility template and the one affected host in Canopy.
+- [ ] `tamanu_facility_id` takes a string or a list and always renders as a list: update the facility template (`serverFacilityIds`), `TAMANU_FACILITY_IDS` in the clone setup script (comma-joined), the sync account display name, and the test in `tests/test_clone_restore.py`. The schema entry and specs are done.
 - [ ] Decide `tamanu_cache_central_dns` (read by no playbook or template): remove it from the 5 hosts, or add the behaviour it was meant to carry.
 
 ## Open
