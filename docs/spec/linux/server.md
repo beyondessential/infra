@@ -119,9 +119,11 @@ A Linux server MUST configure upki system-wide in `/etc/upki/config.toml`, with 
 
 The revocation data in `/var/cache/upki` MUST be readable by every user of the server.
 
-A Linux server MUST refresh its revocation data shortly after boot and at least every 6 hours after that.
+A Linux server SHOULD attempt a refresh of its revocation data shortly after boot and shortly after upki is installed.
 
-A refresh MUST run as an unprivileged system user that can write to the cache directory and to no other system location.
+A Linux server SHOULD attempt a refresh of its revocation data at least every 6 hours.
+
+A refresh MUST run as an unprivileged system user that can write to the cache directory and its own state directory, and to no other system location.
 
 ## Time and names
 
