@@ -374,7 +374,7 @@ new k8s.networking.v1.Ingress('tailscale-server', {
     namespace,
     annotations: {
       'tailscale.com/hostname': normalizedStack,
-      'tailscale.com/tags': 'tag:tools,tag:server,tag:server-tamanu,tag:server-tamanu-meta',
+      'tailscale.com/tags': 'tag:tools,tag:server,tag:server-canopy',
     },
   },
   spec: {
@@ -409,7 +409,7 @@ new k8s.networking.v1.Ingress('tailscale-server-hostname', {
     namespace,
     annotations: {
       'tailscale.com/hostname': tailscaleHostname,
-      'tailscale.com/tags': 'tag:tools,tag:server,tag:server-tamanu,tag:server-tamanu-meta',
+      'tailscale.com/tags': 'tag:tools,tag:server,tag:server-canopy',
     },
   },
   spec: {
