@@ -10,16 +10,7 @@ import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
 import { acmeEnv } from './canopy-acme.ts';
-import {
-  architecture,
-  costLabels,
-  slackerOpenUrl,
-  slackerCloseUrl,
-  slackerSelfAlertUrl,
-  slackerMaintenanceDeclaredUrl,
-  slackerMaintenanceEndedUrl,
-  normalizedStack,
-} from './config.ts';
+import { architecture, costLabels, slacker, normalizedStack } from './config.ts';
 
 // spec: K8SCNP#workloads
 export const migrator = new k8s.batch.v1.Job('migrator', {
@@ -134,59 +125,68 @@ new k8s.apps.v1.Deployment(
   { dependsOn: [migrator] },
 );
 
-new k8s.apps.v1.Deployment(
-  'slacker',
-  {
-    metadata: {
-      labels: labels('slacker'),
-      namespace,
-    },
-    spec: {
-      replicas: 1,
-      strategy: {
-        type: 'Recreate',
+// spec: K8SCNP#workloads
+if (slacker) {
+  new k8s.apps.v1.Deployment(
+    'slacker',
+    {
+      metadata: {
+        labels: labels('slacker'),
+        namespace,
       },
-      selector: {
-        matchLabels: labels('slacker'),
-      },
-      template: {
-        metadata: {
-          labels: { ...labels('slacker'), ...costLabels },
+      spec: {
+        replicas: 1,
+        strategy: {
+          type: 'Recreate',
         },
-        spec: spec(
-          'slacker',
-          ['slacker_outbox'],
-          {
-            env: [
-              { name: 'PRIVATE_URL', value: `https://${normalizedStack}.${TAILNET_DOMAIN}` },
-              { name: 'SLACK_WEBHOOK_OPEN_URL', value: slackerOpenUrl },
-              { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slackerCloseUrl },
-              { name: 'SLACK_WEBHOOK_SELF_ALERT_URL', value: slackerSelfAlertUrl },
-              ...(slackerMaintenanceDeclaredUrl
-                ? [
-                    {
-                      name: 'SLACK_WEBHOOK_MAINTENANCE_DECLARED_URL',
-                      value: slackerMaintenanceDeclaredUrl,
-                    },
-                  ]
-                : []),
-              ...(slackerMaintenanceEndedUrl
-                ? [
-                    {
-                      name: 'SLACK_WEBHOOK_MAINTENANCE_ENDED_URL',
-                      value: slackerMaintenanceEndedUrl,
-                    },
-                  ]
-                : []),
-            ],
+        selector: {
+          matchLabels: labels('slacker'),
+        },
+        template: {
+          metadata: {
+            labels: { ...labels('slacker'), ...costLabels },
           },
-          { pooled: true },
-        ),
+          spec: spec(
+            'slacker',
+            ['slacker_outbox'],
+            {
+              env: [
+                {
+                  name: 'PRIVATE_URL',
+                  value: `https://${normalizedStack}.${TAILNET_DOMAIN}`,
+                },
+                { name: 'SLACK_WEBHOOK_OPEN_URL', value: slacker.openUrl },
+                { name: 'SLACK_WEBHOOK_RESOLVE_URL', value: slacker.closeUrl },
+                {
+                  name: 'SLACK_WEBHOOK_SELF_ALERT_URL',
+                  value: slacker.selfAlertUrl,
+                },
+                ...(slacker.maintenanceDeclaredUrl
+                  ? [
+                      {
+                        name: 'SLACK_WEBHOOK_MAINTENANCE_DECLARED_URL',
+                        value: slacker.maintenanceDeclaredUrl,
+                      },
+                    ]
+                  : []),
+                ...(slacker.maintenanceEndedUrl
+                  ? [
+                      {
+                        name: 'SLACK_WEBHOOK_MAINTENANCE_ENDED_URL',
+                        value: slacker.maintenanceEndedUrl,
+                      },
+                    ]
+                  : []),
+              ],
+            },
+            { pooled: true },
+          ),
+        },
       },
     },
-  },
-  { dependsOn: [migrator] },
-);
+    { dependsOn: [migrator] },
+  );
+}
 
 new k8s.batch.v1.CronJob('chrome-versions', {
   metadata: {

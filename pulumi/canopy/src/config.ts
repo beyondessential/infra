@@ -83,6 +83,8 @@ export const maxRequestBody = '50Mi';
 export const requestTimeout = '60s';
 
 export const dbStorage = cfg.get('dbStorage') ?? '10Gi';
+export const dbInstances = cfg.getNumber('dbInstances') ?? 2;
+export const dbMemoryRequest = cfg.get('dbMemoryRequest') ?? '8Gi';
 
 /**
  * How long Barman keeps base backups and the WAL behind them.
@@ -120,12 +122,22 @@ export const acmeDirectory = cfg.get('acmeDirectory');
 /** Contact URI (`mailto:…`) the authority can reach an operator at. */
 export const acmeContact = cfg.get('acmeContact');
 
-export const slackerOpenUrl = cfg.require('slackerOpenUrl');
-export const slackerCloseUrl = cfg.require('slackerCloseUrl');
-export const slackerSelfAlertUrl = cfg.require('slackerSelfAlertUrl');
-// Optional: canopy suspends on windows whether or not it can announce them.
-export const slackerMaintenanceDeclaredUrl = cfg.get('slackerMaintenanceDeclaredUrl');
-export const slackerMaintenanceEndedUrl = cfg.get('slackerMaintenanceEndedUrl');
+// spec: K8SCNP#workloads
+/**
+ * Where the slacker delivers notifications. Without `slackerOpenUrl` the stack
+ * runs no slacker at all, so a test instance never posts to the channels the
+ * production one notifies; with it, the close and self-alert URLs are required.
+ */
+export const slacker = cfg.get('slackerOpenUrl')
+  ? {
+      openUrl: cfg.require('slackerOpenUrl'),
+      closeUrl: cfg.require('slackerCloseUrl'),
+      selfAlertUrl: cfg.require('slackerSelfAlertUrl'),
+      // Optional: canopy suspends on windows whether or not it can announce them.
+      maintenanceDeclaredUrl: cfg.get('slackerMaintenanceDeclaredUrl'),
+      maintenanceEndedUrl: cfg.get('slackerMaintenanceEndedUrl'),
+    }
+  : undefined;
 
 export const tailscaleClientId = cfg.require('tailscaleClientId');
 export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
