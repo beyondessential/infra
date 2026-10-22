@@ -1,7 +1,7 @@
 # N3 plan: follow Canopy's Ansible rework
 
 Spec: LNXANS (`docs/spec/linux/ansible.md`), sections Inventory and Variable catalogue.
-Canopy side: card F5, PR #666. Item 1 (the path rename) blocks Canopy shipping.
+Canopy side: card F5, PR #666 and its follow-up. Canopy has already moved its paths, so the plugin is broken against it until item 1 lands; the plugin is developed alongside Canopy and has no other users, so there is no rollout window to manage.
 
 ## Inventory plugin and callback
 
