@@ -54,4 +54,3 @@ export const zoneImport = cfg.get('zoneImport');
  * in this account's zone; leaving it unset means Canopy has no access here.
  */
 export const canopyInfra = cfg.get('canopyInfra');
-export const trailBucket = cfg.get('trailBucket') ?? `bes-${stackName}-cloudtrail`;
