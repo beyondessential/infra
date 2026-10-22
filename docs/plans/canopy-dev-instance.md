@@ -18,7 +18,7 @@ It is the target of continuous deployment from the Canopy repo, and production i
 Left out of dev, each gated off by leaving its config unset:
 
 - `canopy-infra`: no IRSA service accounts and no artifact store, so artifact upload and serving do not work.
-- `recoveryVault`, `backupsShared`: no escrow, no shared backup buckets.
+- `recoveryVault`, `backupsShared`: no escrow, no shared backup buckets, and no backups workload at all, since Canopy's backups pod refuses to start without a vault.
 - `dnsZoneStacks`, `acmeAccountKey`: the domains pod idles; Canopy writes no records in real zones and orders no certificates.
 - Slack webhooks: no slacker workload, so a test instance never posts to the channels prod notifies.
 
@@ -26,6 +26,7 @@ Left out of dev, each gated off by leaving its config unset:
 
 Code (this branch):
 
+1. Backups workload only where a recovery vault is named.
 1. Slacker optional: with no `slackerOpenUrl`, no slacker Deployment; with it, open, close and self-alert stay required together.
 2. `dbInstances` and `dbMemoryRequest` config, defaulting to prod's 2 and 8Gi.
 3. Tailnet tags corrected to the set the live prod devices carry (`tag:tools,tag:server,tag:server-canopy`; `tag:k8s-proxy,tag:server,tag:server-canopy` for the DB replica).

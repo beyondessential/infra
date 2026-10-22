@@ -42,7 +42,7 @@ Every workload of a Canopy stack MUST run the Canopy image at one image tag.
 
 ## Workloads
 
-A Canopy stack MUST run the workloads in the following table, each as the service account given, except as this section provides for the slacker.
+A Canopy stack MUST run the workloads in the following table, each as the service account given, except as this section provides for the backups and slacker workloads.
 
 | workload | kind | service account | IAM role | Secret access in the namespace | what it does |
 |---|---|---|---|---|---|
@@ -80,6 +80,8 @@ The domains workload and the private server MUST receive the certificate authori
 The public server, the private server and the backups workload MUST receive the same [artifact store](#artifact-store).
 
 Where a Canopy stack names a recovery vault, the backups workload MUST receive the vault and the recipient keys, and the private server MUST receive the recipient keys.
+
+A Canopy stack that names no recovery vault MUST NOT run the backups workload.
 
 A Canopy stack that names no notification channels MUST NOT run the slacker workload.
 

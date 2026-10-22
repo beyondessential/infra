@@ -5,7 +5,7 @@ import { namespace } from './namespace.ts';
 import { spec } from './spec.ts';
 import { artifactStoreEnv } from './canopy-artifacts.ts';
 import { canopyDomainsSa, canopyJobsSa } from './canopy-sa.ts';
-import { recoveryEnv } from './canopy-recovery.ts';
+import { hasRecoveryVault, recoveryEnv } from './canopy-recovery.ts';
 import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
@@ -54,37 +54,40 @@ new k8s.apps.v1.Deployment(
   { dependsOn: [migrator] },
 );
 
-new k8s.apps.v1.Deployment(
-  'backups',
-  {
-    metadata: {
-      labels: labels('backups'),
-      namespace,
-    },
-    spec: {
-      replicas: 1,
-      strategy: {
-        type: 'Recreate',
+// spec: K8SCNP#workloads
+if (hasRecoveryVault) {
+  new k8s.apps.v1.Deployment(
+    'backups',
+    {
+      metadata: {
+        labels: labels('backups'),
+        namespace,
       },
-      selector: {
-        matchLabels: labels('backups'),
-      },
-      template: {
-        metadata: {
-          labels: { ...labels('backups'), ...costLabels },
+      spec: {
+        replicas: 1,
+        strategy: {
+          type: 'Recreate',
         },
-        spec: spec(
-          'backups',
-          ['backups'],
-          // The sweep drops artifact bytes no registration reaches any more.
-          { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv] },
-          { serviceAccountName: canopyJobsSa, pooled: true },
-        ),
+        selector: {
+          matchLabels: labels('backups'),
+        },
+        template: {
+          metadata: {
+            labels: { ...labels('backups'), ...costLabels },
+          },
+          spec: spec(
+            'backups',
+            ['backups'],
+            // The sweep drops artifact bytes no registration reaches any more.
+            { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv] },
+            { serviceAccountName: canopyJobsSa, pooled: true },
+          ),
+        },
       },
     },
-  },
-  { dependsOn: [migrator] },
-);
+    { dependsOn: [migrator] },
+  );
+}
 
 // The pod that holds the zone access: it publishes the addresses of the names
 // servers register, and drives certificate orders through the DNS-01 challenge.
