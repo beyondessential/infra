@@ -18,7 +18,7 @@ Use the card's branch as the source of truth for the code and its end-to-end tes
 
 Before reviewing anything, work out what the card is required to do. By this stage the committed specs are the authoritative statement of behaviour.
 
-- Reconcile three inputs: the latest Linear card description, any Linear comments that update the requirements in a way that drifts from that description, and the committed spec changes on the card's branch (diff the branch against its upstream base, scoped to `.workhorse/specs/`)
+- Reconcile three inputs: the latest Linear card description, any Linear comments that update the requirements in a way that drifts from that description, and the committed spec changes on the card's branch (diff the branch against its upstream base, scoped to `docs/spec/`)
 - Treat the committed specs as the source of truth. Specs that have moved *ahead* of the Linear description are fine — they are simply more current
 - Where Linear describes behaviour that is **missing from the specs**, the silence is ambiguous — ask the user which case applies, then act on it:
 - **If the missing behaviour was deliberately dropped or superseded** — the specs are already correct (they don't document absences); only Linear is stale. Treat the specs as the source of truth and carry on. If another spec relied on the dropped behaviour, raise that as a finding — it doesn't block the review

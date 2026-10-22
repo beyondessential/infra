@@ -19,7 +19,7 @@ You need the `gh` CLI authenticated, and you must be working on the card's branc
 - Confirm the current branch: `git rev-parse --abbrev-ref HEAD`
 - Find its open PR: `gh pr view --json number,url,state,body,mergeable,mergeStateStatus` (or `gh pr list --head <branch> --state open`)
 - **If there is no open PR, stop.** Review Hero only runs on an open PR. Tell the user; offer to open one with `gh pr create` using the template at `.github/pull_request_template.md`
-- Build your understanding of the intended behaviour before you start judging comments: read the card's specs under `.workhorse/specs/` and diff the branch against its upstream base (`git rev-parse --abbrev-ref @{upstream}`, usually `origin/main`) so you know what this PR is meant to change. If you have the card's title/description, use them too
+- Build your understanding of the intended behaviour before you start judging comments: read the card's specs under `docs/spec/` and diff the branch against its upstream base (`git rev-parse --abbrev-ref @{upstream}`, usually `origin/main`) so you know what this PR is meant to change. If you have the card's title/description, use them too
 
 ### 2. Trigger a review — tick the checkbox
 

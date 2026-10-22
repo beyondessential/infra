@@ -32,7 +32,7 @@ The user wants to hand off work on this card to an external agent (Claude Code, 
 Whether delivered inline or written to `handoff.md`, the briefing contains these sections, in order:
 
 **1. Workhorse context** — explain the spec-driven workflow:
-- Specs live in `.workhorse/specs/` as structured markdown with YAML frontmatter and checkbox acceptance criteria
+- Specs live in `docs/spec/` as structured markdown with YAML frontmatter and checkbox acceptance criteria
 - Describe the system as it should be (not changes to make). Acceptance criteria are facts about behaviour. Include implementation detail only where a reimplementation should be constrained back to that technical choice (e.g. a backend sync healing strategy); keep product-facing and frontend criteria behavioural
 - Mockups live in `.workhorse/design/mockups/{card-id}/` as standalone HTML with inline CSS
 - Design system is at `.workhorse/design/design-system.md`

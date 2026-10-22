@@ -16,8 +16,8 @@ Separate the material in the card's working doc into its long-lived and card-sco
 2. **Check for unresolved open questions.** If any remain, warn the user and ask them to confirm before proceeding — specs can't carry open questions.
 3. Fan the material out:
    - Behavioural material → the card's specs, rewritten from working voice into declarative spec voice, following the fold-vs-create rules and writing conventions in `.agents/docs/spec-format.md`. Default to editing existing specs.
-   - Implementation options and trade-offs → the plan at `.workhorse/plans/{card-id}/plan.md` (see `.workhorse/specs/plan/overview.md`).
-   - Testing notes → the test cases at `.workhorse/test-cases/{card-id}/` (see `.workhorse/specs/test-cases/overview.md`).
+   - Implementation options and trade-offs → the plan at `.workhorse/plans/{card-id}/plan.md` (see `docs/spec/plan/overview.md`).
+   - Testing notes → the test cases at `.workhorse/test-cases/{card-id}/` (see `docs/spec/test-cases/overview.md`).
 4. **Rewrite, don't move** — no working-voice, point-in-time, or open-question material may land in the specs.
 5. If the doc has already been split once, reconcile the material into the existing specs, plan, and test cases rather than creating duplicates.
 6. Set the working doc's `status` to `complete`. Leave the doc itself in place — it stays as the record of the reasoning.

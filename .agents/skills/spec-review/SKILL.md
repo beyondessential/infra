@@ -10,7 +10,7 @@ workhorse-version: 0.7.2
 
 If you don't already have this card's context (title, identifier, description) — for instance when running outside Workhorse — establish it first by following `.agents/docs/card-context.md`.
 
-Read the spec files in `.workhorse/specs/` that relate to this card and review them as if you were seeing them for the first time. Set aside the earlier conversation context and check that the specs stand on their own.
+Read the spec files in `docs/spec/` that relate to this card and review them as if you were seeing them for the first time. Set aside the earlier conversation context and check that the specs stand on their own.
 
 Look for:
 

@@ -19,4 +19,4 @@ Draft or refine the implementation checklist in the card's plan file. The plan t
 5. Each checklist item should be a concrete step — a file to change, a feature to wire up, a migration to author. Avoid vague items like "add tests"
 6. Ask only the clarifying questions you genuinely need to produce a useful plan — the expectation is one or two turns, not an extended interview
 
-The plan is a free-form working document, not a spec — checkboxes describe build steps, not product behaviour. See `.workhorse/specs/plan/overview.md`.
+The plan is a free-form working document, not a spec — checkboxes describe build steps, not product behaviour. See `docs/spec/plan/overview.md`.

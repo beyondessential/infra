@@ -20,6 +20,6 @@ Workshop the technical approach for this card interactively. The goal is to capt
 
 **Where notes land:** if a working doc exists for this card in `draft` status (`.workhorse/working-docs/{card-id}/working-doc.md`), write your notes into it — under the conventional sections in `.agents/docs/working-doc-format.md` — rather than the plan. The working doc is the drafting home while the card is being shaped. With no draft working doc, write to the plan as usual.
 
-The plan is a free-form working document, not a spec. It can carry a mix of tech design notes, refinement notes, and (later) a checklist of steps — see `.workhorse/specs/plan/overview.md` for the shape.
+The plan is a free-form working document, not a spec. It can carry a mix of tech design notes, refinement notes, and (later) a checklist of steps — see `docs/spec/plan/overview.md` for the shape.
 
 Do not start implementation from this skill. This skill is for thinking and note-taking only.

@@ -15,9 +15,9 @@ Produce spec edits directly from the card description — no extended interview.
 **Read `.agents/docs/spec-format.md` first.** It defines the writing conventions, the information-architecture rules, and the fold-vs-create-vs-split guidance you must follow. Every edit you make has to conform to it.
 
 1. Read the card title and description carefully.
-2. Read existing specs in `.workhorse/specs/` to understand the area structure.
+2. Read existing specs in `docs/spec/` to understand the area structure.
 3. **Default to editing existing specs.** Most spec work is a fold — a new section, criterion, or refinement on a spec that already covers the concept. Only create a new spec file when the content cannot plausibly live in any existing spec in the same area.
-4. Edit spec files in place, or write new ones at `.workhorse/specs/{area}/{slug}.md` if genuinely needed.
+4. Edit spec files in place, or write new ones at `docs/spec/{area}/{slug}.md` if genuinely needed.
 5. Include a brief summary of what you changed and any open questions you identified.
 
 Do NOT start by asking questions or exploring the codebase. Go straight to drafting. If the description is too thin for meaningful acceptance criteria, write what you can and list the gaps as open questions.

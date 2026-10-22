@@ -10,7 +10,7 @@ workhorse-version: 0.7.2
 
 Check whether the code on this card's branch meets the acceptance criteria. This is a compliance check against the specs, not a general code-quality review.
 
-1. Identify what this card was supposed to do: diff the spec changes on this branch against the upstream base (scoped to `.workhorse/specs/`) to see the card's own additions and edits. Also read the surrounding specs in the same area(s) — they describe existing behaviour that must still be met and not regressed
+1. Identify what this card was supposed to do: diff the spec changes on this branch against the upstream base (scoped to `docs/spec/`) to see the card's own additions and edits. Also read the surrounding specs in the same area(s) — they describe existing behaviour that must still be met and not regressed
 2. Diff this card's branch against its upstream base to see the implementation (a card's base is usually `main`, but may be a parent card's branch)
 3. Walk the criteria one by one — both the card's new/changed criteria and the surrounding ones that should still hold. Does the code deliver each one? Has any existing behaviour regressed?
 4. Flag criteria that are not yet implemented, partially implemented, or implemented incorrectly — and flag regressions separately

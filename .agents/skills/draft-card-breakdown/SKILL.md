@@ -23,7 +23,7 @@ Once the user is ready, a bulk Create cards action turns each uncreated entry in
 
 ### How to run the workshop
 
-1. Read the card's specs in `.workhorse/specs/`, the card description, and any existing breakdown at `.workhorse/breakdowns/{card-id}/breakdown.md`
+1. Read the card's specs in `docs/spec/`, the card description, and any existing breakdown at `.workhorse/breakdowns/{card-id}/breakdown.md`
 2. Skim the target repo where it helps you reason about boundaries between the children
 3. Talk through how to slice the work — natural seams, dependency order, what each child should own. Ask focused questions one or two at a time
 4. As entries become clear, write them into `breakdown.md` as `## ` headings with a short description paragraph beneath. Edit in place as the conversation refines them — adding, splitting, merging, reordering entries is normal
@@ -37,4 +37,4 @@ Once the user is ready, a bulk Create cards action turns each uncreated entry in
 - The body beneath is the spawned card's description — a short paragraph (or two) covering scope and boundaries. Do not write a checklist, sub-headings, or implementation steps; that detail belongs in each child card's own plan after it is created
 - Spawned cards inherit the parent's project and become "based on" the parent via dependencies, so don't restate that
 
-See `.workhorse/specs/card/breakdown.md` for the canonical shape.
+See `docs/spec/card/breakdown.md` for the canonical shape.

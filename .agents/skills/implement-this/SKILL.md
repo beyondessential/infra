@@ -16,13 +16,13 @@ Implement the work described by this card. The starting point varies — figure 
 
 ### Work out what you're implementing
 
-1. **Is there a pending spec change on this branch?** Diff this card's branch against its upstream base (a card's base is usually `main`, but may be a parent card's branch — check `git rev-parse --abbrev-ref @{upstream}` or the branch's merge-base), scoped to `.workhorse/specs/` and `.workhorse/design/mockups/`. If there are spec or mockup changes, that diff is the source of truth for what you're building — new/changed criteria describe the work
-2. **Otherwise, lead with the card description.** Read the title and description carefully — that's what the user wants. Read relevant existing specs in `.workhorse/specs/` for context: how the surrounding behaviour is supposed to work, what conventions and edge cases already exist. Where the description and the existing specs disagree, the description wins — implement to the description, update the affected specs to match, and mention in chat which specs you updated and why
+1. **Is there a pending spec change on this branch?** Diff this card's branch against its upstream base (a card's base is usually `main`, but may be a parent card's branch — check `git rev-parse --abbrev-ref @{upstream}` or the branch's merge-base), scoped to `docs/spec/` and `.workhorse/design/mockups/`. If there are spec or mockup changes, that diff is the source of truth for what you're building — new/changed criteria describe the work
+2. **Otherwise, lead with the card description.** Read the title and description carefully — that's what the user wants. Read relevant existing specs in `docs/spec/` for context: how the surrounding behaviour is supposed to work, what conventions and edge cases already exist. Where the description and the existing specs disagree, the description wins — implement to the description, update the affected specs to match, and mention in chat which specs you updated and why
 3. **No spec at all?** Fall back to the card title, description, and any conversation context (e.g. a prior workshop or ASCII design chat). Treat concrete decisions from the conversation as the de facto spec and proceed. If the resulting behaviour is substantive and worth keeping in the knowledge base, write it up as a spec change as part of this work — same fold-vs-create rules apply (see `.agents/docs/spec-format.md`)
 
 ### The plan
 
-This card may have a plan at `.workhorse/plans/{card-id}/` — a free-form markdown working document with tech design notes and/or a checklist of build steps (see `.workhorse/specs/plan/overview.md`).
+This card may have a plan at `.workhorse/plans/{card-id}/` — a free-form markdown working document with tech design notes and/or a checklist of build steps (see `docs/spec/plan/overview.md`).
 
 - **If a plan with a checklist exists**, work through the checklist in order and tick items off (`- [ ]` → `- [x]`) as you complete them. Expand a step into sub-items if it turns out larger than anticipated. Self-check against the plan as you go and note if the current work has drifted from what the plan says
 - **If a plan exists but has notes only**, use the notes as context and draft the checklist yourself as you begin implementation
@@ -45,7 +45,7 @@ The card may have a test-cases file at `.workhorse/test-cases/{card-id}/` — th
 - **As implementation surfaces new scenarios** (an edge case the specs didn't call out, a regression path worth locking in), append them to the test-cases file
 - **Leave uncovered scenarios unticked — don't delete them.** Every case is coverage the card owes, ticked or not. An unticked box records outstanding coverage; leaving it unticked is correct. Remove a case only when the behaviour it verifies no longer exists (typically because a spec changed), never to account for coverage you didn't complete
 
-See `.workhorse/specs/test-cases/overview.md` for the file's shape.
+See `docs/spec/test-cases/overview.md` for the file's shape.
 
 ### Spec ambiguity
 

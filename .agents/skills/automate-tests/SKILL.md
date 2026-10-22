@@ -19,4 +19,4 @@ Write automated tests that match the unticked scenarios in this card's test-case
 5. If a scenario is genuinely not automatable (manual feel, cross-browser visual), leave it unticked and note in the file why it's manual-only
 6. Summarise what you automated, which scenarios remain manual, and any scenarios you couldn't make sense of
 
-See `.workhorse/specs/test-cases/overview.md` for the file's shape.
+See `docs/spec/test-cases/overview.md` for the file's shape.
