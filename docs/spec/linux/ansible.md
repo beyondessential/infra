@@ -24,7 +24,7 @@ The content of an inventory, the run lease, and the administrator access that re
 
 A run MUST read the inventory under the run lease that the environment variable `CANOPY_LEASE` hands to it, and MUST take a run lease of its own where that variable is not set.
 A run MUST NOT take a second run lease where it was handed one.
-A run MUST stop where the environment served under a handed run lease is not the group and rank that the run names.
+A run handed a run lease MUST take the group, the rank and the intent of the run from Canopy's record of the lease, and MUST NOT require them to be named beside it.
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
 A run MUST do so for a run lease that was handed to it as for one that it took.
