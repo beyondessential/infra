@@ -23,6 +23,9 @@
 - name: Configure QoS
   ansible.builtin.import_tasks: qos.yml
   tags: qos
+- name: Configure upki
+  ansible.builtin.import_tasks: upki.yml
+  tags: upki
 - name: Configure I/O scheduler
   ansible.builtin.import_tasks: io-scheduler.yml
   tags: io-scheduler

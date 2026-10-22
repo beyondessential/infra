@@ -1,0 +1,47 @@
+---
+# spec: LNXSRV#certificate-revocation-data
+- name: Install upki
+  become: true
+  ansible.builtin.apt:
+    name: upki
+    state: present
+  notify: Update package facts
+
+# spec: LNXSRV#resource-classes
+- name: Create upki-fetch unit drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/upki-fetch.service.d
+    state: directory
+    mode: "0755"
+
+# spec: LNXSRV#resource-classes
+- name: Run upki fetches in the background slice
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/upki-fetch.service.d/10-slice.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Slice=background.slice
+  notify: Reload systemd
+
+# spec: LNXSRV#certificate-revocation-data
+- name: Enable upki fetch timer
+  become: true
+  ansible.builtin.systemd:
+    name: upki-fetch.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# spec: LNXSRV#package-sources-and-updates
+- name: Set upki auto-upgrade
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/cron.weekly/apt-upgrade-upki
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      exec systemd-run --slice=background.slice --scope --quiet \
+        env DEBIAN_FRONTEND=noninteractive apt install -y upki
