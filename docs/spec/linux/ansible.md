@@ -50,13 +50,7 @@ An inventory source MUST send its requests over HTTPS, except to a loopback addr
 
 An inventory source MUST NOT follow a redirect.
 
-Where Canopy cannot be reached, an inventory source SHOULD fall back to its cache of the last successful read and warn that secret variables are unset.
-
-Where Canopy refuses a request, an inventory source MUST stop the run.
-
-An inventory source MUST NOT write a secret variable to its cache.
-
-Where the intent is `upgrade`, an inventory source MUST NOT use the cache.
+Where Canopy cannot be reached, or refuses a request, an inventory source MUST stop the run.
 
 ## Inventory variables
 
