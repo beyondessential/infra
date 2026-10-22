@@ -85,8 +85,8 @@ end
 set -l password ($k get secret meta-db-app -o jsonpath='{.data.password}' | base64 -d)
 test -n "$password"; or die "no password in secret meta-db-app"
 
-$k port-forward pod/$primary $port:5432 >/dev/null &
-set -l pf $last_pid
+# Launched through bash: fish hangs when it backgrounds kubectl itself.
+set -l pf (bash -c '"$@" >/dev/null 2>&1 </dev/null & echo $!' _ $k port-forward pod/$primary $port:5432)
 function cleanup --on-event fish_exit --inherit-variable pf
     kill $pf 2>/dev/null
 end
