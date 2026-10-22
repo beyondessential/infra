@@ -24,12 +24,14 @@ The content of an inventory, the run lease, and the administrator access that re
 
 A run MUST read the inventory under the run lease that the environment variable `CANOPY_LEASE` hands to it, and MUST take a run lease of its own where that variable is not set.
 A run MUST NOT take a second run lease where it was handed one.
-A run handed a run lease MUST take the group, the rank and the intent of the run from Canopy's record of the lease, and MUST NOT require them to be named beside it.
+A run handed a run lease MUST take the group, the rank and the intent of the run from the environment that Canopy serves under the lease, and MUST NOT require them to be named beside it.
+A run that names an intent beside a handed run lease MUST send it to Canopy as the intent that it claims, and MUST NOT use it as the intent of the run.
+A run handed a run lease MUST stop where its playbook, its limit, its tags to run or its tags to skip differ from those that the run lease records, other than that a run lease which records no playbook accepts any.
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
 A run MUST do so for a run lease that was handed to it as for one that it took.
 
-An inventory source MUST include only the machines that carry the variable `managed_by_ansible`.
+An inventory source MUST include only the machines whose own variables set `managed_by_ansible` to true, as [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#managed-machines) defines.
 
 An inventory source MUST make a machine a member of the group named for each product that runs on it and for each role those products play, and MUST make a machine whose application type names no role a member of the group `standalone`.
 An inventory source MUST group a machine that has no application and is served with an assigned application type as it groups a machine with an application of that type.

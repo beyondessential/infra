@@ -14,14 +14,35 @@ The plugin and callback scenarios run against the fake Canopy in `ansible/tests/
 - [ ] With `CANOPY_LEASE` set and `CANOPY_URL`, the plugin posts no `take_lease` and reads `for_group` with that lease id. verifies spec: LNXANS#inventory
 - [ ] With `CANOPY_LEASE` unset, the plugin takes a lease as before and reads under it. verifies spec: LNXANS#inventory
 - [ ] With `CANOPY_LEASE` set, the run needs no `CANOPY_GROUP`, `CANOPY_GROUP_ID`, `CANOPY_RANK` or `CANOPY_INTENT`, and sends none of them. verifies spec: LNXANS#inventory
-- [ ] With `CANOPY_LEASE` set and `CANOPY_GROUP` or `CANOPY_RANK` also set, the values the lease records are the ones used.
+- [ ] With `CANOPY_LEASE` set and `CANOPY_GROUP` or `CANOPY_RANK` also set, the group and rank Canopy serves are the ones used.
+- [ ] With `CANOPY_LEASE` and `CANOPY_INTENT` set, the read sends the intent as the one claimed, and `canopy_intent` is the intent Canopy serves. verifies spec: LNXANS#inventory
+- [ ] With `CANOPY_LEASE` set and `CANOPY_INTENT` unset, the read sends no intent, and `canopy_intent` is the intent Canopy serves.
+- [ ] A read whose claimed intent Canopy refuses stops the run with Canopy's reason naming both intents.
 - [ ] A play over a handed lease is extended every 8 minutes and released at the end, as a taken lease is. verifies spec: LNXANS#inventory
 - [ ] An inventory listing (no play) over a handed lease releases it on exit.
 - [ ] A handed lease whose read is refused (no longer held, or someone else's) stops the run with Canopy's reason and does not retry with a lease of its own.
 - [ ] A handed lease whose inventory builds nothing usable (for example no machine carries `managed_by_ansible`) releases the lease before stopping.
 - [ ] A run over a handed lease with the `canopy_lease` callback not loaded stops before reading.
 - [ ] `canopy_intent` and `tamanu_clone` are those of the lease's environment: a handed lease on a `clone` rank sets `tamanu_clone` true, and a handed upgrade lease sets `canopy_intent` to `upgrade`. verifies spec: LNXANS#inventory
-- [ ] A handed lease taken to configure cannot be run with `CANOPY_INTENT=upgrade` into an upgrade playbook: `canopy_intent` is `configure`. Needs Canopy to serve the lease's intent.
+- [ ] A handed lease taken to configure and run with `CANOPY_INTENT=upgrade` stops the run, and `canopy_intent` is never `upgrade` for it.
+
+## Lease scope
+
+- [ ] A run started with the playbook, `--limit`, `--tags` and `--skip-tags` that the lease records reads normally. verifies spec: LNXANS#inventory
+- [ ] A run with a different `--limit` than the lease records stops before reading hosts, naming both.
+- [ ] A run with a limit where the lease records none, and a run with none where the lease records one, both stop.
+- [ ] A run with different tags to run, or different tags to skip, than the lease records stops. Tags in another order do not.
+- [ ] A run of another playbook than the lease records stops. The playbook is compared by file name, so a path to the same file passes.
+- [ ] A lease that records no playbook accepts any playbook, and still checks limit and tags.
+- [ ] A run that takes its own lease is not checked against anything.
+- [ ] A stop for a mismatch releases the lease.
+
+## Managed machines
+
+- [ ] A machine whose own variables set `managed_by_ansible` true is included. verifies spec: LNXANS#inventory
+- [ ] A machine whose own variables do not set it, but whose effective variables carry it from the environment or group, is left out with the existing warning.
+- [ ] A machine whose own variables set it false is left out.
+- [ ] An environment where no machine sets it itself stops the run.
 
 ## No cache
 

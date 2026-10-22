@@ -6,7 +6,9 @@ Canopy side: card F5, PR #666. Item 1 (the path rename) blocks Canopy shipping.
 ## Inventory plugin and callback
 
 - [ ] Move `/api/inventory/*` to `/api/ansible/*` in `inventory_plugins/canopy.py` and `callback_plugins/canopy_lease.py`.
-- [ ] Hand-over: read `CANOPY_LEASE`; when set, skip `take_lease` and read `for_group` under it.
+- [ ] Hand-over: read `CANOPY_LEASE`; when set, skip `take_lease` and read `for_group` under it. The request is `{lease_id, intent?}`: `intent` is sent only when `CANOPY_INTENT` is set, as the claimed intent, and Canopy refuses it where it differs from the lease's. The response carries `lease` (`intent`, `playbook`, `limit_pattern`, `limited_to`, `tags`, `skip_tags`, `assignments`), `group_id`, `group` and `rank`; `canopy_intent` and `tamanu_clone` come from those.
+- [ ] Read `managed_by_ansible` from the host's `own_vars` alone, not its effective `vars`.
+- [ ] Verify the run against the lease: read `ansible.context.CLIARGS` (`args` for the playbook, `subset`, `tags`, `skip_tags`; filled in before the inventory is built, checked against ansible-core 2.20) and stop where they differ from `lease.playbook`, `lease.limit_pattern`, `lease.tags` and `lease.skip_tags`. Compare the playbook by file name, a missing limit with an empty one, and tags as sets. A lease with no playbook accepts any. Only for a handed lease.
 - [ ] Keep `CANOPY_INVENTORY_LEASE` as the private channel from the plugin to the callback, and publish it for a handed lease as well as a taken one, so the callback extends and releases both. `CANOPY_LEASE` is input only and never the plugin-to-callback channel, so the two cannot be mixed up.
 - [ ] A handed lease keeps the give-back paths (failed build, unreachable read).
 - [ ] Remove the cache: `_fallback`, `_cached`, `_store`, `without_secret_values`, `CANOPY_INVENTORY_OFFLINE`, the `Unreachable` fallback (an unreachable Canopy stops the run, as a refusal does), the cache wording in `DOCUMENTATION` (including the `timeout` option) and the cache tests in `tests/test_canopy_inventory.py` (`prime_cache`, `offline`).
@@ -27,5 +29,6 @@ Canopy side: card F5, PR #666. Item 1 (the path rename) blocks Canopy shipping.
 
 ## Open
 
-- Canopy is changing so that a handed lease needs only `CANOPY_URL` and `CANOPY_LEASE`: it adds an endpoint that returns a lease's group, rank and intent, and refuses a submission whose values differ from the lease's. The plugin calls that endpoint for a handed lease and uses what it returns for `canopy_intent` and `tamanu_clone`, ignoring `CANOPY_GROUP`, `CANOPY_GROUP_ID`, `CANOPY_RANK` and `CANOPY_INTENT`. This closes the intent bypass found in PR 666 (`for_group` took only `lease_id` and served no intent). The endpoint's path and response shape are not in PR 666 yet; the plugin step waits on them.
+- Canopy's follow-up (workhorse/f5-2, landing soon) serves the lease in the `for_group` response and takes an optional claimed intent on the request, so no separate lookup endpoint exists. The run command names the environment by its lease alone and no longer sets `CANOPY_INTENT`.
+- The plugin verifies the run against the lease's playbook, limit and tags and does not override them. It could override them by reassigning ansible's private `context.CLIARGS`, which `--limit` and `--tags` are only read from after the inventory is built, but that is an unsupported internal.
 - The reference doc shows the run command Canopy hands over: `CANOPY_URL=… CANOPY_LEASE=<id> uv run ansible-playbook -i inventory/canopy.yml <playbook> --limit '<pattern>' --tags <tags>`.
