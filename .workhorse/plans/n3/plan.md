@@ -33,5 +33,14 @@ Canopy side: card F5, PR #666 and its follow-up. Canopy has already moved its pa
 ## Open
 
 - Canopy PR 671 merged and matches the plan: `/api/ansible/*` paths, `for_group` takes `{lease_id, intent?}` and returns `lease`, `group`, `group_id`, `rank` and the hosts with `host_name`, `assigned_type` and `own_vars`. Its `managed` test (own variables, truthy as `yes`, `true`, `on`, `1`, `y`, `t`) is the one the plugin uses.
-- The lease scope check can only run after the read, because the lease's playbook, limit and tags come from the read's response. By then Canopy has marked the run started and declared its maintenance window. Asking Canopy to take the playbook, limit and tags as claims on the read, refused before the run starts as a claimed intent is, would avoid that. Undecided.
+- The lease scope check runs after the read, because the lease's playbook, limit and tags come from the read's response. A mismatch is therefore found after Canopy has marked the run started and declared its maintenance window; the plugin then stops and releases the lease. Accepted for now.
+
+## Follow-up: claims on the read
+
+Ask Canopy to take the playbook, limit, tags and skip-tags as optional claims on `for_group`, refused before the run starts as a claimed intent is. Once it does:
+
+- [ ] Send what Ansible was started with (normalised as above) in the `for_group` request, and drop the check after the read.
+- [ ] Change the LNXANS sentence on the playbook, limit and tags to say the run stops without being recorded as started.
+- [ ] Change the test cases under Lease scope to expect Canopy's refusal, and that no run is recorded as started.
+
 - The reference doc shows the run command Canopy hands over: `CANOPY_URL=… CANOPY_LEASE=<id> uv run ansible-playbook -i inventory/canopy.yml <playbook> --limit '<pattern>' --tags <tags>`.

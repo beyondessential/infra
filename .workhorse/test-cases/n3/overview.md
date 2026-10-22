@@ -29,7 +29,7 @@ The plugin and callback scenarios run against the fake Canopy in `ansible/tests/
 ## Lease scope
 
 - [ ] A run started with the playbook, `--limit`, `--tags` and `--skip-tags` that the lease records reads normally. verifies spec: LNXANS#inventory
-- [ ] A run with a different `--limit` than the lease records stops before reading hosts, naming both.
+- [ ] A run with a different `--limit` than the lease records stops without adding any host to the inventory, naming both.
 - [ ] A run with a limit where the lease records none, and a run with none where the lease records one, both stop.
 - [ ] A run with different tags to run, or different tags to skip, than the lease records stops. Tags in another order do not.
 - [ ] A run of another playbook than the lease records stops. The playbook is compared by file name, so a path to the same file passes.
