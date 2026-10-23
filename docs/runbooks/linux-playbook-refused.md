@@ -27,6 +27,7 @@ Read the first error, not the last. Match it below.
 | `redirects to` | `CANOPY_URL` points at a redirecting address. | Point it at Canopy itself. |
 | `none of canopy's N members carry managed_by_ansible` | No machine set it itself. A value inherited from the environment or group does not count. | Set `managed_by_ansible` on each machine this repo configures. |
 | `canopy serves two servers named ...` | Two machines carry the same host name. | Fix it in Canopy: give one machine another name or address. |
+| `canopy serves the host name ..., which is not a name or an IP` | Canopy served a name Ansible would misread in a `--limit`. Canopy derives names that cannot do this, so it is a Canopy fault. | Escalate, with the name. |
 | `canopy_intent is ..., so canopy never checked for an upgrade plan` | An upgrade playbook read with `configure`. | Add `CANOPY_INTENT=upgrade` ([upgrade SOP](../sops/linux-upgrade-tamanu.md)). |
 | `tamanu_version is not defined` | The version is not set in Canopy. | Set it. |
 | `Refusing to downgrade tamanu_version` or `tamanu_frontend_version` | The requested `v` version is lower than the one in `/etc/tamanu/env`. | Correct the version. A real downgrade needs `tamanu_allow_downgrade` and a developer. |

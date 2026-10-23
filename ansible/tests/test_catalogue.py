@@ -79,8 +79,26 @@ class TheTags(CatalogueTestCase):
     def test_regenerating_writes_the_listing_and_nothing_else(self):
         original = self.copy.read_text()
         self.edit(lambda data: data["x-canopy"]["playbooks"]["tamanu-upgrade.yml"].update(tags=["stale"]))
-        self.assertEqual(catalogue.main(["--file", str(self.copy), "tags"]), 0)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(catalogue.main(["--file", str(self.copy), "tags"]), 0)
         self.assertEqual(self.copy.read_text(), original)
+
+    def test_a_playbook_with_no_entry_fails_the_check_and_is_named(self):
+        self.edit(lambda data: data["x-canopy"]["playbooks"].pop("check-linux-lpe-2026.yml"))
+        with self.captured_stderr() as err:
+            self.assertEqual(catalogue.main(["--file", str(self.copy), "tags", "--check"]), 1)
+        self.assertIn("check-linux-lpe-2026.yml: no entry in the catalogue", err.getvalue())
+
+    def test_regenerating_does_not_invent_an_entry_for_a_playbook_with_none(self):
+        self.edit(lambda data: data["x-canopy"]["playbooks"].pop("check-linux-lpe-2026.yml"))
+        before = self.copy.read_bytes()
+        with self.captured_stderr():
+            self.assertEqual(catalogue.main(["--file", str(self.copy), "tags"]), 1)
+        self.assertEqual(self.copy.read_bytes(), before)
+
+    def test_every_playbook_in_the_repo_has_an_entry(self):
+        entries = json.loads(self.copy.read_text())["x-canopy"]["playbooks"]
+        self.assertEqual(sorted(entries), catalogue.repo_playbooks())
 
     def test_regenerating_a_current_file_changes_no_byte(self):
         before = self.copy.read_bytes()
@@ -98,7 +116,7 @@ class TheTags(CatalogueTestCase):
             "- hosts: localhost\n  tasks:\n    - ansible.builtin.debug: msg=x\n      tags: [always]\n"
             "    - ansible.builtin.debug: msg=y\n      tags: [never]\n"
         )
-        self.assertEqual(catalogue.listed_tags(str(playbook)), [])
+        self.assertEqual(catalogue.listed_tags(str(playbook)), ())
 
 
 class TheDocument(CatalogueTestCase):

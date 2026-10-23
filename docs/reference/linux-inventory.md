@@ -53,7 +53,7 @@ An inventory listing (`ansible-inventory`) over a handed lease claims no playboo
 | item | rule |
 |---|---|
 | Hosts | Only machines whose own variables set `managed_by_ansible`. A value a machine only inherits from its environment or group does not count. Others are left out with a warning that lists them, and none managed is an error. |
-| Host name | The `host_name` Canopy serves for the machine, the name its limit preview uses. The plugin derives none; two machines with the same host name stop the run. |
+| Host name | The `host_name` Canopy serves for the machine, the name its limit preview uses. The plugin derives none; two machines with the same host name, or a host name that is not a name or an IP, stop the run. |
 | `ansible_host` | The device's tailnet name, else the application's recorded host, unless the machine sets `ansible_host`. |
 | Groups | One per product on the machine (`tamanu`, `senaite`, `canopy`) and one per role (`central`, `facility`, `standalone`). A machine carrying `tamanu-facility` is in `tamanu` and `facility`. A machine with nothing on it is grouped by the type Canopy serves as assigned to it (in the run dialog), as an application of that type would be. |
 | Variables | The group's variables at `all` level, each machine's tags at host level. Names that are not valid Ansible variable names (such as dotted billing tags) are skipped. |
@@ -80,6 +80,7 @@ uv run python catalogue.py tags --check  # CI: fail where they are stale
 uv run python catalogue.py validate      # CI: the file is a JSON Schema 2020-12 document
 ```
 
+A playbook in `ansible/` with no entry fails the check too; its description, intent and applications are written by hand.
 When a playbook or role gains or loses a tag, or a spec's Inventory variables table gains or loses a variable, update the catalogue in the same change: run `tags`, and add the variable's entry (type, default, meaning, and its `x-canopy` secret, scope, applications and reserved) beside its neighbours.
 The tests in `ansible/tests/test_catalogue.py` fail where a tabled variable has no entry.
 

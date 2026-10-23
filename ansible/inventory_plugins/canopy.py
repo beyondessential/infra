@@ -123,6 +123,8 @@ display = Display()
 VALID_VAR_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 # ssh reads a leading dash as an option, so an address is a name or an IP and nothing else.
+# A host name is held to the same: it is a --limit operand, where `!`, `&`, `,`, `*` or
+# whitespace would change which hosts a pattern selects.
 VALID_ADDRESS = re.compile(r"^[A-Za-z0-9:][A-Za-z0-9.:_-]*$")
 
 # Where the lease this run holds is handed to the callback that gives it back.
@@ -337,6 +339,8 @@ class InventoryModule(BaseInventoryPlugin):
         seen = set()
         for host in managed:
             name = host["host_name"]
+            if not VALID_ADDRESS.match(str(name)):
+                fatal(f"canopy serves the host name {name!r}, which is not a name or an IP")
             if name in seen:
                 fatal(f"canopy serves two servers named {name!r}; one would stand in for both")
             seen.add(name)

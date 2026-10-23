@@ -357,12 +357,24 @@ class NamingAHost(PluginTestCase):
 
     def test_a_name_the_old_rules_would_change_comes_through_as_served(self):
         body = served()
-        body["hosts"][0]["host_name"] = "Prod Central (Kamaka)"
+        body["hosts"][0]["host_name"] = "kamaka-prod-central.tailnet.ts.net"
         body["hosts"][0]["address"] = "kamaka-prod-central.tailnet.ts.net"
         with StubCanopy(body=json.dumps(body)) as canopy:
             result = self.run_inventory(self.source(group="kamaka"), canopy.url)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["central"]["hosts"], ["Prod Central (Kamaka)"])
+        self.assertEqual(
+            json.loads(result.stdout)["central"]["hosts"], ["kamaka-prod-central.tailnet.ts.net"]
+        )
+
+    def test_a_host_name_that_would_change_a_limit_pattern_stops_the_run(self):
+        for name in ("Prod Central", "a&b", "x,y", "!central", "c*", "-oProxyCommand=echo"):
+            body = served()
+            body["hosts"][0]["host_name"] = name
+            with StubCanopy(body=json.dumps(body)) as canopy:
+                result = self.run_inventory(self.source(group="kamaka"), canopy.url)
+            self.assertEqual(result.returncode, 1, name)
+            self.assertIn("is not a name or an IP", result.stderr, name)
+            self.assertEqual(canopy.calls[-1], "release_lease", name)
 
     def test_a_host_with_no_host_name_stops_the_run(self):
         body = served()

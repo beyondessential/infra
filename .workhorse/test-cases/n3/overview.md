@@ -58,7 +58,8 @@ The plugin and callback scenarios run against the fake Canopy in `ansible/tests/
 
 - [x] Each host is named by the `host_name` Canopy serves, including where Canopy's name differs from the address, and the plugin computes no name of its own. verifies spec: LNXANS#inventory
 - [x] Two served machines with the same `host_name` stop the run, naming the host name. verifies spec: LNXANS#inventory
-- [x] A host name that the old rules would have changed (a tailnet name cut to its first label, a Canopy name with spaces) comes through as served.
+- [x] A host name that the old rules would have changed (a whole tailnet name, which they cut to its first label) comes through as served.
+- [x] A served host name that is not a name or an IP (whitespace, `&`, `,`, `!`, `*`, a leading hyphen) stops the run and releases the lease. verifies spec: LNXANS#inventory
 - [x] `--limit` on a served host name selects that host, and `--limit 'facility:!<host name>'` selects the other facility hosts.
 - [ ] The sync account of a facility is named from the served host name in lower case, with every character outside `a-z`, `0-9` and `-` replaced by `-`. verifies spec: LNXANS#clone-setup
 

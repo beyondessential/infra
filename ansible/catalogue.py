@@ -5,7 +5,7 @@ are checked by machine rather than by whoever edits a playbook:
 
   tags       each playbook's x-canopy.playbooks[*].tags is what
              `ansible-playbook --list-tags` lists for it, other than `always`
-             and `never`.
+             and `never`, and every playbook in ansible/ has an entry.
   validate   the file is a valid JSON Schema 2020-12 document, since Canopy
              keeps only a copy that reads as a catalogue.
 
@@ -19,12 +19,14 @@ Everything else in the file is written by hand, and a rewrite leaves it as it wa
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
@@ -36,10 +38,20 @@ CATALOGUE = ANSIBLE / "variables.schema.json"
 # Not tags a run chooses: `always` runs regardless and `never` runs only when asked for by name.
 UNLISTED = {"always", "never"}
 
+# The YAML files beside the playbooks that are not playbooks.
+NOT_PLAYBOOKS = {"requirements.yml"}
+
 TASK_TAGS = re.compile(r"^\s*TASK TAGS: \[(.*)\]\s*$")
 
 
-def listed_tags(playbook: str) -> list[str]:
+def repo_playbooks() -> list[str]:
+    """The playbooks in ansible/, as the syntax check finds them."""
+    return sorted(path.name for path in ANSIBLE.glob("*.yml") if path.name not in NOT_PLAYBOOKS)
+
+
+# A playbook's tags do not change while this runs, and each listing parses every role.
+@functools.cache
+def listed_tags(playbook: str) -> tuple[str, ...]:
     """The tags Ansible lists for a playbook, sorted, without `always` and `never`."""
     with tempfile.TemporaryDirectory() as scratch:
         # An empty config keeps the caller's own ansible.cfg out of the listing.
@@ -60,7 +72,7 @@ def listed_tags(playbook: str) -> list[str]:
     for line in result.stdout.splitlines():
         if match := TASK_TAGS.match(line):
             tags.update(tag.strip() for tag in match.group(1).split(",") if tag.strip())
-    return sorted(tags - UNLISTED)
+    return tuple(sorted(tags - UNLISTED))
 
 
 def read(path: Path) -> dict:
@@ -74,19 +86,34 @@ def write(path: Path, catalogue: dict) -> None:
 
 def stale_playbooks(catalogue: dict) -> dict[str, list[str]]:
     """Each playbook whose tags differ from what Ansible lists, with the tags it lists."""
-    stale = {}
-    for playbook, entry in catalogue["x-canopy"]["playbooks"].items():
-        listed = listed_tags(playbook)
-        if entry.get("tags") != listed:
-            stale[playbook] = listed
-    return stale
+    entries = catalogue["x-canopy"]["playbooks"]
+    with ThreadPoolExecutor() as pool:
+        listings = dict(zip(entries, pool.map(listed_tags, entries)))
+    return {
+        playbook: list(listed)
+        for playbook, listed in listings.items()
+        if entries[playbook].get("tags") != list(listed)
+    }
+
+
+def uncatalogued(catalogue: dict) -> list[str]:
+    """The playbooks in ansible/ with no entry, which Canopy would not offer."""
+    return [playbook for playbook in repo_playbooks() if playbook not in catalogue["x-canopy"]["playbooks"]]
 
 
 def tags(path: Path, check: bool) -> int:
     catalogue = read(path)
+    missing = uncatalogued(catalogue)
+    for playbook in missing:
+        # An entry's description, intent and applications are written by hand.
+        print(
+            f"{playbook}: no entry in the catalogue; add one under x-canopy.playbooks "
+            "with its description, intent and applications",
+            file=sys.stderr,
+        )
     stale = stale_playbooks(catalogue)
     if not stale:
-        return 0
+        return 1 if missing else 0
     if check:
         for playbook, listed in stale.items():
             had = set(catalogue["x-canopy"]["playbooks"][playbook].get("tags") or [])
@@ -103,7 +130,7 @@ def tags(path: Path, check: bool) -> int:
         catalogue["x-canopy"]["playbooks"][playbook]["tags"] = listed
         print(f"{playbook}: tags rewritten")
     write(path, catalogue)
-    return 0
+    return 1 if missing else 0
 
 
 def validate(path: Path) -> int:

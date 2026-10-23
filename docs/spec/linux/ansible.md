@@ -38,6 +38,7 @@ An inventory source MUST group a machine that has no application and is served w
 
 An inventory source MUST name each host by the host name that Canopy serves for the machine.
 An inventory source MUST stop the run where two served machines carry the same host name.
+An inventory source MUST stop the run where a served host name is not a host name or an IP address, or begins with a hyphen.
 
 The inventory of a deployment MUST contain its [central server](../overview.md#central-server) as a member of the group `central` and each of its [facility servers](../overview.md#facility-server) as a member of the group `facility`.
 
