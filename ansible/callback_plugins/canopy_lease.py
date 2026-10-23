@@ -16,13 +16,15 @@ name: canopy_lease
 type: aggregate
 short_description: Hold and release canopy's run lease around a play
 description:
-  - The canopy inventory plugin takes the environment's run lease to read the inventory, which is
-    what stops a second operator running on it at the same time. A lease is only worth holding for
-    as long as the run lasts, and only this can see the run end.
-  - Extends the lease while the play runs and releases it once the play is over.
+  - The canopy inventory plugin reads the inventory under the environment's run lease, which is
+    what stops a second operator running on it at the same time. The lease is one the plugin took,
+    or one the run was handed in C(CANOPY_LEASE). A lease is only worth holding for as long as the
+    run lasts, and only this can see the run end.
+  - Extends the lease while the play runs and releases it once the play is over, whichever way
+    the run came by it. The plugin passes it here in C(CANOPY_INVENTORY_LEASE), which nothing else sets.
   - Does nothing where the inventory came from anywhere but canopy.
 requirements:
-  - the canopy inventory plugin, which is what takes the lease
+  - the canopy inventory plugin, which is what reads under the lease
 """
 
 LEASE_ENV = "CANOPY_INVENTORY_LEASE"
@@ -36,7 +38,7 @@ TIMEOUT = 15
 
 def _post(base, path, payload):
     request = urllib.request.Request(
-        f"{base}/api/inventory/{path}",
+        f"{base}/api/ansible/{path}",
         data=json.dumps(payload).encode(),
         headers={"content-type": "application/json"},
     )

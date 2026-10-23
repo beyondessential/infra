@@ -6,6 +6,9 @@ tamanu_clone_auto_setup: >-
   and groups['central'] | default([]) | length > 0
   and tamanu_version | regex_replace('^v', '') is version('2.60.0', '>=') }}
 tamanu_frontend_version: "{{ frontend_version | default(tamanu_version) }}"
+# tamanu_facility_id is one identifier, or a list of the facilities a server serves.
+# spec: LNXANS#inventory-variables
+tamanu_facility_ids: "{{ [tamanu_facility_id] if tamanu_facility_id is string else tamanu_facility_id }}"
 tamanu_db_name: "{{ db_name }}"
 tamanu_db_user: "{{ db_user | default(db_name) }}"
 tamanu_server_type: "{{ type }}"

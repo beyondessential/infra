@@ -15,6 +15,7 @@ ansible-setup = "ansible_setup:setup"
 [dependency-groups]
 dev = [
     "ansible-lint~=26.6",
+    "jsonschema>=4.26.0",
 ]
 
 [build-system]

@@ -20,7 +20,7 @@ The stack config reference is [Linux stack config](../reference/linux-pulumi-con
 
 ## 3. Canopy and inventory
 
-In Canopy, mark each machine `managed_by_ansible` and set the variables: group-wide `timezone`, `tamanu_central_canonical_url`, `tamanu_version` and the secret `salt`; per host `public_hostname`, `tailscale_name`, `tamanu_facility_id`, and where needed `patient_portal_fqdn`, `msupply_hostname`, `tamanu_central_ip`. [Variables](../reference/linux-variables.md) lists the rest.
+In Canopy, set `managed_by_ansible` on each machine itself (a value inherited from the environment does not count) and set the variables: group-wide `timezone`, `tamanu_central_canonical_url`, `tamanu_version` and the secret `salt`; per host `public_hostname`, `tailscale_name`, `tamanu_facility_id` (one identifier, or a list for a server serving several facilities), and where needed `patient_portal_fqdn`, `msupply_hostname`, `tamanu_central_ip`. [Variables](../reference/linux-variables.md) lists the rest.
 Do not put a secret in a tag.
 
 ## 4. Configure

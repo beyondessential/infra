@@ -7,6 +7,8 @@ found, except in CI, where a skip would pass a suite that checked nothing.
 import glob
 import json
 import os
+import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -20,6 +22,9 @@ ANSIBLE = Path(__file__).resolve().parent.parent
 BACKUP_DEF = ANSIBLE / "roles/postgres/templates/tamanu-postgres.toml.j2"
 FORGET_SQL = ANSIBLE / "roles/postgres/files/forget-server-identity.sql"
 ACCOUNT_SQL = ANSIBLE / "roles/tamanu-single-install/templates/clone-sync-account.sql.j2"
+INSTALL_CONFIG_TASKS = ANSIBLE / "roles/tamanu-single-install/tasks/config.yml"
+FACILITY_CONFIG = ANSIBLE / "roles/tamanu-single-install/templates/facility.json5.j2"
+FACILITY_SETUP = ANSIBLE / "roles/tamanu-single-install/templates/clone-setup-facility.sh.j2"
 COMMON_DEFAULTS = ANSIBLE / "roles/tamanu-single-common/defaults/main.yml"
 
 ENCRYPTED = "S1:aXYtYnl0ZXM=:Y2lwaGVydGV4dA=="
@@ -39,12 +44,25 @@ def run_playbook(directory, playbook, inventory="localhost,", extra_vars=None):
         raise AssertionError(result.stdout + result.stderr)
 
 
-def render(template, **variables):
+def render(template, gather_facts=False, **variables):
     with tempfile.TemporaryDirectory() as directory:
         dest = Path(directory) / "rendered"
         task = {"ansible.builtin.template": {"src": str(template), "dest": str(dest)}}
-        run_playbook(directory, [{"hosts": "localhost", "gather_facts": False, "tasks": [task]}], extra_vars=variables)
+        playbook = [{"hosts": "localhost", "gather_facts": gather_facts, "tasks": [task]}]
+        run_playbook(directory, playbook, extra_vars=variables)
         return dest.read_text()
+
+
+def facility_ids(**variables):
+    """What the role derives from tamanu_facility_id, evaluated as it defines it."""
+    expression = yaml.safe_load(COMMON_DEFAULTS.read_text())["tamanu_facility_ids"]
+    with tempfile.TemporaryDirectory() as directory:
+        dest = Path(directory) / "result"
+        # to_json is applied inside the braces, so the expression is wrapped
+        content = "{{ (" + expression.strip("{} ") + ") | to_json }}"
+        task = {"ansible.builtin.copy": {"content": content, "dest": str(dest)}}
+        run_playbook(directory, [{"hosts": "localhost", "gather_facts": False, "tasks": [task]}], extra_vars=variables)
+        return json.loads(dest.read_text())
 
 
 class TheBackupDefinition(unittest.TestCase):
@@ -63,6 +81,90 @@ class TheBackupDefinition(unittest.TestCase):
         self.assertIn("podman secret create tamanu-config-key", post[1])
         self.assertEqual(post[2], "/usr/bin/bestool tamanu start")
         self.assertIn("/etc/bestool/clone-setup.sh", post[3])
+
+
+class TheFacilityIdentifiers(unittest.TestCase):
+    """tamanu_facility_id is one identifier or a list, and always reaches a server as a list."""
+
+    CENTRAL = "https://central.example"
+
+    def served_ids(self, **variables):
+        """serverFacilityIds as the facility config renders it."""
+        config = render(
+            FACILITY_CONFIG,
+            gather_facts=True,
+            timezone="Pacific/Auckland",
+            public_hostname="facility.example",
+            tamanu_central_canonical_url=self.CENTRAL,
+            salt="pepper",
+            tamanu_default_department="GenericClinic",
+            tamanu_default_location="GenericClinic",
+            tamanu_facility_ids=facility_ids(**variables),
+        )
+        (line,) = re.findall(r"^\s*serverFacilityIds: (.*),$", config, re.MULTILINE)
+        return json.loads(line)
+
+    def setup_env(self, **variables):
+        script = render(
+            FACILITY_SETUP,
+            tamanu_central_canonical_url=self.CENTRAL,
+            tamanu_clone_sync_email="clone.kamaka@sync.tamanu",
+            tamanu_facility_ids=facility_ids(**variables),
+        )
+        # the script's comments hold an apostrophe, so only the line that passes the variable is parsed
+        (line,) = [line for line in script.splitlines() if "TAMANU_FACILITY_IDS" in line]
+        return [word for word in shlex.split(line.rstrip().removesuffix("\\")) if word.startswith("TAMANU_FACILITY_IDS=")]
+
+    def test_a_single_identifier_is_a_list_of_one(self):
+        self.assertEqual(facility_ids(tamanu_facility_id="a"), ["a"])
+        self.assertEqual(self.served_ids(tamanu_facility_id="a"), ["a"])
+
+    def test_a_list_of_two_renders_both_and_the_config_parses(self):
+        self.assertEqual(self.served_ids(tamanu_facility_id=["a", "b"]), ["a", "b"])
+
+    def test_the_setup_script_passes_a_single_identifier_unchanged(self):
+        self.assertEqual(self.setup_env(tamanu_facility_id="a"), ["TAMANU_FACILITY_IDS=a"])
+
+    def test_the_setup_script_comma_joins_a_list(self):
+        self.assertEqual(self.setup_env(tamanu_facility_id=["a", "b"]), ["TAMANU_FACILITY_IDS=a,b"])
+
+    def test_an_identifier_with_a_quote_or_backslash_does_not_break_the_script_or_config(self):
+        ids = ["o'a", "b\\c", 'd"e']
+        self.assertEqual(self.served_ids(tamanu_facility_id=ids), ids)
+        self.assertEqual(self.setup_env(tamanu_facility_id=ids), ["TAMANU_FACILITY_IDS=" + ",".join(ids)])
+
+    def test_an_unset_identifier_fails_naming_the_variable(self):
+        with self.assertRaises(AssertionError) as raised:
+            facility_ids()
+        self.assertIn("tamanu_facility_id", str(raised.exception))
+
+    def require(self, server_type, **variables):
+        """The role's check that a facility server has an identifier, run alone."""
+        expression = yaml.safe_load(COMMON_DEFAULTS.read_text())["tamanu_facility_ids"]
+        (check,) = yaml.safe_load(INSTALL_CONFIG_TASKS.read_text())[:1]
+        play = {
+            "hosts": "localhost",
+            "gather_facts": False,
+            "vars": {"tamanu_server_type": server_type, "tamanu_facility_ids": expression},
+            "tasks": [check],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            run_playbook(directory, [play], extra_vars=variables)
+
+    def test_a_facility_server_without_an_identifier_is_refused_with_a_message_that_says_what_to_set(self):
+        with self.assertRaises(AssertionError) as raised:
+            self.require("facility")
+        self.assertIn("needs tamanu_facility_id", str(raised.exception))
+
+    def test_a_facility_server_with_an_empty_list_is_refused(self):
+        with self.assertRaises(AssertionError) as raised:
+            self.require("facility", tamanu_facility_id=[])
+        self.assertIn("needs tamanu_facility_id", str(raised.exception))
+
+    def test_a_facility_server_with_an_identifier_is_accepted_and_a_central_needs_none(self):
+        self.require("facility", tamanu_facility_id="a")
+        self.require("facility", tamanu_facility_id=["a", "b"])
+        self.require("central")
 
 
 class WhichClonesAreSetUpAutomatically(unittest.TestCase):
@@ -192,7 +294,7 @@ class TheIdentityScrub(PostgresTestCase):
 
 class TheCloneSyncAccount(PostgresTestCase):
     EMAIL = "clone.kamaka-facility@sync.tamanu"
-    FACILITY = "facility-o'kamaka\\1"
+    FACILITIES = ["facility-o'kamaka\\1"]
 
     def setUp(self):
         super().setUp()
@@ -210,9 +312,13 @@ class TheCloneSyncAccount(PostgresTestCase):
                 ACCOUNT_SQL,
                 tamanu_clone_sync_file=str(self.sync_file),
                 tamanu_clone_sync_email=self.EMAIL,
-                tamanu_facility_id=self.FACILITY,
+                tamanu_facility_ids=self.FACILITIES,
             )
         )
+
+    @property
+    def NAME(self):
+        return ", ".join(self.FACILITIES)
 
     def run_account_sql(self, password=PASSWORD):
         password_file = Path(f"{self.sync_file}.password")
@@ -230,7 +336,7 @@ class TheCloneSyncAccount(PostgresTestCase):
 
     def test_it_creates_an_admin_sync_account_with_the_password(self):
         self.run_account_sql()
-        self.assertEqual(self.account(), f"System: {self.FACILITY} sync (clone)|admin|sync|current|t|t")
+        self.assertEqual(self.account(), f"System: {self.NAME} sync (clone)|admin|sync|current|t|t")
 
     def test_running_it_again_changes_nothing(self):
         self.run_account_sql()
@@ -246,7 +352,7 @@ class TheCloneSyncAccount(PostgresTestCase):
             " deleted_at = now(), password = 'other'"
         )
         self.run_account_sql()
-        self.assertEqual(self.account(), f"System: {self.FACILITY} sync (clone)|admin|sync|current|t|t")
+        self.assertEqual(self.account(), f"System: {self.NAME} sync (clone)|admin|sync|current|t|t")
 
     def test_a_missing_password_file_creates_nothing(self):
         self.run_account_sql(password=None)
@@ -260,6 +366,16 @@ class TheCloneSyncAccount(PostgresTestCase):
         self.run_account_sql()
         self.run_account_sql(password="")
         self.assertTrue(self.account().endswith("|t|t"))
+
+
+class TheCloneSyncAccountOfTwoFacilities(TheCloneSyncAccount):
+    """A server serving two facilities still gets one account, named for both."""
+
+    FACILITIES = ["facility-o'a", "facility\\b"]
+
+    def test_there_is_one_account(self):
+        self.run_account_sql()
+        self.assertEqual(self.psql("SELECT count(*) FROM users"), "1")
 
 
 if __name__ == "__main__":

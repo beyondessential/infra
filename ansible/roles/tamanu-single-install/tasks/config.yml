@@ -1,4 +1,16 @@
 ---
+# spec: LNXRUN#services
+- name: Require a facility identifier on a facility server
+  when: tamanu_server_type == 'facility'
+  ansible.builtin.assert:
+    that:
+      - tamanu_facility_id is defined
+      - tamanu_facility_ids | length > 0
+    fail_msg: >-
+      A facility server needs tamanu_facility_id, one identifier or a list of them,
+      set on {{ inventory_hostname }} in Canopy.
+    quiet: true
+
 - name: Create tamanu config directory
   become: true
   ansible.builtin.file:

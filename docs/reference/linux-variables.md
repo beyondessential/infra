@@ -28,6 +28,7 @@ The rest of this page is what the specs do not carry: role arguments that the pl
 | `tamanu_clone` | `false` | Set by the inventory plugin at rank `clone`. |
 | `tamanu_clone_auto_setup` | derived | True for a clone with a central in the inventory and Tamanu 2.60.0 or later. |
 | `tamanu_central_hostname` | derived | The hostname of `tamanu_central_canonical_url`. |
+| `tamanu_facility_ids` | derived | `tamanu_facility_id` as a list: a list of one where it is a single identifier. The facility config, the clone setup script and the clone sync account read this rather than `tamanu_facility_id`. |
 | `tailscale_name` | none | Hostname on the tailnet. Without it the `tailscale` role does not run. A name containing `prod` marks a production server. |
 | `tailscale_tags` | none | With the name, writes the `ts-up` helper. Without it the helper is removed. |
 | `podman_ipv6_enabled` | follows the host's default IPv6 route | Whether the IPv6 subnet is added to the default Podman network. |
