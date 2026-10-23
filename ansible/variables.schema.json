@@ -31,7 +31,8 @@
 					"timezone",
 					"toolbox",
 					"tuning",
-					"ubuntu-motd"
+					"ubuntu-motd",
+					"upki"
 				]
 			},
 			"tamanu-install.yml": {
@@ -79,6 +80,7 @@
 					"tuning",
 					"ubuntu-motd",
 					"ufw",
+					"upki",
 					"volumes"
 				]
 			},
