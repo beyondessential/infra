@@ -1,6 +1,6 @@
 export { coreStackName, region } from '../common/coreRef.ts';
-import { cfg, failIfIncorrectAccount } from '../common/coreRef.ts';
-failIfIncorrectAccount();
+import { cfg, failIfIncorrectAccountOrRegion } from '../common/coreRef.ts';
+await failIfIncorrectAccountOrRegion();
 
 import { cluster, oidcProvider } from './cluster.ts';
 export { clusterName as name, tags, version } from './cluster.ts';

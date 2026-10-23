@@ -1,7 +1,7 @@
 import { Config, jsonStringify } from '@pulumi/pulumi';
 import * as awsNative from '@pulumi/aws-native';
 
-import { failIfIncorrectAccount, region } from '../common/coreRef.ts';
+import { failIfIncorrectAccountOrRegion, region } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import {
   DEVICE_S3_ACTIONS,
@@ -11,7 +11,7 @@ import {
 } from '../common/canopyBackup.ts';
 import { nativeTags } from '../common/tags.ts';
 
-failIfIncorrectAccount();
+await failIfIncorrectAccountOrRegion();
 
 const config = new Config();
 

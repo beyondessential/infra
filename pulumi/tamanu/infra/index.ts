@@ -1,5 +1,5 @@
 import { Output } from '@pulumi/pulumi';
-import { stackName, failIfIncorrectAccount } from '../../common/coreRef.ts';
-failIfIncorrectAccount();
+import { stackName, failIfIncorrectAccountOrRegion } from '../../common/coreRef.ts';
+await failIfIncorrectAccountOrRegion();
 
 import './github.ts';

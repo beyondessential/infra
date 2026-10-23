@@ -2,8 +2,8 @@ import { all, interpolate } from '@pulumi/pulumi';
 
 import { instances, patientPortalDomain, redirects, retired, type Server } from './config.ts';
 // spec: LNXAWS#instances-and-external-servers
-import { failIfIncorrectAccount } from '../../../common/coreRef.ts';
-failIfIncorrectAccount();
+import { failIfIncorrectAccountOrRegion } from '../../../common/coreRef.ts';
+await failIfIncorrectAccountOrRegion();
 
 // A retired deployment has no servers, so none of the infrastructure that serves
 // them: no instances, firewall, AWS Backup plan, kopia repository or ACME-DNS

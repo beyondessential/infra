@@ -30,7 +30,13 @@ A [core](overview.md#core) is the foundational infrastructure of one AWS account
 
 An AWS account hosting workloads MUST have exactly one core.
 
-A stack that consumes a core MUST refuse to run against an account whose id differs from the id the core publishes.
+A core MUST take its region from its own configuration and not from the credentials it runs with.
+
+A core MUST refuse to run in a region other than the region it published on its previous update.
+
+A stack that consumes a core MUST refuse to run against an account whose id differs from the id the core publishes, or in a region other than the region the core publishes.
+
+A core and a stack that consumes it MUST make each of these refusals before declaring any resource.
 
 > [!NOTE]
 > This means that AWS accounts cannot be used across multiple regions, which avoids "I accidentally put resources in `us-east-1`" — when the core is required, this simply isn't possible.
