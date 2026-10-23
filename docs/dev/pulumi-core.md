@@ -1,6 +1,6 @@
 # The Core Account Stack
 
-`pulumi/core/` is the foundational per-account stack. One stack per AWS account. It sets up the baseline the account needs before any workload stack can run: the VPC, a Route53 zone, account-level security (EBS encryption default, CloudTrail, IAM password policy), GitHub Actions OIDC, CloudWatch alarms, and the Spot data feed.
+`pulumi/core/` is the foundational per-account stack. One stack per AWS account. It sets up the baseline the account needs before any workload stack can run: the VPC, a Route53 zone, account-level security (EBS encryption default, IAM password policy), GitHub Actions OIDC, CloudWatch alarms, and the Spot data feed.
 
 Internal doc with the full context: <https://beyond-essential.slab.com/posts/aws-account-core-39tz152u>.
 
@@ -14,13 +14,12 @@ Order of operations in `src/index.ts`:
 
 1. IAM account password policy (`src/passwords.ts`).
 2. Default EBS encryption (`src/ebs-encryption.ts`).
-3. CloudTrail trail + S3 bucket (`src/cloudtrail.ts`).
-4. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
-5. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
-6. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
-7. Route53 zone + management policy, the Canopy DNS role and any extra zones (`src/zone.ts`).
-8. Spot Data Feed S3 bucket (`src/spot-data-feed.ts`).
-9. SNS alerts topic + CloudWatch alarms (`src/alerts.ts`).
+3. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
+4. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
+5. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
+6. Route53 zone + management policy, the Canopy DNS role and any extra zones (`src/zone.ts`).
+7. Spot Data Feed S3 bucket (`src/spot-data-feed.ts`).
+8. SNS alerts topic + CloudWatch alarms (`src/alerts.ts`).
 
 ### 1.1 Network
 
@@ -45,7 +44,6 @@ If `domain: false` is set, the zone is skipped entirely.
 ### 1.3 Security baselines
 
 - **Password policy**: min 15 chars, no expiry (intentionally — forced rotation reduces entropy), no reuse of the last 24, users can self-change.
-- **CloudTrail**: multi-region account trail, includes global services. Bucket `bes-{stack}-cloudtrail` (override with `trailBucket`). Versioning + log-file validation on. Current logs retained forever; non-current versions pruned at 90 days, whole objects at 365.
 - **Default EBS encryption**: on, using `alias/aws/ebs` (AWS-managed, not a custom KMS key).
 
 ### 1.4 Alerts
@@ -84,7 +82,6 @@ Under the `core:` namespace.
 | `zoneImport` | string | — | Zone ID to import instead of creating. |
 | `extraZones` | string[] | `[]` | Further hosted zones to create in this account, each a fully-qualified apex of its own; its NS must be delegated from the parent zone by hand. For accounts shared by several deployments that need distinct apex domains. |
 | `canopyInfra` | string | — | A `canopy-infra` stack reference. Set when Canopy manages this account's zone: it creates a role Canopy assumes to write the records it manages there. Unset means Canopy has no access. |
-| `trailBucket` | string | `bes-{stack}-cloudtrail` | CloudTrail bucket name. |
 
 ---
 

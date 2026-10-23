@@ -204,7 +204,7 @@ One-file stack per region (`Pulumi.ap-southeast-2.yaml`, `Pulumi.eu-central-2.ya
 
 **Ignore changes for drift you don't want.** Recurring pattern: `ignoreChanges: ['ami']` on instances (the AMI gets newer over time, you don't want to force-recreate), `ignoreChanges: ['version']` on EKS addons (upgrade deliberately, not on every apply), `ignoreChanges: ['users', 'roles', 'groups']` on `aws-native:iam:ManagedPolicy` (see AGENTS.md — CloudFormation otherwise fights us over attachments), `ignoreChanges` on SG rule collections so manual firewall edits survive.
 
-**`protect: true` for things that must not be destroyed.** Backup buckets (`tamanu-on-linux` Kopia), CloudTrail buckets, and similar "even a bad `pulumi destroy` shouldn't wipe these" resources set it. Paired with S3 object-lock where applicable.
+**`protect: true` for things that must not be destroyed.** Backup buckets (`tamanu-on-linux` Kopia), the organisation CloudTrail Lake event store (`security-monitoring`), and similar "even a bad `pulumi destroy` shouldn't wipe these" resources set it. Paired with S3 object-lock where applicable.
 
 **Secrets live in Pulumi config as `secret:` values or in AWS Secrets Manager via `common/Secret.ts`.** Never in code, never in plain YAML. Tailscale auth keys and API tokens use Secrets Manager. Short-lived cloud-init secrets (`tamanu-on-linux`) use Pulumi `secret()` at output time so they don't hit state files in plaintext.
 
