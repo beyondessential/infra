@@ -625,8 +625,8 @@ ops/pulumi has no unit-test harness for stacks; verification is
 4. **OIDC provider** — confirm the deployment-account provider's issuer URL +
    thumbprint match the central cluster, and that a `canopy-jobs`
    web-identity token is accepted (the assume in step 2 covers this).
-5. **`failIfIncorrectAccount()`** already guards the `backups` stack from being
-   applied against the wrong account; keep it. The OIDC-provider stack
+5. **`failIfIncorrectAccountOrRegion()`** already guards the `backups` stack from being
+   applied against the wrong account or region; keep it. The OIDC-provider stack
    (Component C) should have the same guard.
 6. Run the repo's lint/format (`prettier` / `tsc` per the repo's existing
    tooling) on the changed `.ts` files before committing.

@@ -1,8 +1,8 @@
 import { interpolate } from '@pulumi/pulumi';
 import { BUCKET, ROLE_NAME } from './config.ts';
 import { accountId, region } from '../../common/awsAccount.ts';
-import { cfg, failIfIncorrectAccount } from '../../common/coreRef.ts';
-failIfIncorrectAccount();
+import { cfg, failIfIncorrectAccountOrRegion } from '../../common/coreRef.ts';
+await failIfIncorrectAccountOrRegion();
 
 import { applyBucketPolicy } from './bucket.ts';
 import './github.ts';

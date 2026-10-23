@@ -8,7 +8,7 @@ import { CrossStack } from '../common/CrossStack.ts';
 import { nativeTags } from '../common/tags.ts';
 
 // The Shared AMIs account has no `core` stack, so guard on the configured id
-// rather than the usual failIfIncorrectAccount(core) pattern.
+// rather than the usual failIfIncorrectAccountOrRegion() pattern.
 const expectedAccountId = cfg.require('expectedAccountId');
 accountId.apply((id) => {
   if (id !== expectedAccountId) {

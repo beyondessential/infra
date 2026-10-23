@@ -1,7 +1,7 @@
-import { failIfIncorrectAccount } from '../../../common/coreRef.ts';
+import { failIfIncorrectAccountOrRegion } from '../../../common/coreRef.ts';
 import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
-failIfIncorrectAccount();
+await failIfIncorrectAccountOrRegion();
 
 import { ghaDagsterRole } from './github.ts';
 export const ghaDagsterRoleArn = ghaDagsterRole.arn;

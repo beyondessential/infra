@@ -1,8 +1,9 @@
 import { camelCase, upperFirst } from 'lodash-es';
-import { all, getStack } from '@pulumi/pulumi';
+import { getCallerIdentity } from '@pulumi/aws';
+import { getStack } from '@pulumi/pulumi';
 import { CrossStack } from './CrossStack.ts';
 import { nativeTags as tagsToNative } from './tags.ts';
-import { accountId } from './awsAccount.ts';
+import { region } from './awsAccount.ts';
 import { cfg } from './cfg.ts';
 export { cfg };
 
@@ -19,13 +20,21 @@ export const pascalStackName = upperFirst(camelCase(stackName));
 export const ghaOidc = $core.ghaOidc();
 export const zone = $core.zone();
 export const alertsTopicArn = $core.alertsTopicArn();
-export { region } from './awsAccount.ts';
+export { region };
 
 // spec: CORE#account
-export function failIfIncorrectAccount(): void {
-  all([$core.get('accountId'), accountId]).apply(([coreAccountId, accountId]) => {
-    if (coreAccountId !== accountId) {
-      throw new Error(`Incorrect account: expected ${coreAccountId} but got ${accountId}`);
-    }
-  });
+// Awaited before any resource is declared, so a run against the wrong account or region
+// fails the preview rather than the update.
+export async function failIfIncorrectAccountOrRegion(): Promise<void> {
+  const [coreAccountId, coreRegion, { accountId }] = await Promise.all([
+    $core.getValue<string>('accountId'),
+    $core.getValue<string>('region'),
+    getCallerIdentity(),
+  ]);
+  if (coreAccountId !== accountId) {
+    throw new Error(`Incorrect account: expected ${coreAccountId} but got ${accountId}`);
+  }
+  if (coreRegion !== region) {
+    throw new Error(`Incorrect region: expected ${coreRegion} but got ${region}`);
+  }
 }
