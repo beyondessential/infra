@@ -26,7 +26,7 @@ A run MUST read the inventory under the run lease that the environment variable 
 A run MUST NOT take a second run lease where it was handed one.
 A run handed a run lease MUST take the group, the rank and the intent of the run from the environment that Canopy serves under the lease, and MUST NOT require them to be named beside it.
 A run that names an intent beside a handed run lease MUST send it to Canopy as the intent that it claims, and MUST NOT use it as the intent of the run.
-A run handed a run lease MUST stop where its playbook, its limit, its tags to run or its tags to skip differ from those that the run lease records, other than that a run lease which records no playbook accepts any.
+A run handed a run lease MUST send Canopy the playbook, the limit, the tags to run and the tags to skip that it was started with, as the claims that [ANSRUN](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/runs.md#starting-a-run) holds against the run lease.
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
 A run MUST do so for a run lease that was handed to it as for one that it took.

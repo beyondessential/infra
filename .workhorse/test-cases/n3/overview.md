@@ -28,14 +28,15 @@ The plugin and callback scenarios run against the fake Canopy in `ansible/tests/
 
 ## Lease scope
 
-- [ ] A run started with the playbook, `--limit`, `--tags` and `--skip-tags` that the lease records reads normally. verifies spec: LNXANS#inventory
-- [ ] A run with a different `--limit` than the lease records stops without adding any host to the inventory, naming both.
-- [ ] A run with a limit where the lease records none, and a run with none where the lease records one, both stop.
-- [ ] A run with different tags to run, or different tags to skip, than the lease records stops. Tags in another order do not.
-- [ ] A run of another playbook than the lease records stops. The playbook is compared by file name, so a path to the same file passes.
-- [ ] A lease that records no playbook accepts any playbook, and still checks limit and tags.
-- [ ] A run that takes its own lease is not checked against anything.
-- [ ] A stop for a mismatch releases the lease.
+- [ ] A read under a handed lease sends the playbook file name, the limit, the tags to run and the tags to skip that Ansible was started with. verifies spec: LNXANS#inventory
+- [ ] With no `--limit` the read sends an empty limit, and with no `--tags` or `--skip-tags` it sends empty lists.
+- [ ] `--tags a,b` and `--tags b --tags a` send the same two tags.
+- [ ] A path to the playbook sends its file name only.
+- [ ] More than one playbook on the command line stops the run before any read.
+- [ ] A read Canopy refuses for a different playbook, limit, tags or skip-tags than the lease records stops the run with Canopy's reason naming both, and adds no host to the inventory.
+- [ ] A lease that records no playbook still accepts the run, and its limit and tags are still claimed.
+- [ ] A run that takes its own lease sends no claims.
+- [ ] A stop for a refused claim releases the lease.
 
 ## Managed machines
 
@@ -97,7 +98,7 @@ The plugin and callback scenarios run against the fake Canopy in `ansible/tests/
 - [ ] No link in `docs/` or `docs/spec/` points at Canopy's `private-server/inventory.md`.
 - [ ] The reference page and the playbook-refused runbook describe no cache, no offline mode and the new paths.
 
-## Against a real Canopy (after PR 666 ships)
+## Against a real Canopy
 
 - [ ] Starting an install from Canopy's run dialog with a limit and tags, then pasting the command, runs the playbook against only the limited hosts with only those tags.
 - [ ] The run dialog's "has started" state appears when the plugin reads, and the maintenance window it declares ends when the play ends.
@@ -105,3 +106,4 @@ The plugin and callback scenarios run against the fake Canopy in `ansible/tests/
 - [ ] Pasting the same command again after the play ended is refused with Canopy's reason, and takes no lease.
 - [ ] Killing the run mid-play leaves a lease that Canopy expires, and a second operator is refused until then.
 - [ ] Canopy reads the committed catalogue and offers its variables and playbooks, including the changed `tamanu_facility_id`.
+- [ ] Pasting the command with a different `--limit` or `--tags` than the dialog chose is refused, the dialog shows no run started, and no maintenance window is declared.
