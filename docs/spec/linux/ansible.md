@@ -15,39 +15,45 @@ The arrangement that the playbooks produce is specified by [LNXRUN](runtime.md),
 | inventory source | A plugin or file that supplies the hosts, groups and variables of an inventory ([Inventory plugins](https://docs.ansible.com/ansible/latest/plugins/inventory.html)). |
 | tag | A label on a play or role by which a run selects or skips it ([Tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html)). |
 | control node | The machine that runs the playbooks ([Basic concepts](https://docs.ansible.com/ansible/latest/network/getting_started/basic_concepts.html)). |
-| run lease | The permission, held by one operator at a time, to read the inventory of an environment ([Run leases](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#run-leases)). |
+| run lease | The permission, held by one operator at a time, to read the inventory of an environment ([Run leases](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/runs.md#run-leases)). |
 
 ## Inventory
 
-The inventory of a deployment MUST be read from [Canopy](../overview.md#canopy), for one group and one rank, by an inventory source that takes the run lease of the environment.
-The content of an inventory, the run lease, and the administrator access that reading requires are defined by Canopy's [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#what-an-inventory-contains).
+The inventory of a deployment MUST be read from [Canopy](../overview.md#canopy), for one group and one rank, by an inventory source that reads under the run lease of the environment.
+The content of an inventory, the run lease, and the administrator access that reading requires are defined by Canopy's [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#what-a-run-is-served).
+
+A run MUST read the inventory under the run lease that the environment variable `CANOPY_LEASE` hands to it, and MUST take a run lease of its own where that variable is not set.
+A run MUST NOT take a second run lease where it was handed one.
+A run handed a run lease MUST take the group, the rank and the intent of the run from the environment that Canopy serves under the lease, and MUST NOT require them to be named beside it.
+A run that names an intent beside a handed run lease MUST send it to Canopy as the intent that it claims, and MUST NOT use it as the intent of the run.
+A run handed a run lease MUST send Canopy the playbook, the limit, the tags to run and the tags to skip that it was started with, as the claims that [ANSRUN](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/runs.md#starting-a-run) holds against the run lease.
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
+A run MUST do so for a run lease that was handed to it as for one that it took.
 
-An inventory source MUST include only the machines that carry the variable `managed_by_ansible`.
+An inventory source MUST include only the machines whose own variables set `managed_by_ansible` to true, as [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#managed-machines) defines.
 
 An inventory source MUST make a machine a member of the group named for each product that runs on it and for each role those products play, and MUST make a machine whose application type names no role a member of the group `standalone`.
+An inventory source MUST group a machine that has no application and is served with an assigned application type as it groups a machine with an application of that type.
+
+An inventory source MUST name each host by the host name that Canopy serves for the machine.
+An inventory source MUST stop the run where two served machines carry the same host name.
+An inventory source MUST stop the run where a served host name is not a host name or an IP address, or begins with a hyphen.
 
 The inventory of a deployment MUST contain its [central server](../overview.md#central-server) as a member of the group `central` and each of its [facility servers](../overview.md#facility-server) as a member of the group `facility`.
 
-The address of a machine is defined by [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/inventory.md#reaching-a-machine).
+The address and the host name of a machine are defined by [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#reaching-a-machine).
 An address MUST be a host name or an IP address that does not begin with a hyphen.
 
 An inventory source MUST accept only the Ansible variables `ansible_host`, `ansible_user`, `ansible_port`, `ansible_python_interpreter` and `ansible_timeout` from Canopy.
 
-An inventory source MUST set the variable `canopy_intent` to the intent of the run, `configure` or `upgrade`, and the variable `tamanu_clone` to true where the deployment has the rank `clone`.
+An inventory source MUST set the variable `canopy_intent` to the intent that the run lease declares, `configure` or `upgrade`, and the variable `tamanu_clone` to true where the deployment has the rank `clone`.
 
 An inventory source MUST send its requests over HTTPS, except to a loopback address.
 
 An inventory source MUST NOT follow a redirect.
 
-Where Canopy cannot be reached, an inventory source SHOULD fall back to its cache of the last successful read and warn that secret variables are unset.
-
-Where Canopy refuses a request, an inventory source MUST stop the run.
-
-An inventory source MUST NOT write a secret variable to its cache.
-
-Where the intent is `upgrade`, an inventory source MUST NOT use the cache.
+Where Canopy cannot be reached, or refuses a request, an inventory source MUST stop the run.
 
 ## Inventory variables
 
@@ -62,16 +68,35 @@ The variables in the following table configure a Tamanu server.
 | `tamanu_frontend_version` | `tamanu_version` | The image tag of the frontend. |
 | `tamanu_allow_downgrade` | `false` | Permits a version lower than the deployed version. |
 | `public_hostname` | none | The primary hostname of the server. |
-| `tamanu_facility_id` | none | The facility identifier of a facility server. |
+| `tamanu_facility_id` | none | The facility identifier of a facility server, or a list of the identifiers of the facilities that it serves. |
 | `patient_portal_fqdn` | none | The patient portal hostname of a central server. |
 | `tamanu_central_ip` | `false` | An address for the central hostname on a facility server. |
 
 The variables that configure the host, the Tamanu services and their proxy, the database, the certificates and mSupply are given by [LNXSRV](server.md#inventory-variables), [LNXRUN](runtime.md#inventory-variables), [LNXDB](database.md#inventory-variables), [LNXTLS](tls.md#inventory-variables) and [LNXMSP](msupply.md#enablement).
 
+A facility server MUST be configured with the list of its facility identifiers, which is a list of one where `tamanu_facility_id` is a single identifier.
+
 A name that is a secret variable in Canopy MUST NOT also be a tag of a host.
 
 A [central server](../overview.md#central-server) MUST have its patient portal enabled where the [instance tag](../overview.md#instance-tags) `PatientPortalFQDN` or the variable `patient_portal_fqdn` is set.
 Where both are set, the instance tag MUST take precedence.
+
+## Variable catalogue
+
+The repository MUST publish a catalogue of the inventory variables at `ansible/variables.schema.json` on its main branch, readable without credentials.
+Canopy reads the catalogue from that path, as [ANSVAR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/variables.md#catalogue) defines.
+
+The catalogue MUST be a valid JSON Schema document of draft 2020-12.
+
+The catalogue MUST describe each variable of the tables headed Inventory variables in this spec, [LNXSRV](server.md#inventory-variables), [LNXRUN](runtime.md#inventory-variables), [LNXDB](database.md#inventory-variables) and [LNXTLS](tls.md#inventory-variables), and the variables of [LNXMSP](msupply.md#enablement).
+The catalogue MUST also describe `managed_by_ansible`, each `ansible_*` variable that an inventory source accepts, and the reserved variables `canopy_intent` and `tamanu_clone`.
+
+For each variable the catalogue MUST give its type, its default, its meaning, whether it is secret, the scopes it may be set at, the application types it configures, and whether it is reserved to the inventory source.
+
+For each playbook that Canopy can start, the catalogue MUST give the intent it is run with, the application types it configures, and its tags.
+The tags of a playbook in the catalogue MUST be the tags that Ansible lists for it, other than `always` and `never`.
+
+The checks that the repository runs on a change MUST fail where the tags of a playbook in the catalogue differ from the tags that Ansible lists for it, and where the catalogue is not a valid document of the schema draft above.
 
 ## Playbooks
 
@@ -134,9 +159,9 @@ Where that does not hold, the servers of a clone deployment MUST be set up by ha
 
 Provisioning MUST install a clone setup script at `/etc/bestool/clone-setup.sh` on each server that it sets up.
 
-The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facilities, and MUST report failure where any step fails.
+The clone setup script of a central server MUST run the database migrations of the installed Tamanu version, and then apply the sync accounts of its facility servers, and MUST report failure where any step fails.
 
-The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility.
+The clone setup script of a facility server MUST configure synchronisation against the central server of the deployment with the sync account that the central server holds for that facility server.
 
 A clone setup script MUST pass a password to its command in the environment, and MUST NOT put it in a process argument.
 

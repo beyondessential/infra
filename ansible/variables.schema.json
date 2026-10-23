@@ -31,7 +31,8 @@
 					"timezone",
 					"toolbox",
 					"tuning",
-					"ubuntu-motd"
+					"ubuntu-motd",
+					"upki"
 				]
 			},
 			"tamanu-install.yml": {
@@ -79,6 +80,7 @@
 					"tuning",
 					"ubuntu-motd",
 					"ufw",
+					"upki",
 					"volumes"
 				]
 			},
@@ -799,8 +801,19 @@
 			}
 		},
 		"tamanu_facility_id": {
-			"description": "The facility identifier of a facility server.",
-			"type": "string",
+			"description": "The facility identifier of a facility server, or a list of the identifiers of the facilities that it serves.",
+			"oneOf": [
+				{
+					"type": "string"
+				},
+				{
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"minItems": 1
+				}
+			],
 			"x-canopy": {
 				"scope": [
 					"machine"

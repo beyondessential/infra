@@ -13,7 +13,7 @@
   - tree
 - When available, use the `skim` tool to read code more efficiently.
 
-- When updating the Ansible playbooks, also update the variables.schema.json
+- When updating the Ansible playbooks, also update `ansible/variables.schema.json`, the catalogue Canopy reads from main. Run `uv run python catalogue.py tags` in `ansible/` after a playbook or role gains or loses a tag (CI runs it with `--check`), and add or change the entry of any variable in the `Inventory variables` tables of the Linux specs. [docs/reference/linux-inventory.md](docs/reference/linux-inventory.md#the-variable-catalogue) says how.
 
 ## AWS
 

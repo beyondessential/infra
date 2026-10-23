@@ -9,7 +9,7 @@ Read the script or playbook before running it, and review any command you adapt.
 
 1. Install the tooling: `ansible/setup.sh` installs the Python dependencies with `uv`, writes `~/.ansible.cfg` from `example.ansible.cfg`, and installs the Galaxy requirements.
 2. Be on the tailnet, with Canopy administrator access: [inventory](../reference/linux-inventory.md).
-3. Know the deployment's Canopy group and rank, and whether the run is `configure` or `upgrade`.
+3. Know the deployment's Canopy group and rank, and whether the run is `configure` or `upgrade`. A run started from Canopy's run dialog needs none of these: paste the command it shows, which hands the run its lease ([inventory](../reference/linux-inventory.md#a-handed-lease)).
 
 ## Look before changing
 
@@ -43,7 +43,7 @@ Handlers are tagged `always`, so a tag-limited run still reloads or restarts wha
 - A change to PostgreSQL settings that needs a restart is not applied on a production server, whose Tailscale name contains `prod`: the run prints a warning and leaves the restart to you ([restart pending](../runbooks/linux-postgres-restart-pending.md)).
 - An installation run (`base-install.yml`, `tamanu-install.yml`) does not restart the Tamanu services, except for the rolling restart that follows a PostgreSQL restart ([LNXANS](../spec/linux/ansible.md#installation)). `/etc/tamanu/env` and `local.json5` change on disk and take effect when the services next restart. The upgrade playbooks do stop and start the services ([upgrade Tamanu](linux-upgrade-tamanu.md)).
 - The first run on a host does not wire the Munin PostgreSQL plugins, because `munin` runs after `postgres`. They appear on the next run.
-- Secret variables are missing when the inventory came from the cache. Do not run a play that needs one from the cache ([playbook refused](../runbooks/linux-playbook-refused.md)).
+- Read the inventory from anywhere but Canopy: there is no cache and no offline mode, so a run stops where Canopy cannot be reached ([playbook refused](../runbooks/linux-playbook-refused.md)).
 
 ## After
 

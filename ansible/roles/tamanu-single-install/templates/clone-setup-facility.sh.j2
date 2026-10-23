@@ -14,7 +14,7 @@ exec /usr/bin/podman run --rm \
   -v /var/run/postgresql:/var/run/postgresql \
   --env-file /etc/tamanu/env \
   --env SYNC_URL \
-  --env {{ ('TAMANU_FACILITY_IDS=' ~ tamanu_facility_id) | quote }} \
+  --env {{ ('TAMANU_FACILITY_IDS=' ~ (tamanu_facility_ids | join(','))) | quote }} \
   --secret tamanu-config-key,mode=0400 \
   "ghcr.io/beyondessential/tamanu-facility:$version" \
   setupSync --force

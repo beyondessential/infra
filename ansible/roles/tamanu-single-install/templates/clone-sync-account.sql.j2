@@ -1,6 +1,6 @@
 \set password `cat {{ tamanu_clone_sync_file }}.password`
 \set email '{{ tamanu_clone_sync_email }}'
-\set name 'System: {{ tamanu_facility_id | replace("\\", "\\\\") | replace("'", "''") }} sync (clone)'
+\set name 'System: {{ tamanu_facility_ids | join(", ") | replace("\\", "\\\\") | replace("'", "''") }} sync (clone)'
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 BEGIN;
 -- A missing password file reads as empty; never give an admin account that password.
