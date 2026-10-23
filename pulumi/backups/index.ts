@@ -2,7 +2,7 @@ import { Config, getStack, jsonStringify } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 
-import { failIfIncorrectAccount, region } from '../common/coreRef.ts';
+import { failIfIncorrectAccountOrRegion, region } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { registerBackupConfig } from '../common/canopy/CanopyBackupConfig.ts';
 import {
@@ -12,7 +12,7 @@ import {
   maintenanceAssumeRolePolicy,
 } from '../common/canopyBackup.ts';
 import { nativeTags } from '../common/tags.ts';
-failIfIncorrectAccount();
+await failIfIncorrectAccountOrRegion();
 
 const config = new Config();
 

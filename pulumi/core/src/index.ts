@@ -1,3 +1,4 @@
+import './guard.ts';
 import './passwords.ts';
 import './ebs-encryption.ts';
 

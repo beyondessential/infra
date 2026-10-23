@@ -12,14 +12,15 @@ Every other stack in this repo that provisions AWS resources (or K8s workloads t
 
 Order of operations in `src/index.ts`:
 
-1. IAM account password policy (`src/passwords.ts`).
-2. Default EBS encryption (`src/ebs-encryption.ts`).
-3. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
-4. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
-5. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
-6. Route53 zone + management policy, the Canopy DNS role and any extra zones (`src/zone.ts`).
-7. Spot Data Feed S3 bucket (`src/spot-data-feed.ts`).
-8. SNS alerts topic + CloudWatch alarms (`src/alerts.ts`).
+1. Region guard (`src/guard.ts`).
+2. IAM account password policy (`src/passwords.ts`).
+3. Default EBS encryption (`src/ebs-encryption.ts`).
+4. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
+5. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
+6. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
+7. Route53 zone + management policy, the Canopy DNS role and any extra zones (`src/zone.ts`).
+8. Spot Data Feed S3 bucket (`src/spot-data-feed.ts`).
+9. SNS alerts topic + CloudWatch alarms (`src/alerts.ts`).
 
 ### 1.1 Network
 
@@ -83,6 +84,8 @@ Under the `core:` namespace.
 | `extraZones` | string[] | `[]` | Further hosted zones to create in this account, each a fully-qualified apex of its own; its NS must be delegated from the parent zone by hand. For accounts shared by several deployments that need distinct apex domains. |
 | `canopyInfra` | string | — | A `canopy-infra` stack reference. Set when Canopy manages this account's zone: it creates a role Canopy assumes to write the records it manages there. Unset means Canopy has no access. |
 
+`aws:region` is required too. The stack refuses to run without it, or when it differs from the region of the previous update (`src/guard.ts`), so that an aws-sso profile's default region can never move a core.
+
 ---
 
 ## 3. What it exports
@@ -91,7 +94,7 @@ Consumed by downstream stacks via the `CrossStack` wrapper (see `docs/dev/pulumi
 
 | Export | Purpose |
 |---|---|
-| `accountId`, `region` | Verified AWS context. `failIfIncorrectAccount()` reads these. |
+| `accountId`, `region` | Verified AWS context. `failIfIncorrectAccountOrRegion()` reads these, and the core's own guard reads `region` from its previous update. |
 | `tags` | Base tag set, merged into every downstream resource. |
 | `network` | VPC ID, CIDRs, and all three subnet lists. `.subnetIds` convenience merges them. |
 | `dbSubnetGroup` | RDS subnet group (present when `privateSubnets`). |
@@ -141,6 +144,6 @@ k8s-core:core: bes/core/tamanu-internal
 tamanu-backups:core: bes/core/tamanu-internal
 ```
 
-The stack then imports `common/coreRef.ts` (or `common/k8s/coreRef.ts` for K8s workloads) to get typed accessors to everything core exports, plus `failIfIncorrectAccount()` which bails out early if the AWS creds don't match the core's `accountId`.
+The stack then imports `common/coreRef.ts` (or `common/k8s/coreRef.ts` for K8s workloads) to get typed accessors to everything core exports, plus `failIfIncorrectAccountOrRegion()` which bails out early if the AWS creds don't match the core's `accountId` or the provider isn't in the core's `region`.
 
 See `docs/dev/pulumi-organisation.md` for the plumbing.

@@ -1,5 +1,5 @@
-import { failIfIncorrectAccount } from '../../common/coreRef.ts';
-failIfIncorrectAccount();
+import { failIfIncorrectAccountOrRegion } from '../../common/coreRef.ts';
+await failIfIncorrectAccountOrRegion();
 
 import './buckets.ts';
 import './github.ts';

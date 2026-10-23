@@ -4,7 +4,7 @@ import * as awsNative from '@pulumi/aws-native';
 
 import { region } from '../common/awsAccount.ts';
 import { nativeTags } from '../common/tags.ts';
-import { failIfIncorrectAccount, cfg, zone } from '../common/coreRef.ts';
+import { failIfIncorrectAccountOrRegion, cfg, zone } from '../common/coreRef.ts';
 import { CrossStack } from '../common/CrossStack.ts';
 import { eksServiceAccount } from '../common/eksServiceAccount.ts';
 import { AWS_S3_DELETE_ACTIONS, AWS_S3_READ_ACTIONS } from '../constants/external.ts';
@@ -16,7 +16,7 @@ import {
   canopyNamespace,
 } from '../constants/canopy.ts';
 
-failIfIncorrectAccount();
+await failIfIncorrectAccountOrRegion();
 
 // The cluster's OIDC provider lives in this (central) account, so the IRSA roles
 // federate it directly — no per-account provider registration needed anywhere.

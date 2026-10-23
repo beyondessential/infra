@@ -65,8 +65,8 @@ The `stacks` symlink is a compatibility shim, not a convention to reach for. Sta
 Almost every stack starts with:
 
 ```ts
-import { failIfIncorrectAccount } from '../../common/coreRef.ts';
-failIfIncorrectAccount();
+import { failIfIncorrectAccountOrRegion } from '../../common/coreRef.ts';
+await failIfIncorrectAccountOrRegion();
 ```
 
 or, for K8s workloads:
@@ -94,7 +94,7 @@ something:k8s-core: bes/k8s-core/{clusterStackName}
 
 The glue is `common/CrossStack.ts`: a thin typed wrapper around Pulumi's `StackReference`. Two specialised entry points build on it:
 
-- **`common/coreRef.ts`** — wraps `cfg.require('core')`. Exports `$core`, `$network`, `tags`, `ghaOidc`, `zone`, `region`, `coreStackName`, `stackName`, `pascalStackName`, and `failIfIncorrectAccount()`. Re-exports `cfg`.
+- **`common/coreRef.ts`** — wraps `cfg.require('core')`. Exports `$core`, `$network`, `tags`, `ghaOidc`, `zone`, `region`, `coreStackName`, `stackName`, `pascalStackName`, and `failIfIncorrectAccountOrRegion()`. Re-exports `cfg`.
 - **`common/k8s/coreRef.ts`** — wraps `cfg.require('k8s-core')`. Exports `$core`, `clusterName`, `clusterFullName`, `tags`, `version`, `backups`, `oidcProvider`, `region`, `$network` (the *underlying* core stack's network, reached transitively), and `failIfIncorrectCluster()`. Also re-exports `cfg`.
 - **`common/primaryRef.ts`** — wraps `bes/primary/{region}` for the very small primary-account stack.
 
@@ -210,7 +210,7 @@ One-file stack per region (`Pulumi.ap-southeast-2.yaml`, `Pulumi.eu-central-2.ya
 
 **AWS creds via `aws-sso` and `p-run`.** Each stack that provisions AWS resources declares `ssoProfile` in its config. `core/p-run` wraps `pulumi` in `aws-sso exec -p {profile} --`. K8s workload stacks that only talk to the K8s API via Tailscale don't need AWS creds at all.
 
-**`failIfIncorrectAccount` / `failIfIncorrectCluster` run early.** Both use `all([...]).apply(…)` so they bind into Pulumi's output graph. The check happens during apply, not planning, which means a stack pointed at the wrong account will *plan* cleanly but *fail before touching anything*. Good enough.
+**`failIfIncorrectAccountOrRegion` / `failIfIncorrectCluster` run early.** Both are awaited at the top of the program, before any resource is declared, so a stack pointed at the wrong account, region or cluster fails its preview. `core` has the same guard for itself in `src/guard.ts`: `aws:region` must be set in the stack config and must match the region of the previous update.
 
 **`CLAUDE.md` / `AGENTS.md` codify rules.** The repo-level `AGENTS.md` (loaded automatically into agent conversations) has hard constraints worth reading: an agent runs commands only with `[accountname]:ReadAccess` profiles through `aws-sso exec`, never with other access levels, and stops before any AdminAccess command and asks the user instead; previews are fine but never `pulumi up`; prefer scripts or Pulumi over manual per-account changes.
 
@@ -220,7 +220,7 @@ One-file stack per region (`Pulumi.ap-southeast-2.yaml`, `Pulumi.eu-central-2.ya
 
 | You want to… | File |
 |---|---|
-| Guard against wrong AWS account | `common/coreRef.ts` → `failIfIncorrectAccount()` |
+| Guard against wrong AWS account | `common/coreRef.ts` → `failIfIncorrectAccountOrRegion()` |
 | Guard against wrong K8s cluster | `common/k8s/coreRef.ts` → `failIfIncorrectCluster()` |
 | Read the VPC | `common/coreRef.ts` → `$core.network()` or `$network` |
 | New VPC | `common/Network.ts` (usually only core does this) |
