@@ -1,20 +1,5 @@
-<!-- BEGIN:workhorse 0.7.2 -->
-# Workhorse framework
-
-This workspace uses [Workhorse](https://github.com/beyondessential/workhorse), a spec-driven development workbench. Workhorse ships skills (invokable prompts) and reference docs into this repo to shape how AI agents work here.
-
-- **Skills** live at `.agents/skills/` — each skill is a folder containing a `SKILL.md` with YAML frontmatter and a prompt body. `.claude/skills/` is a symlink to the same folder so Claude Code picks them up natively
-- **Reference docs** live at `.agents/docs/` — long-form guidance that skill bodies cite by path (spec format conventions and similar)
-- **Specs** live at `.workhorse/specs/` — acceptance criteria for each piece of work, organised into areas by subdirectory
-
-When picking up a task, read the skill whose folder name matches what you're being asked to do — its `SKILL.md` describes how to approach the work and which reference docs to follow.
-
-Workhorse keeps this section, the skills, and the reference docs current automatically: the first agent turn of a session smart-merges the latest release over your local edits, so your deliberate changes survive. Edit or remove it freely.
-<!-- END:workhorse -->
-
 # Other rules
 
-- In this repository the specs live at `docs/spec/`, and that is where the Workhorse section's `.workhorse/specs/` should be read as pointing.
 - This repository is public. Never commit secrets or credentials, and keep client-identifying names out of code, comments, commits and PRs beyond the deployment names already present. Stack config (`Pulumi.<stack>.yaml`) is gitignored and must stay so: values go in via `pulumi config set` (`--secret` for secrets), never in source.
 - If you write a script, always remind the user to carefully review the script before running it.
 - Troubleshooting and procedures are in the support pack at `docs/`: [docs/README.md](docs/README.md) indexes the runbooks, SOPs and reference pages, `docs/ruled-out-actions.md` is the hard filter on suggested actions, and `docs/deployment-context.md` says how to work out which deployment is affected. When a change alters something a runbook or SOP describes, update it, following the `curate-support-docs` skill.

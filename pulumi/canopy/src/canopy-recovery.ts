@@ -8,6 +8,12 @@ type Env = { name: string; value: Input<string> }[];
 // recoveryKeys: a JSON array of public age recipients (from `bestool crypto
 // keygen`), assembled into the space-separated string the env expects.
 const recoveryVaultRef = cfg.get('recoveryVault');
+
+/**
+ * Whether the stack names a recovery vault. Canopy's backups pod refuses to start
+ * without one, so a stack with none runs no backups workload at all.
+ */
+export const hasRecoveryVault = recoveryVaultRef !== undefined;
 const recoveryKeys = cfg.getObject<string[]>('recoveryKeys');
 
 // The recipients alone. private-server needs these to issue the verification-

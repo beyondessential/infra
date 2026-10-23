@@ -81,6 +81,8 @@ A cross-reference says what its target is about and does not summarise what it s
 
 - Describe the system's own behaviour and contracts: the request shape it handles, the guarantee it makes.
   Don't narrate a dependency's decision logic or version-specific quirks beyond the minimum needed to justify a requirement.
+- Where the system installs a dependency's package, upstream's or our repackaging of it, specify only what we decide about it: that it is installed, where it comes from, how it is upgraded, and anything we override.
+  Its own defaults (config files, paths, endpoints, schedules, users, sandboxing) are whatever the package ships, and the spec does not restate them.
 - Don't scaffold or label: no "Strategy A/B", "Phase N", or plan tags in spec prose.
   Describe the mechanism directly.
 

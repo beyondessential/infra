@@ -3,6 +3,8 @@ import {
   backupRetentionDays,
   costLabels,
   dbExpose,
+  dbInstances,
+  dbMemoryRequest,
   dbStorage,
   normalizedStack,
 } from './config.ts';
@@ -16,7 +18,7 @@ import './ca.ts';
 export const dbReady = runPostgres({
   namespace,
   name: 'meta',
-  replicas: 2,
+  replicas: dbInstances,
   storage: dbStorage,
   timezone: 'Etc/UTC',
   // WAL archiving plus nightly base backups to S3, which retention actually
@@ -29,10 +31,10 @@ export const dbReady = runPostgres({
   },
   inheritedMetadataLabels: costLabels,
   maxConnections: 200,
-  // Sized against the working set rather than the pod's floor; this yields 2GB
+  // The default is sized against the working set rather than the pod's floor; it yields 2GB
   // of shared_buffers, and the dedicated node's remaining memory is page cache
   // over the database.
-  memoryRequest: '8Gi',
+  memoryRequest: dbMemoryRequest,
   // Off spot: Canopy depends on this database, and each reclaim of a node
   // holding the primary forced a switchover and a cold cache.
   placement: 'dedicated',
@@ -45,7 +47,7 @@ if (dbExpose) {
       namespace,
       annotations: {
         'tailscale.com/hostname': `${normalizedStack}-db`,
-        'tailscale.com/tags': 'tag:k8s-proxy,tag:server,tag:server-tamanu,tag:server-tamanu-meta',
+        'tailscale.com/tags': 'tag:k8s-proxy,tag:server,tag:server-canopy',
       },
     },
     spec: {

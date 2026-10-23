@@ -42,7 +42,7 @@ Every workload of a Canopy stack MUST run the Canopy image at one image tag.
 
 ## Workloads
 
-A Canopy stack MUST run the workloads in the following table, each as the service account given.
+A Canopy stack MUST run the workloads in the following table, each as the service account given, except as this section provides for the backups and slacker workloads.
 
 | workload | kind | service account | IAM role | Secret access in the namespace | what it does |
 |---|---|---|---|---|---|
@@ -81,13 +81,20 @@ The public server, the private server and the backups workload MUST receive the 
 
 Where a Canopy stack names a recovery vault, the backups workload MUST receive the vault and the recipient keys, and the private server MUST receive the recipient keys.
 
+A Canopy stack that names no recovery vault MUST NOT run the backups workload.
+
+A Canopy stack that names no notification channels MUST NOT run the slacker workload.
+
+> [!NOTE]
+> A test instance carries no notification channels, so its incidents never reach the channels the production instance notifies.
+
 Where a Canopy stack names a shared backups stack, the backups workload MUST receive its provisioner, maintenance and device roles, and the public server MUST receive its device role.
 
 ## Database
 
 A Canopy stack MUST have one cluster named `meta-db` in its namespace, whose parameters [K8SPGC](postgres.md) governs.
 
-The cluster MUST have two instances.
+The cluster SHOULD have two instances.
 
 The cluster MUST opt into the [critical database pool](../overview.md#critical-database-pool), as [K8SPGC](postgres.md#scheduling-and-disruption) provides.
 
@@ -144,8 +151,8 @@ The tailnet devices of a Canopy stack MUST carry the tags in the following table
 
 | device | tags |
 |---|---|
-| the Ingress of the private server, and the redirect | `tag:tools`, `tag:server`, `tag:server-tamanu`, `tag:server-tamanu-meta` |
-| the exposed database replica | `tag:k8s-proxy`, `tag:server`, `tag:server-tamanu`, `tag:server-tamanu-meta` |
+| the Ingress of the private server, and the redirect | `tag:tools`, `tag:server`, `tag:server-canopy` |
+| the exposed database replica | `tag:k8s-proxy`, `tag:server`, `tag:server-canopy` |
 
 ## canopy-infra
 
