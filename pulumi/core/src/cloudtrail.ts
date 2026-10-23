@@ -1,5 +1,5 @@
 import * as awsClassic from '@pulumi/aws';
-import { getStack, interpolate, jsonStringify } from '@pulumi/pulumi';
+import { interpolate, jsonStringify } from '@pulumi/pulumi';
 import { tags as configTags, trailBucket } from './config.ts';
 import { accountId } from '../../common/awsAccount.ts';
 
@@ -9,9 +9,12 @@ const tags = {
   Purpose: 'audit-logging',
 };
 
-// spec: CORE#audit
+// The organisation event store in security-monitoring is the audit record, and this
+// bucket stays only until the next change deletes it. forceDestroy lets that delete
+// go through with log versions still in the bucket.
 const bucket = new awsClassic.s3.Bucket('cloudtrail-bucket', {
   bucket: trailBucket,
+  forceDestroy: true,
   tags,
 });
 
@@ -46,7 +49,7 @@ new awsClassic.s3.BucketLifecycleConfiguration('cloudtrail-bucket-lifecycle', {
   ],
 });
 
-const bucketPolicy = new awsClassic.s3.BucketPolicy('cloudtrail-bucket-policy', {
+new awsClassic.s3.BucketPolicy('cloudtrail-bucket-policy', {
   bucket: bucket.id,
   policy: jsonStringify({
     Version: '2012-10-17',
@@ -77,17 +80,3 @@ const bucketPolicy = new awsClassic.s3.BucketPolicy('cloudtrail-bucket-policy', 
     ],
   }),
 });
-
-export const trail = new awsClassic.cloudtrail.Trail(
-  'cloudtrail',
-  {
-    s3BucketName: bucket.id,
-    enableLogFileValidation: true,
-    includeGlobalServiceEvents: true,
-    isMultiRegionTrail: true,
-    tags,
-  },
-  {
-    dependsOn: [bucketPolicy],
-  },
-);

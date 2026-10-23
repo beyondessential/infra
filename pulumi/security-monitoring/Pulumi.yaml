@@ -1,5 +1,5 @@
 name: security-monitoring
-description: Organization-wide GuardDuty enablement and finding delivery to Slack
+description: Organization-wide GuardDuty enablement, finding delivery to Slack, and the audit event store
 runtime:
   name: nodejs
   options:
