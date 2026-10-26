@@ -19,7 +19,6 @@ The requirements in this spec apply to the foundational infrastructure of one AW
 | name server | A server that answers for a zone from its own knowledge, named in an NS record of the zone ([RFC 9499 section 6](https://www.rfc-editor.org/rfc/rfc9499#section-6)). |
 | hosted zone | A Route 53 container of the records of one DNS zone, with the name servers Route 53 assigns to it ([Working with public hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html), [Routing traffic for subdomains](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-routing-traffic-for-subdomains.html)). |
 | output | A named value a [stack](overview.md#stack) publishes for other stacks to read ([Stack outputs](https://www.pulumi.com/docs/iac/concepts/stacks/#outputs)). |
-| trail | A CloudTrail configuration that delivers the events of an account to an S3 bucket ([CloudTrail concepts](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html)). |
 | managed policy | A standalone IAM policy that can be attached to several users, groups and roles ([Managed and inline policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html)). |
 | OIDC identity provider | An IAM entity that lets roles trust tokens issued by an external OpenID Connect issuer ([Create an OIDC identity provider](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html), [GitHub OIDC in AWS](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)). |
 | topic, alarm | An SNS channel that delivers each message published to it to its subscribers, and a CloudWatch rule that publishes to a topic when a metric crosses a threshold ([Creating an SNS topic](https://docs.aws.amazon.com/sns/latest/dg/sns-create-topic.html), [CloudWatch alarms](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html)). |
@@ -30,7 +29,13 @@ A [core](overview.md#core) is the foundational infrastructure of one AWS account
 
 An AWS account hosting workloads MUST have exactly one core.
 
-A stack that consumes a core MUST refuse to run against an account whose id differs from the id the core publishes.
+A core MUST take its region from its own configuration and not from the credentials it runs with.
+
+A core MUST refuse to run in a region other than the region it published on its previous update.
+
+A stack that consumes a core MUST refuse to run against an account whose id differs from the id the core publishes, or in a region other than the region the core publishes.
+
+A core and a stack that consumes it MUST make each of these refusals before declaring any resource.
 
 > [!NOTE]
 > This means that AWS accounts cannot be used across multiple regions, which avoids "I accidentally put resources in `us-east-1`" — when the core is required, this simply isn't possible.
@@ -54,20 +59,6 @@ A core MUST set the [password policy](https://docs.aws.amazon.com/IAM/latest/Use
 A core MUST turn on [encryption by default](https://docs.aws.amazon.com/ebs/latest/userguide/encryption-by-default.html) for EBS in its region, with the AWS-managed key `alias/aws/ebs` as the default key.
 
 ## Audit
-
-A core MUST have one trail that covers every region and records the [global service events](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html) of its account.
-
-The trail MUST have [log file validation](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-intro.html) turned on.
-
-The trail MUST deliver to an S3 bucket of the account, named `bes-<stack>-cloudtrail` after the core's stack unless the core is given another name.
-
-The bucket MUST have a [public access block](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html) on all four of its settings and MUST have versioning turned on.
-
-The bucket MUST grant CloudTrail only the access it needs to check the bucket ACL and to write under the prefix of its own account.
-
-The bucket MUST keep each log file for at least 365 days.
-
-The bucket SHOULD delete log files older than 365 days and noncurrent versions older than 90 days.
 
 A core MUST have a [flow log](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html) on its VPC that records rejected traffic to the CloudWatch log group `/aws/vpc/flowlogs/core-network`.
 
@@ -209,7 +200,9 @@ A core that hosts a Kubernetes cluster with IPv6 addressing MUST have the manage
 
 ## Spot data feed
 
-A core MUST have an S3 bucket named `bes-spot-data-feed-<account id>` that receives the [Spot data feed](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-data-feeds.html) of its account under the prefix `spot-pricing`.
+A core in a region that offers the Spot data feed MUST have an S3 bucket named `bes-spot-data-feed-<account id>` that receives the [Spot data feed](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-data-feeds.html) of its account under the prefix `spot-pricing`.
+
+A core in a region that doesn't offer it MUST have no such bucket.
 
 The bucket SHOULD delete feed files older than 30 days.
 
@@ -253,6 +246,8 @@ A core MUST publish the outputs of the following table, under the names given.
 | `alertsTopicArn` | The ARN of the alerts topic. |
 
 A core that has no zone MUST publish no value for `zoneName`, `zoneId`, `zoneNS` or `zoneMgmtPolicy`.
+
+A core with no Spot data feed bucket MUST publish no value for `spotDataFeed`.
 
 A core that has no zone role MUST publish no value for `canopyDnsRoleArn`.
 

@@ -1,6 +1,6 @@
 # The Core Account Stack
 
-`pulumi/core/` is the foundational per-account stack. One stack per AWS account. It sets up the baseline the account needs before any workload stack can run: the VPC, a Route53 zone, account-level security (EBS encryption default, CloudTrail, IAM password policy), GitHub Actions OIDC, CloudWatch alarms, and the Spot data feed.
+`pulumi/core/` is the foundational per-account stack. One stack per AWS account. It sets up the baseline the account needs before any workload stack can run: the VPC, a Route53 zone, account-level security (EBS encryption default, IAM password policy), GitHub Actions OIDC, CloudWatch alarms, and the Spot data feed.
 
 Internal doc with the full context: <https://beyond-essential.slab.com/posts/aws-account-core-39tz152u>.
 
@@ -12,9 +12,9 @@ Every other stack in this repo that provisions AWS resources (or K8s workloads t
 
 Order of operations in `src/index.ts`:
 
-1. IAM account password policy (`src/passwords.ts`).
-2. Default EBS encryption (`src/ebs-encryption.ts`).
-3. CloudTrail trail + S3 bucket (`src/cloudtrail.ts`).
+1. Region guard (`src/guard.ts`).
+2. IAM account password policy (`src/passwords.ts`).
+3. Default EBS encryption (`src/ebs-encryption.ts`).
 4. GitHub Actions OIDC provider (`src/oidc.ts`, when `withGithubOidc`).
 5. EKS CNI IPv6 policy (`src/policy.ts`, when `networkV6` and `forEksCluster`).
 6. Network — VPC, subnets, NAT, IGW, Flow Logs, S3 gateway endpoint (`src/network.ts`).
@@ -45,7 +45,6 @@ If `domain: false` is set, the zone is skipped entirely.
 ### 1.3 Security baselines
 
 - **Password policy**: min 15 chars, no expiry (intentionally — forced rotation reduces entropy), no reuse of the last 24, users can self-change.
-- **CloudTrail**: multi-region account trail, includes global services. Bucket `bes-{stack}-cloudtrail` (override with `trailBucket`). Versioning + log-file validation on. Current logs retained forever; non-current versions pruned at 90 days, whole objects at 365.
 - **Default EBS encryption**: on, using `alias/aws/ebs` (AWS-managed, not a custom KMS key).
 
 ### 1.4 Alerts
@@ -61,7 +60,7 @@ Provider `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.
 
 ### 1.6 Spot Data Feed bucket
 
-`bes-spot-data-feed-{accountId}`, 30 day lifecycle. Wired to AWS's Spot Instance data feed service. OpenCost on the K8s cluster reads it to price spot accurately.
+`bes-spot-data-feed-{accountId}`, 30 day lifecycle. Wired to AWS's Spot Instance data feed service. OpenCost on the K8s cluster reads it to price spot accurately. Not declared in a region where EC2 doesn't offer the feed (eu-central-2), and the output is then unset.
 
 ---
 
@@ -84,7 +83,8 @@ Under the `core:` namespace.
 | `zoneImport` | string | — | Zone ID to import instead of creating. |
 | `extraZones` | string[] | `[]` | Further hosted zones to create in this account, each a fully-qualified apex of its own; its NS must be delegated from the parent zone by hand. For accounts shared by several deployments that need distinct apex domains. |
 | `canopyInfra` | string | — | A `canopy-infra` stack reference. Set when Canopy manages this account's zone: it creates a role Canopy assumes to write the records it manages there. Unset means Canopy has no access. |
-| `trailBucket` | string | `bes-{stack}-cloudtrail` | CloudTrail bucket name. |
+
+`aws:region` is required too. The stack refuses to run without it, or when it differs from the region of the previous update (`src/guard.ts`), so that an aws-sso profile's default region can never move a core.
 
 ---
 
@@ -94,7 +94,7 @@ Consumed by downstream stacks via the `CrossStack` wrapper (see `docs/dev/pulumi
 
 | Export | Purpose |
 |---|---|
-| `accountId`, `region` | Verified AWS context. `failIfIncorrectAccount()` reads these. |
+| `accountId`, `region` | Verified AWS context. `failIfIncorrectAccountOrRegion()` reads these, and the core's own guard reads `region` from its previous update. |
 | `tags` | Base tag set, merged into every downstream resource. |
 | `network` | VPC ID, CIDRs, and all three subnet lists. `.subnetIds` convenience merges them. |
 | `dbSubnetGroup` | RDS subnet group (present when `privateSubnets`). |
@@ -144,6 +144,6 @@ k8s-core:core: bes/core/tamanu-internal
 tamanu-backups:core: bes/core/tamanu-internal
 ```
 
-The stack then imports `common/coreRef.ts` (or `common/k8s/coreRef.ts` for K8s workloads) to get typed accessors to everything core exports, plus `failIfIncorrectAccount()` which bails out early if the AWS creds don't match the core's `accountId`.
+The stack then imports `common/coreRef.ts` (or `common/k8s/coreRef.ts` for K8s workloads) to get typed accessors to everything core exports, plus `failIfIncorrectAccountOrRegion()` which bails out early if the AWS creds don't match the core's `accountId` or the provider isn't in the core's `region`.
 
 See `docs/dev/pulumi-organisation.md` for the plumbing.

@@ -28,7 +28,7 @@ Things named after `<stack>`: the Tailscale device `k8s-operator-<stack>`, which
 | `pulumi/canopy-infra` | `canopy-infra:` | `k8s-core`, `core` | AWS (central account) | Canopy IAM identities |
 | `pulumi/canopy` | `canopy:` | `k8s-core`, `canopy-infra` | tailnet only | Canopy workloads ([page](canopy-tls-config.md)) |
 
-`failIfIncorrectAccount()` (k8s-core) and `failIfIncorrectCluster()` (every in-cluster stack) stop a run pointed at the wrong account or cluster: see [cluster-api-unreachable](../runbooks/cluster-api-unreachable.md).
+`failIfIncorrectAccountOrRegion()` (k8s-core) and `failIfIncorrectCluster()` (every in-cluster stack) stop a run pointed at the wrong account, region or cluster: see [cluster-api-unreachable](../runbooks/cluster-api-unreachable.md).
 Stack config files (`Pulumi.<stack>.yaml`) are gitignored: pull them with [refresh-stack-config](../sops/refresh-stack-config.md).
 
 ## Component ownership
