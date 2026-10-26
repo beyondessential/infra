@@ -194,7 +194,9 @@ A core that hosts a Kubernetes cluster with IPv6 addressing MUST have the manage
 
 ## Spot data feed
 
-A core MUST have an S3 bucket named `bes-spot-data-feed-<account id>` that receives the [Spot data feed](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-data-feeds.html) of its account under the prefix `spot-pricing`.
+A core in a region that offers the Spot data feed MUST have an S3 bucket named `bes-spot-data-feed-<account id>` that receives the [Spot data feed](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-data-feeds.html) of its account under the prefix `spot-pricing`.
+
+A core in a region that doesn't offer it MUST have no such bucket.
 
 The bucket SHOULD delete feed files older than 30 days.
 
@@ -238,6 +240,8 @@ A core MUST publish the outputs of the following table, under the names given.
 | `alertsTopicArn` | The ARN of the alerts topic. |
 
 A core that has no zone MUST publish no value for `zoneName`, `zoneId`, `zoneNS` or `zoneMgmtPolicy`.
+
+A core with no Spot data feed bucket MUST publish no value for `spotDataFeed`.
 
 A core that has no zone role MUST publish no value for `canopyDnsRoleArn`.
 

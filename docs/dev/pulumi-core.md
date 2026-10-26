@@ -59,7 +59,7 @@ Provider `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.
 
 ### 1.6 Spot Data Feed bucket
 
-`bes-spot-data-feed-{accountId}`, 30 day lifecycle. Wired to AWS's Spot Instance data feed service. OpenCost on the K8s cluster reads it to price spot accurately.
+`bes-spot-data-feed-{accountId}`, 30 day lifecycle. Wired to AWS's Spot Instance data feed service. OpenCost on the K8s cluster reads it to price spot accurately. Not declared in a region where EC2 doesn't offer the feed (eu-central-2), and the output is then unset.
 
 ---
 
