@@ -3,10 +3,12 @@ import {
   CoreV1Api,
   CustomObjectsApi,
   type KubernetesObject,
+  KubernetesObjectApi,
+  PatchStrategy,
 } from '@kubernetes/client-node';
 import { log, runtime } from '@pulumi/pulumi';
 import { argoNamespace } from '../../../../common/k8s/argo.ts';
-import { k8sClient } from '../../../../common/k8s/client.ts';
+import { k8sClient, k8sConfig } from '../../../../common/k8s/client.ts';
 import { namespaceName } from '../namespace.ts';
 
 // A stack deployed by the previous program has Kubernetes objects that Pulumi created.
@@ -27,6 +29,7 @@ const WAIT_MINUTES = 10;
 const core = k8sClient(CoreV1Api);
 const discovery = k8sClient(ApisApi);
 const custom = k8sClient(CustomObjectsApi);
+const objects = KubernetesObjectApi.makeApiClient(k8sConfig());
 
 interface Kind {
   group: string;
@@ -135,7 +138,11 @@ async function copyConfig(): Promise<void> {
     await core.createNamespacedConfigMap({
       namespace: namespaceName,
       body: {
-        metadata: { name: target, namespace: namespaceName, labels: { [TEMPLATED_FROM]: from } },
+        metadata: {
+          name: target,
+          namespace: namespaceName,
+          labels: { [TEMPLATED_FROM]: from },
+        },
         data: cm.data,
         binaryData: cm.binaryData,
       },
@@ -161,7 +168,10 @@ async function removeReplaced(): Promise<void> {
   for (const service of services.items.filter(autonamed)) {
     log.info(`Deleting service ${service.metadata?.name}`);
     await orNothing(
-      core.deleteNamespacedService({ name: service.metadata!.name!, namespace: namespaceName }),
+      core.deleteNamespacedService({
+        name: service.metadata!.name!,
+        namespace: namespaceName,
+      }),
     );
   }
   const configMaps = await core.listNamespacedConfigMap({ namespace: namespaceName });
@@ -191,16 +201,67 @@ async function waitForRemoval(): Promise<void> {
   }
 }
 
+// What Argo adopts from the previous program under the same names.
+const ADOPTED = [
+  { apiVersion: 'apps/v1', kind: 'Deployment' },
+  { apiVersion: 'v1', kind: 'Service' },
+  { apiVersion: 'postgresql.cnpg.io/v1', kind: 'Cluster' },
+  { apiVersion: 'postgresql.cnpg.io/v1', kind: 'ScheduledBackup' },
+  { apiVersion: 'barmancloud.cnpg.io/v1', kind: 'ObjectStore' },
+];
+
+const PULUMI_MANAGER = /^pulumi-kubernetes-/;
+
+// An adopted object keeps the field managers the previous program applied it with, and
+// server-side apply lets Argo remove only the fields it owns itself. A field only Pulumi
+// owns, such as a variable a later render drops, would otherwise stay on the object for
+// good. Applying an empty object as each of those managers gives up their fields, and the
+// ones Argo does not also own are removed.
+async function releaseLegacyFields(): Promise<void> {
+  for (const { apiVersion, kind } of ADOPTED) {
+    const { items } = (await orNothing(objects.list(apiVersion, kind, namespaceName))) ?? {
+      items: [],
+    };
+    for (const object of items) {
+      if (!object.metadata?.annotations?.[TRACKING]) continue;
+      const managers = (object.metadata.managedFields ?? [])
+        .map((entry) => entry.manager)
+        .filter((manager): manager is string => !!manager && PULUMI_MANAGER.test(manager));
+      for (const manager of managers) {
+        log.info(`Releasing the fields ${manager} owns on ${kind} ${object.metadata.name}`);
+        if (runtime.isDryRun()) continue;
+        await objects.patch(
+          {
+            apiVersion,
+            kind,
+            metadata: { name: object.metadata.name, namespace: namespaceName },
+          },
+          undefined,
+          undefined,
+          manager,
+          undefined,
+          PatchStrategy.ServerSideApply,
+        );
+      }
+    }
+  }
+}
+
 /**
  * Hands a stack deployed by the previous program over to Argo CD. Does nothing for a new
  * stack or one that has already been handed over. Fails before changing anything if the
  * previous program has not marked its resources, since Pulumi would otherwise delete them.
+ * Once handed over, every update releases what the previous program still owns on the
+ * objects Argo adopted.
  *
  * During a preview it only checks.
  */
 export async function migrateFromLegacy(): Promise<'new' | 'migrated' | 'migrating'> {
   await assertArgoInstalled();
-  if (await isMigrated()) return 'migrated';
+  if (await isMigrated()) {
+    await releaseLegacyFields();
+    return 'migrated';
+  }
   if (!(await hasLegacyObjects())) return 'new';
 
   if (!(await isMarked())) {

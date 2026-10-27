@@ -37,6 +37,7 @@ Know what it does first:
 - The config ConfigMaps are copied across first, so hand edits are kept.
 - The auth secrets are new, so every user is signed out.
 - Each Gateway's Certificate is deleted with it, and the issued TLS Secret is kept, so the new Gateway's Certificate finds it. If a certificate is ordered anyway, it is a renewal for the same hostnames.
+- Every later update releases the fields the previous program still owns on the objects Argo CD adopted, so fields a later render drops are removed from them.
 
 ## 5. Escalate
 
