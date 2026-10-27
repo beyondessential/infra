@@ -20,6 +20,7 @@ export const STUB_ONLY = new Set([
   'rendererPath',
   // Which channel renders the deployment. The renderer rejects it as unknown.
   'rendererChannel',
+  'localSecrets',
 ]);
 
 /**

@@ -47,7 +47,7 @@ Update strategy and replica rules are in [K8STDR](../spec/kubernetes/tamanu/depl
 | Secret `tamanu-crypto` | Key file and encrypted settings key the servers use. | [Ruled out](../ruled-out-actions.md#ruled-out-actions-never-suggest). |
 | Secrets `config-secrets-<server>` | Signing secrets for auth tokens (`authSecret`, and `authRefreshSecret` for central). Created once, kept in Pulumi state. | Recreating them signs every user out. |
 | Secrets `<server>-raw-db`, `<server>-reporting-db` | Passwords of the legacy `raw` and `reporting` roles. Only before Tamanu 2.60.0, which manages its own roles. | |
-| Secrets copied from `tamanu-system` | Shared integration credentials, copied on every update. | Rotate in `tamanu-system`, then update the stack. |
+| Secrets copied from `tamanu-system` | Shared integration credentials, copied on every update, except those named in `localSecrets`. | Rotate in `tamanu-system`, then update the stack. A Secret in `localSecrets` is edited in the namespace instead. |
 | `VolumeSnapshot seed-snapshot` and a cluster-scoped `VolumeSnapshotContent` | Clone of the seed snapshot (seeded deployments only). | A namespace delete leaves the content behind, `pulumi destroy` removes it. |
 | ServiceAccount, Role and RoleBinding `tamanu-ttl`, CronJob `ttl-hibernate-*`, Job `ttl-wake-*` | Hibernation and waking (with `ttlHours`). | [K8STSD](../spec/kubernetes/tamanu/scaledown.md#hibernation) |
 | Application `tamanu-<stack>` in `argocd-system` | Carries the render parameters. | |

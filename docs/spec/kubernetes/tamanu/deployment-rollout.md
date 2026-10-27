@@ -227,6 +227,12 @@ Scaledown is specified in [K8STSD](scaledown.md).
 
 The stub MUST NOT complete an update of a deployment until the Application of the deployment is Synced and Healthy.
 
+The stub MUST take the Application to be Synced and Healthy only once Argo CD has compared it against the spec the update applied.
+
+> [!NOTE]
+> Argo CD records the spec it last compared in `status.sync.comparedTo`.
+> Until that matches the spec, the status shown is the previous spec's, and a deployment that was Healthy before the update would otherwise complete it at once.
+
 The stub MUST fail an update when a sync operation of the Application finishes failed or in error after the update began.
 
 The stub MUST NOT fail an update for a sync operation that finished before the update began.

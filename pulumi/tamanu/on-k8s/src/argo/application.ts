@@ -9,6 +9,7 @@ import { configTemplate, domains, facilityList } from '../config.ts';
 import { namespaceName } from '../namespace.ts';
 import { appVersion } from '../version.ts';
 import { channel } from './channel.ts';
+import { type LiveApplication, comparedCurrentSpec, settled } from './settled.ts';
 
 const ARGO_NAMESPACE = argoNamespace;
 const ARGO_PROJECT = cfg.get('argoProject') ?? 'tamanu';
@@ -140,10 +141,11 @@ interface ApplicationStatus {
 const CLOCK_SKEW_MS = 15_000;
 
 /**
- * Resolves when the Application is synced and healthy. Fails when a sync
- * operation finished failing after the wait began, or when it has not settled
- * within the wait. An operation that failed before the wait began is the
- * previous deploy's, which the controller replaces once it notices the update.
+ * Resolves when the Application is synced and healthy for the spec the update applied: until
+ * the controller has compared that spec, the status it shows is the previous spec's. Fails
+ * when a sync operation finished failing after the wait began, or when it has not settled
+ * within the wait. An operation that failed before the wait began is the previous deploy's,
+ * which the controller replaces once it notices the update.
  *
  * Skipped during a preview, since the Application does not exist yet.
  */
@@ -165,7 +167,7 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
         namespace: ns,
         plural: 'applications',
         name,
-      })) as { status?: ApplicationStatus };
+      })) as LiveApplication & { status?: ApplicationStatus };
       const status = live.status ?? {};
       const op = status.operationState;
       const finished = op?.finishedAt ? Date.parse(op.finishedAt) : 0;
@@ -178,12 +180,14 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
         if (comparison) log.warn(`Application ${name}: ${comparison}`);
         problem = comparison;
       }
-      const now = `${status.sync?.status ?? 'Unknown'}/${status.health?.status ?? 'Unknown'}`;
+      const now = comparedCurrentSpec(live)
+        ? `${status.sync?.status ?? 'Unknown'}/${status.health?.status ?? 'Unknown'}`
+        : 'waiting for Argo CD to compare the new spec';
       if (now !== last) {
         log.info(`Application ${name}: ${now}`);
         last = now;
       }
-      if (status.sync?.status === 'Synced' && status.health?.status === 'Healthy') {
+      if (settled(live)) {
         return 'Healthy';
       }
       await new Promise((resolve) => setTimeout(resolve, POLL_SECONDS * 1000));
