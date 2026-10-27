@@ -7,9 +7,9 @@
     "test": "node --test \"bin/**/*.test.js\""
   },
   "dependencies": {
-    "@pulumi/kubernetes": "^4.29.0",
-    "@pulumi/policy": "^1.13.0",
-    "@pulumi/pulumi": "^3.182.0"
+    "@pulumi/kubernetes": "^4.34.2",
+    "@pulumi/policy": "^1.21.0",
+    "@pulumi/pulumi": "^3.272.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
