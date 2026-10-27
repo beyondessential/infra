@@ -16,7 +16,7 @@ Run the `infra-argo-tamanu-renderer promote` workflow (`.github/workflows/infra-
 | Input | Value |
 |---|---|
 | `channel` | `stable` |
-| `sha` | The commit of the build to promote, in full or at least seven characters. The build must already exist, because a promotion never builds. |
+| `sha` | The commit of the build to promote, in full or at least seven characters, or empty for the latest build from `main`. The build must already exist, because a promotion never builds. |
 | `clusters` | Left at its default (`tamanu-internal-main shared-demos-demo`) unless repeating. |
 | `retag` | On. |
 
@@ -27,7 +27,7 @@ Promotions run one at a time.
 ## When a cluster was not reached
 
 The failed run names the clusters it missed, and the tag has already moved, so those clusters serve a different render until repeated.
-Run the workflow again with the same `channel` and `sha`, `clusters` set to the missed ones, and `retag` off.
+Run the workflow again with the same `channel` and the `sha` the failed run names, `clusters` set to the missed ones, and `retag` off.
 
 ## Trying a renderer change on one deployment
 

@@ -3,7 +3,8 @@ name: infra-argo-tamanu-renderer promote
 # Moves a renderer channel tag to a build that already exists, then makes each cluster's Argo CD
 # render the Applications on that channel with it. docs/spec/kubernetes/tamanu/renderer-rollout.md says what
 # this must do. Canary is promoted by the renderer's CD on every build from main; stable is
-# promoted by running this by hand with the commit to promote.
+# promoted by running this by hand, with the commit to promote or, without one, the latest build
+# from main.
 #
 # To repeat a promotion for the clusters it did not reach, run it again with the same channel and
 # commit, `clusters` set to those, and `retag` off.
@@ -16,7 +17,7 @@ on:
         required: true
       sha:
         type: string
-        required: true
+        default: ""
       clusters:
         type: string
         default: tamanu-internal-main shared-demos-demo
@@ -31,9 +32,9 @@ on:
         options: [stable, canary]
         required: true
       sha:
-        description: Commit of the build to promote, full or at least seven characters
+        description: Commit of the build to promote, full or at least seven characters. Leave empty for the latest build from main
         type: string
-        required: true
+        required: false
       clusters:
         description: Clusters to refresh, separated by spaces
         type: string
@@ -62,6 +63,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       clusters: ${{ steps.plan.outputs.clusters }}
+      sha: ${{ steps.plan.outputs.sha }}
     steps:
       - name: Check the inputs
         id: plan
@@ -74,6 +76,16 @@ jobs:
             stable | canary) ;;
             *) echo "::error::unknown channel '$CHANNEL', use stable or canary"; exit 1 ;;
           esac
+          if [ -z "$SHA" ]; then
+            # The renderer's CD moves the `main` tag to each build from main, and labels it with the
+            # commit it was built from.
+            SHA=$(skopeo inspect --override-os linux --override-arch amd64 "docker://$IMAGE:main" \
+              | jq -r '.Labels["org.opencontainers.image.revision"] // empty')
+            if [ -z "$SHA" ]; then
+              echo "::error::could not find the commit of the latest build from main"; exit 1
+            fi
+            echo "::notice::promoting $SHA, the latest build from main"
+          fi
           if ! [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
             echo "::error::'$SHA' is not a commit"; exit 1
           fi
@@ -84,6 +96,7 @@ jobs:
           done
           # The clusters a promotion applies to: by default, every one that runs Tamanu deployments.
           # spec: K8STRO#promotion
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "clusters=$(jq -cn --arg c "$CLUSTERS" '$c | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   retag:
@@ -103,7 +116,7 @@ jobs:
       - name: Move the tag
         env:
           CHANNEL: ${{ inputs.channel }}
-          SHA: ${{ inputs.sha }}
+          SHA: ${{ needs.plan.outputs.sha }}
         run: tamanu/on-k8s/renderer/tools/retag-channel.sh "$CHANNEL" "$SHA"
 
   refresh:
@@ -146,7 +159,7 @@ jobs:
 
   report:
     name: Report
-    needs: [refresh]
+    needs: [plan, refresh]
     if: ${{ always() && needs.refresh.result == 'failure' }}
     runs-on: ubuntu-24.04
     permissions:
@@ -158,5 +171,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           CHANNEL: ${{ inputs.channel }}
-          SHA: ${{ inputs.sha }}
+          SHA: ${{ needs.plan.outputs.sha }}
         run: tamanu/on-k8s/renderer/tools/unreached-clusters.sh "$CHANNEL" "$SHA"
