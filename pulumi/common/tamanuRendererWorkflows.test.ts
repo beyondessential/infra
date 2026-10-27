@@ -57,7 +57,7 @@ test('a promotion applies to every cluster that runs Tamanu deployments by defau
 // spec: K8STRO#promotion
 test('a cluster that fails does not stop the others, and the failures are reported', () => {
   assert.equal(promote.jobs.refresh.strategy['fail-fast'], false);
-  assert.deepEqual(promote.jobs.report.needs, ['refresh']);
+  assert.deepEqual(promote.jobs.report.needs, ['plan', 'refresh']);
   assert.equal(promote.on.workflow_dispatch.inputs?.retag?.default, true);
 });
 
