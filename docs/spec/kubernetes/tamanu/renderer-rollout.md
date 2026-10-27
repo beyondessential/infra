@@ -80,6 +80,8 @@ Each build of the renderer from the main branch MUST be promoted to `canary` aut
 
 `stable` MUST move only when someone requests it, naming the commit to promote.
 
+Where the request names no commit, the promotion MUST promote the latest build from the main branch.
+
 Promotions MUST run one at a time.
 
 After a channel tag moves, a promotion MUST restart the Argo CD repo server of each cluster and wait for the restart to finish before it refreshes any Application.
