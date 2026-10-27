@@ -42,6 +42,7 @@ Numbers, booleans and lists are parsed from their string form.
 | `timezone` | `Pacific/Auckland` | `TZ` and `TAMANU_PRIMARY_TIMEZONE` of the central and facility servers, and `TZ` of the database pods. |
 | `nodeEnv` | `production` | `NODE_ENV` of the servers. Tamanu CD sets `staging` unless told otherwise. |
 | `serviceAccount` | unset | IAM role ARN. When set the renderer creates the `app-sa` service account annotated with it. |
+| `localSecrets` | `[]` | Stub only. JSON list of names of `tamanu-system` Secrets the deployment keeps its own copy of. The stub does not copy them, and the copy in the namespace, set by hand, stays as it is. |
 
 ## Placement
 
