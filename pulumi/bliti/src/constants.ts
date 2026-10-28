@@ -8,4 +8,4 @@ export const PREVIEWS_PREFIX = 'previews/';
 export const PREVIEW_EXPIRY_DAYS = 30;
 
 // spec: BLWEB#deploy-roles
-export const REPO = 'beyondessential/bliti';
+export const REPO = 'beyondessential@37430618/bliti@1373408996';
