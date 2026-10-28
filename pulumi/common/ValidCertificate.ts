@@ -62,26 +62,34 @@ export class ValidCertificate extends ComponentResource {
       { provider, parent: this },
     );
 
+    // A name and its wildcard (`example.com`, `*.example.com`) share one validation record,
+    // so only the first validation with each record name gets a record.
     const validationRecords = certificate.domainValidationOptions.apply((validations) =>
-      validations.map(
-        ({
-          domainName,
-          resourceRecordName: name,
-          resourceRecordValue: value,
-          resourceRecordType: type,
-        }) =>
-          new aws.route53.Record(
-            `${this.#name}-validation-${domainName}`,
-            {
-              name,
-              records: [value],
-              ttl: 60,
-              type,
-              zoneId,
-            },
-            { parent: certificate, deleteBeforeReplace: true },
-          ),
-      ),
+      validations
+        .filter(
+          ({ resourceRecordName }, index) =>
+            validations.findIndex((other) => other.resourceRecordName === resourceRecordName) ===
+            index,
+        )
+        .map(
+          ({
+            domainName,
+            resourceRecordName: name,
+            resourceRecordValue: value,
+            resourceRecordType: type,
+          }) =>
+            new aws.route53.Record(
+              `${this.#name}-validation-${domainName}`,
+              {
+                name,
+                records: [value],
+                ttl: 60,
+                type,
+                zoneId,
+              },
+              { parent: certificate, deleteBeforeReplace: true },
+            ),
+        ),
     );
 
     const certificateValidation = new aws.acm.CertificateValidation(

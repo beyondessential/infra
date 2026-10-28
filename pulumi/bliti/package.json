@@ -1,0 +1,5 @@
+{
+  "name": "@bes/bliti",
+  "type": "module",
+  "main": "src/index.ts"
+}

@@ -105,6 +105,10 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Canopy ADM](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/admin-access.md) and [Canopy MCP](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/mcp.md) | Who is an administrator of Canopy, and the fleet query interface. Used by [K8SCNP](kubernetes/canopy.md). |
 | [Canopy CHK](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/monitoring/checks.md), [Canopy INC](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/monitoring/incidents.md), [Canopy MNT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/monitoring/maintenance.md) and [Canopy SELF](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/self-alerts.md) | Check state, incidents, maintenance windows and self-alerts, and how each notifies. Used by [K8SCNP](kubernetes/canopy.md). |
 | [Canopy HST](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/platform/history-storage.md) | How Canopy provisions the ranges of its histories ahead. Used by [K8SCNP](kubernetes/canopy.md). |
+| [Naming objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html) and [Managing the lifecycle of objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) | S3 keys, prefixes and lifecycle expiry. Used by [BLWEB](bliti-web.md). |
+| [Working with distributions](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-working-with.html) and [Invalidate files](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html) | CloudFront distributions and invalidations. Used by [BLWEB](bliti-web.md). |
+| [GitHub OpenID Connect reference](https://docs.github.com/en/actions/reference/security/oidc) | The claims of the OIDC token GitHub Actions issues, including the subject. Used by [BLWEB](bliti-web.md). |
+| [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) | HTTP semantics: content codings, `Accept-Encoding` and `Vary`. Used by [BLWEB](bliti-web.md). |
 
 ## Terminology
 
@@ -367,3 +371,28 @@ Defined in [LNXBAK](linux/backups.md#repository-roles).
 
 The IAM role that maintains and inspects a repository bucket.
 Defined in [LNXBAK](linux/backups.md#repository-roles).
+
+### Bliti web app
+
+The static web app built from the bliti repository, which provisions and documents the assembly of Iti devices.
+Defined by this gloss alone.
+
+### Production site
+
+The build of the bliti web app served at `iti.tamanu.app`.
+Defined in [BLWEB](bliti-web.md#addresses).
+
+### Preview
+
+The build of the bliti web app that one pull request deploys, served under its own name.
+Defined in [BLWEB](bliti-web.md#addresses).
+
+### Variant
+
+An object that stands for another object in one content coding, served in its place to requests that accept that coding.
+Defined in [BLWEB](bliti-web.md#pre-compressed-variants).
+
+### Compressible object
+
+An object of the bliti web app for which every variant is uploaded.
+Defined in [BLWEB](bliti-web.md#pre-compressed-variants).

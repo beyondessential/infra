@@ -7,10 +7,16 @@ import { ValidCertificate } from './ValidCertificate.ts';
 
 export interface BucketWebsiteArgs {
   domain: string;
+  /** More names the distribution serves, each covered by the certificate and given DNS records. */
+  extraDomains?: string[];
   bucketName: string;
   zoneId: string;
   logsBucket: string;
   bucketItselfPublic?: boolean;
+  /**
+   * Let the distribution list the bucket, so S3 answers a missing key with 404 rather than 403.
+   */
+  listableByDistribution?: boolean;
   importBucket?: string;
   notFoundPage?: string;
   cacheBehaviour?: Omit<
@@ -34,10 +40,12 @@ export class BucketWebsite extends ComponentResource {
     name: string,
     {
       domain,
+      extraDomains = [],
       bucketName,
       zoneId,
       logsBucket,
       bucketItselfPublic = false,
+      listableByDistribution = false,
       importBucket,
       notFoundPage = DEFAULT_404,
       cacheBehaviour = {},
@@ -95,7 +103,7 @@ export class BucketWebsite extends ComponentResource {
     const certificate = new ValidCertificate(
       `${name}-certificate`,
       {
-        domainNames: [domain],
+        domainNames: [domain, ...extraDomains],
         zoneId,
         inUsEast1: true, // required by CloudFront
         tags,
@@ -170,7 +178,7 @@ export class BucketWebsite extends ComponentResource {
             responsePagePath: errorDocument.key.apply((key) => `/${key}`),
           },
         ],
-        aliases: [domain],
+        aliases: [domain, ...extraDomains],
         httpVersion: 'http2and3',
         defaultCacheBehavior: {
           cachePolicyId: policyId,
@@ -229,6 +237,20 @@ export class BucketWebsite extends ComponentResource {
                 },
               },
             },
+            listableByDistribution && {
+              Sid: 'CloudfrontList',
+              Effect: 'Allow',
+              Principal: {
+                Service: 'cloudfront.amazonaws.com',
+              },
+              Action: ['s3:ListBucket'],
+              Resource: this.bucket.bucket.apply((name) => `arn:aws:s3:::${name}`),
+              Condition: {
+                StringEquals: {
+                  'AWS:SourceArn': this.distribution.arn,
+                },
+              },
+            },
             bucketItselfPublic && {
               Sid: 'PublicRead',
               Effect: 'Allow',
@@ -257,38 +279,30 @@ export class BucketWebsite extends ComponentResource {
       { parent: this },
     );
 
-    new awsClassic.route53.Record(
-      `${name}-domain-ipv4`,
-      {
-        zoneId,
-        name: domain,
-        type: 'A',
-        aliases: [
+    for (const [index, recordName] of [domain, ...extraDomains].entries()) {
+      // Records for the primary name carry no suffix, so stacks without extra names keep theirs.
+      const suffix = index === 0 ? '' : `-${recordName}`;
+      for (const [family, type] of [
+        ['ipv4', 'A'],
+        ['ipv6', 'AAAA'],
+      ]) {
+        new awsClassic.route53.Record(
+          `${name}-domain-${family}${suffix}`,
           {
-            name: this.distribution.domainName,
-            evaluateTargetHealth: false,
-            zoneId: this.distribution.hostedZoneId,
+            zoneId,
+            name: recordName,
+            type,
+            aliases: [
+              {
+                name: this.distribution.domainName,
+                evaluateTargetHealth: false,
+                zoneId: this.distribution.hostedZoneId,
+              },
+            ],
           },
-        ],
-      },
-      { parent: this },
-    );
-
-    new awsClassic.route53.Record(
-      `${name}-domain-ipv6`,
-      {
-        zoneId,
-        name: domain,
-        type: 'AAAA',
-        aliases: [
-          {
-            name: this.distribution.domainName,
-            evaluateTargetHealth: false,
-            zoneId: this.distribution.hostedZoneId,
-          },
-        ],
-      },
-      { parent: this },
-    );
+          { parent: this },
+        );
+      }
+    }
   }
 }
