@@ -389,7 +389,7 @@ Defined in [BLWEB](bliti-web.md#addresses).
 
 ### Variant
 
-An object that holds another object in one content coding, served in its place to requests that accept that coding.
+An object that stands for another object in one content coding, served in its place to requests that accept that coding.
 Defined in [BLWEB](bliti-web.md#pre-compressed-variants).
 
 ### Compressible object

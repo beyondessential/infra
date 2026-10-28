@@ -16,6 +16,7 @@
 - [ ] `http://iti.tamanu.app` redirects to HTTPS; certificate covers the apex and `pr-1.iti.tamanu.app` (verifies spec: BLWEB)
 - [ ] A missing asset answers 404, not 403 (verifies spec: BLWEB)
 - [ ] `curl -H 'Accept-Encoding: zstd'` on a JS asset returns `Content-Encoding: zstd`, the JS content type and `Vary: Accept-Encoding` (verifies spec: BLWEB)
+- [ ] A sub-1 kB JS asset requested with `Accept-Encoding: br` returns the plain bytes with no `Content-Encoding` and the JS content type (verifies spec: BLWEB)
 - [ ] The preview role can put and delete under `previews/`, and is denied putting under `prod/` (verifies spec: BLWEB)
 - [ ] The prod role can put and delete under `prod/`, and is denied putting under `previews/` (verifies spec: BLWEB)
 - [ ] Both roles can create an invalidation on the distribution (verifies spec: BLWEB)

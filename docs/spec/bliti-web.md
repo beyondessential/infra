@@ -73,7 +73,7 @@ The distribution MUST answer a request with status 404 when no object has the ke
 
 ## Pre-compressed variants
 
-A variant is an object that holds another object, its original, in one content coding, under the key of the original followed by the suffix of that coding in the following table.
+A variant is an object that stands for another object, its original, in one content coding, under the key of the original followed by the suffix of that coding in the following table.
 
 | content coding | suffix | preference |
 |---|---|---|
@@ -85,7 +85,9 @@ An original whose key ends in one of the extensions `.html`, `.js`, `.mjs`, `.cs
 
 A deploy MUST upload a variant in each content coding of the table for every compressible object it uploads, whatever the size of the object.
 
-A variant MUST carry the `Content-Type` of its original and a `Content-Encoding` naming its content coding.
+A variant MUST hold either its original in its content coding, with a `Content-Encoding` naming that coding, or the bytes of its original unchanged, with no `Content-Encoding`.
+
+A variant MUST carry the `Content-Type` of its original.
 
 The distribution MUST serve a request for a compressible object from its variant in the most preferred content coding that the request finds acceptable.
 
