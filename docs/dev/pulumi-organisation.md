@@ -43,6 +43,7 @@ pulumi/
 ├── policies/             # Pulumi policy packs
 ├── agent-slack/          # Slack bot
 ├── bestool-proxy/        # bestool update server
+├── bliti/                # bliti web app at iti.tamanu.app, with per-PR previews (docs/spec/bliti-web.md)
 ├── first-officer/        # on-call tooling
 ├── golinks/              # go/ short links
 ├── pollen/               # Pollen, guided technical walkthrough for new Tamanu deployments
@@ -128,9 +129,9 @@ The `$core.name.split('/')[2]` trick derives the trailing part of a stack name (
 
 ### DNS / LB / static sites
 
-- **`ValidCertificate.ts`** — creates an ACM cert and validates it via Route53 in one go. Optional us-east-1 provider mode for CloudFront. Uses `deleteBeforeReplace: true` on validation records to survive updates.
+- **`ValidCertificate.ts`** — creates an ACM cert and validates it via Route53 in one go. Optional us-east-1 provider mode for CloudFront. Uses `deleteBeforeReplace: true` on validation records to survive updates. A name and its wildcard share one validation record, which is created once.
 - **`LoadBalancer.ts`** — ALB with an HTTP→HTTPS redirect and an HTTPS listener. Will auto-create a cert via `ValidCertificate`. Registers a Route53 alias.
-- **`BucketWebsite.ts`** + **`bucket-website-request-function.js`** / **`bucket-website-response-function.js`** — S3 bucket + CloudFront distribution + CloudFront Functions for the request (rewrite `/path/` to `/path/index.html`, redirect bare paths) and response (charset, CORS that allows HEAD/OPTIONS but not GET, for anti-hotlinking). Supports importing existing buckets.
+- **`BucketWebsite.ts`** + **`bucket-website-request-function.js`** / **`bucket-website-response-function.js`** — S3 bucket + CloudFront distribution + CloudFront Functions for the request (rewrite `/path/` to `/path/index.html`, redirect bare paths) and response (charset, CORS that allows HEAD/OPTIONS but not GET, for anti-hotlinking). Supports importing existing buckets, extra names (`extraDomains`, each covered by the cert and given A/AAAA records), and letting the distribution list the bucket (`listableByDistribution`) so missing keys are 404 rather than 403.
 
 ### IAM / secrets
 

@@ -1,0 +1,6 @@
+name: bliti
+description: Hosting of the bliti web app at iti.tamanu.app, with a preview per pull request
+runtime:
+  name: nodejs
+  options:
+    typescript: false
