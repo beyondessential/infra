@@ -374,7 +374,7 @@ Defined in [LNXBAK](linux/backups.md#repository-roles).
 
 ### Bliti web app
 
-The static single-page app built from the bliti repository, which provisions and documents the assembly of Iti devices.
+The static web app built from the bliti repository, which provisions and documents the assembly of Iti devices.
 Defined by this gloss alone.
 
 ### Production site

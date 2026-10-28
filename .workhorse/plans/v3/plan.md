@@ -7,10 +7,10 @@ Infra side of the bliti web app deploy; bliti/H4 is the build and workflow side.
 - New stack `pulumi/bliti/` (project `bliti`), `src/` layout like `pollen/`, one stack against `bes/core/tamanu-internal`, guarded by `failIfIncorrectAccountOrRegion()`.
 - Build on `common/BucketWebsite.ts` with a new optional list of extra names, used for the certificate SANs, the distribution aliases and the A/AAAA records. Every other user of the component keeps the single-name behaviour.
 - `ValidCertificate` creates one validation record per domain validation option. ACM gives `iti.tamanu.app` and `*.iti.tamanu.app` the same CNAME, so the two records would collide. Dedupe by record name before creating them.
-- Confirm that the hosted zone for `tamanu.app` is the Internal Tamanu core's own zone (take its id from `coreRef`). If it lives elsewhere, take the zone id from config instead. This needs a ReadAccess check once SSO is logged in.
+- `tamanu.app` is the Internal Tamanu core's own zone (`zoneName`/`zoneId` outputs of `bes/core/tamanu-internal`), so take the zone id from `coreRef`. The same core publishes `ghaOidc`. There are no `iti.tamanu.app` records yet, and no `bes-bliti-web` bucket.
 - A custom viewer-request function (`requestFunctionSourceFile`) handles three things:
   - Picks the prefix from Host: the apex maps to `prod/`, `pr-<n>.` maps to `previews/pr-<n>/`, and any other host gets a 404 response straight from the function.
-  - SPA fallback: a last segment without an extension maps to `<prefix>index.html`.
+  - Pages: `/` maps to `<prefix>index.html`. A path ending in `/` (other than `/`) gets a 308 to the slashless path, keeping the query string. A last segment with no `.` maps to `<prefix><path>.html`. Anything else maps to `<prefix><path>`. There is no fallback to `index.html`. The page rule runs before the encoding rewrite, so pages get their `.html` variants.
   - For compressible extensions, rewrites to `.zst`, `.br` or `.gz`, picking the first of zstd, br, gzip that `Accept-Encoding` accepts and treating `q=0` as not acceptable.
 - Because the rewritten URI is the cache key, variants cache apart with no change to the cache policy. CloudFront passes `Content-Encoding` objects through without recompressing, so `compress: true` can stay.
 - A custom viewer-response function adds `Vary: Accept-Encoding` for compressible paths. Decide whether to keep the default function's CORS headers. Viewer-response functions don't run on origin 4xx responses.
@@ -26,7 +26,7 @@ Infra side of the bliti web app deploy; bliti/H4 is the build and workflow side.
 ## Hand-offs to bliti/H4
 
 - The `production` environment's deployment rules allow only `main` and tags.
-- Every file with a compressible extension is uploaded with all three variants, carrying the original `Content-Type` and the matching `Content-Encoding`.
+- Every file with a compressible extension is uploaded with all three variant keys, carrying the original `Content-Type`. Where a variant wouldn't help, its key holds the plain bytes with no `Content-Encoding`. Files outside the extension list (images, fonts, etc.) need no variants.
 - Preview deploys upload every object, so lifecycle expiry restarts for the whole preview. A `pull_request` `closed` job deletes `previews/pr-<n>/`.
 - Deploys invalidate the paths they changed. The bucket, distribution id and role ARNs come from the stack outputs.
 
@@ -34,7 +34,7 @@ Infra side of the bliti web app deploy; bliti/H4 is the build and workflow side.
 
 - [ ] Extend `BucketWebsite` with extra names; dedupe validation records in `ValidCertificate`
 - [ ] Scaffold `pulumi/bliti/` (Pulumi.yaml, package.json, src/index.ts, src/config.ts)
-- [ ] Request and response functions, with unit tests for host mapping, SPA fallback and encoding choice
+- [ ] Request and response functions, with unit tests for host mapping, page paths, trailing-slash redirect and encoding choice
 - [ ] Bucket, lifecycle rule and distribution
 - [ ] Deploy roles and outputs
 - [ ] `npm run build` in `pulumi/policies`, then `pulumi preview --policy-pack` against the new stack

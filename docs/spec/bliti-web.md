@@ -65,9 +65,16 @@ The distribution MUST answer a request for any other host under `iti.tamanu.app`
 
 ## Routing
 
-The distribution MUST serve a request whose path ends in a segment without an extension, including the path `/`, from the object `index.html` under the prefix of its host.
+The original of a request is the object under the prefix of its host that the following rules choose for it.
+A segment of a path has an extension when it contains a `.`.
 
-The distribution MUST serve a request for any other path from the object under the prefix of its host whose key continues with that path.
+The original of a request for the path `/` MUST be the object `index.html`.
+
+The distribution MUST answer a request whose path, other than `/`, ends in `/` with a permanent redirect to the same path without its trailing `/`, keeping its query.
+
+The original of a request whose path ends in a segment without an extension MUST be the object whose key continues with that path followed by `.html`.
+
+The original of a request for any other path MUST be the object whose key continues with that path.
 
 The distribution MUST answer a request with status 404 when no object has the key the request is served from.
 
@@ -89,13 +96,13 @@ A variant MUST hold either its original in its content coding, with a `Content-E
 
 A variant MUST carry the `Content-Type` of its original.
 
-The distribution MUST serve a request for a compressible object from its variant in the most preferred content coding that the request finds acceptable.
+The distribution MUST serve a request whose original is a compressible object from the variant of that original in the most preferred content coding that the request finds acceptable.
 
-The distribution MUST serve a request for a compressible object that finds none of those content codings acceptable from the original.
+The distribution MUST serve a request whose original is a compressible object, and which finds none of those content codings acceptable, from its original.
 
 The distribution MUST cache each variant apart from its original and from the other variants of that original.
 
-The distribution MUST answer a request for a compressible object with a `Vary` header that names `Accept-Encoding`.
+The distribution MUST answer a request whose original is a compressible object with a `Vary` header that names `Accept-Encoding`.
 
 The distribution MUST compress no response from an object that carries a `Content-Encoding`.
 
