@@ -166,10 +166,10 @@ fn processes_are_ordered_by_wave() {
 			.unwrap()
 			.to_owned()
 	};
-	assert_eq!(wave("Job", "facility-1-migrator"), "1");
-	assert_eq!(wave("Job", "facility-1-setup-sync"), "2");
-	assert_eq!(wave("Deployment", "facility-1-api"), "3");
-	assert_eq!(wave("HTTPRoute", "facility-1-api"), "3");
+	assert_eq!(wave("Job", "facility-1-migrator"), "2");
+	assert_eq!(wave("Job", "facility-1-setup-sync"), "3");
+	assert_eq!(wave("Deployment", "facility-1-api"), "4");
+	assert_eq!(wave("HTTPRoute", "facility-1-api"), "4");
 	let hook = &find(&out, "Job", "facility-1-setup-sync")["metadata"]["annotations"];
 	assert_eq!(hook["argocd.argoproj.io/hook"], "Sync");
 }

@@ -51,10 +51,11 @@ The renderer MUST order the [sync waves](https://argo-cd.readthedocs.io/en/stabl
 
 | order | resources |
 |---|---|
-| 1 | The rendered configuration ConfigMaps, the application service account, the claim of each [shared filesystem](../../overview.md#shared-filesystem) volume, and the database clusters with their backup resources. |
-| 2 | The `<server>-reporting-grants` and `<server>-migrator` Jobs. |
-| 3 | The `central-provisioner` Job and the `facility-N-setup-sync` Jobs. |
-| 4 | Deployments, Services, Gateways with their traffic policies, HTTPRoutes, PodDisruptionBudgets, the `central-db-tailscale` Service, the seed top-up Job, the synthetic tests Deployment, and the `wake` CronJob. |
+| 1 | The rendered configuration ConfigMaps, the application service account, the quiesce service account with its Role and RoleBinding, the claim of each [shared filesystem](../../overview.md#shared-filesystem) volume, and the database clusters with their backup resources. |
+| 2 | The `<server>-quiesce` Jobs. |
+| 3 | The `<server>-reporting-grants` and `<server>-migrator` Jobs. |
+| 4 | The `central-provisioner` Job, the `facility-N-setup-sync` Jobs and the `<server>-resume` Jobs. |
+| 5 | Deployments, Services, Gateways with their traffic policies, HTTPRoutes, PodDisruptionBudgets, the `central-db-tailscale` Service, the seed top-up Job, the synthetic tests Deployment, and the `wake` CronJob. |
 
 A route MUST NOT be applied before the Service it names.
 
@@ -70,9 +71,37 @@ That Argo CD MUST report any other database cluster as Progressing.
 
 ## Hook Jobs
 
-The `<server>-reporting-grants`, `<server>-migrator`, `central-provisioner` and `facility-N-setup-sync` Jobs MUST be sync hooks that Argo CD deletes before it creates them again.
+The `<server>-reporting-grants`, `<server>-quiesce`, `<server>-migrator`, `<server>-resume`, `central-provisioner` and `facility-N-setup-sync` Jobs MUST be sync hooks that Argo CD deletes before it creates them again.
 
 A sync MUST run each of those Jobs, including a sync that changes nothing in the Tamanu image.
+
+## Quiescing for migrations
+
+The processes of a server are the Deployments the renderer defines for that server, other than its web frontend.
+
+Before the `<server>-migrator` Job runs, the `<server>-quiesce` Job MUST determine, by running the Tamanu image against the database of the server, whether migrations are pending on that database.
+
+The `<server>-quiesce` Job MUST fail when the Tamanu image reports an error instead of an answer.
+
+The `<server>-quiesce` Job MUST treat migrations as pending when it cannot determine otherwise.
+
+When migrations are pending, the `<server>-quiesce` Job MUST scale every process of the server to zero replicas, and MUST finish only once no pod of those processes remains.
+
+When no migrations are pending, the `<server>-quiesce` Job MUST leave the processes of the server as they are.
+
+Before scaling a process to zero, the `<server>-quiesce` Job MUST record the replica count of the process in the annotation `tamanu.bes.au/replicas-before-migration` on its Deployment, unless the Deployment already carries the annotation.
+
+The `<server>-resume` Job MUST scale every process of the server that carries the annotation to the replica count it records, and MUST then remove the annotation.
+
+The `<server>-resume` Job MUST leave a process without the annotation as it is.
+
+> [!NOTE]
+> A failed migration fails the sync before the `<server>-resume` Job runs, so the processes stay stopped against a partly migrated database until a later sync migrates successfully.
+> The annotation outlives a failed sync, so a retried `<server>-quiesce` Job keeps the replica count recorded before the first attempt rather than zero.
+
+The `<server>-quiesce` and `<server>-resume` Jobs MUST run as the service account `tamanu-quiesce`.
+
+That service account MUST hold permissions only on Deployments, their scale and pods, and only in the namespace of the deployment.
 
 ## Version-gated steps
 
@@ -84,6 +113,7 @@ The renderer MUST treat a behaviour in the following table as present from the f
 | A facility has FHIR workers. | 2.60.0 | A facility has no FHIR workers. |
 | Tamanu creates and manages its own `tamanu_raw` and `tamanu_reporting` database roles. | 2.60.0 | The `raw` and `reporting` roles, their password Secrets and the variables that read them are kept. |
 | The seed top-up Job exists. | 2.65.0 | The Job is omitted. |
+| The Tamanu image reports whether migrations are pending, and the `<server>-quiesce` and `<server>-resume` Jobs and the quiesce service account exist. | 2.67.0 | The Jobs and the service account are omitted, and the processes of each server keep running while its migrator runs. |
 
 A pre-release of a first release MUST count as that release.
 
@@ -216,7 +246,8 @@ The Application MUST [ignore the differences](https://argo-cd.readthedocs.io/en/
 
 | resource | ignored field | changed by |
 |---|---|---|
-| Deployment | the replica count | the downscaler, and anyone who scales by hand |
+| Deployment | the replica count | the downscaler, the `<server>-quiesce` and `<server>-resume` Jobs, and anyone who scales by hand |
+| Deployment | the annotation `tamanu.bes.au/replicas-before-migration` | the `<server>-quiesce` and `<server>-resume` Jobs |
 | Deployment | the annotations `downscaler/force-downtime` and `downscaler/original-replicas` | hibernation and the downscaler |
 | database cluster | the annotation `cnpg.io/hibernation` | hibernation and waking |
 | ConfigMap `provisioning`, `config-central` and `config-facility-N` | `data` and `binaryData` | anyone who edits the configuration by hand |

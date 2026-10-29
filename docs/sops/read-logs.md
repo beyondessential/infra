@@ -37,7 +37,8 @@ kubectl -n tamanu-<stack> logs job/central-migrator
 ```
 
 Hook Jobs are deleted and created again on every sync, so read them before triggering another ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)).
-The Jobs are `<server>-reporting-grants`, `<server>-migrator`, `central-provisioner` and `facility-N-setup-sync`.
+The Jobs are `<server>-quiesce`, `<server>-reporting-grants`, `<server>-migrator`, `central-provisioner`, `facility-N-setup-sync` and `<server>-resume`.
+`<server>-quiesce` logs the pending migrations that `just-migrate list --check` found before it stops the servers.
 
 ## The renderer
 

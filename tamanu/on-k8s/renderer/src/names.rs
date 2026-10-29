@@ -32,6 +32,10 @@ pub fn reporting_db_secret(server: &str) -> String {
 /// patch the deployments and database clusters of its namespace.
 pub const TTL_SERVICE_ACCOUNT: &str = "tamanu-ttl";
 
+/// The service account the quiesce and resume Jobs run as, rendered with them.
+/// It may scale the deployments and list the pods of its namespace.
+pub const QUIESCE_SERVICE_ACCOUNT: &str = "tamanu-quiesce";
+
 /// The app service account, which carries the IAM role annotation when the
 /// `serviceAccount` config is set.
 pub const SERVICE_ACCOUNT: &str = "app-sa";

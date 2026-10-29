@@ -23,6 +23,8 @@ expression: names(&out)
     "HTTPRoute facility-1-api-legacy",
     "HTTPRoute facility-1-api-import",
     "HTTPRoute facility-1-api-import-legacy",
+    "Job facility-1-quiesce",
+    "Job facility-1-resume",
     "Job facility-2-migrator",
     "Job facility-2-setup-sync",
     "Deployment facility-2-tasks",
@@ -43,4 +45,6 @@ expression: names(&out)
     "HTTPRoute facility-2-api-legacy",
     "HTTPRoute facility-2-api-import",
     "HTTPRoute facility-2-api-import-legacy",
+    "Job facility-2-quiesce",
+    "Job facility-2-resume",
 ]

@@ -20,7 +20,7 @@ use crate::blob_store::{BlobServer, blob_store_volume};
 use crate::config::Config;
 use crate::pod::ImageType;
 use crate::web::{WebArgs, run_web};
-use crate::{gateway, migrator, names, waves};
+use crate::{gateway, migrator, names, quiesce, waves};
 
 pub use specs::config_from_env;
 
@@ -86,6 +86,14 @@ pub fn workloads(cfg: &Config) -> Result<Vec<Value>> {
 			waves::WORKLOADS,
 		));
 	}
+
+	let jobs = quiesce::jobs(
+		cfg,
+		SERVER,
+		pods.pod_spec(specs::PodArgs::new(quiesce::POD_TYPE, [])),
+		&out,
+	)?;
+	out.extend(jobs);
 
 	Ok(out)
 }
@@ -228,6 +236,8 @@ mod tests {
 				"HTTPRoute central-frontend",
 				"Job central-migrator",
 				"Job central-provisioner",
+				"Job central-quiesce",
+				"Job central-resume",
 				"PodDisruptionBudget central-api",
 				"PodDisruptionBudget central-web",
 				"Service central-api",
@@ -250,11 +260,11 @@ mod tests {
 				a.get("argocd.argoproj.io/hook").is_some(),
 			)
 		};
-		assert_eq!(wave("Job", "central-migrator"), ("1".into(), true));
-		assert_eq!(wave("Job", "central-provisioner"), ("2".into(), true));
-		assert_eq!(wave("Deployment", "central-api"), ("3".into(), false));
-		assert_eq!(wave("Deployment", "central-web"), ("3".into(), false));
-		assert_eq!(wave("HTTPRoute", "central-api"), ("3".into(), false));
+		assert_eq!(wave("Job", "central-migrator"), ("2".into(), true));
+		assert_eq!(wave("Job", "central-provisioner"), ("3".into(), true));
+		assert_eq!(wave("Deployment", "central-api"), ("4".into(), false));
+		assert_eq!(wave("Deployment", "central-web"), ("4".into(), false));
+		assert_eq!(wave("HTTPRoute", "central-api"), ("4".into(), false));
 	}
 
 	#[test]

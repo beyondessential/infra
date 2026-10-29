@@ -334,7 +334,7 @@ fn services_and_routes_are_never_in_the_base_wave() {
 	let early: Vec<_> = out
 		.iter()
 		.filter(|v| late.contains(&v["kind"].as_str().unwrap_or("")))
-		.filter(|v| wave(v) != Some("3"))
+		.filter(|v| wave(v) != Some("4"))
 		.map(|v| format!("{} {} wave {:?}", v["kind"], v["metadata"]["name"], wave(v)))
 		.collect();
 	assert!(early.is_empty(), "not in the workloads wave: {early:#?}");
@@ -468,7 +468,7 @@ fn a_deployment_with_a_ttl_has_a_suspended_cronjob_that_wakes_it() {
 	);
 	assert_eq!(
 		wake["metadata"]["annotations"]["argocd.argoproj.io/sync-wave"],
-		"3"
+		"4"
 	);
 }
 
@@ -482,4 +482,94 @@ fn a_deployment_without_a_ttl_has_no_wake_cronjob() {
 		let out = tamanu_renderer::render_with(&params(config), &options()).unwrap();
 		assert!(out.iter().all(|v| v["kind"] != "CronJob"));
 	}
+}
+
+fn quiesce_env<'a>(
+	job: &'a Value,
+	container: &str,
+) -> std::collections::BTreeMap<&'a str, &'a str> {
+	job.pointer("/spec/template/spec/containers")
+		.and_then(Value::as_array)
+		.unwrap()
+		.iter()
+		.find(|c| c["name"] == container)
+		.unwrap()["env"]
+		.as_array()
+		.unwrap()
+		.iter()
+		.filter_map(|e| Some((e["name"].as_str()?, e["value"].as_str()?)))
+		.collect()
+}
+
+#[test]
+fn servers_stop_around_the_migrator_once_tamanu_reports_pending_migrations() {
+	let mut p = params(json!({ "facilities": 1 }));
+	p.app_version = Some("2.67.0".into());
+	let out = tamanu_renderer::render_with(&p, &options()).unwrap();
+
+	for kind in ["ServiceAccount", "Role", "RoleBinding"] {
+		assert_eq!(wave(find(&out, kind, "tamanu-quiesce")), Some("0"));
+	}
+
+	for (server, processes) in [
+		(
+			"central",
+			"central-tasks,central-fhir-refresh,central-fhir-resolver,central-api",
+		),
+		(
+			"facility-1",
+			"facility-1-tasks,facility-refresh-fhir-facility-1,facility-resolver-fhir-facility-1,facility-1-sync,facility-1-api",
+		),
+	] {
+		let quiesce = find(&out, "Job", &format!("{server}-quiesce"));
+		let resume = find(&out, "Job", &format!("{server}-resume"));
+		let migrator = find(&out, "Job", &format!("{server}-migrator"));
+		assert!(wave(quiesce) < wave(migrator) && wave(migrator) < wave(resume));
+		for job in [quiesce, resume] {
+			assert_eq!(
+				job.pointer("/metadata/annotations/argocd.argoproj.io~1hook"),
+				Some(&json!("Sync"))
+			);
+			assert_eq!(
+				job.pointer("/spec/template/spec/serviceAccountName"),
+				Some(&json!("tamanu-quiesce"))
+			);
+		}
+
+		let container = quiesce.pointer("/spec/template/spec/containers/0").unwrap();
+		let shell = container["command"].as_array().unwrap();
+		assert_eq!(shell[..2], [json!("sh"), json!("-c")]);
+		assert!(
+			shell[2]
+				.as_str()
+				.unwrap()
+				.contains("/entrypoint just-migrate list --check")
+		);
+		assert!(container.get("args").is_none());
+		// It runs `just-migrate list --check` with the server's own config and environment.
+		assert!(
+			container["env"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.any(|e| e["name"] == "TZ")
+		);
+		let env = quiesce_env(quiesce, "quiesce");
+		assert_eq!(env["DEPLOYMENTS"], processes);
+		assert!(env.contains_key("QUIESCE_SCRIPT"));
+		let env = quiesce_env(resume, "quiesce");
+		assert_eq!(env["QUIESCE_MODE"], "resume");
+		assert_eq!(env["DEPLOYMENTS"], processes);
+	}
+}
+
+#[test]
+fn servers_keep_running_through_the_migrator_before_tamanu_reports_pending_migrations() {
+	let mut p = params(json!({ "facilities": 1 }));
+	p.app_version = Some("2.66.1".into());
+	let out = tamanu_renderer::render_with(&p, &options()).unwrap();
+	assert!(!out.iter().any(|v| {
+		let name = v["metadata"]["name"].as_str().unwrap_or("");
+		name == "tamanu-quiesce" || name.ends_with("-quiesce") || name.ends_with("-resume")
+	}));
 }
