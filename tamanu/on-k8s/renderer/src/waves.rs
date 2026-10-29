@@ -10,12 +10,14 @@ use serde_json::{Value, json};
 /// Config, service accounts and the database cluster.
 // spec: K8STDR#sync-order
 pub const BASE: i32 = 0;
+/// The quiesce Jobs, which stop the servers before the migrators run.
+pub const QUIESCE: i32 = 1;
 /// Reporting grants and the migrator, which need a healthy database.
-pub const MIGRATE: i32 = 1;
-/// The provisioner, which needs a migrated schema.
-pub const PROVISION: i32 = 2;
+pub const MIGRATE: i32 = 2;
+/// The provisioner and the resume Jobs, which need a migrated schema.
+pub const PROVISION: i32 = 3;
 /// Workloads and routes.
-pub const WORKLOADS: i32 = 3;
+pub const WORKLOADS: i32 = 4;
 
 fn annotate(resource: &mut Value, key: &str, value: &str) {
 	let meta = resource
@@ -65,7 +67,7 @@ mod tests {
 	fn hooks_are_waved_and_deleted_before_recreation() {
 		let job = hook(json!({"kind": "Job", "metadata": {"name": "x"}}), MIGRATE);
 		let a = &job["metadata"]["annotations"];
-		assert_eq!(a["argocd.argoproj.io/sync-wave"], "1");
+		assert_eq!(a["argocd.argoproj.io/sync-wave"], "2");
 		assert_eq!(a["argocd.argoproj.io/hook"], "Sync");
 		assert_eq!(
 			a["argocd.argoproj.io/hook-delete-policy"],

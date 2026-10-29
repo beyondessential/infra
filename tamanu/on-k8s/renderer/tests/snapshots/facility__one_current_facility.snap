@@ -9,7 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: '1'
+    argocd.argoproj.io/sync-wave: '2'
   name: facility-1-migrator
   namespace: tamanu-main
 spec:
@@ -127,7 +127,7 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: '2'
+    argocd.argoproj.io/sync-wave: '3'
   name: facility-1-setup-sync
   namespace: tamanu-main
 spec:
@@ -245,7 +245,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-tasks
   namespace: tamanu-main
 spec:
@@ -378,7 +378,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-refresh-fhir-facility-1
   namespace: tamanu-main
 spec:
@@ -513,7 +513,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-resolver-fhir-facility-1
   namespace: tamanu-main
 spec:
@@ -648,7 +648,7 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-sync
   namespace: tamanu-main
 spec:
@@ -667,7 +667,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-sync
   namespace: tamanu-main
 spec:
@@ -829,7 +829,7 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api
   namespace: tamanu-main
 spec:
@@ -848,7 +848,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api
   namespace: tamanu-main
 spec:
@@ -1010,7 +1010,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api
   namespace: tamanu-main
 spec:
@@ -1025,7 +1025,7 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-web
   namespace: tamanu-main
 spec:
@@ -1044,7 +1044,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-web
   namespace: tamanu-main
 spec:
@@ -1145,7 +1145,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-web
   namespace: tamanu-main
 spec:
@@ -1160,7 +1160,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
     cert-manager.io/cluster-issuer: letsencrypt
     cert-manager.io/private-key-algorithm: ECDSA
   name: facility-1
@@ -1182,7 +1182,7 @@ apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-traffic-policy
   namespace: tamanu-main
 spec:
@@ -1196,7 +1196,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-frontend
   namespace: tamanu-main
 spec:
@@ -1220,7 +1220,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api
   namespace: tamanu-main
 spec:
@@ -1244,7 +1244,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api-legacy
   namespace: tamanu-main
 spec:
@@ -1268,7 +1268,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api-import
   namespace: tamanu-main
 spec:
@@ -1292,7 +1292,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: '3'
+    argocd.argoproj.io/sync-wave: '4'
   name: facility-1-api-import-legacy
   namespace: tamanu-main
 spec:
@@ -1311,3 +1311,429 @@ spec:
         value: /v1/admin/import
     timeouts:
       request: 600s
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
+  name: facility-1-quiesce
+  namespace: tamanu-main
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - command:
+        - sh
+        - -c
+        - |
+          set +e
+          /entrypoint just-migrate list --check
+          status=$?
+          set -e
+          case "$status" in
+            0) PENDING=no ;;
+            3) PENDING=yes ;;
+            *) echo "just-migrate list --check failed with exit $status" >&2; exit "$status" ;;
+          esac
+          export PENDING
+          exec node --input-type=module -e "$QUIESCE_SCRIPT"
+        env:
+        - name: CRYPTO_KEY_FILE
+          value: /secrets/configKey
+        - name: CRYPTO_SETTINGS_PSK
+          valueFrom:
+            secretKeyRef:
+              key: settingsPsk
+              name: tamanu-crypto
+        - name: TZ
+          value: Pacific/Auckland
+        - name: TAMANU_PRIMARY_TIMEZONE
+          value: Pacific/Auckland
+        - name: PROXY_TRUSTED
+          value: loopback, 10.0.0.0/16, 2001:db8::/56
+        - name: NODE_ENV
+          value: staging
+        - name: REVISION
+          value: a25d1d4035
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: facility-1-db-app
+        - name: DB_HOST
+          value: facility-1-db-rw
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: facility-1-db-app
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: facility-1-db-app
+        - name: BUGSNAG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: apiKey
+              name: bugsnag
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: authSecret
+              name: config-secrets-facility-1
+        - name: QUIESCE_MODE
+          value: quiesce
+        - name: DEPLOYMENTS
+          value: facility-1-tasks,facility-refresh-fhir-facility-1,facility-resolver-fhir-facility-1,facility-1-sync,facility-1-api
+        - name: ANNOTATION
+          value: tamanu.bes.au/replicas-before-migration
+        - name: NODE_EXTRA_CA_CERTS
+          value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: QUIESCE_SCRIPT
+          value: |
+            // Stops a server's processes while its migrator applies migrations, and starts
+            // them again afterwards. Runs in the Tamanu image with `node -e`, so it uses only
+            // Node built-ins and talks to the Kubernetes API as the pod's service account.
+            // In quiesce mode it runs after `just-migrate list --check`, which has printed
+            // the pending migrations to the log above this script's output.
+            //
+            // QUIESCE_MODE   `quiesce` or `resume`
+            // DEPLOYMENTS    comma-separated names of the server's process Deployments
+            // PENDING        (quiesce) `yes` when migrations are pending, `no` when not
+            // ANNOTATION     where the replica count to restore is kept
+            // WAIT_SECONDS   (quiesce) how long to wait for the processes' pods to go
+
+            import { readFile } from 'node:fs/promises';
+            import { setTimeout as sleep } from 'node:timers/promises';
+
+            const SA = '/var/run/secrets/kubernetes.io/serviceaccount';
+            const API = 'https://kubernetes.default.svc';
+            const { QUIESCE_MODE, DEPLOYMENTS, PENDING, ANNOTATION, WAIT_SECONDS = '900' } = process.env;
+
+            const namespace = (await readFile(`${SA}/namespace`, 'utf8')).trim();
+            const token = (await readFile(`${SA}/token`, 'utf8')).trim();
+            const deployments = DEPLOYMENTS.split(',').filter(Boolean);
+
+            async function request(method, path, body) {
+              const res = await fetch(`${API}${path}`, {
+                method,
+                headers: {
+                  authorization: `Bearer ${token}`,
+                  ...(body ? { 'content-type': 'application/merge-patch+json' } : {}),
+                },
+                body: body ? JSON.stringify(body) : undefined,
+              });
+              if (method === 'GET' && res.status === 404) return null;
+              if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
+              return res.json();
+            }
+
+            const deploymentPath = name => `/apis/apps/v1/namespaces/${namespace}/deployments/${name}`;
+            const scale = (name, replicas) =>
+              request('PATCH', `${deploymentPath(name)}/scale`, { spec: { replicas } });
+            const annotate = (name, value) =>
+              request('PATCH', deploymentPath(name), { metadata: { annotations: { [ANNOTATION]: value } } });
+
+            async function podsOf(deployment) {
+              const selector = Object.entries(deployment.spec.selector.matchLabels ?? {})
+                .map(([key, value]) => `${key}=${value}`)
+                .join(',');
+              const pods = await request(
+                'GET',
+                `/api/v1/namespaces/${namespace}/pods?labelSelector=${encodeURIComponent(selector)}`,
+              );
+              return pods.items.map(pod => pod.metadata.name);
+            }
+
+            async function quiesce() {
+              // Anything but a clear `no` stops the servers: running them against a
+              // database mid-migration is the failure this guards against.
+              if (PENDING === 'no') {
+                console.log('No migrations pending, leaving the servers running');
+                return;
+              }
+              console.log('Migrations pending, stopping the servers');
+
+              const stopping = [];
+              for (const name of deployments) {
+                const deployment = await request('GET', deploymentPath(name));
+                if (!deployment) continue;
+                // A retry after a failed migration finds the annotation already set and
+                // keeps it, so the count restored is the one from before the first attempt.
+                if (deployment.metadata.annotations?.[ANNOTATION] === undefined) {
+                  await annotate(name, String(deployment.spec.replicas ?? 1));
+                }
+                await scale(name, 0);
+                console.log(`Scaled ${name} to 0`);
+                stopping.push(deployment);
+              }
+
+              const deadline = Date.now() + Number(WAIT_SECONDS) * 1000;
+              for (;;) {
+                const remaining = (await Promise.all(stopping.map(podsOf))).flat();
+                if (remaining.length === 0) break;
+                if (Date.now() > deadline) {
+                  throw new Error(`Pods still running after ${WAIT_SECONDS}s: ${remaining.join(', ')}`);
+                }
+                console.log(`Waiting for ${remaining.length} pods to stop: ${remaining.join(', ')}`);
+                await sleep(5000);
+              }
+              console.log('Servers stopped');
+            }
+
+            async function resume() {
+              for (const name of deployments) {
+                const deployment = await request('GET', deploymentPath(name));
+                const recorded = deployment?.metadata.annotations?.[ANNOTATION];
+                if (recorded === undefined) continue;
+                const replicas = Number.parseInt(recorded, 10);
+                if (!Number.isInteger(replicas) || replicas < 0) {
+                  throw new Error(`${name}: ${ANNOTATION} is not a replica count: ${recorded}`);
+                }
+                await scale(name, replicas);
+                await annotate(name, null);
+                console.log(`Scaled ${name} back to ${replicas}`);
+              }
+            }
+
+            if (QUIESCE_MODE === 'quiesce') await quiesce();
+            else if (QUIESCE_MODE === 'resume') await resume();
+            else throw new Error(`Unknown QUIESCE_MODE: ${QUIESCE_MODE}`);
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: quiesce
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 5m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /secrets
+          name: crypto-key
+          readOnly: true
+      restartPolicy: Never
+      serviceAccountName: tamanu-quiesce
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'
+      volumes:
+      - configMap:
+          name: config-facility-1
+        name: config-volume
+      - name: crypto-key
+        secret:
+          defaultMode: 256
+          items:
+          - key: configKey
+            path: configKey
+          secretName: tamanu-crypto
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '3'
+  name: facility-1-resume
+  namespace: tamanu-main
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: bes.node.schedule
+                operator: In
+                values:
+                - spot
+            weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: bes.node.arch
+                operator: In
+                values:
+                - arm64
+              - key: bes.node.purpose
+                operator: In
+                values:
+                - workload
+      containers:
+      - command:
+        - node
+        - --input-type=module
+        - -e
+        - |
+          // Stops a server's processes while its migrator applies migrations, and starts
+          // them again afterwards. Runs in the Tamanu image with `node -e`, so it uses only
+          // Node built-ins and talks to the Kubernetes API as the pod's service account.
+          // In quiesce mode it runs after `just-migrate list --check`, which has printed
+          // the pending migrations to the log above this script's output.
+          //
+          // QUIESCE_MODE   `quiesce` or `resume`
+          // DEPLOYMENTS    comma-separated names of the server's process Deployments
+          // PENDING        (quiesce) `yes` when migrations are pending, `no` when not
+          // ANNOTATION     where the replica count to restore is kept
+          // WAIT_SECONDS   (quiesce) how long to wait for the processes' pods to go
+
+          import { readFile } from 'node:fs/promises';
+          import { setTimeout as sleep } from 'node:timers/promises';
+
+          const SA = '/var/run/secrets/kubernetes.io/serviceaccount';
+          const API = 'https://kubernetes.default.svc';
+          const { QUIESCE_MODE, DEPLOYMENTS, PENDING, ANNOTATION, WAIT_SECONDS = '900' } = process.env;
+
+          const namespace = (await readFile(`${SA}/namespace`, 'utf8')).trim();
+          const token = (await readFile(`${SA}/token`, 'utf8')).trim();
+          const deployments = DEPLOYMENTS.split(',').filter(Boolean);
+
+          async function request(method, path, body) {
+            const res = await fetch(`${API}${path}`, {
+              method,
+              headers: {
+                authorization: `Bearer ${token}`,
+                ...(body ? { 'content-type': 'application/merge-patch+json' } : {}),
+              },
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            if (method === 'GET' && res.status === 404) return null;
+            if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
+            return res.json();
+          }
+
+          const deploymentPath = name => `/apis/apps/v1/namespaces/${namespace}/deployments/${name}`;
+          const scale = (name, replicas) =>
+            request('PATCH', `${deploymentPath(name)}/scale`, { spec: { replicas } });
+          const annotate = (name, value) =>
+            request('PATCH', deploymentPath(name), { metadata: { annotations: { [ANNOTATION]: value } } });
+
+          async function podsOf(deployment) {
+            const selector = Object.entries(deployment.spec.selector.matchLabels ?? {})
+              .map(([key, value]) => `${key}=${value}`)
+              .join(',');
+            const pods = await request(
+              'GET',
+              `/api/v1/namespaces/${namespace}/pods?labelSelector=${encodeURIComponent(selector)}`,
+            );
+            return pods.items.map(pod => pod.metadata.name);
+          }
+
+          async function quiesce() {
+            // Anything but a clear `no` stops the servers: running them against a
+            // database mid-migration is the failure this guards against.
+            if (PENDING === 'no') {
+              console.log('No migrations pending, leaving the servers running');
+              return;
+            }
+            console.log('Migrations pending, stopping the servers');
+
+            const stopping = [];
+            for (const name of deployments) {
+              const deployment = await request('GET', deploymentPath(name));
+              if (!deployment) continue;
+              // A retry after a failed migration finds the annotation already set and
+              // keeps it, so the count restored is the one from before the first attempt.
+              if (deployment.metadata.annotations?.[ANNOTATION] === undefined) {
+                await annotate(name, String(deployment.spec.replicas ?? 1));
+              }
+              await scale(name, 0);
+              console.log(`Scaled ${name} to 0`);
+              stopping.push(deployment);
+            }
+
+            const deadline = Date.now() + Number(WAIT_SECONDS) * 1000;
+            for (;;) {
+              const remaining = (await Promise.all(stopping.map(podsOf))).flat();
+              if (remaining.length === 0) break;
+              if (Date.now() > deadline) {
+                throw new Error(`Pods still running after ${WAIT_SECONDS}s: ${remaining.join(', ')}`);
+              }
+              console.log(`Waiting for ${remaining.length} pods to stop: ${remaining.join(', ')}`);
+              await sleep(5000);
+            }
+            console.log('Servers stopped');
+          }
+
+          async function resume() {
+            for (const name of deployments) {
+              const deployment = await request('GET', deploymentPath(name));
+              const recorded = deployment?.metadata.annotations?.[ANNOTATION];
+              if (recorded === undefined) continue;
+              const replicas = Number.parseInt(recorded, 10);
+              if (!Number.isInteger(replicas) || replicas < 0) {
+                throw new Error(`${name}: ${ANNOTATION} is not a replica count: ${recorded}`);
+              }
+              await scale(name, replicas);
+              await annotate(name, null);
+              console.log(`Scaled ${name} back to ${replicas}`);
+            }
+          }
+
+          if (QUIESCE_MODE === 'quiesce') await quiesce();
+          else if (QUIESCE_MODE === 'resume') await resume();
+          else throw new Error(`Unknown QUIESCE_MODE: ${QUIESCE_MODE}`);
+        env:
+        - name: QUIESCE_MODE
+          value: resume
+        - name: DEPLOYMENTS
+          value: facility-1-tasks,facility-refresh-fhir-facility-1,facility-resolver-fhir-facility-1,facility-1-sync,facility-1-api
+        - name: ANNOTATION
+          value: tamanu.bes.au/replicas-before-migration
+        - name: NODE_EXTRA_CA_CERTS
+          value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
+        imagePullPolicy: IfNotPresent
+        name: quiesce
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+      restartPolicy: Never
+      serviceAccountName: tamanu-quiesce
+      tolerations:
+      - effect: PreferNoSchedule
+        key: spotInstance
+        operator: Equal
+        value: 'true'

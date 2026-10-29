@@ -13,7 +13,7 @@ use crate::blob_store::{BlobServer, blob_store_volume};
 use crate::config::{Config, Facility};
 use crate::pod::ImageType;
 use crate::postgres::{self, PgArgs};
-use crate::{gateway, migrator, waves, web};
+use crate::{gateway, migrator, quiesce, waves, web};
 
 use self::spec::{PodArgs, PodFactory};
 use self::workloads::{Ctx, ServerType};
@@ -152,6 +152,17 @@ fn facility_apps(cfg: &Config, server: &str, facility: &Facility) -> Result<Vec<
 		.into_iter()
 		.map(|r| waves::in_wave(r, waves::WORKLOADS)),
 	);
+
+	let jobs = quiesce::jobs(
+		cfg,
+		server,
+		pods.build(PodArgs {
+			pod_type: quiesce::POD_TYPE,
+			..Default::default()
+		}),
+		&out,
+	)?;
+	out.extend(jobs);
 
 	Ok(out)
 }

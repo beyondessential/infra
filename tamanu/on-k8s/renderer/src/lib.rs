@@ -17,6 +17,7 @@ pub mod names;
 pub mod params;
 pub mod pod;
 pub mod postgres;
+pub mod quiesce;
 pub mod redirect;
 pub mod scheduling;
 pub mod service_account;
@@ -79,6 +80,7 @@ pub fn render_with(params: &Params, options: &Options) -> Result<Vec<Value>> {
 
 	let mut out = Vec::new();
 	out.extend(service_account::service_account(&cfg)?);
+	out.extend(quiesce::access(&cfg)?);
 	out.extend(
 		redirect::redirect_sites(&cfg)?
 			.into_iter()

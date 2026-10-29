@@ -17,14 +17,16 @@ A wave starts only when the previous one is synced and healthy.
 
 | Wave | Objects |
 |---|---|
-| 0 | ConfigMaps `provisioning`, `config-central`, `config-facility-N`. ServiceAccount `app-sa` (with `serviceAccount`). Claim `<server>-blobs` (with `sharedBlobStorage`). Database `Cluster` `<server>-db`, and with backups its `ObjectStore` `<server>-db-object-store` and `ScheduledBackup` `<server>-db-scheduled`. |
-| 1 | Hook Jobs `<server>-reporting-grants` and `<server>-migrator`. |
-| 2 | Hook Jobs `central-provisioner` and `facility-N-setup-sync` (Tamanu 2.60.0 or later). |
-| 3 | Deployments, Services, Gateways, HTTPRoutes, ClientTrafficPolicies and PodDisruptionBudgets (below). Service `central-db-tailscale` (with `dbExpose`). Job `central-seed-top-up-<hash>` (with `seedSnapshot`, 2.65.0 or later). Deployment `synthetic-tests` (with `syntheticTests`). CronJob `wake` (with `ttlHours`). Gateway `redirects` and its routes (with `redirects`). |
+| 0 | ConfigMaps `provisioning`, `config-central`, `config-facility-N`. ServiceAccount `app-sa` (with `serviceAccount`). ServiceAccount, Role and RoleBinding `tamanu-quiesce` (Tamanu 2.67.0 or later). Claim `<server>-blobs` (with `sharedBlobStorage`). Database `Cluster` `<server>-db`, and with backups its `ObjectStore` `<server>-db-object-store` and `ScheduledBackup` `<server>-db-scheduled`. |
+| 1 | Hook Jobs `<server>-quiesce` (Tamanu 2.67.0 or later). |
+| 2 | Hook Jobs `<server>-reporting-grants` and `<server>-migrator`. |
+| 3 | Hook Jobs `central-provisioner`, `facility-N-setup-sync` (Tamanu 2.60.0 or later) and `<server>-resume` (Tamanu 2.67.0 or later). |
+| 4 | Deployments, Services, Gateways, HTTPRoutes, ClientTrafficPolicies and PodDisruptionBudgets (below). Service `central-db-tailscale` (with `dbExpose`). Job `central-seed-top-up-<hash>` (with `seedSnapshot`, 2.65.0 or later). Deployment `synthetic-tests` (with `syntheticTests`). CronJob `wake` (with `ttlHours`). Gateway `redirects` and its routes (with `redirects`). |
 
 The hook Jobs are deleted and created again on every sync, so read a failed one's logs before anything triggers another sync ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#hook-jobs)).
+When migrations are pending, `<server>-quiesce` scales the server's Deployments other than `<server>-web` to zero and records each one's previous replica count in the annotation `tamanu.bes.au/replicas-before-migration`; `<server>-resume` scales them back and removes it ([K8STDR](../spec/kubernetes/tamanu/deployment-rollout.md#quiescing-for-migrations)).
 
-## Workloads (wave 3)
+## Workloads (wave 4)
 
 | Deployment | Update | Notes |
 |---|---|---|

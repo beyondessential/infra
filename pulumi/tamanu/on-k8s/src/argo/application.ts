@@ -47,6 +47,7 @@ function ignoreDifferences() {
         '.spec.replicas',
         '.metadata.annotations["downscaler/force-downtime"]',
         '.metadata.annotations["downscaler/original-replicas"]',
+        '.metadata.annotations["tamanu.bes.au/replicas-before-migration"]',
       ],
     },
     {
