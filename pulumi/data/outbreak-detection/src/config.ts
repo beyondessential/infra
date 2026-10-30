@@ -11,3 +11,10 @@ export const serviceAccountName = 'outbreak-detection';
 // so it resolves to bes-data-disease-outbreak-detection) and passed in here
 // rather than looked up via a StackReference, matching dagster's s3bucket config.
 export const s3bucket = cfg.require('s3bucket');
+
+// Credentials for pulling the private ghcr.io/beyondessential/disease-outbreak-detection
+// image. Optional so the stack still deploys before these are set; the pull
+// secret is then simply not created and pods relying on it stay unschedulable
+// until it is. Matches pgro's builderPullUser/builderPullPat.
+export const ghcrUser = cfg.get('ghcrUser');
+export const ghcrToken = cfg.getSecret('ghcrToken');
