@@ -1,13 +1,16 @@
 ---
 # UFW's command syntax can't match on IP header length, so this goes in as raw
 # iptables in before.rules, after the chain declarations and before the first
-# -A line. An IPv4 header longer than 20 bytes carries options.
+# -A line. The anchor is the last chain declaration rather than the "End
+# required lines" comment: blockinfile appends at the end of the file when the
+# anchor is missing, which lands after COMMIT, and ufw can't run without the
+# declaration anyway. An IPv4 header longer than 20 bytes carries options.
 # spec: LNXSRV#host-firewall
 - name: Drop TCP with IPv4 options (CVE-2026-98432)
   become: true
   ansible.builtin.blockinfile:
     path: /etc/ufw/before.rules
-    insertafter: "^# End required lines"
+    insertafter: '^:ufw-not-local - \[0:0\]'
     marker: "# {mark} ANSIBLE MANAGED: drop TCP with IPv4 options"
     block: |
       # CVE-2026-98432: drop TCP with IPv4 options
