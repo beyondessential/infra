@@ -218,6 +218,8 @@ A managed host firewall MUST allow the traffic in the following table.
 
 A managed host firewall MUST NOT allow SSH from any source where the server is a member of the tailnet.
 
+A managed host firewall MUST drop incoming and forwarded TCP packets whose IPv4 header carries options, before any allow rule applies.
+
 The SSH port MUST be the port that the SSH daemon is configured to listen on.
 
 ## Metrics

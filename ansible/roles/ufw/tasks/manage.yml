@@ -164,6 +164,9 @@
     delete: true
   when: tailscale_status.rc == 0
 
+- name: Add raw rules to before.rules
+  ansible.builtin.import_tasks: before_rules.yml
+
 - name: Set default incoming policy to deny
   become: true
   community.general.ufw:

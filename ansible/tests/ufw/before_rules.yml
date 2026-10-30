@@ -1,0 +1,10 @@
+---
+# Applies the ufw role's before.rules tasks to the machine it runs on, for
+# run.sh. Not an operational playbook.
+- name: Apply the ufw role's before.rules changes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Add raw rules to before.rules
+      ansible.builtin.import_tasks: ../../roles/ufw/tasks/before_rules.yml
