@@ -164,6 +164,32 @@
     delete: true
   when: tailscale_status.rc == 0
 
+# UFW's command syntax can't match on IP header length, so this goes in as raw
+# iptables in before.rules, after the chain declarations and before the first
+# -A line. An IPv4 header longer than 20 bytes carries options.
+# spec: LNXSRV#host-firewall
+- name: Drop TCP with IPv4 options (CVE-2026-98432)
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/ufw/before.rules
+    insertafter: "^# End required lines"
+    marker: "# {mark} ANSIBLE MANAGED: drop TCP with IPv4 options"
+    block: |
+      # CVE-2026-98432: drop TCP with IPv4 options
+      -A ufw-before-input -p tcp -m u32 --u32 "0>>22&0x3C=24:60" -j DROP
+      -A ufw-before-forward -p tcp -m u32 --u32 "0>>22&0x3C=24:60" -j DROP
+  register: ufw_ip_options_rule
+
+- name: Reload ufw after changing before.rules  # noqa: no-handler
+  when: ufw_ip_options_rule is changed
+  become: true
+  ansible.builtin.command: ufw reload
+  register: ufw_reload_result
+  changed_when: ufw_reload_result.rc == 0
+  failed_when:
+    - ufw_reload_result.rc != 0
+    - "'Firewall not enabled' not in ufw_reload_result.stderr"
+
 - name: Set default incoming policy to deny
   become: true
   community.general.ufw:
