@@ -32,4 +32,10 @@ export const image = `ghcr.io/beyondessential/disease-outbreak-detection:${image
 // shouldn't hold, and the deployment's config.yaml already lives, gitignored,
 // in the disease-outbreak-detection repo. Required rather than defaulted, so
 // adding a deployment here is a deliberate step, not a silent default.
+//
+// Add a deployment here only once its historical backfill
+// (deploy/k8s/job-backfill.yaml in disease-outbreak-detection) has completed —
+// the namespace, service account and pull secret this stack creates are
+// prerequisites for that backfill Job too, so running `pulumi up` with this
+// list still empty is the right first deploy.
 export const deployments = cfg.requireObject<string[]>('deployments');
