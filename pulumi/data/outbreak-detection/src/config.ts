@@ -18,3 +18,18 @@ export const s3bucket = cfg.require('s3bucket');
 // until it is. Matches pgro's builderPullUser/builderPullPat.
 export const ghcrUser = cfg.get('ghcrUser');
 export const ghcrToken = cfg.getSecret('ghcrToken');
+
+// Registry/image path hardcoded, tag required — built and pushed by
+// .github/workflows/build-image.yml in disease-outbreak-detection on every
+// merge to main.
+const imageTag = cfg.require('imageTag');
+export const image = `ghcr.io/beyondessential/disease-outbreak-detection:${imageTag}`;
+
+// Every deployment the nightly CronJob runs for. Each one's DB credentials
+// (Secret outbreak-detection-<deployment>-db) and pipeline config (ConfigMap
+// outbreak-detection-<deployment>-config) are created outside Pulumi, once
+// per deployment — they're per-deployment secrets this stack's own config
+// shouldn't hold, and the deployment's config.yaml already lives, gitignored,
+// in the disease-outbreak-detection repo. Required rather than defaulted, so
+// adding a deployment here is a deliberate step, not a silent default.
+export const deployments = cfg.requireObject<string[]>('deployments');
