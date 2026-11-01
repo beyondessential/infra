@@ -4,9 +4,11 @@ import { serviceAccountName } from './serviceAccount.ts';
 import { userDeploymentsValues } from './codeLocations.ts';
 import { registrySecretName, registrySecret } from './secrets.ts';
 import {
+	awsRegion,
 	dagsterChartVersion,
 	dbDatabase,
 	dbHost,
+	dbIamAuth,
 	dbPassword,
 	dbPort,
 	dbUser,
@@ -35,6 +37,16 @@ const SPOT_PREFERRED_AFFINITY = {
 const SPOT_TOLERATIONS = [CAN_RUN_ON_SPOT];
 
 const imagePullSecrets = registrySecret ? [{ name: registrySecretName }] : [];
+
+// dbIamAuth: RDS IAM auth via the chart's native aws_wif support instead of a
+// stored password — see config.ts's own comment and dagster-infra's for the
+// two RDS/Postgres-side prerequisites neither project can confirm or do
+// itself. `dbPassword!`: config.ts already throws at module load if
+// `!dbIamAuth && !dbPassword`, so it's guaranteed defined by the time this
+// runs — the assertion is just TypeScript not seeing across that boundary.
+const postgresqlAuth = dbIamAuth
+	? { authProvider: { type: 'aws_wif', awsRegion }, generatePostgresqlPasswordSecret: false }
+	: { postgresqlPassword: dbPassword! };
 
 // This values object is inferred from the chart's own documented schema
 // (helm/dagster/values.yaml at the pinned version) by reading it directly —
@@ -99,16 +111,16 @@ new k8s.helm.v3.Release('dagster', {
 			enabled: false,
 			postgresqlHost: dbHost,
 			postgresqlUsername: dbUser,
-			postgresqlPassword: dbPassword,
 			postgresqlDatabase: dbDatabase,
 			service: { port: dbPort },
+			...postgresqlAuth,
 		},
 		computeLogManager: {
 			type: 'S3ComputeLogManager',
 			config: {
 				s3ComputeLogManager: {
 					bucket: computeLogsBucket,
-					// Matches the object prefix the dagster-irsa project's S3 policy
+					// Matches the object prefix the dagster-infra project's S3 policy
 					// scopes access to exactly — keep the two in sync by hand.
 					prefix: 'dagster-compute-logs',
 				},

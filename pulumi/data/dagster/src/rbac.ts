@@ -10,7 +10,7 @@ import { namespace } from './namespace.ts';
 //
 // This grants the data-lake GHA workflow everything it needs to `pulumi up`
 // this namespace's own resources (Helm release, Secrets, Ingress, …) with no
-// AWS credentials — see K8SNSP#cluster-endpoint-access and dagster-irsa's own
+// AWS credentials — see K8SNSP#cluster-endpoint-access and dagster-infra's own
 // header comment for why that AWS-side role is a separate project instead.
 //
 // The other half of this — actually granting a tailnet identity the

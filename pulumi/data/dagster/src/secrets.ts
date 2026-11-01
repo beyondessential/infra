@@ -1,16 +1,7 @@
 import * as k8s from '@pulumi/kubernetes';
-import { all, jsonStringify, type Output } from '@pulumi/pulumi';
+import { jsonStringify, type Output } from '@pulumi/pulumi';
 import { namespace } from './namespace.ts';
-import {
-	appEnvBlob,
-	computeLogsBucket,
-	dbDatabase,
-	dbHost,
-	dbPassword,
-	dbPort,
-	dbUser,
-	imagePullPat,
-} from './config.ts';
+import { appEnvBlob, imagePullPat } from './config.ts';
 
 // `appEnvBlob` is one KEY=VALUE per line, same shape as a .env file — see the
 // comment on it in config.ts for why this is a blob rather than individual
@@ -36,21 +27,20 @@ function parseDotenv(blob: string): Record<string, string> {
 
 export const envSecretName = 'dagster-env';
 
-export const envSecret: Output<k8s.core.v1.Secret> = all([appEnvBlob, dbPassword]).apply(
-	([blob, password]) =>
+// Only the code locations' own env vars — not Dagster's storage DB creds or
+// compute-log bucket name. Those go straight into the Helm chart's own
+// `values.postgresql.*` / `computeLogManager.*` (helm.ts), which bakes them
+// into the instance config the chart generates internally; no data-lake code
+// reads DAGSTER_DB_* or DAGSTER_COMPUTE_LOG_BUCKET as an env var (checked —
+// those names only ever appeared in data-lake's own devops/k8s/dagster.yaml,
+// a reference file nothing reads yet, not the actual Helm-deployed config).
+// Keeping them out of this Secret also means the DB password — in password
+// mode — exists in exactly one place, not duplicated into a second Secret.
+export const envSecret: Output<k8s.core.v1.Secret> = appEnvBlob.apply(
+	(blob) =>
 		new k8s.core.v1.Secret('dagster-env', {
 			metadata: { name: envSecretName, namespace },
-			stringData: {
-				...parseDotenv(blob),
-				// Matches the env var names devops/k8s/dagster.yaml (data-lake) reads
-				// its storage block from — keep the two in sync by hand.
-				DAGSTER_DB_URL: dbHost,
-				DAGSTER_DB_USER: dbUser,
-				DAGSTER_DB_PASSWORD: password,
-				DAGSTER_DB_DATABASE: dbDatabase,
-				DAGSTER_DB_PORT: String(dbPort),
-				DAGSTER_COMPUTE_LOG_BUCKET: computeLogsBucket,
-			},
+			stringData: parseDotenv(blob),
 		}),
 );
 

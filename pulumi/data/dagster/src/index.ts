@@ -4,7 +4,7 @@ await failIfIncorrectCluster();
 // No `failIfIncorrectAccountOrRegion()` here: this stack's only cross-stack
 // read (the IRSA role ARN, via serviceAccount.ts) goes through Pulumi's own
 // state backend, not an AWS API call, so no AWS credentials are needed to
-// apply it — see K8SNSP#cluster-endpoint-access and dagster-irsa's header
+// apply it — see K8SNSP#cluster-endpoint-access and dagster-infra's header
 // comment for the stack that does need them.
 
 import './namespace.ts';

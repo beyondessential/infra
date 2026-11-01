@@ -36,17 +36,37 @@ export const imagePullPat = cfg.getSecret('imagePullPat');
 export const dbHost = cfg.require('dbHost');
 export const dbPort = cfg.getNumber('dbPort') ?? 5432;
 export const dbUser = cfg.require('dbUser');
-export const dbPassword = cfg.requireSecret('dbPassword');
 export const dbDatabase = cfg.require('dbDatabase');
 
-// Must match the bucket the dagster-irsa project's policy was scoped to exactly
-// — that's a separate Pulumi project/stack (deliberately: see its own header
-// comment), so there is no automatic check that the two agree.
+// RDS IAM auth instead of a stored password: the chart's postgresql.authProvider
+// (type: aws_wif) exchanges the pod's IRSA-federated token for a short-lived
+// DB access token, so the Dagster storage connection never holds a static
+// credential. Off by default — see dagster-infra's own comment on the two
+// things that have to be true on the RDS/Postgres side first (neither of
+// which this stack or dagster-infra can confirm or do by itself).
+//
+// `dbUser` above must match the Postgres role that `GRANT rds_iam` was run
+// against, and `awsRegion` below must match the region dagster-infra's RDS
+// lookup ran in — both are duplicated, unenforced agreements with that
+// separate project, the same as `computeLogsBucket` below.
+export const dbIamAuth = cfg.getBoolean('dbIamAuth') ?? false;
+export const awsRegion = dbIamAuth ? cfg.require('awsRegion') : undefined;
+// Only required in the (current default) password path. `cfg.getSecret`, not
+// `requireSecret`, so IAM-auth mode needs no unused password lying around in
+// config — the validation below is what actually enforces "one or the other".
+export const dbPassword = cfg.getSecret('dbPassword');
+if (!dbIamAuth && !dbPassword) {
+	throw new Error('dbPassword is required unless dbIamAuth is true');
+}
+
+// Must match the bucket the dagster-infra project's policy was scoped to
+// exactly — that's a separate Pulumi project/stack (deliberately: see its own
+// header comment), so there is no automatic check that the two agree.
 export const computeLogsBucket = cfg.require('computeLogsBucket');
 
-// Stack reference to the dagster-irsa project (e.g. "bes/dagster-irsa/main").
+// Stack reference to the dagster-infra project (e.g. "bes/dagster-infra/main").
 // That stack is applied by a human with aws-sso, not by this one.
-export const irsaStack = cfg.require('irsaStack');
+export const infraStack = cfg.require('infraStack');
 
 // A single secret blob of every other env var the 14 code locations need —
 // Slack, Google/GDrive, Azure, NIWA, flutracking, WHO ICD, UptimeRobot, the
