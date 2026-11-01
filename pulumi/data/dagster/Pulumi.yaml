@@ -1,5 +1,5 @@
 name: dagster
-description: Dagster deploys
+description: data-lake's Dagster on Kubernetes (official Helm chart, K8sRunLauncher)
 runtime:
   name: nodejs
   options:

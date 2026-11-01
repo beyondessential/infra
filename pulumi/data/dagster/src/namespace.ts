@@ -1,47 +1,18 @@
 import * as k8s from '@pulumi/kubernetes';
 import { name } from './config.ts';
 
-const superNs = new k8s.core.v1.Namespace(
-  `${name}-super`,
-  {
-    metadata: {
-      name,
-    },
-  },
-  { ignoreChanges: ['metadata.name'] },
+// No HNC here, unlike the old stack this replaces: HNC is disabled on
+// data-internal-data (the target cluster this now deploys to), and this
+// namespace isn't part of any Tamanu super-namespace tree — see the plan's
+// cluster-choice rationale. One flat namespace per stack (dagster-dev,
+// dagster-prod), matching agent-slack/pollen/first-officer's own pattern
+// rather than the old stack's dagster-<stack>-super/-system split.
+const ns = new k8s.core.v1.Namespace(
+	name,
+	{
+		metadata: { name },
+	},
+	{ ignoreChanges: ['metadata.name'] },
 );
-const superNamespace = superNs.metadata.name;
 
-const others = new Map();
-for (const sub of ['system']) {
-  const nsName = `${name}-${sub}`;
-  const ns = new k8s.core.v1.Namespace(
-    nsName,
-    {
-      metadata: {
-        name: nsName,
-      },
-    },
-    { parent: superNs, ignoreChanges: ['metadata.name'] },
-  );
-  const namespace = ns.metadata.name;
-  others.set(sub, namespace);
-
-  new k8s.apiextensions.CustomResource(
-    `${name}-${sub}-parent`,
-    {
-      apiVersion: 'hnc.x-k8s.io/v1alpha2',
-      kind: 'HierarchyConfiguration',
-      metadata: {
-        name: 'hierarchy',
-        namespace,
-      },
-      spec: {
-        parent: superNamespace,
-      },
-    },
-    { parent: ns },
-  );
-}
-
-export const system = others.get('system');
+export const namespace = ns.metadata.name;

@@ -1,0 +1,3 @@
+name: dagster-irsa
+description: AWS-side IAM for the Dagster-on-k8s compute-log IRSA role
+runtime: nodejs

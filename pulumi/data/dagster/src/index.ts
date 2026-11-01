@@ -1,12 +1,17 @@
-import { failIfIncorrectAccountOrRegion } from '../../../common/coreRef.ts';
 import { failIfIncorrectCluster } from '../../../common/k8s/coreRef.ts';
 await failIfIncorrectCluster();
-await failIfIncorrectAccountOrRegion();
 
-import { ghaDagsterRole } from './github.ts';
-export const ghaDagsterRoleArn = ghaDagsterRole.arn;
+// No `failIfIncorrectAccountOrRegion()` here: this stack's only cross-stack
+// read (the IRSA role ARN, via serviceAccount.ts) goes through Pulumi's own
+// state backend, not an AWS API call, so no AWS credentials are needed to
+// apply it — see K8SNSP#cluster-endpoint-access and dagster-irsa's header
+// comment for the stack that does need them.
 
-import { system } from './namespace.ts';
-import { CeleryQueue } from './celery.ts';
+import './namespace.ts';
+import './serviceAccount.ts';
+import './secrets.ts';
+import './helm.ts';
+import './ingress.ts';
+import './rbac.ts';
 
-// new CeleryQueue('dagster', { namespace: system });
+export { namespace } from './namespace.ts';

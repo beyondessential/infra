@@ -1,0 +1,5 @@
+{
+  "name": "@bes/dagster-irsa",
+  "type": "module",
+  "main": "index.ts"
+}
