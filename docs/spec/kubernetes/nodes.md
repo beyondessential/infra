@@ -186,8 +186,9 @@ The GPU pool MUST remove a node only once no workload pods remain on it.
 > [!NOTE]
 > A batch job on a GPU node would otherwise be drained mid-run to repack it onto cheaper capacity.
 
-The GPU pool MUST use spot capacity only for instance types that meet the interruption frequency limit that applies to spot instance type selection.
+The GPU pool MUST offer spot capacity, and MUST offer on-demand capacity as a fallback so that a lack of spot capacity does not leave a GPU pod unschedulable.
 
+The GPU pool is exempt from the interruption frequency limit that applies to spot instance type selection for other pools.
 The nodes of the GPU pool MUST be attributable as GPU capacity in cost reporting.
 
 ## Exit node

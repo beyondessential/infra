@@ -339,17 +339,19 @@ pool('db-critical', {
 
 // spec: K8SNOD#gpu-pool
 // Batch inference capacity that sits at zero nodes until a pod requests
-// `nvidia.com/gpu`. Every GPU type in ap-southeast-2 is in the advisor's >20%
-// interruption band, so the pool is on-demand only. Single-GPU shapes across
-// three generations (T4, A10G, L4); Karpenter takes the cheapest that fits,
-// and a pod can pin one with the `karpenter.k8s.aws/instance-gpu-name` label.
-// The GPU types are outside the general-purpose families the
-// instanceTypeGroups helpers admit, hence the literal list. WhenEmpty so a
-// running job is never drained for consolidation.
+// `nvidia.com/gpu`. Spot with on-demand fallback: Karpenter prefers spot when
+// both are offered, so a spot drought delays nothing. Every GPU type in
+// ap-southeast-2 is in the advisor's >20% interruption band, so unlike the
+// other spot pools there is no interruption filter and jobs must tolerate a
+// reclaim. Single-GPU shapes across three generations (T4, A10G, L4);
+// Karpenter takes the cheapest that fits, and a pod can pin one with the
+// `karpenter.k8s.aws/instance-gpu-name` label. The GPU types are outside the
+// general-purpose families the instanceTypeGroups helpers admit, hence the
+// literal list. WhenEmpty so a running job is never drained for consolidation.
 if (gpuNodeClass) {
   pool('gpu', {
     purpose: 'workload',
-    schedule: 'ondemand',
+    schedule: 'mixed',
     arch: 'amd64',
     nodeClassRef: gpuNodeClass,
     instanceTypes: [
@@ -360,7 +362,8 @@ if (gpuNodeClass) {
       'g5.xlarge',
       'g5.2xlarge',
     ],
-    capacityTypes: ['on-demand'],
+    capacityTypes: ['spot', 'on-demand'],
+    spotTaint: true,
     extraTaints: [{ key: 'bes.node.group', value: 'gpu', effect: 'NoSchedule' }],
     consolidationPolicy: 'WhenEmpty',
     limits: { cpu: 16, memory: '64Gi', 'nvidia.com/gpu': 2 },
