@@ -75,6 +75,8 @@ The instance MUST reach the database through the cluster's database proxy Servic
 
 When IAM database authentication is enabled for the instance, Dagster MUST authenticate to the database with a token issued to the IAM role of its service account, and the stack MUST NOT hold a database password.
 
+When IAM database authentication is enabled, the stack MUST refuse to apply when the database user it connects as is not the user that the AWS-side stack publishes.
+
 When IAM database authentication is not enabled, the stack MUST hold the database password as a secret value.
 
 > [!NOTE]
@@ -145,4 +147,4 @@ When IAM database authentication is enabled, the role MUST permit connecting to 
 
 The role MUST hold no permission beyond those this section gives.
 
-The AWS-side stack MUST publish the ARN of the role, the name of the compute log bucket, whether IAM database authentication is enabled, and its region, and the stack that runs the instance MUST take those values from the AWS-side stack's outputs and from no other source.
+The AWS-side stack MUST publish the ARN of the role, the name of the compute log bucket, whether IAM database authentication is enabled, the database user the role may connect as when it is, and its region, and the stack that runs the instance MUST take those values from the AWS-side stack's outputs and from no other source.
