@@ -114,13 +114,15 @@ Contract:
 2. Per part: `database`, `api`, `web`, `sync`, `tasks`, `fhir`. Cross-wake needs "sync and database up, API and web down".
 3. Asynchronous: `PUT` returns at once, the supervisor polls until every part is `ready`.
 4. Versioned (`/v1`), as an OpenAPI file in the Tamanu repo that infra implements. The actuator supports every version in use by deployed releases.
-5. Request routing belongs to the actuator: on sleep it points the routes at the supervisor, on wake back at the app.
+5. The actuator does not change routes. Caddy is the permanent backend behind Envoy and handles requests while parts are asleep (see Caddy below).
 
-Because the supervisor is out of the request path while awake, the app needs an activity endpoint (for example `GET /activity` on API and sync: last request time, work in flight). This is Tamanu-side work.
+Caddy's access log gives the supervisor the time of the last request, so the app needs no activity endpoint of its own. Requests that run long (imports, reports) must count as activity while in flight, not only when they finish; Caddy's metrics or a log entry at request start would cover that. To check.
 
 One actuator per deployment (namespaced `tamanu-ttl` service account, no cross-tenant permissions) versus one per cluster: start per deployment.
 
 ### Caddy as the supervisor's front
+
+Decided (Q16): every Kubernetes deployment gets a Caddy in front of its API and web. Routes then never change: Caddy is the permanent backend, serves the splash page or `503` and calls the supervisor when the app is down, and its access log is the idle signal. The K8STSD rule that hibernation must not change routes survives as written.
 
 Routing is defined in three places today: the Linux Caddy templates (about 270 lines of Jinja), the Kubernetes Gateway routes (`renderer/src/gateway.rs`) and the frontend image's own Caddy. Putting all traffic through one Caddy gives Kubernetes the same request path as Linux and Windows, and fixes that drift.
 
@@ -187,7 +189,7 @@ Sequencing consequence: a deployment in one namespace sleeps as a unit (central 
 - [ ] Mobile: back off when backgrounded, and poll the supervisor instead of opening sessions?
 - [ ] Production on Kubernetes has no spec yet: data sovereignty, uptime and backups for sleeping clusters.
 - [ ] Check Sydney prices for Aurora, EBS gp3 and Graviton on-demand before any cost case.
-- [ ] Hibernation (K8STSD) must not change routes, but the actuator re-points routes at the supervisor while asleep. Rewrite that rule, or point routes at Caddy or the supervisor permanently so it never applies?
+- [x] Hibernation (K8STSD) must not change routes: settled by Q16. Caddy is the permanent backend, so the rule survives.
 - [ ] With the TTL gone, what catches a deployment that never sleeps? An "awake for more than N hours" alert, or a hard maximum awake time?
 - [ ] The access tally: what does it hold (device id, time, kind), where does it persist (SQLite) so a supervisor restart loses nothing, how is the flush made idempotent, and how is its size bounded? Which Tamanu records does it feed (`Device.lastSeenAt`, the `accesses` audit log)?
 - [ ] Q3: the supervisor should be able to verify device credentials itself while the database is down (direction, from discussion). Findings from Tamanu's central auth (`packages/central-server/app/auth/`, `User.loginFromToken`): access tokens are HS256 JWTs signed with one shared secret (`config.auth.secret`), carrying issuer, audience, expiry, `userId`, `deviceId` and `facilityId`. Signature, issuer, audience and expiry can be checked without the database. Whether the user is still current and the device still exists are database lookups, so they happen at flush. Forgery is ruled out while asleep. Revocation is covered by copying the users table (password hashes included) and the devices table into the supervisor's own store, at the same moment as the counter (Q4). The supervisor is Node, so it implements credential checks itself, reusing Tamanu's code. Nothing changes while central is down, so the copy is exact for the whole sleep. Facilities already hold a copy of the users table with hashes for their local-login fallback, so this is not a new kind of exposure. Authorisation (`canSync`, facility access) depends on roles and permissions, which are not copied: the flag check needs identity (a current user on a known device), and a user who cannot sync learning a counter is harmless.
