@@ -6,7 +6,8 @@ const ns = new k8s.core.v1.Namespace(
   {
     metadata: { name },
   },
-  { ignoreChanges: ['metadata.name'] },
+  // Named `<name>-super` when the namespace was the root of an HNC tree.
+  { ignoreChanges: ['metadata.name'], aliases: [{ name: `${name}-super` }] },
 );
 
 export const namespace = ns.metadata.name;
