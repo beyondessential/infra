@@ -64,7 +64,7 @@ The environment variables of the code servers MUST NOT include the storage crede
 
 ## Storage
 
-The instance MUST keep its runs, event logs and schedule state in the PostgreSQL database that the stack's configuration names, on the data-warehouse RDS instance.
+The instance MUST keep its runs, event logs and schedule state in a PostgreSQL database on the data-warehouse RDS instance, whose name the stack's configuration gives.
 
 The instance MUST NOT run a database of its own.
 
@@ -73,11 +73,9 @@ The instance MUST reach the database through the cluster's database proxy Servic
 > [!NOTE]
 > The cluster is IPv6-only and the RDS endpoint resolves dual-stack, which the Tailscale operator cannot proxy directly.
 
-When IAM database authentication is enabled for the instance, Dagster MUST authenticate to the database with a token issued to the IAM role of its service account, and the stack MUST NOT hold a database password.
+Dagster MUST authenticate to the database with a token issued to the IAM role of its service account, and the stack MUST NOT hold a database password.
 
-When IAM database authentication is enabled, the stack MUST refuse to apply when the database user it connects as is not the user that the AWS-side stack publishes.
-
-When IAM database authentication is not enabled, the stack MUST hold the database password as a secret value.
+The instance MUST connect as the database user that the AWS-side stack publishes, and to the host and port that it publishes.
 
 > [!NOTE]
 > IAM database authentication needs the RDS instance to have the feature enabled and the database user to have been granted `rds_iam`.
@@ -85,7 +83,19 @@ When IAM database authentication is not enabled, the stack MUST hold the databas
 
 ## Compute logs
 
-The compute log manager MUST store the compute logs of runs in the S3 bucket that the AWS-side stack names, under the key prefix `dagster-compute-logs/`.
+The AWS-side stack MUST provide one S3 bucket for compute logs, in its own account.
+
+The compute log bucket MUST block all public access.
+
+Objects in the compute log bucket MUST be encrypted at rest.
+
+The compute log bucket MUST abort an incomplete multipart upload one day after it is initiated.
+
+The compute log bucket MUST NOT expire an object by age.
+
+The compute log bucket MUST be protected from deletion by the stack that owns it.
+
+The compute log manager MUST store the compute logs of runs in the compute log bucket, under the key prefix `dagster-compute-logs/`.
 
 ## Run launcher
 
@@ -143,8 +153,8 @@ The AWS-side stack MUST provide one IAM role for a service account, assumable on
 
 The role MUST permit listing the compute log bucket, and reading and writing the objects of that bucket under the compute log prefix, and MUST NOT permit deleting them.
 
-When IAM database authentication is enabled, the role MUST permit connecting to the RDS instance as the database user of the instance, and as no other user.
+The role MUST permit connecting to the RDS instance as the database user of the instance, and as no other user.
 
 The role MUST hold no permission beyond those this section gives.
 
-The AWS-side stack MUST publish the ARN of the role, the name of the compute log bucket, whether IAM database authentication is enabled, the database user the role may connect as when it is, and its region, and the stack that runs the instance MUST take those values from the AWS-side stack's outputs and from no other source.
+The AWS-side stack MUST publish the ARN of the role, the name of the compute log bucket, the host, port and user with which to connect to the database, and its region, and the stack that runs the instance MUST take those values from the AWS-side stack's outputs and from no other source.

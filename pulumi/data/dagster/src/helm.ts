@@ -13,8 +13,6 @@ import {
   dagsterChartVersion,
   dbDatabase,
   dbHost,
-  dbIamAuth,
-  dbPassword,
   dbPort,
   dbUser,
   memoryRequest,
@@ -28,11 +26,6 @@ export const releaseName = 'dagster';
 
 const imagePullSecrets = registrySecret ? [{ name: registrySecret.metadata.name }] : [];
 
-// spec: DAGS#storage
-const storageAuth = dbIamAuth
-  ? { authProvider: { type: 'aws_wif', awsRegion } }
-  : { postgresqlPassword: dbPassword };
-
 // spec: DAGS#run-launcher
 new k8s.helm.v3.Release(releaseName, {
   name: releaseName,
@@ -43,7 +36,7 @@ new k8s.helm.v3.Release(releaseName, {
   values: {
     global: {
       serviceAccountName: DAGSTER_SERVICE_ACCOUNT,
-      postgresqlAuthWifEnabled: dbIamAuth,
+      postgresqlAuthWifEnabled: true,
     },
     imagePullSecrets,
     dagsterWebserver: {
@@ -83,13 +76,14 @@ new k8s.helm.v3.Release(releaseName, {
       sensor: { purgeAfterDays: { skipped: 1, failure: 1, success: 7 } },
       autoMaterialize: { purgeAfterDays: 7 },
     },
+    // spec: DAGS#storage
     postgresql: {
       enabled: false,
       postgresqlHost: dbHost,
       postgresqlUsername: dbUser,
       postgresqlDatabase: dbDatabase,
       service: { port: dbPort },
-      ...storageAuth,
+      authProvider: { type: 'aws_wif', awsRegion },
     },
     // spec: DAGS#compute-logs
     computeLogManager: {

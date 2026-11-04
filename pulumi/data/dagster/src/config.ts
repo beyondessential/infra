@@ -27,48 +27,14 @@ export const imagePullPat = cfg.getSecret('imagePullPat');
 const infra = new CrossStack(cfg.require('infraStack'));
 export const roleArn = infra.get<string>('dagsterRoleArn');
 export const computeLogsBucket = infra.get<string>('computeLogsBucket');
-export const dbIamAuth = await infra.getValue<boolean>('dbIamAuth');
-// The only user the role may connect as when IAM database authentication is on.
-const iamDbUser = await infra.getValue<string | undefined>('dbUser');
 export const awsRegion = infra.get<string>('region');
 
-// The data-warehouse database, as `postgres://user[:password]@host[:port]/database`.
-// The host is the in-cluster k8s-db-proxy Service (`<hostname>.<namespace>.svc.cluster.local`)
-// rather than the RDS endpoint. The password is present exactly when IAM
-// database authentication is off.
-function parseDbUrl(raw: string) {
-  const url = new URL(raw);
-  const user = decodeURIComponent(url.username);
-  const database = decodeURIComponent(url.pathname.replace(/^\//, ''));
-  if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname || !user || !database) {
-    throw new Error('dbUrl must be postgres://user[:password]@host[:port]/database');
-  }
-  // The RDS endpoint is reached only through the in-cluster proxy Service.
-  if (!/\.svc(\.cluster\.local)?$/.test(url.hostname)) {
-    throw new Error(
-      'dbUrl must name the in-cluster database proxy Service, as <name>.<namespace>.svc.cluster.local',
-    );
-  }
-  const password = url.password ? decodeURIComponent(url.password) : undefined;
-  if (dbIamAuth && password) {
-    throw new Error('dbUrl must not carry a password when IAM database authentication is on');
-  }
-  if (!dbIamAuth && !password) {
-    throw new Error('dbUrl must carry a password unless IAM database authentication is on');
-  }
-  if (dbIamAuth && user !== iamDbUser) {
-    throw new Error(
-      `dbUrl's user must be ${iamDbUser}, the user the dagster-infra role may connect as`,
-    );
-  }
-  return { host: url.hostname, port: url.port ? Number(url.port) : 5432, user, database, password };
-}
-const db = cfg.requireSecret('dbUrl').apply(parseDbUrl);
-export const dbHost = db.host;
-export const dbPort = db.port;
-export const dbUser = db.user;
-export const dbDatabase = db.database;
-export const dbPassword = db.password;
+// Reached through the in-cluster k8s-db-proxy Service, authenticating as the
+// user the role may connect as. Only the database differs between stacks.
+export const dbHost = infra.get<string>('dbHost');
+export const dbPort = infra.get<number>('dbPort');
+export const dbUser = infra.get<string>('dbUser');
+export const dbDatabase = cfg.require('dbDatabase');
 
 // Every other environment variable the code locations read, as one KEY=VALUE per
 // line like a .env file. The list belongs to data-lake and changes without this
