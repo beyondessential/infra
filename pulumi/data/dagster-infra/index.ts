@@ -45,15 +45,11 @@ const computeLogsPolicy = new awsNative.iam.ManagedPolicy(
 );
 managedPolicyArns.push(computeLogsPolicy.policyArn);
 
-// Needs IAM database authentication enabled on the instance, and
-// `GRANT rds_iam TO <dbUser>` run once by a database administrator; neither is
-// managed here.
 const dbIamAuth = cfg.getBoolean('dbIamAuth') ?? false;
 if (dbIamAuth) {
   const dbInstance = awsClassic.rds.getInstanceOutput({
     dbInstanceIdentifier: cfg.require('dbInstanceIdentifier'),
   });
-  // Must be the Postgres role that the dagster stack connects as.
   const dbUser = cfg.require('dbUser');
 
   const rdsConnectPolicy = new awsNative.iam.ManagedPolicy(

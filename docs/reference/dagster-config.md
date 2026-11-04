@@ -50,5 +50,15 @@ The release is named `dagster` explicitly because the webserver Service is named
 
 ## Turning on IAM database authentication
 
-Two things outside both stacks must hold first: IAM database authentication enabled on the RDS instance, and `GRANT rds_iam TO <dbUser>` run once by a database administrator.
-Then set `dagster-infra:dbIamAuth`, apply `dagster-infra`, and apply `dagster`, which picks the setting up from the outputs and no longer needs `dbPassword`.
+Dagster's storage connection can use a short-lived IAM token instead of a stored password.
+It is off by default.
+Neither stack manages the two prerequisites, so both must hold before the setting is turned on.
+
+1. IAM database authentication is enabled on the data-warehouse RDS instance (its `iam_db_auth_enabled` setting).
+2. A database administrator has run `GRANT rds_iam TO <dbUser>;` once against the instance, where `<dbUser>` is the Postgres role that Dagster connects as.
+
+Then:
+
+1. Set `dagster-infra:dbIamAuth` to `true`, `dagster-infra:dbInstanceIdentifier` to the instance's identifier (its name in the RDS console), and `dagster-infra:dbUser` to the same role as `dagster:dbUser`.
+2. Apply `dagster-infra`. The role gains `rds-db:connect` on that one user, looked up through the instance's resource id.
+3. Apply `dagster`. It reads `dbIamAuth` and the region from the outputs, switches the chart to AWS workload identity authentication, and no longer needs `dagster:dbPassword`.
