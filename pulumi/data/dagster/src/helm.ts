@@ -66,6 +66,7 @@ new k8s.helm.v3.Release(releaseName, {
               { key: 'processing_load', value: 'heavy', limit: 1 },
               {
                 key: 'database',
+                // Dagster's own form: the flag is the entry's `value`, not a sibling key.
                 value: { applyLimitPerUniqueValue: true },
                 limit: 1,
               },
