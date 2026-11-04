@@ -51,6 +51,10 @@ if (dbIamAuth) {
     dbInstanceIdentifier: cfg.require('dbInstanceIdentifier'),
   });
   const dbUser = cfg.require('dbUser');
+  // A wildcard here would let the role connect as any user.
+  if (!/^[A-Za-z_][A-Za-z0-9_$]*$/.test(dbUser)) {
+    throw new Error(`dbUser must be a plain Postgres role name, got ${JSON.stringify(dbUser)}`);
+  }
 
   const rdsConnectPolicy = new awsNative.iam.ManagedPolicy(
     'dagster-rds-iam-auth',
