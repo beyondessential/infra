@@ -15,6 +15,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | document | what it covers |
 |---|---|
 | [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | The ACME directory, account lookup by key and the DNS-01 challenge. Used by [K8SING](kubernetes/ingress.md) [CTLS](canopy/tls-issuance.md) and [LNXTLS](linux/tls.md). |
+| [RFC 1035](https://www.rfc-editor.org/rfc/rfc1035) | The syntax of a DNS label. Used by [DAGS](data/dagster.md). |
 | [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) and [RFC 9114](https://www.rfc-editor.org/rfc/rfc9114) | QUIC and HTTP/3. Used by [K8SING](kubernetes/ingress.md). |
 | [PROXY protocol specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) | The header that conveys a client address through a load balancer. Used by [K8SING](kubernetes/ingress.md). |
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | GatewayClass, Gateway, listeners and HTTPRoute. Used by [K8SING](kubernetes/ingress.md) and [K8SCNP](kubernetes/canopy.md). |

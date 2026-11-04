@@ -44,9 +44,9 @@ The instance MUST run one code server for each code location that the stack's co
 
 A code location in the configuration is loaded from a Python file or from a Python package, resolved from the working directory of the image.
 
-The name of a code server MUST be the name of its file without `.py`, or of its package, with each `_` replaced by `-`.
+The name of a code server MUST be the name of its file without directories or `.py`, or of its package, with each `_` replaced by `-`.
 
-Two code locations in one configuration MUST NOT have the same name.
+A code location whose name is not a valid [DNS label](https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1) that begins with a letter, or whose name is the same as another's in the configuration, MUST fail the stack before it changes anything.
 
 A code location's configuration MAY set its memory request, which replaces the default.
 

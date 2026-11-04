@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import { codeLocations, cpuRequest, imageRepository, imageTag, memoryRequest } from './config.ts';
 import { envSecretName } from './secrets.ts';
 
@@ -8,8 +9,14 @@ function codeServer(loc: (typeof codeLocations)[number]) {
       `codeLocations entry needs exactly one of file and package: ${JSON.stringify(loc)}`,
     );
   }
-  // DNS-1035 safe, as it names Kubernetes objects; the Python name may not be.
-  const name = (loc.file?.replace(/\.py$/, '') ?? loc.package!).replace(/_/g, '-');
+  const base = loc.file ? basename(loc.file, '.py') : loc.package!;
+  const name = base.replace(/_/g, '-');
+  // The name becomes the names of Kubernetes objects, so it must be a DNS-1035 label.
+  if (!/^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$/.test(name)) {
+    throw new Error(
+      `codeLocations entry gives the code server name ${JSON.stringify(name)}, which is not a DNS-1035 label`,
+    );
+  }
   const args = loc.file ? ['--python-file', loc.file] : ['--package-name', loc.package!];
   return {
     name,
