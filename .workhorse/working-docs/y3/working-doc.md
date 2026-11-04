@@ -41,7 +41,7 @@ Replaces the time to live. A deployment (central and its facilities in one names
 - Central answers "is there anything for me?" cheaply, before a sync session starts.
 - The first request of the day gets a "waking up, about 5 minutes" page. The supervisor starts local services, pushes local changes (none after a clean shutdown), pulls what central has queued, then lets the user in.
 - A facility wakes central only when it has data to push, someone logs in, or its flag is set.
-- Sleep is the default and sites opt out. The opt-out has three purposes: testing, troubleshooting and bugs, and quiet facilities that still need very fast access to patient data at odd hours. Tamanu tolerates internet outages, so poor connectivity is not a reason.
+- Sleep is the default and sites opt out. The opt-out has three purposes: testing, troubleshooting and bugs, and quiet facilities that still need very fast access to patient data at odd hours. "Very fast" means instant, so any site that cannot tolerate a wake opts out entirely; the supervisor does not serve data while waking. Tamanu tolerates internet outages, so poor connectivity is not a reason.
 
 ### Central
 
