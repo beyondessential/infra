@@ -153,19 +153,6 @@ Decided: demand-driven sleep replaces `ttlHours`. Every deployment sleeps when i
 
 Sequencing consequence: a deployment in one namespace sleeps as a unit (central and its facilities together), so only external requests count as activity (users, mobile devices, integrations). Sync between its own members is irrelevant, because they all sleep together. That means the Kubernetes PR and demo case does not need the Tamanu-side changes (quiet sync, dirty flags, cross-wake): an infra-side activator that watches request traffic is enough to retire the TTL. Those changes matter for facilities that sleep independently of central (separate deployments, or Linux).
 
-### Existing scaledown spec (K8STSD)
-
-[Tamanu deployment scaledown](artefact:docs/spec/kubernetes/tamanu/scaledown.md) already specifies the sleep and wake mechanics this work builds on. It is driven by a time to live (`ttlHours`), not by demand.
-
-- Hibernation: `downscaler/force-downtime=true` on every Deployment, `cnpg.io/hibernation=on` on every database cluster, volumes retained. This is the sleep sequence above, already specified.
-- Waking: remove the force-downtime annotation, set `cnpg.io/hibernation=off`, and never change the end of the time to live. A suspended `wake` CronJob lets a person trigger it.
-- A `tamanu-ttl` service account, limited to Deployments and database clusters in its namespace, runs both. This is the actuator's RBAC, already specified.
-- The downscaler must act on Deployments only, run on system capacity, and leave unannotated workloads alone.
-- Where it collides with the design here:
-  - Hibernation must not change any other object, "including its Services, Gateways, routes". The actuator re-pointing routes at the supervisor on sleep would break that, unless the routes already point at the supervisor/Caddy permanently (the Caddy front removes the need to change routes).
-  - Everything is keyed on a time to live. Demand-driven sleep has no end time, so it either needs its own trigger or needs the TTL concept generalised.
-  - The spec says nothing about who triggers a wake besides a person and updates of the deployment. A supervisor calling the actuator is a new waker.
-
 ## Trade-offs
 
 - Supervisor in Tamanu versus an infra-side controller: dirty-flag logic depends on sync, which points to Tamanu. Infra-only controllers (activator, KEDA, Sablier) cannot answer "anything for me?".
@@ -191,8 +178,8 @@ Sequencing consequence: a deployment in one namespace sleeps as a unit (central 
 
 ## Possible order of work
 
-1. Quieten idle sync: a "changes pending?" check before `startSyncSession`, and `SyncLookupRefresher` skipping writes when nothing changed. Pays off everywhere and is a prerequisite for the rest.
-2. Wake-on-request for PR and demo deployments, extending the existing TTL hibernation with an activator. No clinical risk, and where the 90-95% saving is.
+1. Wake-on-request and idle sleep for whole Kubernetes deployments (PR, demo, dev), replacing `ttlHours`: an activator in front of API and web, idle detection from external request traffic, and the existing hibernation and wake steps driven by the actuator. No Tamanu changes needed, no clinical risk, and where the 90-95% saving is. Retires K8STSD's TTL machinery.
+2. Quieten idle sync: a "changes pending?" check before `startSyncSession`, and `SyncLookupRefresher` skipping writes when nothing changed. Pays off everywhere, and is the prerequisite for sleeping facilities independently of central.
 3. Facility sleep, then central sleep with dirty flags. Pilot on a staging deployment with two facilities on working hours.
 4. Production pilot, once a Kubernetes production spec exists.
 
