@@ -76,7 +76,8 @@ export const role = eksServiceAccount(
   {
     roleName: 'EKSS3Backups-',
     roleDescription: interpolate`Service account for S3 Backups bucket (cluster: ${clusterName})`,
-    serviceAccountName: 's3-backups',
+    // Assumable from any service account in any namespace.
+    serviceAccountName: '*',
     oidcProviderArn: oidcProvider.arn,
     namespace: '*',
     managedPolicyArns: [policy.arn],

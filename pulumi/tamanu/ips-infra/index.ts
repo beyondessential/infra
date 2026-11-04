@@ -11,8 +11,6 @@ import { LOGS_BUCKETS } from '../../constants/internal.ts';
 import { BUCKET_NAME, ZONE_ID } from './constants.ts';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 
-const SERVICE_ACCOUNT_NAME = 'ips-bucket';
-
 new BucketWebsite('ips', {
   domain: 'public.tamanu.io',
   bucketName: BUCKET_NAME,
@@ -88,7 +86,7 @@ new awsClassic.iam.Role('gha-ips-s3-viewer', {
 const sa = eksServiceAccount('ips-bucket-role', {
   roleName: 'EKSIpsBucket-',
   roleDescription: interpolate`Service account for ips bucket (cluster: ${clusterName})`,
-  serviceAccountName: SERVICE_ACCOUNT_NAME,
+  serviceAccountName: '*',
   oidcProviderArn: oidcProvider,
   namespace: 'tamanu-*',
   managedPolicyArns: [policy.arn],

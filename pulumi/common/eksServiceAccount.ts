@@ -28,33 +28,37 @@ export function eksServiceAccount(
         args.oidcProviderArn,
         args.namespace,
         args.serviceAccountName,
-      ]).apply(([id, arn, namespace, serviceAccount]) => ({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: {
-              Federated: arn,
+      ]).apply(([id, arn, namespace, serviceAccount]) => {
+        // Either part may be a wildcard; the other still constrains the subject.
+        const subject = `system:serviceaccount:${namespace}:${serviceAccount}`;
+        return {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: {
+                Federated: arn,
+              },
+              Action: 'sts:AssumeRoleWithWebIdentity',
+              Condition: subject.includes('*')
+                ? {
+                    StringEquals: {
+                      [`${id}:aud`]: AWS_STS,
+                    },
+                    StringLike: {
+                      [`${id}:sub`]: subject,
+                    },
+                  }
+                : {
+                    StringEquals: {
+                      [`${id}:aud`]: AWS_STS,
+                      [`${id}:sub`]: subject,
+                    },
+                  },
             },
-            Action: 'sts:AssumeRoleWithWebIdentity',
-            Condition: namespace.includes('*')
-              ? {
-                  StringEquals: {
-                    [`${id}:aud`]: AWS_STS,
-                  },
-                  StringLike: {
-                    [`${id}:sub`]: `system:serviceaccount:${namespace}:*`,
-                  },
-                }
-              : {
-                  StringEquals: {
-                    [`${id}:aud`]: AWS_STS,
-                    [`${id}:sub`]: `system:serviceaccount:${namespace}:${serviceAccount}`,
-                  },
-                },
-          },
-        ],
-      })),
+          ],
+        };
+      }),
       managedPolicyArns: args.managedPolicyArns,
     },
     opts,
