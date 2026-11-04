@@ -22,6 +22,7 @@ The values are a snapshot read from the code; the file named is the authority, s
 | Tailscale operator | `1.94.2` | Helm chart | `pulumi/k8s-essentials/versions.ts` |
 | py-kube-downscaler | `0.3.12` | Helm chart | `pulumi/k8s-essentials/versions.ts` |
 | Argo CD | `10.10.2` | Helm chart (Argo CD `v3.5.4`); `argoVersion` overrides it per stack | `pulumi/k8s-essentials/versions.ts` |
+| Dagster | `1.13.26` | Helm chart, tracking the Dagster version data-lake locks; `dagster:dagsterChartVersion` overrides it per stack | `pulumi/data/dagster/src/config.ts` |
 | Kubernetes | stack config | `k8s-core:version`; EKS ignores later edits | `pulumi/k8s-core/cluster.ts` |
 
 ## Not pinned
