@@ -8,14 +8,15 @@ import { appEnvBlob, imagePullPat } from './config.ts';
 // location failed to start.
 function parseDotenv(blob: string): Record<string, string> {
   const result: Record<string, string> = {};
-  for (const rawLine of blob.split('\n')) {
+  for (const [i, rawLine] of blob.split('\n').entries()) {
     const line = rawLine.trim();
     if (line === '' || line.startsWith('#')) {
       continue;
     }
     const eq = line.indexOf('=');
     if (eq === -1) {
-      throw new Error(`appEnvBlob: line has no '=': ${JSON.stringify(line)}`);
+      // The line itself may be a secret, so only its position is reported.
+      throw new Error(`appEnvBlob: line ${i + 1} has no '='`);
     }
     result[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
   }
