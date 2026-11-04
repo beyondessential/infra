@@ -16,7 +16,7 @@ The requirements are in the spec.
 | `tailscale:gha:dagster` bindings | `src/rbac.ts` | The RoleBinding to `cluster-admin`, and the ClusterRole over namespaces. |
 | Compute log bucket | `pulumi/data/dagster-infra/index.ts` | Private, encrypted, with no expiry, protected from deletion by the stack. Named by Pulumi; the name is the `computeLogsBucket` output. |
 | IAM role `dagster` | `pulumi/data/dagster-infra/index.ts` | The role for the service account, with the compute log policy, and the RDS connect policy when IAM database authentication is on. |
-| Shared names | `pulumi/constants/dagster.ts` | The service account name, namespace pattern and compute log prefix that both stacks use. |
+| Shared names | `pulumi/constants/dagster.ts` | The service account name, compute log prefix and namespace derivation that both stacks use. |
 
 The release is named `dagster` explicitly because the webserver Service is named from it, and `src/ingress.ts` points at that Service.
 
@@ -25,17 +25,15 @@ The release is named `dagster` explicitly because the webserver Service is named
 | stack | key | meaning |
 |---|---|---|
 | `dagster` | `dagster:k8s-core` | `bes/k8s-core/<stack>`; the cluster the stack applies to. |
-| `dagster` | `dagster:infraStack` | `bes/dagster-infra/<stack>`; the AWS-side stack whose outputs the stack takes. |
+| `dagster` | `dagster:infraStack` | `bes/dagster-infra/<stack>`; the AWS-side stack whose outputs the stack takes. It must have the same stack name as this stack. |
 | `dagster` | `dagster:imageTag` | Tag of the data-lake image. Required. |
 | `dagster` | `dagster:imagePullPat` | Secret registry token. Set it only while the image is private. |
 | `dagster` | `dagster:dbDatabase` | Required. The storage database on the RDS instance, which differs between stacks (for example `dagster` and `dagster_dev`). Host, port and user come from the `dagster-infra` outputs. |
 | `dagster` | `dagster:codeLocations` | Required list of code locations, each with exactly one of `file` or `package`, and optionally `memoryRequest`. See below. |
 | `dagster` | `dagster:appEnvBlob` | Secret, one `KEY=VALUE` per line, for every code server. |
 | `dagster` | `dagster:dagsterChartVersion` | Chart version. Defaults to the pin in `src/config.ts`. |
-| `dagster` | `dagster:namespace` | Overrides the namespace suffix. |
 | `dagster` | `dagster:cpuRequest`, `memoryRequest`, `runPodCpuRequest`, `runPodMemoryRequest` | Resource requests of the long-lived pods and of run pods. |
 | `dagster-infra` | `dagster-infra:core`, `k8s-core` | `bes/core/<account>` and `bes/k8s-core/<stack>`. |
-| `dagster-infra` | `dagster-infra:namespacePattern` | Namespaces whose `dagster` service account may assume the role. Defaults to `dagster-*`. |
 | `dagster-infra` | `dagster-infra:dbInstanceIdentifier` | Required. The RDS instance's identifier (its name in the RDS console). |
 | `dagster-infra` | `dagster-infra:dbUser` | Required. The only database user the role may connect as, and the user Dagster connects as. |
 
@@ -60,17 +58,18 @@ config:
 |---|---|
 | `dagsterRoleArn` | ARN of the role, which the `dagster` stack puts on the service account. |
 | `computeLogsBucket` | Name of the compute log bucket, which the `dagster` stack gives the compute log manager. |
-| `dbHost` | The in-cluster database proxy Service for the instance, `<identifier>.db-proxy.svc.cluster.local`. The proxy stack runs in the `db-proxy` namespace and names its Service after the first label of the RDS endpoint, which is the identifier. |
-| `dbPort` | The port of the RDS instance, which the proxy Service also listens on. |
+| `dbHost` | The endpoint address of the RDS instance, which the pods connect to directly. |
+| `dbPort` | The port of the RDS instance. |
 | `dbUser` | The database user the role may connect as. |
 | `region` | The region of the RDS instance, for the token exchange. |
 
 ## Database authentication
 
 Dagster's storage connection uses a short-lived IAM token, so no stack holds a database password.
-Neither stack manages the two prerequisites, so both must hold before the first apply.
+Neither stack manages the prerequisites, so all of them must hold before the first apply.
 
-1. IAM database authentication is enabled on the data-warehouse RDS instance (its `iam_db_auth_enabled` setting).
+1. IAM database authentication is enabled on the RDS instance (its `iam_db_auth_enabled` setting).
 2. A database administrator has run `GRANT rds_iam TO <dbUser>;` once against the instance, where `<dbUser>` is the Postgres role that Dagster connects as. Each database a stack names in `dagster:dbDatabase` must also exist and be accessible to that role.
+3. The security group of the RDS instance allows port 5432 from the cluster's nodes.
 
 The role gains `rds-db:connect` on that one user, looked up through the instance's resource id.

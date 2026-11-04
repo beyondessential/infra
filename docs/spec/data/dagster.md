@@ -22,7 +22,7 @@ What the code locations compute is specified by data-lake, and this spec does no
 
 An instance of Dagster MUST run in its own namespace.
 
-The namespace MUST be named `dagster-` followed by the normalised stack name, unless the stack's configuration names it explicitly.
+The namespace MUST be named `dagster-` followed by the normalised stack name.
 
 The normalised stack name MUST be derived from the stack name by the following steps, in order:
 
@@ -68,14 +68,9 @@ The instance MUST keep its runs, event logs and schedule state in a PostgreSQL d
 
 The instance MUST NOT run a database of its own.
 
-The instance MUST reach the database through the cluster's database proxy Service, and MUST NOT connect to the RDS endpoint directly.
-
-> [!NOTE]
-> The cluster is IPv6-only and the RDS endpoint resolves dual-stack, which the Tailscale operator cannot proxy directly.
-
 Dagster MUST authenticate to the database with a token issued to the IAM role of its service account, and the stack MUST NOT hold a database password.
 
-The instance MUST connect as the database user that the AWS-side stack publishes, and to the host and port that it publishes.
+The instance MUST connect to the endpoint of the RDS instance, and as the database user, that the AWS-side stack publishes.
 
 > [!NOTE]
 > IAM database authentication needs the RDS instance to have the feature enabled and the database user to have been granted `rds_iam`.
@@ -145,11 +140,13 @@ The workflow MUST NOT be able to delete a namespace.
 
 The AWS-side stack is a separate stack from the one that runs the instance, applied in the AWS account of the cluster with AWS credentials.
 
+The AWS-side stack of an instance MUST have the same stack name as the stack that runs it, and the stack that runs the instance MUST refuse to apply with an AWS-side stack of another name.
+
 The namespace of the instance MUST hold a service account named `dagster`, annotated with the ARN of the IAM role that the AWS-side stack provides.
 
 The webserver, the daemon, the code servers and the run pods MUST run as that service account.
 
-The AWS-side stack MUST provide one IAM role for a service account, assumable only by web identity from the OIDC provider of the cluster, for the service account `dagster` in a namespace whose name matches `dagster-*` or the pattern that the AWS-side stack's configuration names.
+The AWS-side stack MUST provide one IAM role for a service account, assumable only by web identity from the OIDC provider of the cluster, for the service account `dagster` in the namespace of the instance, and in no other namespace.
 
 The role MUST permit listing the compute log bucket, and reading and writing the objects of that bucket under the compute log prefix, and MUST NOT permit deleting them.
 
@@ -157,4 +154,4 @@ The role MUST permit connecting to the RDS instance as the database user of the 
 
 The role MUST hold no permission beyond those this section gives.
 
-The AWS-side stack MUST publish the ARN of the role, the name of the compute log bucket, the host, port and user with which to connect to the database, and its region, and the stack that runs the instance MUST take those values from the AWS-side stack's outputs and from no other source.
+The AWS-side stack MUST publish the ARN of the role, the name of the compute log bucket, the endpoint address, port and user with which to connect to the database, and its region, and the stack that runs the instance MUST take those values from the AWS-side stack's outputs and from no other source.

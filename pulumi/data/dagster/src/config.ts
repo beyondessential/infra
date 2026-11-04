@@ -2,16 +2,10 @@ import { basename } from 'node:path';
 import { getStack } from '@pulumi/pulumi';
 import { CrossStack } from '../../../common/CrossStack.ts';
 import { cfg } from '../../../common/k8s/coreRef.ts';
-
-export const normalizedStack = getStack()
-  .toLowerCase()
-  .replace(/[^a-z0-9-]+/g, '-')
-  .replace(/-+$/, '')
-  .slice(0, 63 - 'dagster-'.length) // 63 is the max length of a k8s namespace, minus the prefix
-  .replace(/^-+|-+$/g, '');
+import { dagsterNamespace } from '../../../constants/dagster.ts';
 
 // spec: DAGS#instance
-export const name = ['dagster', cfg.get('namespace') ?? normalizedStack].join('-');
+export const name = dagsterNamespace(getStack());
 
 // Tracks the dagster version that data-lake's uv.lock resolves to; the chart's
 // version is the application version.
@@ -24,13 +18,17 @@ export const imagePullPat = cfg.getSecret('imagePullPat');
 
 // The AWS side lives in the dagster-infra project, applied separately with AWS
 // credentials, so this stack needs only a tailnet identity.
-const infra = new CrossStack(cfg.require('infraStack'));
+const infraStack = cfg.require('infraStack');
+if (infraStack.split('/').pop() !== getStack()) {
+  throw new Error(`infraStack must have the same stack name as this stack, ${getStack()}`);
+}
+const infra = new CrossStack(infraStack);
 export const roleArn = infra.get<string>('dagsterRoleArn');
 export const computeLogsBucket = infra.get<string>('computeLogsBucket');
 export const awsRegion = infra.get<string>('region');
 
-// Reached through the in-cluster k8s-db-proxy Service, authenticating as the
-// user the role may connect as. Only the database differs between stacks.
+// The RDS instance's own endpoint, authenticating as the user the role may
+// connect as. Only the database differs between stacks.
 export const dbHost = infra.get<string>('dbHost');
 export const dbPort = infra.get<number>('dbPort');
 export const dbUser = infra.get<string>('dbUser');

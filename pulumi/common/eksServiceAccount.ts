@@ -9,11 +9,6 @@ export interface EksServiceAccountArgs {
   oidcProviderArn: Input<string>;
   namespace: Input<string>;
   managedPolicyArns?: Input<Input<string>[]>;
-  /**
-   * With a wildcard namespace, trust only `serviceAccountName` in the matching
-   * namespaces. Without it, a wildcard namespace trusts every service account.
-   */
-  pinServiceAccount?: boolean;
 }
 
 export function eksServiceAccount(
@@ -48,7 +43,7 @@ export function eksServiceAccount(
                     [`${id}:aud`]: AWS_STS,
                   },
                   StringLike: {
-                    [`${id}:sub`]: `system:serviceaccount:${namespace}:${args.pinServiceAccount ? serviceAccount : '*'}`,
+                    [`${id}:sub`]: `system:serviceaccount:${namespace}:*`,
                   },
                 }
               : {
