@@ -204,7 +204,7 @@ A sleeping deployment still pays for EBS (2 x 5Gi gp3 by default) and its share 
 
 Decided: demand-driven sleep replaces `ttlHours`. Every deployment sleeps when idle, which beats a fixed end time.
 
-- Superseded: the `ttlHours` parameter and its validation, the end-of-TTL anchoring, the scheduled hibernation Jobs (and the second "safety" run), and the TTL framing of the whole spec.
+- Superseded: the `ttlHours` parameter (still accepted and ignored for the transition) and its validation, the end-of-TTL anchoring, the scheduled hibernation Jobs (and the second "safety" run), and the TTL framing of the whole spec.
 - Kept, now driven by the actuator instead of CronJobs: the hibernation and wake steps, the `tamanu-ttl` service account (rename, since nothing is a TTL any more), the downscaler on system capacity, and the Argo ignored-differences and database-health rules in K8STDR.
 - Kept: wake on every update. A rollout needs the database up for migrations and hooks, and the deployment then idles back to sleep by itself.
 - The manual `wake` CronJob and the Argo Create Job action become a manual override, or go if the supervisor's wake page is enough. Hand-waking is no longer the normal path.
@@ -252,7 +252,7 @@ Correction: an earlier version of this doc assumed a deployment sleeps as a unit
 - [x] Q9 (decided; granularity amended): the opt-out is one boolean per server, not per deployment, because the quiet-facility purpose is a per-facility decision (name to be settled in the spec). The per-deployment wording came from the whole-deployment assumption corrected above. It is a true opt-out: nothing requires it to be stated, and a deployment that omits it sleeps. A 24/7 site never goes 30 minutes without traffic, so it never sleeps and needs no opt-out. The opt-out serves testing, troubleshooting and bugs, and quiet facilities that need very fast access at odd hours (see Behaviour).
 - [x] Which requests count as activity? Decided: all traffic except health probes, monitoring checks and the flag check, with a 30-minute idle timeout.
 - [x] Q4 (decided, with the sleep-time reads now also covering refresh-token records and whatever Q11 settles on): the mobile flag check is answered while central sleeps, so something always-on must hold it (the supervisor, or Caddy). That pulls a small Tamanu-side piece (flag endpoint, mobile client change) into the first phase. The flag is the highest real-change tick (settled, Q10). How does the always-on part learn its value? Proposal: after the app is quiet, central runs a final lookup refresh, the supervisor reads the max tick (and copies the users and devices tables), then hibernates the database, and serves that value while asleep.
-- [ ] What happens to existing deployments that set `ttlHours`? Ignore the parameter, remove it, or keep it as a hard cap until the activator is proven?
+- [x] Existing deployments that set `ttlHours` (decided: ignore): the parameter is removed as a feature, but the stub still accepts it and ignores it, so Tamanu's CD can keep passing it during the transition. No validation, no end-of-TTL anchoring, no scheduled hibernation, no hard cap. Removing it from the CD afterwards is a separate Tamanu-side change, and the stub can then stop accepting it.
 
 ## Possible order of work
 
