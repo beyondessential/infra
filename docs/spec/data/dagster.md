@@ -64,7 +64,7 @@ The environment variables of the code servers MUST NOT include the storage crede
 
 ## Storage
 
-The instance MUST keep its runs, event logs and schedule state in a PostgreSQL database on the data-warehouse RDS instance, whose name the stack's configuration gives.
+The instance MUST keep its runs, event logs and schedule state in a PostgreSQL database, whose name the stack's configuration gives, on the data-warehouse RDS instance that the AWS-side stack names.
 
 The instance MUST NOT run a database of its own.
 
