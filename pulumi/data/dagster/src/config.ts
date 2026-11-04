@@ -61,6 +61,15 @@ export const dbPassword = db.password;
 // stack, so the keys are not named here individually.
 export const appEnvBlob = cfg.requireSecret('appEnvBlob');
 
+// Each entry names the Python file or package to load, resolved from the image's
+// working directory. The name of the code server is derived from it.
+export interface CodeLocationConfig {
+  file?: string;
+  package?: string;
+  memoryRequest?: string;
+}
+export const codeLocations = cfg.requireObject<CodeLocationConfig[]>('codeLocations');
+
 export const cpuRequest = cfg.get('cpuRequest') ?? '100m';
 export const memoryRequest = cfg.get('memoryRequest') ?? '512Mi';
 export const runPodCpuRequest = cfg.get('runPodCpuRequest') ?? '250m';

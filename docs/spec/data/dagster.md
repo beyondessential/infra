@@ -40,32 +40,19 @@ The stack that runs the instance is subject to the requirements of [K8SNSP](../k
 
 ## Code locations
 
-The instance MUST run one code server for each code location in the following table.
+The instance MUST run one code server for each code location that the stack's configuration lists.
 
-| code location | loaded from |
-|---|---|
-| `global-definitions` | the file `global_definitions.py` |
-| `bes` | the package `bes` |
-| `external-resources` | the package `external_resources` |
-| `flutracking` | the package `flutracking` |
-| `msupply` | the package `msupply` |
-| `nauru` | the package `nauru` |
-| `niwa` | the package `niwa` |
-| `senaite` | the package `senaite` |
-| `tamanu-analytics` | the package `tamanu_analytics` |
-| `tamanu-datasets` | the package `tamanu_datasets` |
-| `tamanu-meta` | the package `tamanu_meta` |
-| `tupaia` | the package `tupaia` |
-| `uptimerobot` | the package `uptimerobot` |
-| `who-icd` | the package `who_icd` |
+A code location in the configuration is loaded from a Python file or from a Python package, resolved from the working directory of the image.
 
-Files and packages are resolved from the working directory of the image.
+The name of a code server MUST be the name of its file without `.py`, or of its package, with each `_` replaced by `-`.
+
+Two code locations in one configuration MUST NOT have the same name.
+
+A code location's configuration MAY set its memory request, which replaces the default.
 
 Every code server MUST run the data-lake image `ghcr.io/beyondessential/data-lake-dagster` at one image tag that the stack's configuration names.
 
 The stack MUST be able to pull the image with a registry credential, and MUST NOT require one when the image is public.
-
-The code servers of `tamanu-analytics` and `tamanu-datasets` SHOULD request more memory than the other code servers.
 
 Every code server MUST receive the same environment variables, which the stack builds from one secret value of lines of the form `KEY=VALUE`.
 

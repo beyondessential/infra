@@ -9,7 +9,7 @@ The requirements are in the spec.
 |---|---|---|
 | Namespace `dagster-<stack>` | `pulumi/data/dagster/src/namespace.ts` | One flat namespace, outside any HNC tree. |
 | Helm release `dagster` | `src/helm.ts` | The Dagster chart, with the storage, compute log, run launcher and coordinator values. |
-| Code servers | `src/codeLocations.ts` | One entry of the chart's `dagster-user-deployments` per code location. |
+| Code servers | `src/codeLocations.ts` | One entry of the chart's `dagster-user-deployments` per entry of `codeLocations`. |
 | Environment Secret | `src/secrets.ts` | The parsed `appEnvBlob`, mounted into every code server. The registry Secret exists only when `imagePullPat` is set. |
 | Service account `dagster` | `src/serviceAccount.ts` | Annotated with the role ARN from the AWS-side stack. |
 | Tailnet Ingress | `src/ingress.ts` | Hostname `dagster-<stack>`, tag `tag:dagster`. |
@@ -28,6 +28,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:imageTag` | Tag of the data-lake image. Required. |
 | `dagster` | `dagster:imagePullPat` | Secret registry token. Set it only while the image is private. |
 | `dagster` | `dagster:dbUrl` | Secret. The storage database as `postgres://user[:password]@host[:port]/database`, with the host the in-cluster database proxy Service. The port defaults to 5432. The password is required unless the AWS-side stack has IAM database authentication on, and is rejected when it does. |
+| `dagster` | `dagster:codeLocations` | Required list of code locations, each with exactly one of `file` or `package`, and optionally `memoryRequest`. See below. |
 | `dagster` | `dagster:appEnvBlob` | Secret, one `KEY=VALUE` per line, for every code server. |
 | `dagster` | `dagster:dagsterChartVersion` | Chart version. Defaults to the pin in `src/config.ts`. |
 | `dagster` | `dagster:namespace` | Overrides the namespace suffix. |
@@ -37,6 +38,21 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster-infra` | `dagster-infra:namespacePattern` | Namespaces whose `dagster` service account may assume the role. Defaults to `dagster-*`. |
 | `dagster-infra` | `dagster-infra:dbIamAuth` | Whether Dagster authenticates to its storage with IAM. Defaults to off. |
 | `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. `dbUser` must be the user in `dagster:dbUrl`. |
+
+## Code locations
+
+The list follows `dagster/workspace.yaml` in data-lake, and nothing checks the two against each other.
+A `python_file` entry there is a `file` here, and a `python_package` entry is a `package`.
+A location that imports several countries' dbt projects at startup needs a larger `memoryRequest`.
+
+```yaml
+config:
+  dagster:codeLocations:
+    - file: global_definitions.py
+    - package: bes
+    - package: tamanu_analytics
+      memoryRequest: 1Gi
+```
 
 ## Outputs of `dagster-infra`
 
