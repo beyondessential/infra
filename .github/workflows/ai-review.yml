@@ -3,11 +3,19 @@ on:
   pull_request:
     types: [opened, reopened, edited]
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   review:
+    # `id-token: write` lets Review Hero authenticate its post to Workhorse.
+    # Only the posting job of the called workflow uses it.
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
     uses: beyondessential/review-hero/.github/workflows/review.yml@v1
+    with:
+      # Each round's findings go to Workhorse as data. A post Workhorse refuses
+      # or never answers leaves both comments below to be posted as usual.
+      findings-url: https://workhorse.bes.au/api/review-hero/rounds
+      per-issue-comments: standalone
+      summary-comment: standalone
     secrets: inherit
