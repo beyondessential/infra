@@ -19,8 +19,9 @@ Seeded from the "Scale-to-zero Tamanu" artifact (4 Nov 2026). Code references an
 
 ### Every server (idle sleep)
 
-Replaces the time to live. Each server (central, and each facility server) has its own supervisor and sleeps and wakes on its own. A deployment is the set of its servers, and its servers can be in different states.
+Replaces the time to live for deployments whose Tamanu version ships the supervisor; older versions keep the time to live (see the version gate below). Each server (central, and each facility server) has its own supervisor and sleeps and wakes on its own. A deployment is the set of its servers, and its servers can be in different states.
 
+- Version gate: the supervisor is a component in the Tamanu repo, so idle sleep exists only for deployments whose Tamanu version ships it. Deployments on older versions keep today's behaviour: `ttlHours` and K8STSD's hibernation and waking apply, routes go straight to the app, and no supervisor, Caddy or actuator is rendered. The renderer picks the mode from the deployment's Tamanu version (the Linux templates already branch on it). The time-to-live path stays until the last deployment on an older version is gone, which will take months. For a supporting version, `ttlHours` is accepted and ignored.
 - Every server sleeps by default, production included. A setting opts a server out and keeps it always on.
 - A server sleeps after 30 minutes with no activity.
 - Activity is all traffic through the server's Caddy, except health probes, monitoring checks and the "anything for me?" flag check.
@@ -200,16 +201,17 @@ A sleeping deployment still pays for EBS (2 x 5Gi gp3 by default) and its share 
   - Everything is keyed on a time to live. Demand-driven sleep has no end time, so it either needs its own trigger or needs the TTL concept generalised.
   - The spec says nothing about who triggers a wake besides a person and updates of the deployment. A supervisor calling the actuator is a new waker.
 
-#### Direction: idle sleep replaces the time to live
+#### Direction: idle sleep replaces the time to live, version by version
 
-Decided: demand-driven sleep replaces `ttlHours`. Every deployment sleeps when idle, which beats a fixed end time.
+Decided: for Tamanu versions that ship the supervisor, demand-driven sleep replaces `ttlHours`; every deployment sleeps when idle, which beats a fixed end time. Older versions keep the time to live, unchanged, until they have all gone.
 
-- Superseded: the `ttlHours` parameter (still accepted and ignored for the transition) and its validation, the end-of-TTL anchoring, the scheduled hibernation Jobs (and the second "safety" run), and the TTL framing of the whole spec.
+- Superseded for supporting versions: the `ttlHours` parameter (accepted and ignored there) and its validation, the end-of-TTL anchoring, the scheduled hibernation Jobs (and the second "safety" run), and the TTL framing of the whole spec.
 - Kept, now driven by the actuator instead of CronJobs: the hibernation and wake steps, the `tamanu-ttl` service account (rename, since nothing is a TTL any more), the downscaler on system capacity, and the Argo ignored-differences and database-health rules in K8STDR.
 - Kept: wake on every update. A rollout needs the database up for migrations and hooks, and the deployment then idles back to sleep by itself.
 - The manual `wake` CronJob and the Argo Create Job action become a manual override, or go if the supervisor's wake page is enough. Hand-waking is no longer the normal path.
 - Lost: the TTL was a hard cost cap. A server that keeps seeing traffic now stays up, where the TTL used to stop it regardless. That is the design: a 24/7 site never goes 30 minutes without traffic and so never sleeps, and nothing flags or stops it. The idle signal must ignore health probes and monitoring checks, so they do not hold a quiet server awake.
 - Unchanged: a sleeping deployment still pays for EBS, as a TTL-hibernated one did.
+- Both paths coexist for months, so the specs describe both: K8STSD stays as the time-to-live path for older versions, and the idle-sleep behaviour goes in a new sibling spec that shares K8STSD's hibernation and waking rather than rewriting it.
 
 Correction: an earlier version of this doc assumed a deployment sleeps as a unit (central and its facilities together), which made an infra-only activator enough to retire the TTL. That was an assumption I introduced when replacing the TTL, and it was wrong: the design is per server. A facility's sync is traffic at central, so without the flag check a facility would keep central awake, and the Tamanu-side pieces (flag check, supervisor login, access tally) are needed from the first release. The doc's order of work reflects that.
 
@@ -252,15 +254,15 @@ Correction: an earlier version of this doc assumed a deployment sleeps as a unit
 - [x] Q9 (decided; granularity amended): the opt-out is one boolean per server, not per deployment, because the quiet-facility purpose is a per-facility decision (name to be settled in the spec). The per-deployment wording came from the whole-deployment assumption corrected above. It is a true opt-out: nothing requires it to be stated, and a deployment that omits it sleeps. A 24/7 site never goes 30 minutes without traffic, so it never sleeps and needs no opt-out. The opt-out serves testing, troubleshooting and bugs, and quiet facilities that need very fast access at odd hours (see Behaviour).
 - [x] Which requests count as activity? Decided: all traffic except health probes, monitoring checks and the flag check, with a 30-minute idle timeout.
 - [x] Q4 (decided, with the sleep-time reads now also covering refresh-token records and whatever Q11 settles on): the mobile flag check is answered while central sleeps, so something always-on must hold it (the supervisor, or Caddy). That pulls a small Tamanu-side piece (flag endpoint, mobile client change) into the first phase. The flag is the highest real-change tick (settled, Q10). How does the always-on part learn its value? Proposal: after the app is quiet, central runs a final lookup refresh, the supervisor reads the max tick (and copies the users and devices tables), then hibernates the database, and serves that value while asleep.
-- [x] Existing deployments that set `ttlHours` (decided: ignore): the parameter is removed as a feature, but the stub still accepts it and ignores it, so Tamanu's CD can keep passing it during the transition. No validation, no end-of-TTL anchoring, no scheduled hibernation, no hard cap. Removing it from the CD afterwards is a separate Tamanu-side change, and the stub can then stop accepting it.
+- [x] Existing deployments that set `ttlHours` (decided: gated by version): for Tamanu versions without the supervisor the parameter keeps working exactly as today, with the time to live, scheduled hibernation and `wake` CronJob of K8STSD, until every deployment has moved to a version that ships it, which will take months. For versions with the supervisor the stub accepts it and ignores it, so Tamanu's CD can keep passing it everywhere. Removing it from the CD, and from the stub, is a separate change after full propagation.
 
 ## Possible order of work
 
 Needs re-deriving now that sleep is per server (see the correction above). Pieces, in dependency order:
 
 1. The flag check and quiet idle sync on the Tamanu side: a "changes pending?" check before `startSyncSession`, and `SyncLookupRefresher` skipping writes when nothing changed. Pays off everywhere and is what stops a facility keeping central awake.
-2. The supervisor and Caddy pod per server, the actuator, and the sleep-time copy (the copy mechanism first, since it is the largest unproven piece).
-3. Idle sleep per server for PR, demo and dev deployments, replacing `ttlHours`. Retires K8STSD's TTL machinery.
+2. The supervisor and Caddy pod per server, the actuator, and the sleep-time copy (the copy mechanism first, since it is the largest unproven piece). The supervisor is built in the Tamanu repo. Infra's pieces can ship ahead of it, rendered only for versions that include it, so nothing changes for existing deployments until a Tamanu release ships the supervisor.
+3. Idle sleep per server for PR, demo and dev deployments on versions that ship the supervisor. K8STSD's time-to-live machinery is retired only after the last deployment on an older version is gone.
 4. Production pilot, once a Kubernetes production spec exists.
 
 ## Testing notes
