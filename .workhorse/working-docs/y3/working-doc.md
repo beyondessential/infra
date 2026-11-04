@@ -140,6 +140,32 @@ A sleeping deployment still pays for EBS (2 x 5Gi gp3 by default) and its share 
   - Everything is keyed on a time to live. Demand-driven sleep has no end time, so it either needs its own trigger or needs the TTL concept generalised.
   - The spec says nothing about who triggers a wake besides a person and updates of the deployment. A supervisor calling the actuator is a new waker.
 
+#### Direction: idle sleep replaces the time to live
+
+Decided: demand-driven sleep replaces `ttlHours`. Every deployment sleeps when idle, which beats a fixed end time.
+
+- Superseded: the `ttlHours` parameter and its validation, the end-of-TTL anchoring, the scheduled hibernation Jobs (and the second "safety" run), and the TTL framing of the whole spec.
+- Kept, now driven by the actuator instead of CronJobs: the hibernation and wake steps, the `tamanu-ttl` service account (rename, since nothing is a TTL any more), the downscaler on system capacity, and the Argo ignored-differences and database-health rules in K8STDR.
+- Kept: wake on every update. A rollout needs the database up for migrations and hooks, and the deployment then idles back to sleep by itself.
+- The manual `wake` CronJob and the Argo Create Job action become a manual override, or go if the supervisor's wake page is enough. Hand-waking is no longer the normal path.
+- Lost: the TTL was a hard cost cap. Anything that keeps a deployment looking busy (monitoring probes, crawlers, a stuck sync loop) now keeps it up indefinitely, where the TTL used to stop it regardless. The idle signal must ignore health probes and Canopy checks, and a deployment that never sleeps needs to be visible (a metric or alert), since nothing else will catch it.
+- Unchanged: a sleeping deployment still pays for EBS, as a TTL-hibernated one did.
+
+Sequencing consequence: a deployment in one namespace sleeps as a unit (central and its facilities together), so only external requests count as activity (users, mobile devices, integrations). Sync between its own members is irrelevant, because they all sleep together. That means the Kubernetes PR and demo case does not need the Tamanu-side changes (quiet sync, dirty flags, cross-wake): an infra-side activator that watches request traffic is enough to retire the TTL. Those changes matter for facilities that sleep independently of central (separate deployments, or Linux).
+
+### Existing scaledown spec (K8STSD)
+
+[Tamanu deployment scaledown](artefact:docs/spec/kubernetes/tamanu/scaledown.md) already specifies the sleep and wake mechanics this work builds on. It is driven by a time to live (`ttlHours`), not by demand.
+
+- Hibernation: `downscaler/force-downtime=true` on every Deployment, `cnpg.io/hibernation=on` on every database cluster, volumes retained. This is the sleep sequence above, already specified.
+- Waking: remove the force-downtime annotation, set `cnpg.io/hibernation=off`, and never change the end of the time to live. A suspended `wake` CronJob lets a person trigger it.
+- A `tamanu-ttl` service account, limited to Deployments and database clusters in its namespace, runs both. This is the actuator's RBAC, already specified.
+- The downscaler must act on Deployments only, run on system capacity, and leave unannotated workloads alone.
+- Where it collides with the design here:
+  - Hibernation must not change any other object, "including its Services, Gateways, routes". The actuator re-pointing routes at the supervisor on sleep would break that, unless the routes already point at the supervisor/Caddy permanently (the Caddy front removes the need to change routes).
+  - Everything is keyed on a time to live. Demand-driven sleep has no end time, so it either needs its own trigger or needs the TTL concept generalised.
+  - The spec says nothing about who triggers a wake besides a person and updates of the deployment. A supervisor calling the actuator is a new waker.
+
 ## Trade-offs
 
 - Supervisor in Tamanu versus an infra-side controller: dirty-flag logic depends on sync, which points to Tamanu. Infra-only controllers (activator, KEDA, Sablier) cannot answer "anything for me?".
@@ -157,9 +183,11 @@ A sleeping deployment still pays for EBS (2 x 5Gi gp3 by default) and its share 
 - [ ] Mobile: back off when backgrounded, and poll the supervisor instead of opening sessions?
 - [ ] Production on Kubernetes has no spec yet: data sovereignty, uptime and backups for sleeping clusters.
 - [ ] Check Sydney prices for Aurora, EBS gp3 and Graviton on-demand before any cost case.
-- [ ] Hibernation (K8STSD) must not change routes, but the actuator re-points routes at the supervisor while asleep. Change K8STSD, or give idle sleep its own rules?
-- [ ] Should demand-driven sleep reuse the exact hibernation and wake steps in K8STSD (same annotations, same `tamanu-ttl` service account), or be a separate path that merely shares them?
-- [ ] A TTL-hibernated deployment is hard-stopped on a schedule. Does a demand wake on an expired deployment extend the TTL, ignore it, or stay refused?
+- [ ] Hibernation (K8STSD) must not change routes, but the actuator re-points routes at the supervisor while asleep. Rewrite that rule, or point routes at Caddy or the supervisor permanently so it never applies?
+- [ ] With the TTL gone, what catches a deployment that never sleeps? An "awake for more than N hours" alert, or a hard maximum awake time?
+- [ ] Which deployments opt out of sleeping? Today the TTL is opt-in. Sleep by default, with an explicit always-on parameter for production and 24/7 sites?
+- [ ] Which requests count as activity in the infra-only version: all Gateway traffic except health probes and Canopy checks, or only authenticated ones? Do mobile devices syncing to central count?
+- [ ] What happens to existing deployments that set `ttlHours`? Ignore the parameter, remove it, or keep it as a hard cap until the activator is proven?
 
 ## Possible order of work
 
