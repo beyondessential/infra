@@ -21,6 +21,12 @@ const namespacePattern = cfg.get('namespacePattern') ?? DAGSTER_NAMESPACE_PATTER
 
 // Created and owned by the data/bucket stack.
 const computeLogsBucket = cfg.require('computeLogsBucket');
+// A wildcard here would widen the policy to other buckets.
+if (!/^[a-z0-9][a-z0-9.-]{2,62}$/.test(computeLogsBucket)) {
+  throw new Error(
+    `computeLogsBucket is not an S3 bucket name: ${JSON.stringify(computeLogsBucket)}`,
+  );
+}
 
 const managedPolicyArns: Output<string>[] = [];
 
