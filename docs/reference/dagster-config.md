@@ -37,7 +37,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster-infra` | `dagster-infra:computeLogsBucket` | Name of the bucket the `data/bucket` stack owns. |
 | `dagster-infra` | `dagster-infra:namespacePattern` | Namespaces whose `dagster` service account may assume the role. Defaults to `dagster-*`. |
 | `dagster-infra` | `dagster-infra:dbIamAuth` | Whether Dagster authenticates to its storage with IAM. Defaults to off. |
-| `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. `dbUser` must be the user in `dagster:dbUrl`. |
+| `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. The `dagster` stack refuses a `dagster:dbUrl` whose user is not `dbUser`. |
 
 ## Code locations
 
@@ -61,6 +61,7 @@ config:
 | `dagsterRoleArn` | ARN of the role, which the `dagster` stack puts on the service account. |
 | `computeLogsBucket` | Compute log bucket, which the `dagster` stack gives the compute log manager. |
 | `dbIamAuth` | Whether IAM database authentication is on, which the `dagster` stack follows. |
+| `dbUser` | The database user the role may connect as, when IAM database authentication is on. The `dagster` stack checks the user in `dagster:dbUrl` against it. |
 | `region` | The region of the RDS instance, for the token exchange. |
 
 ## Turning on IAM database authentication

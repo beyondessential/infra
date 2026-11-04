@@ -52,11 +52,11 @@ const computeLogsPolicy = new awsNative.iam.ManagedPolicy(
 managedPolicyArns.push(computeLogsPolicy.policyArn);
 
 const dbIamAuth = cfg.getBoolean('dbIamAuth') ?? false;
-if (dbIamAuth) {
+const dbUser = dbIamAuth ? cfg.require('dbUser') : undefined;
+if (dbUser) {
   const dbInstance = awsClassic.rds.getInstanceOutput({
     dbInstanceIdentifier: cfg.require('dbInstanceIdentifier'),
   });
-  const dbUser = cfg.require('dbUser');
   // A wildcard here would let the role connect as any user.
   if (!/^[A-Za-z_][A-Za-z0-9_$]*$/.test(dbUser)) {
     throw new Error(`dbUser must be a plain Postgres role name, got ${JSON.stringify(dbUser)}`);
@@ -91,4 +91,4 @@ const dagsterRole = eksServiceAccount('dagster', {
 
 // Read by the dagster stack, which takes these as given.
 export const dagsterRoleArn = dagsterRole.arn;
-export { computeLogsBucket, dbIamAuth, region };
+export { computeLogsBucket, dbIamAuth, dbUser, region };

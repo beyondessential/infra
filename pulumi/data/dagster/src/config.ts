@@ -28,6 +28,8 @@ const infra = new CrossStack(cfg.require('infraStack'));
 export const roleArn = infra.get<string>('dagsterRoleArn');
 export const computeLogsBucket = infra.get<string>('computeLogsBucket');
 export const dbIamAuth = await infra.getValue<boolean>('dbIamAuth');
+// The only user the role may connect as when IAM database authentication is on.
+const iamDbUser = await infra.getValue<string | undefined>('dbUser');
 export const awsRegion = infra.get<string>('region');
 
 // The data-warehouse database, as `postgres://user[:password]@host[:port]/database`.
@@ -51,6 +53,11 @@ function parseDbUrl(raw: string) {
   }
   if (!dbIamAuth && !password) {
     throw new Error('dbUrl must carry a password unless IAM database authentication is on');
+  }
+  if (dbIamAuth && user !== iamDbUser) {
+    throw new Error(
+      `dbUrl's user must be ${iamDbUser}, the user the dagster-infra role may connect as`,
+    );
   }
   return { host: url.hostname, port: url.port ? Number(url.port) : 5432, user, database, password };
 }
