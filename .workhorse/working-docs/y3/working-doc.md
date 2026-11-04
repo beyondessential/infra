@@ -60,7 +60,7 @@ Replaces the time to live. A deployment (central and its facilities in one names
 - The supervisor wakes the tasks process for scheduled reports, vaccination reminders and the overnight clinical generators.
 - Hourly and other maintenance tasks catch up on wake. `node-schedule` skips runs missed while down, so this needs last-ran bookkeeping.
 - FHIR refresh jobs queue whenever data changes, so a woken central starts with a backlog.
-- Liveness reporting (`sendStatusToMetaServer`) and Canopy healthchecks will see a sleeping server as down.
+- Tamanu servers do not push a status any more (the status task is dead code), so a sleeping server has no heartbeat to miss. Canopy's coming integrations read Kubernetes itself.
 
 ## What keeps Tamanu awake today
 
@@ -185,7 +185,7 @@ Sequencing consequence: a deployment in one namespace sleeps as a unit (central 
 - [ ] Is the supervisor part of Tamanu or an infra-side controller?
 - [ ] What is a cold wake today? Measure CNPG unhibernate plus app start on a PR deployment, with and without a fresh Karpenter node.
 - [ ] Should a sleeping deployment keep 2 CNPG instances? That doubles EBS and resume work.
-- [ ] How should Canopy healthchecks, meta-server liveness and stale-sync checks treat an intentionally sleeping server?
+- [ ] Q17: Canopy's Kubernetes integrations see a sleeping deployment as Deployments at zero replicas and a hibernated database cluster. How do they tell sleep from failure? The signal already exists in the annotations the actuator sets (`downscaler/force-downtime`, `cnpg.io/hibernation`); to confirm with whoever builds those integrations. Stale-sync checks on other servers may also read a sleeping one as stale, since sync stops by design.
 - [ ] Mobile: back off when backgrounded, and poll the supervisor instead of opening sessions?
 - [ ] Production on Kubernetes has no spec yet: data sovereignty, uptime and backups for sleeping clusters.
 - [ ] Check Sydney prices for Aurora, EBS gp3 and Graviton on-demand before any cost case.
