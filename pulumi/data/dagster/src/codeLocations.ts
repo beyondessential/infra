@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { codeLocations, cpuRequest, imageRepository, imageTag, memoryRequest } from './config.ts';
 import { envSecretName } from './secrets.ts';
+import { SPOT_PREFERRED_AFFINITY, SPOT_TOLERATIONS } from './scheduling.ts';
 
 // spec: DAGS#code-locations
 function codeServer(loc: (typeof codeLocations)[number]) {
@@ -27,6 +28,8 @@ function codeServer(loc: (typeof codeLocations)[number]) {
     resources: {
       requests: { cpu: cpuRequest, memory: loc.memoryRequest ?? memoryRequest },
     },
+    affinity: SPOT_PREFERRED_AFFINITY,
+    tolerations: SPOT_TOLERATIONS,
   };
 }
 

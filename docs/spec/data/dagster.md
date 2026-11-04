@@ -89,6 +89,8 @@ The compute log manager MUST store the compute logs of runs in the S3 bucket tha
 
 Each run MUST execute in its own pod, in the namespace of the instance.
 
+Every pod of the instance MUST be scheduled onto nodes of the architecture that the data-lake image is built for.
+
 Run pods MUST be scheduled onto on-demand workload capacity.
 
 The webserver, the daemon and the code servers SHOULD prefer spot workload capacity, and MAY run on on-demand capacity.

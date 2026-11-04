@@ -21,23 +21,10 @@ import {
   runPodCpuRequest,
   runPodMemoryRequest,
 } from './config.ts';
-import { archAffinity, purposeAffinity, RUN_ON_SPOT } from '../../../common/k8s/affinities.ts';
-import { CAN_RUN_ON_SPOT } from '../../../common/k8s/tolerations.ts';
+import { SPOT_PREFERRED_AFFINITY, SPOT_TOLERATIONS } from './scheduling.ts';
 
 // Release name, and so the prefix of the webserver Service that ingress.ts names.
 export const releaseName = 'dagster';
-
-const SPOT_PREFERRED_AFFINITY = {
-  nodeAffinity: {
-    preferredDuringSchedulingIgnoredDuringExecution: [{ weight: 1, preference: RUN_ON_SPOT }],
-    requiredDuringSchedulingIgnoredDuringExecution: {
-      nodeSelectorTerms: [
-        { matchExpressions: [purposeAffinity('workload'), archAffinity('amd64')] },
-      ],
-    },
-  },
-};
-const SPOT_TOLERATIONS = [CAN_RUN_ON_SPOT];
 
 const imagePullSecrets = registrySecret ? [{ name: registrySecret.metadata.name }] : [];
 
@@ -124,6 +111,7 @@ new k8s.helm.v3.Release(releaseName, {
               nodeSelector: {
                 'bes.node.purpose': 'workload',
                 'bes.node.schedule': 'ondemand',
+                'bes.node.arch': 'amd64',
               },
             },
           },
