@@ -21,6 +21,7 @@ Seeded from the "Scale-to-zero Tamanu" artifact (4 Nov 2026). Code references an
 
 Replaces the time to live. A deployment (central and its facilities in one namespace) sleeps and wakes as a unit.
 
+- Every deployment sleeps by default, production included. A setting opts a deployment out and keeps it always on.
 - A deployment sleeps after 30 minutes with no activity.
 - Activity is all traffic through the gateway, except health probes, Canopy checks and the "anything for me?" flag check.
 - A request to a sleeping deployment starts the wake.
@@ -39,7 +40,7 @@ Replaces the time to live. A deployment (central and its facilities in one names
 - Central answers "is there anything for me?" cheaply, before a sync session starts.
 - The first request of the day gets a "waking up, about 5 minutes" page. The supervisor starts local services, pushes local changes (none after a clean shutdown), pulls what central has queued, then lets the user in.
 - A facility wakes central only when it has data to push, someone logs in, or its flag is set.
-- Opt-in per facility, for sites with reliable, fast internet. Offline-first sites stay always-on.
+- Sleep is the default and sites opt out. Offline-first sites, and sites without reliable, fast internet at wake time, set the opt-out.
 
 ### Central
 
@@ -194,7 +195,8 @@ Sequencing consequence: a deployment in one namespace sleeps as a unit (central 
 - [x] Q6: the supervisor holds the HS256 secret. Settled by implication: it implements login and checks credentials itself, so it must be able to sign and verify tokens. The pod also holds the infra actuator, so the secret must be mounted only into the supervisor container.
 - [ ] Q7: what does the supervisor's login do while central sleeps? Proposal: it verifies credentials and tokens only (for flag checks, the tally and the splash page) and never builds the full login response, which carries permissions, localisation, allowed facilities and settings. A real login wakes central.
 - [ ] Q8: the users copy holds password hashes. Proposal: take it at sleep and delete it on wake, so hashes sit in a second place only while it is needed. The copy sits on an encrypted volume.
-- [ ] Which deployments opt out of sleeping? Today the TTL is opt-in. Sleep by default, with an explicit always-on parameter for production and 24/7 sites?
+- [x] Q2: every deployment sleeps by default, production included, with an opt-out setting.
+- [ ] Q9: the opt-out is the only thing keeping a 24/7 site (an emergency department) from sleeping, and forgetting it means a multi-minute wake in a clinical setting. Granularity (per deployment or per server), name, and whether the production spec should require it to be set explicitly.
 - [x] Which requests count as activity? Decided: all traffic except health probes, Canopy checks and the flag check, with a 30-minute idle timeout.
 - [ ] The mobile flag check is answered while central sleeps, so something always-on must hold it (the supervisor, or Caddy). That pulls a small Tamanu-side piece (flag endpoint, mobile client change) into the first phase. The flag is a global counter, separate from the tick (settled). How does the always-on part learn its value? Proposal: central holds it in the database while awake, and the supervisor reads it once, after the app is quiet and before hibernating the database, and serves that value while asleep.
 - [ ] What happens to existing deployments that set `ttlHours`? Ignore the parameter, remove it, or keep it as a hard cap until the activator is proven?
