@@ -9,6 +9,11 @@ export interface EksServiceAccountArgs {
   oidcProviderArn: Input<string>;
   namespace: Input<string>;
   managedPolicyArns?: Input<Input<string>[]>;
+  /**
+   * With a wildcard namespace, trust only `serviceAccountName` in the matching
+   * namespaces. Without it, a wildcard namespace trusts every service account.
+   */
+  pinServiceAccount?: boolean;
 }
 
 export function eksServiceAccount(
@@ -28,37 +33,33 @@ export function eksServiceAccount(
         args.oidcProviderArn,
         args.namespace,
         args.serviceAccountName,
-      ]).apply(([id, arn, namespace, serviceAccount]) => {
-        // Either part may be a wildcard; the other still constrains the subject.
-        const subject = `system:serviceaccount:${namespace}:${serviceAccount}`;
-        return {
-          Version: '2012-10-17',
-          Statement: [
-            {
-              Effect: 'Allow',
-              Principal: {
-                Federated: arn,
-              },
-              Action: 'sts:AssumeRoleWithWebIdentity',
-              Condition: subject.includes('*')
-                ? {
-                    StringEquals: {
-                      [`${id}:aud`]: AWS_STS,
-                    },
-                    StringLike: {
-                      [`${id}:sub`]: subject,
-                    },
-                  }
-                : {
-                    StringEquals: {
-                      [`${id}:aud`]: AWS_STS,
-                      [`${id}:sub`]: subject,
-                    },
-                  },
+      ]).apply(([id, arn, namespace, serviceAccount]) => ({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: {
+              Federated: arn,
             },
-          ],
-        };
-      }),
+            Action: 'sts:AssumeRoleWithWebIdentity',
+            Condition: namespace.includes('*')
+              ? {
+                  StringEquals: {
+                    [`${id}:aud`]: AWS_STS,
+                  },
+                  StringLike: {
+                    [`${id}:sub`]: `system:serviceaccount:${namespace}:${args.pinServiceAccount ? serviceAccount : '*'}`,
+                  },
+                }
+              : {
+                  StringEquals: {
+                    [`${id}:aud`]: AWS_STS,
+                    [`${id}:sub`]: `system:serviceaccount:${namespace}:${serviceAccount}`,
+                  },
+                },
+          },
+        ],
+      })),
       managedPolicyArns: args.managedPolicyArns,
     },
     opts,

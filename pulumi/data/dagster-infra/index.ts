@@ -79,6 +79,7 @@ const dagsterRole = eksServiceAccount('dagster', {
   serviceAccountName: DAGSTER_SERVICE_ACCOUNT,
   oidcProviderArn,
   namespace: namespacePattern,
+  pinServiceAccount: true,
   managedPolicyArns,
 });
 
