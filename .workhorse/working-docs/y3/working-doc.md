@@ -28,6 +28,7 @@ Replaces the time to live. A deployment (central and its facilities in one names
 - API paths (`/api`, `/v1`) get `503` with `Retry-After` and are not held open, since a wake can take minutes.
 - Mobile devices check the flag before syncing. A device with nothing to push and nothing to pull does not wake central, and the check does not count as activity.
 - A device with local changes to push wakes central.
+- The supervisor keeps a tally of the accesses it handled while the database was down (flag checks, for example, by device), and hands it to the database when it wakes. Counts of devices seen and similar records stay accurate across sleep.
 - A wake on update (rollout) stays, so migrations and hooks have a database.
 - A deployment that never sleeps is surfaced by an alert, because the TTL no longer stops it.
 
@@ -186,6 +187,8 @@ Sequencing consequence: a deployment in one namespace sleeps as a unit (central 
 - [ ] Check Sydney prices for Aurora, EBS gp3 and Graviton on-demand before any cost case.
 - [ ] Hibernation (K8STSD) must not change routes, but the actuator re-points routes at the supervisor while asleep. Rewrite that rule, or point routes at Caddy or the supervisor permanently so it never applies?
 - [ ] With the TTL gone, what catches a deployment that never sleeps? An "awake for more than N hours" alert, or a hard maximum awake time?
+- [ ] The access tally: what does it hold (device id, time, kind), where does it persist (SQLite) so a supervisor restart loses nothing, how is the flush made idempotent, and how is its size bounded? Which Tamanu records does it feed (`Device.lastSeenAt`, the `accesses` audit log)?
+- [ ] The supervisor cannot verify device credentials while the database is down. Is the flag check unauthenticated (it only reveals a counter), with tally entries flagged as unverified until flushed?
 - [ ] Which deployments opt out of sleeping? Today the TTL is opt-in. Sleep by default, with an explicit always-on parameter for production and 24/7 sites?
 - [x] Which requests count as activity? Decided: all traffic except health probes, Canopy checks and the flag check, with a 30-minute idle timeout.
 - [ ] The mobile flag check is answered while central sleeps, so something always-on must hold it (the supervisor, or Caddy). That pulls a small Tamanu-side piece (flag endpoint, mobile client change) into the first phase. What does the flag record, and how does the always-on part learn that central data changed?
