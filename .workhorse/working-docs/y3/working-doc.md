@@ -17,6 +17,20 @@ Seeded from the "Scale-to-zero Tamanu" artifact (4 Nov 2026). Code references an
 
 ## Behaviour
 
+### Whole Kubernetes deployment (idle sleep)
+
+Replaces the time to live. A deployment (central and its facilities in one namespace) sleeps and wakes as a unit.
+
+- A deployment sleeps after 30 minutes with no activity.
+- Activity is all traffic through the gateway, except health probes, Canopy checks and the "anything for me?" flag check.
+- A request to a sleeping deployment starts the wake.
+- Browser paths get a "waking up" splash page while it wakes.
+- API paths (`/api`, `/v1`) get `503` with `Retry-After` and are not held open, since a wake can take minutes.
+- Mobile devices check the flag before syncing. A device with nothing to push and nothing to pull does not wake central, and the check does not count as activity.
+- A device with local changes to push wakes central.
+- A wake on update (rollout) stays, so migrations and hooks have a database.
+- A deployment that never sleeps is surfaced by an alert, because the TTL no longer stops it.
+
 ### Facility
 
 - A small always-on supervisor beside the facility keeps API, web and Postgres down while there are no user requests and nothing to pull.
@@ -173,7 +187,8 @@ Sequencing consequence: a deployment in one namespace sleeps as a unit (central 
 - [ ] Hibernation (K8STSD) must not change routes, but the actuator re-points routes at the supervisor while asleep. Rewrite that rule, or point routes at Caddy or the supervisor permanently so it never applies?
 - [ ] With the TTL gone, what catches a deployment that never sleeps? An "awake for more than N hours" alert, or a hard maximum awake time?
 - [ ] Which deployments opt out of sleeping? Today the TTL is opt-in. Sleep by default, with an explicit always-on parameter for production and 24/7 sites?
-- [ ] Which requests count as activity in the infra-only version: all Gateway traffic except health probes and Canopy checks, or only authenticated ones? Do mobile devices syncing to central count?
+- [x] Which requests count as activity? Decided: all traffic except health probes, Canopy checks and the flag check, with a 30-minute idle timeout.
+- [ ] The mobile flag check is answered while central sleeps, so something always-on must hold it (the supervisor, or Caddy). That pulls a small Tamanu-side piece (flag endpoint, mobile client change) into the first phase. What does the flag record, and how does the always-on part learn that central data changed?
 - [ ] What happens to existing deployments that set `ttlHours`? Ignore the parameter, remove it, or keep it as a hard cap until the activator is proven?
 
 ## Possible order of work
