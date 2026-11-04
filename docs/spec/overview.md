@@ -15,6 +15,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | document | what it covers |
 |---|---|
 | [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | The ACME directory, account lookup by key and the DNS-01 challenge. Used by [K8SING](kubernetes/ingress.md) [CTLS](canopy/tls-issuance.md) and [LNXTLS](linux/tls.md). |
+| [RFC 1035](https://www.rfc-editor.org/rfc/rfc1035) | The syntax of a DNS label. Used by [DAGS](data/dagster.md). |
 | [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) and [RFC 9114](https://www.rfc-editor.org/rfc/rfc9114) | QUIC and HTTP/3. Used by [K8SING](kubernetes/ingress.md). |
 | [PROXY protocol specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) | The header that conveys a client address through a load balancer. Used by [K8SING](kubernetes/ingress.md). |
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | GatewayClass, Gateway, listeners and HTTPRoute. Used by [K8SING](kubernetes/ingress.md) and [K8SCNP](kubernetes/canopy.md). |
@@ -65,7 +66,7 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Barman Cloud plugin object stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/) and [retention](https://cloudnative-pg.io/plugin-barman-cloud/docs/retention/) | Object stores and the recovery window. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [PostgreSQL continuous archiving](https://www.postgresql.org/docs/current/continuous-archiving.html) | WAL archiving, base backups and `backup_label`. Used by [K8SBAK](kubernetes/database-backups.md). |
 | [Amazon S3 versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html), [delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html), [lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) and [aborting incomplete multipart uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) | Versions, delete markers and lifecycle rules. Used by [K8SBAK](kubernetes/database-backups.md). |
-| [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) | Pod access to AWS through a service account. Used by [K8SBAK](kubernetes/database-backups.md) and [K8SCNP](kubernetes/canopy.md). |
+| [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) | Pod access to AWS through a service account. Used by [K8SBAK](kubernetes/database-backups.md), [K8SCNP](kubernetes/canopy.md) and [DAGS](data/dagster.md). |
 | [Kubernetes RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) | Roles, bindings and groups. Used by [K8SNSP](kubernetes/namespaces.md) and [K8SCNP](kubernetes/canopy.md). |
 | [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator), [API server proxy](https://tailscale.com/kb/1437/kubernetes-operator-api-server-proxy), [grants](https://tailscale.com/kb/1324/grants) and [workload identity federation](https://tailscale.com/kb/1581/workload-identity-federation) | Authenticated access to the API server over the tailnet. Used by [K8SNSP](kubernetes/namespaces.md) and [K8SCNP](kubernetes/canopy.md). |
 | [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) | Mapping IAM principals to Kubernetes permissions. Used by [K8SNSP](kubernetes/namespaces.md). |
@@ -109,6 +110,9 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RE
 | [Working with distributions](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-working-with.html) and [Invalidate files](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html) | CloudFront distributions and invalidations. Used by [BLWEB](bliti-web.md). |
 | [GitHub OpenID Connect reference](https://docs.github.com/en/actions/reference/security/oidc) | The claims of the OIDC token GitHub Actions issues, including the subject. Used by [BLWEB](bliti-web.md). |
 | [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) | HTTP semantics: content codings, `Accept-Encoding` and `Vary`. Used by [BLWEB](bliti-web.md). |
+| [Dagster code locations](https://docs.dagster.io/deployment/code-locations), [run launchers](https://docs.dagster.io/deployment/execution/run-launcher), [run coordinators](https://docs.dagster.io/deployment/execution/run-coordinator) and [compute log storage](https://docs.dagster.io/deployment/dagster-instance#compute-log-storage) | The units Dagster loads, how it starts and queues runs, and where it keeps their logs. Used by [DAGS](data/dagster.md). |
+| [Deploying Dagster on Helm](https://docs.dagster.io/deployment/oss/deployment-options/kubernetes/deploying-to-kubernetes) | The chart that deploys a Dagster instance on Kubernetes. Used by [DAGS](data/dagster.md). |
+| [IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html) | Connecting to RDS with a short-lived IAM token instead of a password. Used by [DAGS](data/dagster.md). |
 
 ## Terminology
 
