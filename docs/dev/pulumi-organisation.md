@@ -38,7 +38,7 @@ pulumi/
 ├── backups/              # Kopia backup infra
 ├── backups-shared/       # cross-account IAM for Canopy-provisioned shared backup buckets
 ├── backup-monitoring/
-├── data/                 # data team workloads
+├── data/                 # data team workloads; dagster and dagster-infra are described in docs/reference/dagster-config.md
 ├── drata/                # Drata compliance integration
 ├── policies/             # Pulumi policy packs
 ├── agent-slack/          # Slack bot

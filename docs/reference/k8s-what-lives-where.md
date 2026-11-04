@@ -27,6 +27,8 @@ Things named after `<stack>`: the Tailscale device `k8s-operator-<stack>`, which
 | `pulumi/tamanu/k8s-infra` | `tamanu-k8s-infra:` | `k8s-core` | tailnet only | Tamanu shared namespaces ([page](k8s-infra-stack.md)) |
 | `pulumi/canopy-infra` | `canopy-infra:` | `k8s-core`, `core` | AWS (central account) | Canopy IAM identities |
 | `pulumi/canopy` | `canopy:` | `k8s-core`, `canopy-infra` | tailnet only | Canopy workloads ([page](canopy-tls-config.md)) |
+| `pulumi/data/dagster-infra` | `dagster-infra:` | `k8s-core`, `core` | AWS | Dagster IAM role ([page](dagster-config.md)) |
+| `pulumi/data/dagster` | `dagster:` | `k8s-core`, `dagster-infra` | tailnet only | Dagster workloads ([page](dagster-config.md)) |
 
 `failIfIncorrectAccountOrRegion()` (k8s-core) and `failIfIncorrectCluster()` (every in-cluster stack) stop a run pointed at the wrong account, region or cluster: see [cluster-api-unreachable](../runbooks/cluster-api-unreachable.md).
 Stack config files (`Pulumi.<stack>.yaml`) are gitignored: pull them with [refresh-stack-config](../sops/refresh-stack-config.md).

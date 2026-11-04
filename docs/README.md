@@ -124,6 +124,7 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 ## Reference
 
 - [Reference: Canopy TLS issuance plumbing](reference/canopy-tls-config.md)
+- [Reference: Dagster stacks](reference/dagster-config.md)
 - [Reference: pinned component versions](reference/k8s-component-versions.md)
 - [Reference: k8s-core stack config](reference/k8s-core-config.md)
 - [Reference: k8s-essentials stack config](reference/k8s-essentials-config.md)

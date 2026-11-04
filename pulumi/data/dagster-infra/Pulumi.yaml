@@ -1,0 +1,3 @@
+name: dagster-infra
+description: AWS-side IAM for Dagster on Kubernetes (compute log access, RDS IAM auth)
+runtime: nodejs

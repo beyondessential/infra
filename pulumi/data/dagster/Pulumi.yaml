@@ -1,5 +1,5 @@
 name: dagster
-description: Dagster deploys
+description: Dagster on Kubernetes for data-lake
 runtime:
   name: nodejs
   options:

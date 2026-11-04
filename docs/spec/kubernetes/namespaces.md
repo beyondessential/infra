@@ -140,6 +140,7 @@ A group assigned to a GitHub Actions workflow MUST be named `tailscale:gha:` fol
 | `tailscale:gha:dbt-build` | The dbt build workflow, which port-forwards to a database pod. |
 | `tailscale:gha:renderer-promote` | The renderer promotion workflow, whose access [K8STRO](tamanu/renderer-rollout.md#access) defines. |
 | `tailscale:gha:canopy` | The workflow that deploys Canopy, whose access [K8SCNP](canopy.md#access) describes. |
+| `tailscale:gha:dagster` | The workflow that deploys Dagster, whose access [DAGS](../data/dagster.md#access) describes. |
 
 The bindings in the following table MUST exist.
 
@@ -159,6 +160,8 @@ The bindings in the following table MUST exist.
 | `tailscale:gha:dbt-build` | `tamanu-gha-dbt-build` | the subtree of the super namespace |
 | `tailscale:gha:canopy` | `cluster-admin` | the namespace of the Canopy stack, as [K8SCNP](canopy.md#instance) names it |
 | `tailscale:gha:canopy` | `tamanu-meta-gha-canopy-ns` | cluster-wide |
+| `tailscale:gha:dagster` | `cluster-admin` | the namespace of the Dagster instance, as [DAGS](../data/dagster.md#access) names it |
+| `tailscale:gha:dagster` | a ClusterRole over namespaces, as [DAGS](../data/dagster.md#access) bounds it | cluster-wide |
 
 An access group MUST NOT be bound to `cluster-admin` by a ClusterRoleBinding.
 
