@@ -18,7 +18,12 @@ function parseDotenv(blob: string): Record<string, string> {
       // The line itself may be a secret, so only its position is reported.
       throw new Error(`appEnvBlob: line ${i + 1} has no '='`);
     }
-    result[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+    const key = line.slice(0, eq).trim();
+    // The key names an entry of the Secret, which the API server restricts.
+    if (!/^[-._a-zA-Z][-._a-zA-Z0-9]*$/.test(key)) {
+      throw new Error(`appEnvBlob: line ${i + 1} has an invalid key`);
+    }
+    result[key] = line.slice(eq + 1).trim();
   }
   return result;
 }
