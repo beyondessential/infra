@@ -84,3 +84,31 @@
     dest: /etc/resolv.conf
     state: link
     force: true
+
+- name: Create resolved config drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: "0755"
+
+# FallbackDNS= is ignored whenever DHCP supplies a resolver, even a dead one.
+# spec: LNXSRV#time-and-names
+- name: Add public DNS servers alongside the site resolver
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/90-public-dns.conf
+    mode: "0644"
+    content: |
+      [Resolve]
+      DNS={{ baseline_dns_servers | join(' ') }}
+  when: baseline_dns_servers | length > 0
+  notify: Restart systemd-resolved
+
+- name: Remove public DNS servers
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d/90-public-dns.conf
+    state: absent
+  when: baseline_dns_servers | length == 0
+  notify: Restart systemd-resolved

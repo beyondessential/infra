@@ -139,6 +139,8 @@ A Linux server MUST use systemd-resolved as its resolver through `/etc/resolv.co
 
 The playbooks MUST install and enable systemd-resolved, and point `/etc/resolv.conf` at its stub file, on a server that is not built from an image.
 
+A Linux server SHOULD query the DNS servers of the inventory variable `baseline_dns_servers` alongside the resolver its network supplies.
+
 ## Logging
 
 A Linux server MUST configure [journald](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html) to keep the journal on persistent storage, capped at 1 GiB.
@@ -252,3 +254,4 @@ The variables in the following table configure the host arrangement of a Linux s
 | `elastic_agent_enabled` | `false` | Whether the [endpoint security agent](#endpoint-security-agent) runs. |
 | `elastic_agent_enrollment_token` | none | The enrolment token of the endpoint security agent, a secret variable. |
 | `elastic_agent_fleet_url` | the production Fleet | The URL of the Fleet that the endpoint security agent enrols in. |
+| `baseline_dns_servers` | Cloudflare's resolvers over IPv4 and IPv6 | The DNS servers queried alongside the network's resolver, none when empty. |
