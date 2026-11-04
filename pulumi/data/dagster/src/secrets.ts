@@ -20,7 +20,7 @@ function parseDotenv(blob: string): Record<string, string> {
     }
     const key = line.slice(0, eq).trim();
     // The key names an entry of the Secret, which the API server restricts.
-    if (!/^[-._a-zA-Z][-._a-zA-Z0-9]*$/.test(key)) {
+    if (!/^[-._a-zA-Z0-9]+$/.test(key) || key === '.' || key === '..') {
       throw new Error(`appEnvBlob: line ${i + 1} has an invalid key`);
     }
     result[key] = line.slice(eq + 1).trim();
