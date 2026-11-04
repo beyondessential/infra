@@ -212,6 +212,23 @@
 			"description": "Account a run connects as.",
 			"type": "string"
 		},
+		"baseline_dns_servers": {
+			"description": "DNS servers resolved queries alongside the site resolver. Empty leaves only the site resolver.",
+			"type": "array",
+			"items": {
+				"type": "string",
+				"title": "Address"
+			},
+			"default": [
+				"1.1.1.1",
+				"1.0.0.1",
+				"2606:4700:4700::1111",
+				"2606:4700:4700::1001"
+			],
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
+			}
+		},
 		"baseline_syslog_exclude_prefixes": {
 			"description": "Program tag prefixes whose messages are dropped from /var/log/syslog. They stay in the journal.",
 			"type": "array",
