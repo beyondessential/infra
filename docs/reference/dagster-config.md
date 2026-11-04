@@ -28,7 +28,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:infraStack` | `bes/dagster-infra/<stack>`; the AWS-side stack whose outputs the stack takes. |
 | `dagster` | `dagster:imageTag` | Tag of the data-lake image. Required. |
 | `dagster` | `dagster:imagePullPat` | Secret registry token. Set it only while the image is private. |
-| `dagster` | `dagster:dbUrl` | Secret. The storage database as `postgres://user[:password]@host[:port]/database`, with the host the in-cluster database proxy Service, as `<name>.<namespace>.svc.cluster.local` (or ending `.svc`). The port defaults to 5432. The password is required unless the AWS-side stack has IAM database authentication on, and is rejected when it does. |
+| `dagster` | `dagster:dbDatabase` | Required. The storage database on the RDS instance, which differs between stacks (for example `dagster` and `dagster_dev`). Host, port and user come from the `dagster-infra` outputs. |
 | `dagster` | `dagster:codeLocations` | Required list of code locations, each with exactly one of `file` or `package`, and optionally `memoryRequest`. See below. |
 | `dagster` | `dagster:appEnvBlob` | Secret, one `KEY=VALUE` per line, for every code server. |
 | `dagster` | `dagster:dagsterChartVersion` | Chart version. Defaults to the pin in `src/config.ts`. |
@@ -36,8 +36,8 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:cpuRequest`, `memoryRequest`, `runPodCpuRequest`, `runPodMemoryRequest` | Resource requests of the long-lived pods and of run pods. |
 | `dagster-infra` | `dagster-infra:core`, `k8s-core` | `bes/core/<account>` and `bes/k8s-core/<stack>`. |
 | `dagster-infra` | `dagster-infra:namespacePattern` | Namespaces whose `dagster` service account may assume the role. Defaults to `dagster-*`. |
-| `dagster-infra` | `dagster-infra:dbIamAuth` | Whether Dagster authenticates to its storage with IAM. Defaults to off. |
-| `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. The `dagster` stack refuses a `dagster:dbUrl` whose user is not `dbUser`. |
+| `dagster-infra` | `dagster-infra:dbInstanceIdentifier` | Required. The RDS instance's identifier (its name in the RDS console). |
+| `dagster-infra` | `dagster-infra:dbUser` | Required. The only database user the role may connect as, and the user Dagster connects as. |
 
 ## Code locations
 
@@ -60,21 +60,17 @@ config:
 |---|---|
 | `dagsterRoleArn` | ARN of the role, which the `dagster` stack puts on the service account. |
 | `computeLogsBucket` | Name of the compute log bucket, which the `dagster` stack gives the compute log manager. |
-| `dbIamAuth` | Whether IAM database authentication is on, which the `dagster` stack follows. |
-| `dbUser` | The database user the role may connect as, when IAM database authentication is on. The `dagster` stack checks the user in `dagster:dbUrl` against it. |
+| `dbHost` | The in-cluster database proxy Service for the instance, `<identifier>.db-proxy.svc.cluster.local`. The proxy stack runs in the `db-proxy` namespace and names its Service after the first label of the RDS endpoint, which is the identifier. |
+| `dbPort` | The port of the RDS instance, which the proxy Service also listens on. |
+| `dbUser` | The database user the role may connect as. |
 | `region` | The region of the RDS instance, for the token exchange. |
 
-## Turning on IAM database authentication
+## Database authentication
 
-Dagster's storage connection can use a short-lived IAM token instead of a stored password.
-It is off by default.
-Neither stack manages the two prerequisites, so both must hold before the setting is turned on.
+Dagster's storage connection uses a short-lived IAM token, so no stack holds a database password.
+Neither stack manages the two prerequisites, so both must hold before the first apply.
 
 1. IAM database authentication is enabled on the data-warehouse RDS instance (its `iam_db_auth_enabled` setting).
-2. A database administrator has run `GRANT rds_iam TO <dbUser>;` once against the instance, where `<dbUser>` is the Postgres role that Dagster connects as.
+2. A database administrator has run `GRANT rds_iam TO <dbUser>;` once against the instance, where `<dbUser>` is the Postgres role that Dagster connects as. Each database a stack names in `dagster:dbDatabase` must also exist and be accessible to that role.
 
-Then:
-
-1. Set `dagster-infra:dbIamAuth` to `true`, `dagster-infra:dbInstanceIdentifier` to the instance's identifier (its name in the RDS console), and `dagster-infra:dbUser` to the user in `dagster:dbUrl`.
-2. Apply `dagster-infra`. The role gains `rds-db:connect` on that one user, looked up through the instance's resource id.
-3. Apply `dagster`. It reads `dbIamAuth` and the region from the outputs, switches the chart to AWS workload identity authentication, and the URL no longer carries a password.
+The role gains `rds-db:connect` on that one user, looked up through the instance's resource id.

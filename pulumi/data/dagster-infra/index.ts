@@ -9,6 +9,7 @@ import { accountId, region } from '../../common/awsAccount.ts';
 import { AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
 import {
   DAGSTER_COMPUTE_LOGS_PREFIX,
+  DB_PROXY_NAMESPACE,
   DAGSTER_NAMESPACE_PATTERN,
   DAGSTER_SERVICE_ACCOUNT,
 } from '../../constants/dagster.ts';
@@ -76,35 +77,34 @@ const computeLogsPolicy = new awsNative.iam.ManagedPolicy(
 );
 managedPolicyArns.push(computeLogsPolicy.policyArn);
 
-const dbIamAuth = cfg.getBoolean('dbIamAuth') ?? false;
-const dbUser = dbIamAuth ? cfg.require('dbUser') : undefined;
-if (dbUser) {
-  const dbInstance = awsClassic.rds.getInstanceOutput({
-    dbInstanceIdentifier: cfg.require('dbInstanceIdentifier'),
-  });
-  // A wildcard here would let the role connect as any user.
-  if (!/^[A-Za-z_][A-Za-z0-9_$]*$/.test(dbUser)) {
-    throw new Error(`dbUser must be a plain Postgres role name, got ${JSON.stringify(dbUser)}`);
-  }
-
-  const rdsConnectPolicy = new awsNative.iam.ManagedPolicy(
-    'dagster-rds-iam-auth',
-    {
-      policyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Action: 'rds-db:connect',
-            Resource: interpolate`arn:aws:rds-db:${region}:${accountId}:dbuser:${dbInstance.resourceId}/${dbUser}`,
-          },
-        ],
-      }),
-    },
-    { ignoreChanges: ['users', 'roles', 'groups'] },
-  );
-  managedPolicyArns.push(rdsConnectPolicy.policyArn);
+const dbInstanceIdentifier = cfg.require('dbInstanceIdentifier');
+const dbInstance = awsClassic.rds.getInstanceOutput({ dbInstanceIdentifier });
+const dbUser = cfg.require('dbUser');
+// A wildcard here would let the role connect as any user.
+if (!/^[A-Za-z_][A-Za-z0-9_$]*$/.test(dbUser)) {
+  throw new Error(`dbUser must be a plain Postgres role name, got ${JSON.stringify(dbUser)}`);
 }
+
+// Needs IAM database authentication enabled on the instance and `rds_iam`
+// granted to the user; see docs/reference/dagster-config.md.
+// spec: DAGS#storage
+const rdsConnectPolicy = new awsNative.iam.ManagedPolicy(
+  'dagster-rds-iam-auth',
+  {
+    policyDocument: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 'rds-db:connect',
+          Resource: interpolate`arn:aws:rds-db:${region}:${accountId}:dbuser:${dbInstance.resourceId}/${dbUser}`,
+        },
+      ],
+    }),
+  },
+  { ignoreChanges: ['users', 'roles', 'groups'] },
+);
+managedPolicyArns.push(rdsConnectPolicy.policyArn);
 
 const dagsterRole = eksServiceAccount('dagster', {
   serviceAccountName: DAGSTER_SERVICE_ACCOUNT,
@@ -117,4 +117,6 @@ const dagsterRole = eksServiceAccount('dagster', {
 // Read by the dagster stack, which takes these as given.
 export const dagsterRoleArn = dagsterRole.arn;
 export const computeLogsBucket = logsBucket.bucketName;
-export { dbIamAuth, dbUser, region };
+export const dbHost = `${dbInstanceIdentifier}.${DB_PROXY_NAMESPACE}.svc.cluster.local`;
+export const dbPort = dbInstance.port;
+export { dbUser, region };
