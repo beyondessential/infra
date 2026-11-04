@@ -27,7 +27,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:infraStack` | `bes/dagster-infra/<stack>`; the AWS-side stack whose outputs the stack takes. |
 | `dagster` | `dagster:imageTag` | Tag of the data-lake image. Required. |
 | `dagster` | `dagster:imagePullPat` | Secret registry token. Set it only while the image is private. |
-| `dagster` | `dagster:dbUrl` | Secret. The storage database as `postgres://user[:password]@host[:port]/database`, with the host the in-cluster database proxy Service. The port defaults to 5432. The password is required unless the AWS-side stack has IAM database authentication on, and is rejected when it does. |
+| `dagster` | `dagster:dbUrl` | Secret. The storage database as `postgres://user[:password]@host[:port]/database`, with the host the in-cluster database proxy Service, as `<name>.<namespace>.svc.cluster.local` (or ending `.svc`). The port defaults to 5432. The password is required unless the AWS-side stack has IAM database authentication on, and is rejected when it does. |
 | `dagster` | `dagster:codeLocations` | Required list of code locations, each with exactly one of `file` or `package`, and optionally `memoryRequest`. See below. |
 | `dagster` | `dagster:appEnvBlob` | Secret, one `KEY=VALUE` per line, for every code server. |
 | `dagster` | `dagster:dagsterChartVersion` | Chart version. Defaults to the pin in `src/config.ts`. |

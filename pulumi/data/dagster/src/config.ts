@@ -44,8 +44,10 @@ function parseDbUrl(raw: string) {
     throw new Error('dbUrl must be postgres://user[:password]@host[:port]/database');
   }
   // The RDS endpoint is reached only through the in-cluster proxy Service.
-  if (url.hostname.endsWith('.rds.amazonaws.com')) {
-    throw new Error('dbUrl must name the in-cluster database proxy Service, not the RDS endpoint');
+  if (!/\.svc(\.cluster\.local)?$/.test(url.hostname)) {
+    throw new Error(
+      'dbUrl must name the in-cluster database proxy Service, as <name>.<namespace>.svc.cluster.local',
+    );
   }
   const password = url.password ? decodeURIComponent(url.password) : undefined;
   if (dbIamAuth && password) {
