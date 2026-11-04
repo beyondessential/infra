@@ -3,9 +3,9 @@ import { jsonStringify } from '@pulumi/pulumi';
 import { namespace } from './namespace.ts';
 import { appEnvBlob, imagePullPat } from './config.ts';
 
-// Blank lines and '#' comments are skipped. A line without '=' fails the
-// preview rather than being dropped, which would surface only when a code
-// location failed to start.
+// Blank lines and '#' comments are skipped. A malformed line fails the preview
+// rather than being dropped or overriding another, which would surface only
+// when a code location failed to start or misbehaved.
 function parseDotenv(blob: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [i, rawLine] of blob.split('\n').entries()) {
@@ -22,6 +22,9 @@ function parseDotenv(blob: string): Record<string, string> {
     // The key names an entry of the Secret, which the API server restricts.
     if (!/^[-._a-zA-Z0-9]+$/.test(key) || key === '.' || key === '..') {
       throw new Error(`appEnvBlob: line ${i + 1} has an invalid key`);
+    }
+    if (key in result) {
+      throw new Error(`appEnvBlob: line ${i + 1} repeats the key ${key}`);
     }
     result[key] = line.slice(eq + 1).trim();
   }

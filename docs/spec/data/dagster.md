@@ -58,7 +58,7 @@ Every code server MUST receive the same environment variables, which the stack b
 
 Blank lines and lines that begin `#` in that value MUST be ignored.
 
-A line of that value that has no `=` MUST fail the stack before it changes anything.
+A line of that value that has no `=`, whose key a Secret cannot hold, or whose key an earlier line already sets MUST fail the stack before it changes anything.
 
 The environment variables of the code servers MUST NOT include the storage credentials or the name of the compute log bucket.
 
