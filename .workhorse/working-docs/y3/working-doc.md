@@ -99,9 +99,9 @@ Cost per database per month (US East, always on vs paused outside 10 h/day): Aur
 
 ### Sleep and wake sequence
 
-1. Sleep: supervisor sees no requests, no open sessions, no flags. It scales app pods to zero, then sets `cnpg.io/hibernation=on`.
+1. Sleep: supervisor sees no requests, no open sessions, no flags. It scales app pods to zero, so the database has no other writer. It then runs a final lookup refresh, reads the highest real-change tick, copies the ten tables into its own Postgres, and only then sets `cnpg.io/hibernation=on`.
 2. Asleep: volumes stay, so the cost is EBS (under a dollar a month at defaults). Karpenter removes emptied nodes after consolidation (30 min on spot).
-3. Wake: `hibernation=off`, CNPG recreates pods on the same volumes in the same zone, clean start, then app scales up.
+3. Wake: `hibernation=off`, CNPG recreates pods on the same volumes in the same zone, clean start. The supervisor then hands back what it wrote while the database was down, verifies the read-only tables are unchanged, deletes its copy, and only then scales the app up. Handing back comes before any rollout migrations, which would otherwise change the tables under it.
 4. Expected: about 20 s for the database, plus 1-2 minutes if Karpenter launches a node (an estimate), plus Tamanu cold start. Inside the splash budget.
 
 ### Supervisor and actuator
@@ -160,6 +160,36 @@ Memory, what reduces it:
 - Real Postgres needs the contrib extensions Tamanu uses (`uuid-ossp`, `fuzzystrmatch`, `pgcrypto`) installed in the image, and runs as a second process in the supervisor's container.
 
 Not covered: a copy of real data volumes and the copy mechanism itself (schema dump plus data from the source database); the database-backed permissions path (the config used hardcoded permissions); central's Express middleware (only the handlers were called); production mode (the version compatibility check was bypassed in development mode); the current source rather than a June build; password hashing at production cost (the spike used a cheap cost so logins took about 40 ms).
+
+### Copy mechanism spike results
+
+Run on the clean clone of Tamanu `main` (commit 62bcf8604d) against the tuned real Postgres 18 from the memory spike (`max_connections=5`, `shared_buffers=1MB`), with a seeded source database: 5,001 users, 2,000 devices, 2,000 refresh tokens, 2,400 permissions, 10,000 user-facility links, 5,000 login attempts, 40 facilities and 306 settings. Synthetic volumes, one process, one host.
+
+Schema:
+- Generate it once per Tamanu release, in CI: migrate an empty database, prune it to the allowlist, and `pg_dump -s --no-owner --no-privileges`. The result is 73 KB of SQL (19 tables including the `logs` schema and Sequelize's meta table, 45 functions, 27 triggers) that the supervisor ships. It loads into an empty database in 0.1 s with no errors, under the tight settings.
+- The dumped functions need the `fuzzystrmatch` and `uuid-ossp` extensions, so the supervisor's Postgres needs the contrib package.
+
+Data:
+- `pg_dump -a --disable-triggers` of the ten tables piped into `psql` copies about 25,000 rows in 0.3 s. Every table is identical to the source row for row (checked by checksum), and the load writes no audit rows.
+- Triggers must be off during the load. Most of these tables have triggers that set `updated_at` and the sync tick, write audit rows and send notifications, and they would rewrite the copied values.
+- The load needs a database role that may disable triggers, which the supervisor's own local Postgres can give it.
+
+Fidelity:
+- Central's real login handler gives identical responses against the real database and the copy, apart from the random tokens: 120 permissions read from the database, the same role, settings and localisation. With facility-restricted users on, both name the same two facilities, which exercises `user_facilities` and `facilities`.
+- The setting that makes permissions come from fixed code instead of the database only knows built-in roles, so it rejects the seeded role names on both sides equally; it is not a difference between the copy and the source.
+- Login works under `NODE_ENV=production`. Only migrations need a server version there.
+
+What login writes, and handing it back:
+- Login writes only three tables: `devices` (registration and last seen), `refresh_tokens` and `user_login_attempts`, which includes failures, so lockout counts stay right. The other seven are read-only. A checksum of each read-only table at copy time and again at hand-back confirms none changed.
+- Hand-back selects the rows created or updated in the copy since the copy was made, using the copy's own clock, and upserts them into the real database with its triggers on, so sync ticks and audit rows come out as for any normal write. Devices and refresh tokens update on conflict, by `id` and by `(user_id, device_id)` respectively; login attempts only insert.
+- Session continuity: access tokens and refresh tokens issued by the copy, including for a device the copy registered, all work against the real database after the hand-back.
+
+Requirements this adds:
+- The supervisor's image carries a Postgres client, or streams `COPY` from Node.
+- The supervisor needs credentials for the real database. They should belong to a role limited to read on the ten tables and write on the three, not the application's role. Not tested here.
+- Hand-back comes before a rollout's migrations and before the app scales up, so there is one writer, and a rollout during sleep does not change the tables under it.
+
+Not covered: real data volumes and real network latency to a CNPG primary, and the copy under a version change. A cold wake on a real cluster needs a throwaway deployment woken by someone with write access, so it is not measured. A script that does it and prints the time to each phase (database ready, each Deployment available, a URL answering, and whether Karpenter added a node) is at `/tmp/y3-pglite-spike/measure-wake.sh`; it refuses to run unless the deployment is hibernated, and should be reviewed before it is run.
 
 ### Caddy as the supervisor's front
 
