@@ -14,6 +14,7 @@ The requirements are in the spec.
 | Service account `dagster` | `src/serviceAccount.ts` | Annotated with the role ARN from the AWS-side stack. |
 | Tailnet Ingress | `src/ingress.ts` | Hostname `dagster-<stack>`, tag `tag:dagster`. |
 | `tailscale:gha:dagster` bindings | `src/rbac.ts` | The RoleBinding to `cluster-admin`, and the ClusterRole over namespaces. |
+| Compute log bucket | `pulumi/data/dagster-infra/index.ts` | Private, encrypted, with no expiry, protected from deletion by the stack. Named by Pulumi; the name is the `computeLogsBucket` output. |
 | IAM role `dagster` | `pulumi/data/dagster-infra/index.ts` | The role for the service account, with the compute log policy, and the RDS connect policy when IAM database authentication is on. |
 | Shared names | `pulumi/constants/dagster.ts` | The service account name, namespace pattern and compute log prefix that both stacks use. |
 
@@ -34,7 +35,6 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:namespace` | Overrides the namespace suffix. |
 | `dagster` | `dagster:cpuRequest`, `memoryRequest`, `runPodCpuRequest`, `runPodMemoryRequest` | Resource requests of the long-lived pods and of run pods. |
 | `dagster-infra` | `dagster-infra:core`, `k8s-core` | `bes/core/<account>` and `bes/k8s-core/<stack>`. |
-| `dagster-infra` | `dagster-infra:computeLogsBucket` | Name of the bucket the `data/bucket` stack owns. |
 | `dagster-infra` | `dagster-infra:namespacePattern` | Namespaces whose `dagster` service account may assume the role. Defaults to `dagster-*`. |
 | `dagster-infra` | `dagster-infra:dbIamAuth` | Whether Dagster authenticates to its storage with IAM. Defaults to off. |
 | `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. The `dagster` stack refuses a `dagster:dbUrl` whose user is not `dbUser`. |
@@ -59,7 +59,7 @@ config:
 | output | meaning |
 |---|---|
 | `dagsterRoleArn` | ARN of the role, which the `dagster` stack puts on the service account. |
-| `computeLogsBucket` | Compute log bucket, which the `dagster` stack gives the compute log manager. |
+| `computeLogsBucket` | Name of the compute log bucket, which the `dagster` stack gives the compute log manager. |
 | `dbIamAuth` | Whether IAM database authentication is on, which the `dagster` stack follows. |
 | `dbUser` | The database user the role may connect as, when IAM database authentication is on. The `dagster` stack checks the user in `dagster:dbUrl` against it. |
 | `region` | The region of the RDS instance, for the token exchange. |

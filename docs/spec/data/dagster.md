@@ -85,7 +85,19 @@ When IAM database authentication is not enabled, the stack MUST hold the databas
 
 ## Compute logs
 
-The compute log manager MUST store the compute logs of runs in the S3 bucket that the AWS-side stack names, under the key prefix `dagster-compute-logs/`.
+The AWS-side stack MUST provide one S3 bucket for compute logs, in its own account.
+
+The compute log bucket MUST block all public access.
+
+Objects in the compute log bucket MUST be encrypted at rest.
+
+The compute log bucket MUST abort an incomplete multipart upload one day after it is initiated.
+
+The compute log bucket MUST NOT expire an object by age.
+
+The compute log bucket MUST be protected from deletion by the stack that owns it.
+
+The compute log manager MUST store the compute logs of runs in the compute log bucket, under the key prefix `dagster-compute-logs/`.
 
 ## Run launcher
 

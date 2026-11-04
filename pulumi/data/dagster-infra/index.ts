@@ -1,7 +1,8 @@
 import { interpolate, jsonStringify, type Output } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
-import { failIfIncorrectAccountOrRegion, cfg } from '../../common/coreRef.ts';
+import { failIfIncorrectAccountOrRegion, cfg, tags } from '../../common/coreRef.ts';
+import { nativeTags } from '../../common/tags.ts';
 import { CrossStack } from '../../common/CrossStack.ts';
 import { eksServiceAccount } from '../../common/eksServiceAccount.ts';
 import { accountId, region } from '../../common/awsAccount.ts';
@@ -19,14 +20,38 @@ const oidcProviderArn = new CrossStack(cfg.require('k8s-core')).k8sCoreOutput().
 
 const namespacePattern = cfg.get('namespacePattern') ?? DAGSTER_NAMESPACE_PATTERN;
 
-// Created and owned by the data/bucket stack.
-const computeLogsBucket = cfg.require('computeLogsBucket');
-// A wildcard here would widen the policy to other buckets.
-if (!/^[a-z0-9][a-z0-9.-]{2,62}$/.test(computeLogsBucket)) {
-  throw new Error(
-    `computeLogsBucket is not an S3 bucket name: ${JSON.stringify(computeLogsBucket)}`,
-  );
-}
+// Holds the compute logs of runs, which are kept as long as the runs that
+// reference them.
+// spec: DAGS#compute-logs
+const logsBucket = new awsNative.s3.Bucket(
+  'compute-logs',
+  {
+    tags: nativeTags(tags, { Purpose: 'dagster-compute-logs' }),
+    bucketEncryption: {
+      serverSideEncryptionConfiguration: [
+        { serverSideEncryptionByDefault: { sseAlgorithm: 'AES256' } },
+      ],
+    },
+    lifecycleConfiguration: {
+      rules: [
+        {
+          id: 'abort-incomplete-uploads',
+          status: 'Enabled',
+          abortIncompleteMultipartUpload: { daysAfterInitiation: 1 },
+        },
+      ],
+    },
+  },
+  { protect: true },
+);
+
+new awsClassic.s3.BucketPublicAccessBlock('compute-logs-public-access-block', {
+  bucket: logsBucket.bucketName,
+  blockPublicAcls: true,
+  blockPublicPolicy: true,
+  ignorePublicAcls: true,
+  restrictPublicBuckets: true,
+});
 
 const managedPolicyArns: Output<string>[] = [];
 
@@ -39,10 +64,10 @@ const computeLogsPolicy = new awsNative.iam.ManagedPolicy(
         {
           Effect: 'Allow',
           Action: AWS_S3_WRITE_ACTIONS,
-          Resource: [
-            `arn:aws:s3:::${computeLogsBucket}`,
-            `arn:aws:s3:::${computeLogsBucket}/${DAGSTER_COMPUTE_LOGS_PREFIX}/*`,
-          ],
+          Resource: logsBucket.bucketName.apply((bucket) => [
+            `arn:aws:s3:::${bucket}`,
+            `arn:aws:s3:::${bucket}/${DAGSTER_COMPUTE_LOGS_PREFIX}/*`,
+          ]),
         },
       ],
     }),
@@ -91,4 +116,5 @@ const dagsterRole = eksServiceAccount('dagster', {
 
 // Read by the dagster stack, which takes these as given.
 export const dagsterRoleArn = dagsterRole.arn;
-export { computeLogsBucket, dbIamAuth, dbUser, region };
+export const computeLogsBucket = logsBucket.bucketName;
+export { dbIamAuth, dbUser, region };
