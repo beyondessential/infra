@@ -29,13 +29,32 @@ export const computeLogsBucket = infra.get<string>('computeLogsBucket');
 export const dbIamAuth = await infra.getValue<boolean>('dbIamAuth');
 export const awsRegion = infra.get<string>('region');
 
-// The data-warehouse RDS instance, reached through the in-cluster k8s-db-proxy
-// Service (`<hostname>.<namespace>.svc.cluster.local`) rather than directly.
-export const dbHost = cfg.require('dbHost');
-export const dbPort = cfg.getNumber('dbPort') ?? 5432;
-export const dbUser = cfg.require('dbUser');
-export const dbDatabase = cfg.require('dbDatabase');
-export const dbPassword = dbIamAuth ? undefined : cfg.requireSecret('dbPassword');
+// The data-warehouse database, as `postgres://user[:password]@host[:port]/database`.
+// The host is the in-cluster k8s-db-proxy Service (`<hostname>.<namespace>.svc.cluster.local`)
+// rather than the RDS endpoint. The password is present exactly when IAM
+// database authentication is off.
+function parseDbUrl(raw: string) {
+  const url = new URL(raw);
+  const user = decodeURIComponent(url.username);
+  const database = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname || !user || !database) {
+    throw new Error('dbUrl must be postgres://user[:password]@host[:port]/database');
+  }
+  const password = url.password ? decodeURIComponent(url.password) : undefined;
+  if (dbIamAuth && password) {
+    throw new Error('dbUrl must not carry a password when IAM database authentication is on');
+  }
+  if (!dbIamAuth && !password) {
+    throw new Error('dbUrl must carry a password unless IAM database authentication is on');
+  }
+  return { host: url.hostname, port: url.port ? Number(url.port) : 5432, user, database, password };
+}
+const db = cfg.requireSecret('dbUrl').apply(parseDbUrl);
+export const dbHost = db.host;
+export const dbPort = db.port;
+export const dbUser = db.user;
+export const dbDatabase = db.database;
+export const dbPassword = db.password;
 
 // Every other environment variable the code locations read, as one KEY=VALUE per
 // line like a .env file. The list belongs to data-lake and changes without this

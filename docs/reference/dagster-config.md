@@ -27,8 +27,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:infraStack` | `bes/dagster-infra/<stack>`; the AWS-side stack whose outputs the stack takes. |
 | `dagster` | `dagster:imageTag` | Tag of the data-lake image. Required. |
 | `dagster` | `dagster:imagePullPat` | Secret registry token. Set it only while the image is private. |
-| `dagster` | `dagster:dbHost`, `dbPort`, `dbUser`, `dbDatabase` | The storage database as reached through the in-cluster database proxy. `dbPort` defaults to 5432. |
-| `dagster` | `dagster:dbPassword` | Secret. Required unless the AWS-side stack has IAM database authentication on. |
+| `dagster` | `dagster:dbUrl` | Secret. The storage database as `postgres://user[:password]@host[:port]/database`, with the host the in-cluster database proxy Service. The port defaults to 5432. The password is required unless the AWS-side stack has IAM database authentication on, and is rejected when it does. |
 | `dagster` | `dagster:appEnvBlob` | Secret, one `KEY=VALUE` per line, for every code server. |
 | `dagster` | `dagster:dagsterChartVersion` | Chart version. Defaults to the pin in `src/config.ts`. |
 | `dagster` | `dagster:namespace` | Overrides the namespace suffix. |
@@ -37,7 +36,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster-infra` | `dagster-infra:computeLogsBucket` | Name of the bucket the `data/bucket` stack owns. |
 | `dagster-infra` | `dagster-infra:namespacePattern` | Namespaces whose `dagster` service account may assume the role. Defaults to `dagster-*`. |
 | `dagster-infra` | `dagster-infra:dbIamAuth` | Whether Dagster authenticates to its storage with IAM. Defaults to off. |
-| `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. `dbUser` must be the same as `dagster:dbUser`. |
+| `dagster-infra` | `dagster-infra:dbInstanceIdentifier`, `dbUser` | Read only when `dbIamAuth` is on. `dbUser` must be the user in `dagster:dbUrl`. |
 
 ## Outputs of `dagster-infra`
 
@@ -59,6 +58,6 @@ Neither stack manages the two prerequisites, so both must hold before the settin
 
 Then:
 
-1. Set `dagster-infra:dbIamAuth` to `true`, `dagster-infra:dbInstanceIdentifier` to the instance's identifier (its name in the RDS console), and `dagster-infra:dbUser` to the same role as `dagster:dbUser`.
+1. Set `dagster-infra:dbIamAuth` to `true`, `dagster-infra:dbInstanceIdentifier` to the instance's identifier (its name in the RDS console), and `dagster-infra:dbUser` to the user in `dagster:dbUrl`.
 2. Apply `dagster-infra`. The role gains `rds-db:connect` on that one user, looked up through the instance's resource id.
-3. Apply `dagster`. It reads `dbIamAuth` and the region from the outputs, switches the chart to AWS workload identity authentication, and no longer needs `dagster:dbPassword`.
+3. Apply `dagster`. It reads `dbIamAuth` and the region from the outputs, switches the chart to AWS workload identity authentication, and the URL no longer carries a password.

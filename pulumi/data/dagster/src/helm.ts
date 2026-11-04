@@ -42,9 +42,9 @@ const SPOT_TOLERATIONS = [CAN_RUN_ON_SPOT];
 const imagePullSecrets = registrySecret ? [{ name: registrySecret.metadata.name }] : [];
 
 // spec: DAGS#storage
-const storageAuth = dbPassword
-  ? { postgresqlPassword: dbPassword }
-  : { authProvider: { type: 'aws_wif', awsRegion } };
+const storageAuth = dbIamAuth
+  ? { authProvider: { type: 'aws_wif', awsRegion } }
+  : { postgresqlPassword: dbPassword };
 
 // spec: DAGS#run-launcher
 new k8s.helm.v3.Release(releaseName, {
