@@ -42,7 +42,7 @@ Every workload of a Canopy stack MUST run the Canopy image at one image tag.
 
 ## Workloads
 
-A Canopy stack MUST run the workloads in the following table, each as the service account given, except as this section provides for the backups and slacker workloads.
+A Canopy stack MUST run the workloads in the following table, each as the service account given, except as this section provides for the backups, slacker and ai workloads.
 
 | workload | kind | service account | IAM role | Secret access in the namespace | what it does |
 |---|---|---|---|---|---|
@@ -52,6 +52,7 @@ A Canopy stack MUST run the workloads in the following table, each as the servic
 | backups | Deployment | `canopy-jobs` | `canopy-jobs` | read, create, update, patch | Maintains, inspects and meters the backup repositories of groups ([BKJ](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/jobs/backup.md)), writes the recovery escrow ([ESC](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/jobs/escrow.md)) and sweeps artifact bytes no registration reaches ([ART](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/platform/artifacts.md#where-an-artifact-rests)). |
 | domains | Deployment | `canopy-domains` | `canopy-domains` | none | Writes the address records of registered names ([ADR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/addresses.md#registering)) and drives certificate orders through the DNS-01 challenge ([CRT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/public-server/certificates.md)). |
 | slacker | Deployment | the default | none | none | Delivers the notifications of incidents, maintenance windows and self-alerts to the notification channels ([INC](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/monitoring/incidents.md#notification), [MNT](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/monitoring/maintenance.md#notification), [SELF](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/self-alerts.md#notification)). |
+| ai | Deployment | the default | none | none | Looks at each new vulnerability with a model, deciding the plain cases and suggesting an outcome for the rest ([VTR](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/security/vulnerability-triage.md#model-triage)). |
 | migrate | Job | the default | none | none | Applies the database migrations of the image tag. |
 | chrome versions | CronJob, daily | the default | none | none | Refreshes the record of browser releases that the public server presents. |
 | history partitions | CronJob, daily | the default | none | none | Provisions ahead the ranges of the status and device-connection histories ([HST](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/platform/history-storage.md#provisioning-ahead)). |
@@ -64,10 +65,10 @@ A workload whose IAM role is none MUST run as the default service account of the
 
 The public server and the private server SHOULD each run two replicas.
 
-The monitor, backups, domains and slacker workloads MUST each run one replica, replaced rather than overlapped on update.
+The monitor, backups, domains, slacker and ai workloads MUST each run one replica, replaced rather than overlapped on update.
 
 > [!NOTE]
-> Each of the four holds work that at most one instance may drive at a time, and none is on a request path, so a brief gap on update delays work rather than failing it.
+> Each of the five holds work that at most one instance may drive at a time, and none is on a request path, so a brief gap on update delays work rather than failing it.
 
 A Deployment in the table MUST NOT start before the migrate Job of the same apply has completed.
 
@@ -88,6 +89,15 @@ A Canopy stack that names no notification channels MUST NOT run the slacker work
 > [!NOTE]
 > A test instance carries no notification channels, so its incidents never reach the channels the production instance notifies.
 
+A Canopy stack that names no model MUST NOT run the ai workload.
+
+The ai workload MUST receive the model, the model provider's key and, where a Canopy stack names one, the provider's endpoint.
+
+No other workload MAY receive the model provider's key.
+
+> [!NOTE]
+> A test instance names no model, so it makes no calls to a model provider and every vulnerability stays open for an operator.
+
 Where a Canopy stack names a shared backups stack, the backups workload MUST receive its provisioner, maintenance and device roles, and the public server MUST receive its device role.
 
 ## Database
@@ -106,7 +116,7 @@ A Canopy stack MUST have a read-write Pooler named `meta-pooler-rw` and a read-o
 
 The Poolers MUST run on the critical database pool, and each MUST keep one instance available through a node drain.
 
-The public server, the private server, the monitor, the backups workload, the domains workload and the slacker workload MUST reach the database through the Poolers.
+The public server, the private server, the monitor, the backups workload, the domains workload, the slacker workload and the ai workload MUST reach the database through the Poolers.
 
 The migrate Job and the CronJobs MUST reach the database directly.
 
