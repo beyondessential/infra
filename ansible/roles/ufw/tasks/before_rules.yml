@@ -1,21 +1,26 @@
 ---
 # UFW's command syntax can't match on IP header length, so this goes in as raw
-# iptables in before.rules, after the chain declarations and before the first
-# -A line. The anchor is the last chain declaration rather than the "End
-# required lines" comment: blockinfile appends at the end of the file when the
-# anchor is missing, which lands after COMMIT, and ufw can't run without the
-# declaration anyway. An IPv4 header longer than 20 bytes carries options.
+# iptables in before.rules, as its own *raw section ahead of *filter. Dropping
+# in raw PREROUTING (priority -300) discards the packet before connection
+# tracking, NAT and the filter hooks see it, and covers both incoming and
+# forwarded packets, as RHSB-2026-016 asks for an early drop (it uses an nft
+# input hook at priority -310). An IPv4 header longer than 20 bytes carries
+# options. The anchor is the *filter line: blockinfile appends at the end of
+# the file when the anchor is missing, which lands after COMMIT and breaks
+# the file.
 # spec: LNXSRV#host-firewall
 - name: Drop TCP with IPv4 options (CVE-2026-98432)
   become: true
   ansible.builtin.blockinfile:
     path: /etc/ufw/before.rules
-    insertafter: '^:ufw-not-local - \[0:0\]'
+    insertbefore: '^\*filter'
     marker: "# {mark} ANSIBLE MANAGED: drop TCP with IPv4 options"
     block: |
-      # CVE-2026-98432: drop TCP with IPv4 options
-      -A ufw-before-input -p tcp -m u32 --u32 "0>>22&0x3C=24:60" -j DROP
-      -A ufw-before-forward -p tcp -m u32 --u32 "0>>22&0x3C=24:60" -j DROP
+      # CVE-2026-98432: drop TCP with IPv4 options before conntrack
+      *raw
+      :PREROUTING ACCEPT [0:0]
+      -A PREROUTING -p tcp -m u32 --u32 "0>>22&0x3C=24:60" -j DROP
+      COMMIT
   register: ufw_ip_options_rule
 
 - name: Reload ufw after changing before.rules  # noqa: no-handler
