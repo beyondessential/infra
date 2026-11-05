@@ -139,6 +139,28 @@ export const slacker = cfg.get('slackerOpenUrl')
     }
   : undefined;
 
+// spec: K8SCNP#workloads
+/**
+ * The model provider the AI worker triages vulnerabilities with. Without
+ * `openrouterModel` the stack runs no AI worker at all, so a test instance makes
+ * no calls to a provider and every vulnerability stays open for an operator; with
+ * it, the key is required, because a worker holding a model and no key would only
+ * idle.
+ *
+ * `openrouterModel` is an OpenRouter model id. The worker asks for structured
+ * output and falls back to JSON in the reply where the model refuses it, so
+ * prefer a model that supports `response_format`. The key should carry a spend
+ * limit set at OpenRouter.
+ */
+export const ai = cfg.get('openrouterModel')
+  ? {
+      model: cfg.require('openrouterModel'),
+      apiKey: cfg.requireSecret('openrouterApiKey'),
+      // Optional: the worker defaults to OpenRouter's own endpoint.
+      baseUrl: cfg.get('openrouterBaseUrl'),
+    }
+  : undefined;
+
 export const tailscaleClientId = cfg.require('tailscaleClientId');
 export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
 export const tailscaleHostname = cfg.require('tailscaleHostname');

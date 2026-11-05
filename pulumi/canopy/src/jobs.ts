@@ -10,7 +10,8 @@ import { sharedBackupsJobsEnv } from './canopy-backups-shared.ts';
 import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
 import { acmeEnv } from './canopy-acme.ts';
-import { architecture, costLabels, slacker, normalizedStack } from './config.ts';
+import { aiEnv } from './canopy-ai.ts';
+import { ai, architecture, costLabels, slacker, normalizedStack } from './config.ts';
 
 // spec: K8SCNP#workloads
 export const migrator = new k8s.batch.v1.Job('migrator', {
@@ -184,6 +185,37 @@ if (slacker) {
             },
             { pooled: true },
           ),
+        },
+      },
+    },
+    { dependsOn: [migrator] },
+  );
+}
+
+// Looks at each new vulnerability with a model. It serves no HTTP and holds the
+// only copy of the provider's key, so it runs as the default service account.
+// spec: K8SCNP#workloads
+if (ai) {
+  new k8s.apps.v1.Deployment(
+    'ai',
+    {
+      metadata: {
+        labels: labels('ai'),
+        namespace,
+      },
+      spec: {
+        replicas: 1,
+        strategy: {
+          type: 'Recreate',
+        },
+        selector: {
+          matchLabels: labels('ai'),
+        },
+        template: {
+          metadata: {
+            labels: { ...labels('ai'), ...costLabels },
+          },
+          spec: spec('ai', ['ai'], { env: aiEnv }, { pooled: true }),
         },
       },
     },
