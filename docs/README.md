@@ -123,6 +123,7 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 
 ## Reference
 
+- [Reference: Canopy AI worker](reference/canopy-ai-worker.md)
 - [Reference: Canopy TLS issuance plumbing](reference/canopy-tls-config.md)
 - [Reference: Dagster stacks](reference/dagster-config.md)
 - [Reference: pinned component versions](reference/k8s-component-versions.md)
