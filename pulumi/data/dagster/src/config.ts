@@ -79,6 +79,32 @@ for (const [i, { name }] of codeServers.entries()) {
   }
 }
 
+// The tag the policy of the tailnet grants access to, and from, for Dagster.
+export const tailnetTag = 'tag:tools-dagster';
+
+// A tailnet host that the pods reach through a Service of the given name.
+export interface TailnetHostConfig {
+  name: string;
+  fqdn: string;
+}
+
+export const tailnetHosts = (cfg.getObject<TailnetHostConfig[]>('tailnetHosts') ?? []).map(
+  (host, i, all) => {
+    if (!host.fqdn) {
+      throw new Error(`tailnetHosts entry needs a name and an fqdn: ${JSON.stringify(host)}`);
+    }
+    if (!/^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$/.test(host.name ?? '')) {
+      throw new Error(
+        `tailnetHosts entry ${JSON.stringify(host)} has a name that is not a DNS-1035 label`,
+      );
+    }
+    if (all.findIndex((h) => h.name === host.name) !== i) {
+      throw new Error(`tailnetHosts has two entries named ${host.name}`);
+    }
+    return host;
+  },
+);
+
 export const cpuRequest = cfg.get('cpuRequest') ?? '100m';
 export const memoryRequest = cfg.get('memoryRequest') ?? '512Mi';
 export const runPodCpuRequest = cfg.get('runPodCpuRequest') ?? '250m';

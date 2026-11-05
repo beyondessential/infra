@@ -13,6 +13,7 @@ The requirements are in the spec.
 | Environment Secret | `src/secrets.ts` | The parsed `appEnvBlob`, mounted into every code server. The registry Secret exists only when `imagePullPat` is set. |
 | Service account `dagster` | `src/serviceAccount.ts` | Annotated with the role ARN from the AWS-side stack. |
 | Tailnet Ingress | `src/ingress.ts` | Hostname `dagster-<stack>`, tag `tag:tools-dagster`. |
+| Tailnet egress Services | `src/egress.ts` | One `ExternalName` Service per entry of `tailnetHosts`, which the Tailscale operator forwards to the host. |
 | `tailscale:gha:dagster` bindings | `src/rbac.ts` | The RoleBinding to `cluster-admin`, and the ClusterRole over namespaces. |
 | Compute log bucket | `pulumi/data/dagster-infra/index.ts` | Private, encrypted, with no expiry, protected from deletion by the stack. Named by Pulumi; the name is the `computeLogsBucket` output. |
 | IAM role `dagster` | `pulumi/data/dagster-infra/index.ts` | The role for the service account, with the compute log policy, and the RDS connect policy when IAM database authentication is on. |
@@ -30,6 +31,7 @@ The release is named `dagster` explicitly because the webserver Service is named
 | `dagster` | `dagster:imagePullPat` | Secret registry token. Set it only while the image is private. |
 | `dagster` | `dagster:dbDatabase` | Required. The storage database on the RDS instance, which differs between stacks (for example `dagster` and `dagster_dev`). Host, port and user come from the `dagster-infra` outputs. |
 | `dagster` | `dagster:codeLocations` | Required list of code locations, each with exactly one of `file` or `package`, and optionally `memoryRequest`. See below. |
+| `dagster` | `dagster:tailnetHosts` | Optional list of tailnet hosts the code locations reach, each with a `name` and an `fqdn`. See below. |
 | `dagster` | `dagster:appEnvBlob` | Secret, one `KEY=VALUE` per line, for every code server. |
 | `dagster` | `dagster:dagsterChartVersion` | Chart version. Defaults to the pin in `src/config.ts`. |
 | `dagster` | `dagster:cpuRequest`, `memoryRequest`, `runPodCpuRequest`, `runPodMemoryRequest` | Resource requests of the long-lived pods and of run pods. |
@@ -50,6 +52,21 @@ config:
     - package: bes
     - package: tamanu_analytics
       memoryRequest: 1Gi
+```
+
+## Tailnet hosts
+
+A source that is outside the data account, such as a Tamanu or Canopy server or a database proxy, is reached over the tailnet.
+Each entry creates a Service called `name` in the namespace, and the Tailscale operator runs a device tagged `tag:tools-dagster` that forwards connections on it to the tailnet name in `fqdn`.
+The grants on `tag:tools-dagster` in the tailnet policy decide which hosts the device can reach, so a host needs the grant as well as the entry.
+
+The code locations connect to the `name`, so the host in `appEnvBlob` for that source is the `name`, not the tailnet name.
+
+```yaml
+config:
+  dagster:tailnetHosts:
+    - name: tamanu-internal-db
+      fqdn: tamanu-internal-db.example.ts.net
 ```
 
 ## Outputs of `dagster-infra`

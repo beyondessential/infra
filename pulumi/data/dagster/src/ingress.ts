@@ -1,6 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
-import { name } from './config.ts';
+import { name, tailnetTag } from './config.ts';
 import { releaseName } from './helm.ts';
 
 // The chart names the webserver Service `<release>-dagster-webserver`.
@@ -12,7 +12,7 @@ new k8s.networking.v1.Ingress('tailscale', {
     namespace,
     annotations: {
       'tailscale.com/hostname': name,
-      'tailscale.com/tags': 'tag:tools-dagster',
+      'tailscale.com/tags': tailnetTag,
     },
   },
   spec: {

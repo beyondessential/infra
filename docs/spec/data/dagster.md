@@ -136,6 +136,17 @@ The workflow MUST NOT be able to delete a namespace.
 > The workflow holds only what those bindings grant, so it cannot create them.
 > The first apply of a stack is made by an operator who holds `cluster-admin` cluster-wide, and every later apply can come from the workflow.
 
+## Tailnet egress
+
+The stack's configuration MAY list tailnet hosts, each with a name and the tailnet name of the host.
+
+For each listed host, the namespace of the instance MUST hold a Service of that name, through which a connection from any pod of the instance reaches the host over the tailnet, on whatever port the pod uses.
+The tailnet device that carries those connections MUST carry the tag `tag:tools-dagster`, so the tailnet policy that governs the tag governs what the instance reaches.
+
+A host whose name is not a valid [DNS label](https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1) that begins with a letter, or whose name is the same as another's in the configuration, MUST fail the stack before it changes anything.
+
+The Service is provided by the [Tailscale operator](../kubernetes/namespaces.md#tailscale-operator).
+
 ## AWS identity
 
 The AWS-side stack is a separate stack from the one that runs the instance, applied in the AWS account of the cluster with AWS credentials.
