@@ -121,7 +121,7 @@ The instance MUST purge its records by age as the following table gives.
 
 The webserver MUST be reachable only through the tailnet, at an Ingress of the `tailscale` [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/) whose hostname is the name of the namespace of the instance.
 
-The tailnet device of that Ingress MUST carry the tag `tag:dagster`.
+The tailnet device of that Ingress MUST carry the tag `tag:tools-dagster`.
 
 The access group `tailscale:gha:dagster` is held by the data-lake workflow that applies the stack.
 The bindings of that group are those [K8SNSP](../kubernetes/namespaces.md#access-groups) gives.

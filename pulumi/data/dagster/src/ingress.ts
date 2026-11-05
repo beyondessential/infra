@@ -12,7 +12,7 @@ new k8s.networking.v1.Ingress('tailscale', {
     namespace,
     annotations: {
       'tailscale.com/hostname': name,
-      'tailscale.com/tags': 'tag:dagster',
+      'tailscale.com/tags': 'tag:tools-dagster',
     },
   },
   spec: {

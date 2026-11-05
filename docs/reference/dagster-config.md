@@ -12,7 +12,7 @@ The requirements are in the spec.
 | Code servers | `src/codeLocations.ts` | One entry of the chart's `dagster-user-deployments` per entry of `codeLocations`. |
 | Environment Secret | `src/secrets.ts` | The parsed `appEnvBlob`, mounted into every code server. The registry Secret exists only when `imagePullPat` is set. |
 | Service account `dagster` | `src/serviceAccount.ts` | Annotated with the role ARN from the AWS-side stack. |
-| Tailnet Ingress | `src/ingress.ts` | Hostname `dagster-<stack>`, tag `tag:dagster`. |
+| Tailnet Ingress | `src/ingress.ts` | Hostname `dagster-<stack>`, tag `tag:tools-dagster`. |
 | `tailscale:gha:dagster` bindings | `src/rbac.ts` | The RoleBinding to `cluster-admin`, and the ClusterRole over namespaces. |
 | Compute log bucket | `pulumi/data/dagster-infra/index.ts` | Private, encrypted, with no expiry, protected from deletion by the stack. Named by Pulumi; the name is the `computeLogsBucket` output. |
 | IAM role `dagster` | `pulumi/data/dagster-infra/index.ts` | The role for the service account, with the compute log policy, and the RDS connect policy when IAM database authentication is on. |
