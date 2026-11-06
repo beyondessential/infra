@@ -89,6 +89,23 @@
 - name: Make sure podman runs
   ansible.builtin.command: podman --version
   changed_when: false
+
+# The bes-tools build carries the `apparmor` build tag, so podman confines its
+# containers with the containers-default profile when the kernel has AppArmor.
+# spec: LNXSRV#apparmor
+- name: Read whether podman has AppArmor enabled
+  become: true
+  ansible.builtin.command: podman info --format '{{ '{{' }}.Host.Security.AppArmorEnabled{{ '}}' }}'
+  register: podman_apparmor
+  changed_when: false
+
+- name: Fail if podman does not have AppArmor enabled
+  when: podman_apparmor.stdout | trim != 'true'
+  ansible.builtin.fail:
+    msg: >-
+      podman reports AppArmor disabled, so its containers would run
+      unconfined. The kernel needs AppArmor on and the apparmor package
+      installed, and the podman build needs the apparmor build tag.
 - name: Stat /usr/local/bin/podman
   ansible.builtin.stat:
     path: /usr/local/bin/podman

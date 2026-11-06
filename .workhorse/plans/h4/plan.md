@@ -53,7 +53,7 @@ Builds the Kernel hardening and Confinement sections of LNXSRV in the Ansible ro
 
 Use the Vagrant box (Ubuntu 24.04 cloud image) for everything except the EC2-specific items, then one staging instance.
 
-- [ ] The bes-tools podman build is built with AppArmor support: `podman info` shows AppArmor enabled, and a running container's `/proc/1/attr/current` names `containers-default`. If it isn't, create a card on the third-party-builds side and leave the podman assertion step below unticked.
+- [ ] The bes-tools podman build is built with AppArmor support (the build workflow's `BUILDTAGS` carries `apparmor`, so only the runtime check is left): `podman info` shows AppArmor enabled, and a running container's `/proc/1/attr/current` names `containers-default`. If it isn't, create a card on the third-party-builds side and leave the podman assertion step below unticked.
 - [ ] Under `lockdown=integrity`, the Elastic Agent (Elastic Defend) still runs and reports.
 - [ ] The Tamanu frontend, API, patient portal and mSupply containers start and serve with the hardening drop-in in place. Check what the images write at runtime and which user they run as.
 - [ ] PostgreSQL 18 still uses io_uring (`io_method = io_uring` and no fallback warning in the log) with `io_uring_disabled=1` and the group set.
@@ -81,7 +81,7 @@ Use the Vagrant box (Ubuntu 24.04 cloud image) for everything except the EC2-spe
 - [x] `common/defaults`: add `sandboxes: [postgres, munin]` and `container_hardening_enabled: true`.
 - [x] `tamanu-single-install/tasks/quadlets.yml`: add the `hardening.conf` drop-in in `tamanu-.container.d/`, citing `LNXSRV#containers`.
 - [x] `msupply-install/tasks/quadlet.yml`: add the same drop-in in `msupply.container.d/`.
-- [ ] `podman`: once podman's AppArmor support is confirmed, assert that `podman info` reports AppArmor enabled, citing `LNXSRV#apparmor`.
+- [x] `podman`: assert that `podman info` reports AppArmor enabled, citing `LNXSRV#apparmor`. The bes-tools podman workflow builds with the `apparmor` build tag and `libapparmor-dev`, so the build supports it.
 
 ### Catalogue, checks and tests
 
