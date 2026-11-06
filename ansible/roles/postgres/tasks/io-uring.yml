@@ -6,17 +6,14 @@
     database: group
     key: postgres
 
+# New PostgreSQL backends need the group before they open their rings, so the
+# value is applied now as well as written.
 # spec: LNXSRV#kernel-parameters
 - name: Let the postgres group use io_uring
   become: true
-  ansible.builtin.copy:
-    dest: /etc/sysctl.d/99-postgres-io-uring.conf
-    mode: "0644"
-    content: |
-      # Managed by ansible (postgres/io-uring.yml).
-      kernel.io_uring_group = {{ ansible_facts.getent_group.postgres[1] }}
-  notify: Reload sysctl
-
-# New PostgreSQL backends need the group before they open their rings.
-- name: Apply the io_uring group now
-  ansible.builtin.meta: flush_handlers
+  ansible.posix.sysctl:
+    name: kernel.io_uring_group
+    value: "{{ ansible_facts.getent_group.postgres[1] }}"
+    sysctl_file: /etc/sysctl.d/99-postgres-io-uring.conf
+    sysctl_set: true
+    reload: true
