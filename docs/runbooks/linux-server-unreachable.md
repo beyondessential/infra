@@ -24,12 +24,14 @@ Which server; EC2 instance or external; new or long-running; whether your own ta
 3. Canopy: the server's Tailscale status and last-seen time.
 4. A new instance: the join key is single-use and valid for 6 hours, so an instance that failed to join within that window never will without a new key ([provision a server](../sops/linux-provision-server.md)).
 5. Login user: the playbooks connect as the inventory's `ansible_user`; a banner on `ubuntu` names the right one ([LNXSRV](../spec/linux/server.md#access)).
+6. Session Manager: whether the instance is listed as managed in AWS Systems Manager with a ping status of Online ([recovery access](../spec/linux/aws.md#recovery-access)). A developer reads this in the AWS console or with `aws ssm describe-instance-information`.
 
 ## 4. Interpret
 
 | Evidence | Diagnosis | Action |
 |---|---|---|
-| Public hostname answers, tailnet does not | `tailscaled` is down or the node is expired or removed. | A developer reaches the host another way (below) and checks `systemctl status tailscaled`. |
+| Public hostname answers, tailnet does not, Session Manager lists the instance online | `tailscaled` is down or the node is expired or removed. | A developer opens a Session Manager session (below) and checks `systemctl status tailscaled`. |
+| Public hostname answers, tailnet does not, Session Manager does not list the instance online | The SSM Agent is down, the instance has no instance profile, or the instance cannot reach AWS. | Escalate. A developer decides between fixing the profile and replacing the instance (below). |
 | Public hostname does not answer either | The instance or its network is down, or DNS changed. | AWS instance status, security group, the DNS records ([DNS records](../spec/linux/aws.md#dns-records)). Escalate. |
 | New instance, never appeared | First-boot join failed. | Check the AWS system log of the instance; the key may have expired. Escalate. |
 | Only you cannot reach it | Your tailnet access. | Check your Tailscale login and ACL tags. |
@@ -37,10 +39,11 @@ Which server; EC2 instance or external; new or long-running; whether your own ta
 ## 5. Resolve
 
 Support's steps end at diagnosis.
-Every instance carries one fixed emergency public key for the user `ubuntu`, one key for every deployment.
-The security group has no SSH rule, and its ingress is `ignoreChanges`, so a developer can open TCP 22 by hand for a short time and close it again. **[dev-OTS]** This follows from the stack, not from a written procedure: confirm with a developer first.
+A developer opens a shell on an instance with Session Manager: `aws ssm start-session --target <instance id>` in the instance's AWS account, or the console's Connect button. **[dev-OTS]**
+Session Manager needs no inbound port and no tailnet, so do not open TCP 22 in the security group.
+An instance that Session Manager cannot reach has no other way in, so the developer fixes its instance profile with a Pulumi update, or replaces it ([provision a server](../sops/linux-provision-server.md)), or attaches its root volume to another instance. **[dev-OTS]**
 For an external server, access is by whatever the site provides.
 
 ## 6. Escalate
 
-Give the server, whether the public hostname answers, Canopy's last-seen time, and whether the instance is new.
+Give the server, whether the public hostname answers, Canopy's last-seen time, whether Session Manager lists the instance online, and whether the instance is new.
