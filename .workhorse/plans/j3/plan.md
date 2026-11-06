@@ -23,3 +23,9 @@ Specs: LNXAWS (first boot, recovery access) and LNXSRV (access). Runbook: `docs/
 - [x] `docs/sops/linux-provision-server.md` step 4 mentions that Session Manager is the way in if the join fails.
 - [x] `node scripts/check-spec-links.mjs` passes.
 - [ ] A `pulumi preview` with the policy pack, run by a person with AWS access, shows each instance updated in place (instance profile) with no replacement. Not run from the agent session.
+
+## Out of scope
+
+`TailscaleBox`, `ts-relay` and `ts-relay-verify` lose the emergency key and gain neither the SSM agent nor an instance profile. They are not a deployment's Linux servers, so LNXAWS does not govern them, and all three keep the `ops` EC2 key pair for access. Changing that key pair is out of this card.
+
+Session Manager session logging is #E4.
