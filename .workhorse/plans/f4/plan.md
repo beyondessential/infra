@@ -14,7 +14,8 @@ The spec is the endpoint security agent section of LNXSRV (`docs/spec/linux/serv
   Microsoft advises one channel per setting.
 - Real-time by default, with `/var/lib/postgresql` excluded by path and the PostgreSQL server binaries excluded by process; `defender_passive` drops to passive.
 - `mdatp` joins the weekly upgrade list, since Microsoft expires old agent versions.
-- Kubernetes nodes are out of this card: they need Defender for Containers (Arc-enabled Kubernetes and a sensor DaemonSet), a different product with per-vCore pricing.
+- Kubernetes nodes are out of this card: they need Defender for Containers (Arc-enabled Kubernetes and a sensor DaemonSet), a different product with per-vCore pricing, evaluated on card P4.
+- PostgreSQL is the only exclusion.
 
 ## Build
 
