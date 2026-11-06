@@ -150,12 +150,16 @@
       ansible.builtin.debug:
         msg: "{{ lpe_report }}"
 
+    # Only the CVE verdicts gate the play: an unused module that is loadable
+    # is not a vulnerability.
     - name: Fail when host has unmitigated exposure
+      vars:
+        lpe_exposed: >-
+          {{ lpe_verdicts | selectattr('cve') | selectattr('status', 'in', ['EXPOSED_LOADED', 'EXPOSED_AUTOLOAD']) | list }}
       ansible.builtin.fail:
         msg: >-
           {{ inventory_hostname }} exposed to:
-          {{ lpe_verdicts | selectattr('status', 'in', ['EXPOSED_LOADED', 'EXPOSED_AUTOLOAD'])
-             | map(attribute='name') | join(', ') }}
+          {{ lpe_exposed | map(attribute='name') | join(', ') }}
       when:
         - lpe_fail_on_exposed | default(false) | bool
-        - lpe_verdicts | selectattr('status', 'in', ['EXPOSED_LOADED', 'EXPOSED_AUTOLOAD']) | list | length > 0
+        - lpe_exposed | length > 0

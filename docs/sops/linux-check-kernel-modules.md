@@ -18,6 +18,6 @@ Each host gets a line per vulnerability and per group of unused modules with one
 | `MITIGATED` | Blocked by a modprobe `install` or `blacklist` line. | None. |
 | `NOT_APPLICABLE` | The module is not on disk. | None. |
 
-`-e lpe_fail_on_exposed=true` makes the play fail on a host that is exposed.
+`-e lpe_fail_on_exposed=true` makes the play fail on a host that is exposed to a vulnerability. Exposure in a group of unused modules is reported but does not fail the play.
 The play also checks one module outside the baseline's block list, `algif_aead`, which the distribution's own package handles.
 The baseline's block lives in `/etc/modprobe.d/bes-kernel-modules.conf`. An unused module that is loadable or loaded is not a vulnerability: run the `baseline` role to block it.
