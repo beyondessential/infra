@@ -1,0 +1,19 @@
+---
+# The baseline limits io_uring to root. PostgreSQL does its I/O through
+# io_uring, so its group is let in here, where the group exists.
+- name: Look up the postgres group
+  ansible.builtin.getent:
+    database: group
+    key: postgres
+
+# New PostgreSQL backends need the group before they open their rings, so the
+# value is applied now as well as written.
+# spec: LNXSRV#kernel-parameters
+- name: Let the postgres group use io_uring
+  become: true
+  ansible.posix.sysctl:
+    name: kernel.io_uring_group
+    value: "{{ ansible_facts.getent_group.postgres[1] }}"
+    sysctl_file: /etc/sysctl.d/99-postgres-io-uring.conf
+    sysctl_set: true
+    reload: true

@@ -44,7 +44,12 @@ The Tamanu configuration files under `/etc/tamanu/`, their modes and when each i
 | `/etc/postgresql/current/main/{postgresql.conf,pg_hba.conf,pg_ident.conf}` | PostgreSQL configuration | |
 | `/var/lib/postgresql/<version>/main/postgresql.auto.conf` | Where the tuning lives | |
 | `/etc/msupply/{env,local.yaml}`, `/var/lib/msupply` | mSupply | `msupply` |
-| `/etc/modprobe.d/cve-2026-linux-lpe.conf` | Blocked kernel modules | |
+| `/etc/sysctl.d/99-bes-hardening.conf` | Kernel hardening parameters, with per-interface globs | |
+| `/etc/sysctl.d/99-postgres-io-uring.conf` | The group allowed to use io_uring, written by the `postgres` role | |
+| `/etc/modprobe.d/bes-kernel-modules.conf` | Blocked kernel modules | |
+| `/etc/default/grub.d/99-bes-hardening.cfg` | Hardening boot parameters on GRUB hosts. Raspberry Pi hosts carry them in `/boot/firmware/cmdline.txt` | |
+| `/etc/systemd/system/{postgresql@,munin-node}.service.d/sandbox.conf` | Service sandboxes, absent where the service is not in `sandboxes` | |
+| `/etc/containers/systemd/{tamanu-,msupply}.container.d/hardening.conf` | Container capability and privilege restrictions, absent where `container_hardening_enabled` is false | |
 | `/etc/apt/sources.list.d/`, `/etc/apt/preferences.d/99-*` | Repositories and pins | |
 | `/root/.disk-conversion-metadata-v2.json` | Progress of the disk conversion | |
 | `/.swap/swap.img` | Swap file on a btrfs root | |

@@ -29,6 +29,7 @@ Which server, whether it is a production server by name, and when the run happen
 | `pending_restart` true for `shared_buffers`, `max_connections`, `wal_buffers`, `huge_pages`, `max_worker_processes`, `io_method` or `autovacuum_max_workers` | A tuning change waits for a restart. | [Restart PostgreSQL](../sops/linux-restart-postgres.md) in a planned window. |
 | `listen_addresses` lacks the Tailscale addresses | The server joined the tailnet after PostgreSQL was configured, or the change is pending. | The same restart. Until then remote tailnet clients cannot connect. |
 | No pending rows, but a value differs from the rules | Tuning is off for the host (`postgresql_tune_enabled`), or the host's memory or CPUs changed since the last run. | Re-run `tamanu-install.yml --tags postgres --limit <host>` ([run the playbooks](../sops/linux-run-playbooks.md)). **[dev-OTS]** |
+| The run said `the PostgreSQL sandbox changed` | The sandbox drop-in applies when PostgreSQL next starts. | The same restart. |
 | A non-production server shows a pending restart | The run restarted it. | Run again, or restart ([SOP](../sops/linux-restart-postgres.md)). |
 
 ## 5. Resolve

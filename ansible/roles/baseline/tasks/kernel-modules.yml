@@ -1,0 +1,45 @@
+---
+# spec: LNXSRV#kernel-modules
+- name: Block kernel modules
+  become: true
+  ansible.builtin.template:
+    src: bes-kernel-modules.conf.j2
+    dest: /etc/modprobe.d/bes-kernel-modules.conf
+    mode: "0644"
+  notify: Rebuild initramfs
+
+# Superseded by bes-kernel-modules.conf, which carries the same modules.
+- name: Remove the old kernel module block
+  become: true
+  ansible.builtin.file:
+    path: /etc/modprobe.d/cve-2026-linux-lpe.conf
+    state: absent
+  notify: Rebuild initramfs
+
+# A module that something else holds can't be unloaded. The block already stops
+# it loading again, so it's reported and left for the next reboot.
+- name: Unload blocked kernel modules if currently loaded
+  become: true
+  community.general.modprobe:
+    name: "{{ item.name }}"
+    state: absent
+  loop: "{{ baseline_kernel_modules }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: baseline_module_unload
+  failed_when:
+    - baseline_module_unload.failed | default(false)
+    - "'is in use' not in (baseline_module_unload.stderr | default(''))"
+
+- name: Warn about blocked kernel modules that are still loaded
+  vars:
+    # failed_when clears `failed` on these items, so they're found by stderr.
+    baseline_modules_in_use: >-
+      {{ baseline_module_unload.results | selectattr('stderr', 'defined')
+         | selectattr('stderr', 'search', 'is in use') | map(attribute='item')
+         | map(attribute='name') | list }}
+  when: baseline_modules_in_use | length > 0
+  ansible.builtin.debug:
+    msg: >-
+      These blocked modules are in use and stay loaded until the next reboot:
+      {{ baseline_modules_in_use | join(', ') }}

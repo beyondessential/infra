@@ -1,0 +1,9 @@
+---
+# spec: LNXSRV#kernel-parameters
+- name: Set kernel hardening parameters
+  become: true
+  ansible.builtin.copy:
+    src: 99-bes-hardening.conf
+    dest: /etc/sysctl.d/99-bes-hardening.conf
+    mode: "0644"
+  notify: Reload sysctl

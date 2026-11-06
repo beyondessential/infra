@@ -18,3 +18,8 @@ baseline_dns_servers:
   - 1.0.0.1
   - 2606:4700:4700::1111
   - 2606:4700:4700::1001
+
+# Whether servers boot with `lockdown=integrity`. Takes effect at the next
+# reboot; turning it off removes the parameter from the boot configuration but
+# a running kernel keeps its lockdown until then.
+kernel_lockdown_enabled: true

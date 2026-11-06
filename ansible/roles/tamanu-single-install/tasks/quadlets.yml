@@ -77,6 +77,40 @@
       Secret=tamanu-config-key,mode=0400
   notify: Reload systemd
 
+# spec: LNXSRV#containers
+- name: Harden Tamanu containers
+  when: container_hardening_enabled | bool
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/tamanu-.container.d/hardening.conf
+    mode: "0644"
+    content: |
+      [Container]
+      DropCapability=all
+      AddCapability=NET_BIND_SERVICE
+      NoNewPrivileges=true
+  register: tamanu_hardening_applied
+  notify: Reload systemd
+
+- name: Remove the hardening of Tamanu containers
+  when: not (container_hardening_enabled | bool)
+  become: true
+  ansible.builtin.file:
+    path: /etc/containers/systemd/tamanu-.container.d/hardening.conf
+    state: absent
+  register: tamanu_hardening_removed
+  notify: Reload systemd
+
+# The drop-in only reaches a container when it next starts, and the containers
+# are long-running, so say so rather than leave a successful run to imply it.
+- name: Warn that Tamanu containers keep their old capabilities until restarted
+  when: tamanu_hardening_applied is changed or tamanu_hardening_removed is changed
+  ansible.builtin.debug:
+    msg: >-
+      The container hardening changed, but running Tamanu containers keep their
+      previous capabilities until they restart. Roll them with
+      `bestool tamanu restart`.
+
 - name: Enable IPv6 for quadlets
   when: tamanu_ipv6 | bool
   become: true

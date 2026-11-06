@@ -1,0 +1,46 @@
+---
+- name: Create the munin-node drop-in directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/munin-node.service.d
+    state: directory
+    mode: "0755"
+
+# spec: LNXSRV#service-sandboxes
+# munin-node runs plugins under their own users and reads files that only root
+# can, so it keeps CAP_SETUID, CAP_SETGID and CAP_DAC_READ_SEARCH.
+- name: Sandbox munin-node
+  when: "'munin' in sandboxes"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/munin-node.service.d/sandbox.conf
+    mode: "0644"
+    content: |
+      [Service]
+      NoNewPrivileges=true
+      CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_READ_SEARCH
+      ProtectSystem=strict
+      ReadWritePaths=/var/lib/munin-node /var/log/munin /run/munin
+      ProtectHome=true
+      PrivateTmp=true
+      ProtectKernelTunables=true
+      ProtectKernelModules=true
+      ProtectKernelLogs=true
+      ProtectControlGroups=true
+      RestrictNamespaces=true
+      RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+      SystemCallArchitectures=native
+      RestrictRealtime=true
+  notify:
+    - Reload systemd
+    - Restart munin-node
+
+- name: Remove the munin-node sandbox
+  when: "'munin' not in sandboxes"
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/munin-node.service.d/sandbox.conf
+    state: absent
+  notify:
+    - Reload systemd
+    - Restart munin-node

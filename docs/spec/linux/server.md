@@ -189,15 +189,152 @@ A Linux server SHOULD use the bfq I/O scheduler on every disk.
 
 ## Kernel hardening
 
-A Linux server SHOULD prevent the kernel modules in the following table from loading, and SHOULD unload any that are loaded.
+### Kernel parameters
 
-| module |
-|---|
-| `esp4` |
-| `esp6` |
-| `rxrpc` |
-| `rds` |
-| `rds_tcp` |
+A Linux server MUST set the [kernel parameters](https://docs.kernel.org/admin-guide/sysctl/index.html) in the following table to the value given for each, whatever the value that the distribution sets.
+
+| parameter | value |
+|---|---|
+| `kernel.kptr_restrict` | `2` |
+| `kernel.dmesg_restrict` | `1` |
+| `kernel.yama.ptrace_scope` | `2` |
+| `kernel.unprivileged_bpf_disabled` | `1` |
+| `net.core.bpf_jit_harden` | `2` |
+| `kernel.kexec_load_disabled` | `1` |
+| `kernel.perf_event_paranoid` | `3` or higher |
+| `kernel.sysrq` | `176` |
+| `kernel.apparmor_restrict_unprivileged_userns` | `1` |
+| `kernel.io_uring_disabled` | `1` |
+| `kernel.io_uring_group` | the group ID of `postgres`, where PostgreSQL is installed |
+| `dev.tty.ldisc_autoload` | `0` |
+| `vm.unprivileged_userfaultfd` | `0` |
+| `fs.protected_fifos` | `2` |
+| `fs.protected_regular` | `2` |
+| `fs.protected_symlinks` | `1` |
+| `fs.protected_hardlinks` | `1` |
+| `fs.suid_dumpable` | `0` |
+| `net.ipv4.conf.all.accept_redirects` and `net.ipv4.conf.default.accept_redirects` | `0` |
+| `net.ipv6.conf.all.accept_redirects` and `net.ipv6.conf.default.accept_redirects` | `0` |
+| `net.ipv4.conf.all.secure_redirects` and `net.ipv4.conf.default.secure_redirects` | `0` |
+| `net.ipv4.conf.all.send_redirects` and `net.ipv4.conf.default.send_redirects` | `0` |
+| `net.ipv4.conf.all.accept_source_route` and `net.ipv4.conf.default.accept_source_route` | `0` |
+| `net.ipv6.conf.all.accept_source_route` and `net.ipv6.conf.default.accept_source_route` | `0` |
+| `net.ipv4.conf.all.rp_filter` and `net.ipv4.conf.default.rp_filter` | `2` |
+| `net.ipv4.tcp_syncookies` | `1` |
+| `net.ipv4.icmp_echo_ignore_broadcasts` | `1` |
+| `net.ipv4.icmp_ignore_bogus_error_responses` | `1` |
+
+The kernel parameters MUST take effect when they are set, and MUST persist across reboots.
+
+> [!NOTE]
+> Reverse path filtering is loose because strict filtering drops the asymmetric traffic of Tailscale.
+> Use of io_uring is limited to the group of PostgreSQL because PostgreSQL performs its I/O through io_uring, as [LNXDB](database.md) configures it.
+
+### Kernel modules
+
+A Linux server MUST prevent the kernel modules in the following table from loading, and MUST unload any that are loaded.
+
+| module | group |
+|---|---|
+| `esp4` | known vulnerable |
+| `esp6` | known vulnerable |
+| `rxrpc` | known vulnerable |
+| `rds` | known vulnerable |
+| `rds_tcp` | known vulnerable |
+| `dccp` | unused protocol |
+| `sctp` | unused protocol |
+| `tipc` | unused protocol |
+| `n_hdlc` | unused protocol |
+| `ax25` | unused protocol |
+| `netrom` | unused protocol |
+| `rose` | unused protocol |
+| `x25` | unused protocol |
+| `appletalk` | unused protocol |
+| `can` | unused protocol |
+| `atm` | unused protocol |
+| `cramfs` | unused filesystem |
+| `freevxfs` | unused filesystem |
+| `jffs2` | unused filesystem |
+| `hfs` | unused filesystem |
+| `hfsplus` | unused filesystem |
+| `udf` | unused filesystem |
+| `firewire-core` | unused hardware |
+| `vivid` | unused hardware |
+
+A module that is prevented from loading MUST also be prevented from loading from the initial ramdisk.
+
+> [!NOTE]
+> squashfs stays loadable because the SSM Agent is installed as a snap, which mounts squashfs images.
+
+### Boot parameters
+
+A Linux server MUST boot with the [kernel command-line parameters](https://docs.kernel.org/admin-guide/kernel-parameters.html) in the following table.
+
+| parameter | condition |
+|---|---|
+| `slab_nomerge` | always |
+| `page_alloc.shuffle=1` | always |
+| `randomize_kstack_offset=on` | always |
+| `init_on_alloc=1` | always |
+| `vsyscall=none` | always |
+| `debugfs=off` | always |
+| `lockdown=integrity` | `kernel_lockdown_enabled` is true |
+
+Where `kernel_lockdown_enabled` is false, the kernel command line of a Linux server MUST NOT carry a `lockdown` parameter that the playbooks added.
+
+The playbooks MUST write the parameters to the boot configuration of the server, keeping every other parameter that the boot configuration carries.
+
+The playbooks MUST NOT reboot a server to apply the parameters, which take effect at the server's next boot.
+
+## Confinement
+
+### AppArmor
+
+A Linux server MUST have [AppArmor](https://apparmor.net/) enabled, and MUST load at boot the profiles that its installed packages ship, each in the mode that its package ships it in.
+
+Every container that the playbooks run MUST be confined by the default AppArmor profile of the container engine.
+
+### Service sandboxes
+
+The services in the following table MUST run under the restrictions that follow it, where the inventory variable `sandboxes` lists the name given for each.
+
+| service | name | capabilities | writable paths |
+|---|---|---|---|
+| PostgreSQL | `postgres` | none | `/var/lib/postgresql`, `/var/run/postgresql`, `/var/log/postgresql` |
+| Munin node | `munin` | changing user and group, and reading any file | `/var/lib/munin-node`, `/var/log/munin`, `/run/munin` |
+
+A sandboxed service MUST hold only the [capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html) given for it in the table.
+
+A sandboxed service MUST NOT gain privileges by executing a program.
+
+A sandboxed service MUST see the filesystem read-only, except for the writable paths given for it in the table.
+
+A sandboxed service MUST NOT see the contents of home directories.
+
+A sandboxed service MUST have a temporary directory of its own.
+
+A sandboxed service MUST NOT change kernel parameters, load kernel modules, read the kernel log or change the control group hierarchy.
+
+A sandboxed service MUST NOT create namespaces.
+
+A sandboxed service MUST open only Unix, IPv4, IPv6 and netlink sockets.
+
+A sandboxed service MUST make only the system calls of the server's native architecture.
+
+A sandboxed service MUST NOT use realtime scheduling.
+
+PostgreSQL MUST see only the pseudo devices, such as `/dev/null` and `/dev/urandom`, and no hardware device.
+
+Where `sandboxes` does not list the name of a service, the service MUST run without the restrictions of this section.
+
+> [!NOTE]
+> PostgreSQL generates code at run time for its just-in-time compiler, so its sandbox leaves memory that is both writable and executable available to it.
+
+### Containers
+
+Where `container_hardening_enabled` is true, every container that the playbooks run MUST hold no [capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html) other than binding to ports below 1024.
+
+Where `container_hardening_enabled` is true, the processes of every container that the playbooks run MUST NOT gain privileges by executing a program.
 
 ## Host firewall
 
@@ -260,3 +397,6 @@ The variables in the following table configure the host arrangement of a Linux s
 | `elastic_agent_enrollment_token` | none | The enrolment token of the endpoint security agent, a secret variable. |
 | `elastic_agent_fleet_url` | the production Fleet | The URL of the Fleet that the endpoint security agent enrols in. |
 | `baseline_dns_servers` | Cloudflare's resolvers over IPv4 and IPv6 | The DNS servers queried alongside the network's resolver, none when empty. |
+| `kernel_lockdown_enabled` | `true` | Whether the kernel boots in lockdown, as [Boot parameters](#boot-parameters) gives. |
+| `sandboxes` | `[postgres, munin]` | The services that run in their [service sandbox](#service-sandboxes), by name. |
+| `container_hardening_enabled` | `true` | Whether the [containers](#containers) of the server run without capabilities and privilege gain. |

@@ -23,8 +23,18 @@
     cmd: chronyc reload sources
   changed_when: true
 
+# Tagged `always` like the handlers of `common`, so a `--tags` run still applies
+# a change it made.
 - name: Rebuild initramfs
   become: true
   ansible.builtin.command:
     cmd: update-initramfs -u -k all
   changed_when: true
+  tags: [always]
+
+- name: Update grub
+  become: true
+  ansible.builtin.command:
+    cmd: update-grub
+  changed_when: true
+  tags: [always]
