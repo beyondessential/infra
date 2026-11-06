@@ -296,12 +296,12 @@ Every container that the playbooks run MUST be confined by the default AppArmor 
 
 ### Service sandboxes
 
-The services in the following table MUST run under the restrictions that follow it, where the variable given for each is true.
+The services in the following table MUST run under the restrictions that follow it, where the inventory variable `sandboxes` lists the name given for each.
 
-| service | variable | capabilities | writable paths |
+| service | name | capabilities | writable paths |
 |---|---|---|---|
-| PostgreSQL | `postgres_sandbox_enabled` | none | `/var/lib/postgresql`, `/var/run/postgresql`, `/var/log/postgresql` |
-| Munin node | `munin_sandbox_enabled` | changing user and group, and reading any file | `/var/lib/munin-node`, `/var/log/munin`, `/run/munin` |
+| PostgreSQL | `postgres` | none | `/var/lib/postgresql`, `/var/run/postgresql`, `/var/log/postgresql` |
+| Munin node | `munin` | changing user and group, and reading any file | `/var/lib/munin-node`, `/var/log/munin`, `/run/munin` |
 
 A sandboxed service MUST hold only the [capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html) given for it in the table.
 
@@ -325,7 +325,7 @@ A sandboxed service MUST NOT use realtime scheduling.
 
 PostgreSQL MUST see only the pseudo devices, such as `/dev/null` and `/dev/urandom`, and no hardware device.
 
-Where the variable of a service is false, the service MUST run without the restrictions of this section.
+Where `sandboxes` does not list the name of a service, the service MUST run without the restrictions of this section.
 
 > [!NOTE]
 > PostgreSQL generates code at run time for its just-in-time compiler, so its sandbox leaves memory that is both writable and executable available to it.
@@ -398,6 +398,5 @@ The variables in the following table configure the host arrangement of a Linux s
 | `elastic_agent_fleet_url` | the production Fleet | The URL of the Fleet that the endpoint security agent enrols in. |
 | `baseline_dns_servers` | Cloudflare's resolvers over IPv4 and IPv6 | The DNS servers queried alongside the network's resolver, none when empty. |
 | `kernel_lockdown_enabled` | `true` | Whether the kernel boots in lockdown, as [Boot parameters](#boot-parameters) gives. |
-| `postgres_sandbox_enabled` | `true` | Whether PostgreSQL runs in its [service sandbox](#service-sandboxes). |
-| `munin_sandbox_enabled` | `true` | Whether the Munin node runs in its [service sandbox](#service-sandboxes). |
+| `sandboxes` | `[postgres, munin]` | The services that run in their [service sandbox](#service-sandboxes), by name. |
 | `container_hardening_enabled` | `true` | Whether the [containers](#containers) of the server run without capabilities and privilege gain. |

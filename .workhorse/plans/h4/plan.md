@@ -4,7 +4,7 @@
 
 - Curated sysctl, module and boot-parameter set, not a benchmark wholesale.
   Every value is set explicitly, even where Ubuntu already sets it.
-- A switch only for the risky items (lockdown, PostgreSQL sandbox, Munin sandbox, container hardening), all default on.
+- A switch only for the risky items, all default on: `kernel_lockdown_enabled`, `container_hardening_enabled`, and the `sandboxes` list (`[postgres, munin]`).
   Everything else is always on.
 - Caddy and the bestool units already run with tuned sandboxing in their own units, so they're out of scope.
   Kopia no longer runs as its own unit (bestool manages backups).
@@ -28,8 +28,8 @@
 - [ ] `baseline`: extend the modprobe blocklist (rebuild initramfs and unload modules). Keep the known-vulnerable modules in their existing file or merge them, and retarget the `spec:` citations to `#kernel-modules`.
 - [ ] `baseline`: boot parameters through a GRUB drop-in (`/etc/default/grub.d/`) followed by `update-grub`, and through `cmdline.txt` on Pi hosts. Keep the existing parameters. `lockdown` depends on `kernel_lockdown_enabled`, and is removed when that is false.
 - [ ] `baseline`: AppArmor installed, enabled and its service enabled.
-- [ ] `postgres`: sandbox drop-in in `postgresql@.service.d/`, removed when `postgres_sandbox_enabled` is false.
-- [ ] `munin`: sandbox drop-in for munin-node, removed when `munin_sandbox_enabled` is false.
+- [ ] `postgres`: sandbox drop-in in `postgresql@.service.d/`, removed when `sandboxes` doesn't list `postgres`.
+- [ ] `munin`: sandbox drop-in for munin-node, removed when `sandboxes` doesn't list `munin`.
 - [ ] Tamanu and mSupply quadlets: `DropCapability=all`, `AddCapability=NET_BIND_SERVICE` and `NoNewPrivileges=true`, depending on `container_hardening_enabled`.
-- [ ] `variables.schema.json` and the catalogue entries for the four new variables. Run `uv run python catalogue.py tags` if any tags change.
+- [ ] `variables.schema.json` and the catalogue entries for the three new variables. Run `uv run python catalogue.py tags` if any tags change.
 - [ ] `check-linux-lpe-2026.yml` and the kernel modules SOP: the play checks every module in the table, so update the SOP verdict table, since only some modules are known vulnerable.
