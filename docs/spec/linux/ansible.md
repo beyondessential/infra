@@ -109,7 +109,7 @@ Each playbook in the following table MUST achieve the result that the table give
 | `tamanu-upgrade.yml` | every host, then `central`, then `facility` | The [upgrade](#upgrades) of the Tamanu version. |
 | `tamanu-frontend-upgrade.yml` | `central`, `facility` | The [frontend upgrade](#frontend-upgrades). |
 | `postgres-upgrade-check.yml` | every host | For each host, the value that [LNXDB](database.md#major-version-upgrades) names for the read-only check, and no change to the host. |
-| `check-linux-lpe-2026.yml` | every host | For each host, whether each kernel module of [LNXSRV](server.md#kernel-hardening) is loaded, loadable or blocked, and no change to the host. |
+| `check-linux-lpe-2026.yml` | every host | For each host, whether each kernel module of [LNXSRV](server.md#kernel-modules) is loaded, loadable or blocked, and no change to the host. |
 | `convert-three-disk-to-btrfs.yml` | every host | A host whose root, `/var/log` and PostgreSQL data are on separate partitions converted to the single layout of [LNXSRV](server.md#storage-layout). |
 
 A run selects parts of a playbook with the tags in the following table.

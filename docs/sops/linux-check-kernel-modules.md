@@ -1,7 +1,7 @@
 # SOP: Check exposure to the blocked kernel modules
 
 Read-only report of whether the kernel modules that the baseline blocks are loaded, loadable, or blocked on each host. **[diagnose]**
-The blocked modules are in [LNXSRV](../spec/linux/server.md#kernel-hardening).
+The blocked modules are in [LNXSRV](../spec/linux/server.md#kernel-modules).
 
 ```sh
 cd ansible
