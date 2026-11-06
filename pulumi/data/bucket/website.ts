@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { jsonStringify } from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 import { ValidCertificate } from '../../common/ValidCertificate.ts';
-import { DOMAIN, ZONE_ID, LOGS_BUCKET } from './config.ts';
+import { DOMAIN, ZONE_ID, LOGS_BUCKET, WEB_ACL_ID } from './config.ts';
 import { bucket, bucketPolicy } from './bucket.ts';
 
 const errorDocument = new aws.s3.BucketObjectv2(
@@ -80,6 +80,7 @@ const distribution = new aws.cloudfront.Distribution(
       ],
     },
     priceClass: 'PriceClass_All',
+    webAclId: WEB_ACL_ID,
     restrictions: {
       geoRestriction: {
         restrictionType: 'none',
@@ -92,7 +93,7 @@ const distribution = new aws.cloudfront.Distribution(
       minimumProtocolVersion: 'TLSv1.2_2021',
     },
   },
-  { deleteBeforeReplace: true, ignoreChanges: ['origins', 'webAclId'] },
+  { deleteBeforeReplace: true, ignoreChanges: ['origins'] },
 );
 
 bucketPolicy.push(
