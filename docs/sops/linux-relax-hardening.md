@@ -10,7 +10,7 @@ Turn off only the switch that the breakage points to, and put it back once the c
 | Elastic Agent or another tool fails under kernel lockdown | `kernel_lockdown_enabled: false` | `--tags boot-parameters` | At the next reboot. The running kernel stays locked down until then. |
 | PostgreSQL fails to start or cannot write a path | `sandboxes` without `postgres` | `--tags postgres` | When PostgreSQL next starts. A production server is not restarted by the run ([restart pending](../runbooks/linux-postgres-restart-pending.md)). |
 | A Munin plugin reports nothing | `sandboxes` without `munin` | `--tags munin` | The run restarts munin-node. |
-| A Tamanu or mSupply container fails to start or serve | `container_hardening_enabled: false` | `--tags tamanu` for Tamanu, `--tags msupply` for mSupply | When the container next restarts. |
+| A Tamanu or mSupply container fails to start or serve | `container_hardening_enabled: false` | `--tags tamanu` for Tamanu, `--tags msupply` for mSupply | When the container next restarts: `bestool tamanu restart` for Tamanu, `systemctl restart msupply` for mSupply. The run prints a warning until then. |
 
 The run on a limited host is `tamanu-install.yml --tags <tag> --limit <host>`.
 To find which restriction broke a service, read its unit's failure in `journalctl -u <unit>`, and `dmesg` for `apparmor="DENIED"` lines. **[diagnose]**

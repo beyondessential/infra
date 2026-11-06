@@ -26,6 +26,7 @@
       DropCapability=all
       AddCapability=NET_BIND_SERVICE
       NoNewPrivileges=true
+  register: msupply_hardening_applied
   notify: Reload systemd
 
 - name: Remove the hardening of the mSupply container
@@ -34,4 +35,15 @@
   ansible.builtin.file:
     path: /etc/containers/systemd/msupply.container.d/hardening.conf
     state: absent
+  register: msupply_hardening_removed
   notify: Reload systemd
+
+# The drop-in only reaches the container when it next starts, and it is
+# long-running, so say so rather than leave a successful run to imply it.
+- name: Warn that the mSupply container keeps its old capabilities until restarted
+  when: msupply_hardening_applied is changed or msupply_hardening_removed is changed
+  ansible.builtin.debug:
+    msg: >-
+      The container hardening changed, but the running mSupply container keeps
+      its previous capabilities until it restarts. Restart it with
+      `systemctl restart msupply`.
