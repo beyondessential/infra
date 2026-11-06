@@ -29,3 +29,15 @@
       ansible.builtin.file:
         path: /etc/cron.weekly/apt-upgrade-mdatp
         state: absent
+
+    # The repository is there for Defender, so it goes when Defender does.
+    # spec: LNXSRV#package-sources-and-updates
+    - name: Remove the Microsoft package source
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/microsoft-prod.list
+        - /etc/apt/preferences.d/99-microsoft
+        - /etc/apt/keyrings/microsoft.asc
