@@ -21,7 +21,10 @@
         content: |
           deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.asc] https://packages.microsoft.com/ubuntu/{{ ansible_facts['distribution_version'] }}/prod {{ ansible_facts['distribution_release'] }} main
 
-    # Only mdatp: the repository also carries packages that Ubuntu ships.
+    # Only mdatp is taken from this repository, which also carries packages Ubuntu
+    # ships: the rest are held below every other source, so no Microsoft build can
+    # replace an Ubuntu one by carrying a higher version. The stanza naming mdatp
+    # still wins for mdatp, a specific stanza taking precedence over a general one.
     - name: Prioritise Microsoft repo for Defender
       become: true
       ansible.builtin.copy:
@@ -31,6 +34,10 @@
           Package: mdatp
           Pin: origin packages.microsoft.com
           Pin-Priority: 900
+
+          Package: *
+          Pin: origin packages.microsoft.com
+          Pin-Priority: -1
 
     - name: Install Defender
       become: true
