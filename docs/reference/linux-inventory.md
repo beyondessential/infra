@@ -58,7 +58,7 @@ An inventory listing (`ansible-inventory`) over a handed lease claims no playboo
 | Groups | One per product on the machine (`tamanu`, `senaite`, `canopy`) and one per role (`central`, `facility`, `standalone`). A machine carrying `tamanu-facility` is in `tamanu` and `facility`. A machine with nothing on it is grouped by the type Canopy serves as assigned to it (in the run dialog), as an application of that type would be. |
 | Variables | The group's variables at `all` level, each machine's tags at host level. Names that are not valid Ansible variable names (such as dotted billing tags) are skipped. |
 | Reserved | `canopy_intent` and `tamanu_clone` are set by the plugin: `canopy_intent` is the intent of the lease, and `tamanu_clone` is true at rank `clone`. Any `ansible_*` variable other than `ansible_host`, `ansible_user`, `ansible_port`, `ansible_python_interpreter` and `ansible_timeout` is dropped with a warning. |
-| Secret variables | `salt` and `elastic_agent_enrollment_token` are served by Canopy as secrets. A name is a secret or a tag, never both. |
+| Secret variables | `salt`, `elastic_agent_enrollment_token` and `defender_onboarding` are served by Canopy as secrets. A name is a secret or a tag, never both. |
 
 [Variables](linux-variables.md) lists what the plays read.
 

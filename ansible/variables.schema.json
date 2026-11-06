@@ -62,7 +62,9 @@
 					"btrfs",
 					"caddy",
 					"chrony",
+					"defender",
 					"elastic",
+					"endpoint-security",
 					"io-scheduler",
 					"iti",
 					"journald",
@@ -326,13 +328,36 @@
 				"spec": "LNXSRV#inventory-variables"
 			}
 		},
+		"defender_group_tag": {
+			"description": "The GROUP device tag of Defender.",
+			"type": "string",
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
+			}
+		},
+		"defender_onboarding": {
+			"description": "The onboarding file of Defender, as the Defender portal issues it.",
+			"type": "string",
+			"x-canopy": {
+				"secret": true,
+				"spec": "LNXSRV#inventory-variables"
+			}
+		},
+		"defender_passive": {
+			"description": "Whether Defender runs at the passive enforcement level.",
+			"type": "boolean",
+			"default": false,
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
+			}
+		},
 		"edit_version": {
 			"description": "Version of the edit tool.",
 			"type": "string",
 			"default": "1.2.0"
 		},
 		"elastic_agent_enabled": {
-			"description": "Whether the endpoint security agent runs.",
+			"description": "Whether the Elastic Agent is the endpoint security agent, whatever endpoint_security_agent names.",
 			"type": "boolean",
 			"default": false,
 			"x-canopy": {
@@ -340,7 +365,7 @@
 			}
 		},
 		"elastic_agent_enrollment_token": {
-			"description": "The enrolment token of the endpoint security agent.",
+			"description": "The enrolment token of the Elastic Agent.",
 			"type": "string",
 			"x-canopy": {
 				"secret": true,
@@ -348,9 +373,22 @@
 			}
 		},
 		"elastic_agent_fleet_url": {
-			"description": "The URL of the Fleet that the endpoint security agent enrols in. Defaults to the production Fleet.",
+			"description": "The URL of the Fleet that the Elastic Agent enrols in. Defaults to the production Fleet.",
 			"type": "string",
 			"format": "uri",
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
+			}
+		},
+		"endpoint_security_agent": {
+			"description": "The endpoint security agent: none, elastic or defender.",
+			"type": "string",
+			"enum": [
+				"none",
+				"elastic",
+				"defender"
+			],
+			"default": "none",
 			"x-canopy": {
 				"spec": "LNXSRV#inventory-variables"
 			}

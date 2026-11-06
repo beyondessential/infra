@@ -1,0 +1,43 @@
+---
+# spec: LNXSRV#defender
+- name: Remove Defender
+  when: endpoint_security_agent_active != 'defender'
+  block:
+    - name: Stop Defender
+      become: true
+      ansible.builtin.systemd:
+        name: mdatp
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Uninstall Defender
+      become: true
+      ansible.builtin.apt:
+        name: mdatp
+        state: absent
+        purge: true
+
+    - name: Remove Defender configuration, with the onboarding file
+      become: true
+      ansible.builtin.file:
+        path: /etc/opt/microsoft/mdatp
+        state: absent
+
+    - name: Remove Defender auto-upgrade
+      become: true
+      ansible.builtin.file:
+        path: /etc/cron.weekly/apt-upgrade-mdatp
+        state: absent
+
+    # The repository is there for Defender, so it goes when Defender does.
+    # spec: LNXSRV#package-sources-and-updates
+    - name: Remove the Microsoft package source
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/microsoft-prod.list
+        - /etc/apt/preferences.d/99-microsoft
+        - /etc/apt/keyrings/microsoft.asc

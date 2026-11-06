@@ -16,6 +16,9 @@ The provisioning of servers in AWS is specified by [LNXAWS](aws.md), the databas
 | ufw | The Uncomplicated Firewall front end to the kernel packet filter ([UFW](https://help.ubuntu.com/community/UFW)). |
 | Munin | The graphing system whose node daemon collects plugin metrics ([Munin](https://munin-monitoring.org/)). |
 | upki | The client that keeps a local copy of certificate revocation data and checks certificates against it ([upki](https://github.com/rustls/upki)). |
+| Elastic Agent | The agent of Elastic Security, enrolled in and managed from a Fleet ([Elastic Agent](https://www.elastic.co/docs/reference/fleet)). |
+| Defender | Microsoft Defender for Endpoint on Linux, the agent onboarded to a Microsoft Defender tenant ([Defender for Endpoint on Linux](https://learn.microsoft.com/en-us/defender-endpoint/microsoft-defender-endpoint-linux)). |
+| enforcement level | The mode of Defender's antivirus: real-time blocks threats as files are accessed, and passive reports detections without remediating them ([enforcement level](https://learn.microsoft.com/en-us/defender-endpoint/linux-preferences#enforcement-level-for-microsoft-defender-antivirus)). |
 
 ## Platform
 
@@ -93,7 +96,8 @@ A Linux server MUST be configured with the package repositories in the following
 | `https://tools.ops.tamanu.io/apt stable main` | 999 for every package from the origin | [bestool](../overview.md#bestool), `caddy`, `podman`, `crun`, `kopia` and `upki`; the repository that [`image.packages.bes-tools`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image |
 | `https://apt.postgresql.org/pub/repos/apt <release>-pgdg main` | 900 | PostgreSQL |
 | `https://pkgs.tailscale.com/stable/ubuntu <release> main` | 900 | Tailscale; the repository that [`image.packages.tailscale`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image |
-| `https://artifacts.elastic.co/packages/9.x/apt stable main` | 900 | The Elastic Agent, where it is enabled |
+| `https://artifacts.elastic.co/packages/9.x/apt stable main` | 900 | The Elastic Agent, where it is the [endpoint security agent](#endpoint-security-agent) |
+| `https://packages.microsoft.com/ubuntu/<version>/prod <release> main` | 900 | Defender, where it is the endpoint security agent |
 
 The playbooks MUST configure each repository in the table that the server does not already have, whether or not the server is built from an image.
 
@@ -110,6 +114,7 @@ A Linux server SHOULD upgrade the packages in the following table on the schedul
 | `tzdata` | weekly |
 | `ca-certificates` | weekly |
 | `upki` | weekly |
+| `mdatp` | weekly, where Defender is the endpoint security agent |
 | `tailscale` | weekly, as [`image.tailscale.auto-update`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#tailscale) requires of an image |
 
 A Linux server SHOULD restart a service whose executable, or a shared library that it has mapped, a package operation replaced, as [`image.packages.service-restart`](https://github.com/beyondessential/linux-images/blob/main/docs/spec/disk-images.md#packages) requires of an image.
@@ -380,9 +385,50 @@ The Munin plugin of the [bestool daemon](../overview.md#bestool-daemon) is speci
 
 ## Endpoint security agent
 
-A Linux server MAY run the Elastic Agent, enrolled in a Fleet at a configurable URL with an enrolment token that is a secret variable.
+A Linux server MUST run at most one endpoint security agent, chosen by the inventory variable `endpoint_security_agent` from the values in the following table.
 
-A Linux server on which the agent is disabled, or has no enrolment token, MUST have the agent stopped and removed with its data directory `/opt/Elastic`.
+| value | endpoint security agent |
+|---|---|
+| `none` | none |
+| `elastic` | the Elastic Agent |
+| `defender` | Defender |
+
+Where `elastic_agent_enabled` is true, the endpoint security agent of a Linux server MUST be the Elastic Agent, whatever `endpoint_security_agent` names.
+
+A Linux server MUST have every agent of the table that is not its endpoint security agent stopped and removed with its data, before the endpoint security agent is installed.
+
+> [!NOTE]
+> Both agents intercept file access, and a server that runs the two together can hang.
+
+Where the endpoint security agent lacks the secret variable that enrols or onboards it, a Linux server MUST have that agent removed as though no agent were chosen.
+
+### Elastic Agent
+
+The Elastic Agent MUST be enrolled in the Fleet at the URL of `elastic_agent_fleet_url`, with the enrolment token of the secret variable `elastic_agent_enrollment_token`.
+
+The removal of the Elastic Agent MUST include its data directory `/opt/Elastic`.
+
+### Defender
+
+Defender MUST be installed from the production channel of the Microsoft package repository.
+
+Defender MUST be onboarded with the onboarding file of the secret variable `defender_onboarding`, as the Defender portal issues it.
+
+The playbooks MUST write the settings of Defender in the following table to the managed configuration file `/etc/opt/microsoft/mdatp/managed/mdatp_managed.json`.
+
+| setting | value |
+|---|---|
+| enforcement level | passive where `defender_passive` is true, otherwise real-time |
+| path exclusions | `/var/lib/postgresql` and everything under it |
+| process exclusions | the PostgreSQL server processes |
+| device tag `GROUP` | the value of `defender_group_tag`, where it is set |
+
+The playbooks MUST NOT write any other setting of Defender, which the Defender portal manages.
+
+> [!NOTE]
+> Defender applies a setting reliably only where one channel manages it.
+
+The removal of Defender MUST include its configuration directory `/etc/opt/microsoft/mdatp`, which holds the onboarding file.
 
 ## Inventory variables
 
@@ -393,9 +439,13 @@ The variables in the following table configure the host arrangement of a Linux s
 | `ufw_managed` | `false` | Whether the [host firewall](#host-firewall) is managed. |
 | `dangerously_leave_ufw_alone` | `false` | Whether an unmanaged host firewall is left as the server has it. |
 | `munin_enabled` | `true` | Whether the Munin node of [Metrics](#metrics) runs. |
-| `elastic_agent_enabled` | `false` | Whether the [endpoint security agent](#endpoint-security-agent) runs. |
-| `elastic_agent_enrollment_token` | none | The enrolment token of the endpoint security agent, a secret variable. |
-| `elastic_agent_fleet_url` | the production Fleet | The URL of the Fleet that the endpoint security agent enrols in. |
+| `endpoint_security_agent` | `none` | The [endpoint security agent](#endpoint-security-agent): `none`, `elastic` or `defender`. |
+| `elastic_agent_enabled` | `false` | Whether the Elastic Agent is the endpoint security agent, whatever `endpoint_security_agent` names. |
+| `elastic_agent_enrollment_token` | none | The enrolment token of the [Elastic Agent](#elastic-agent), a secret variable. |
+| `elastic_agent_fleet_url` | the production Fleet | The URL of the Fleet that the Elastic Agent enrols in. |
+| `defender_onboarding` | none | The onboarding file of [Defender](#defender), a secret variable. |
+| `defender_passive` | `false` | Whether Defender runs at the passive enforcement level. |
+| `defender_group_tag` | none | The `GROUP` device tag of Defender. |
 | `baseline_dns_servers` | Cloudflare's resolvers over IPv4 and IPv6 | The DNS servers queried alongside the network's resolver, none when empty. |
 | `kernel_lockdown_enabled` | `true` | Whether the kernel boots in lockdown, as [Boot parameters](#boot-parameters) gives. |
 | `sandboxes` | `[postgres, munin]` | The services that run in their [service sandbox](#service-sandboxes), by name. |

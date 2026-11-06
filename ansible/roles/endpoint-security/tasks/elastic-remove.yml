@@ -1,0 +1,46 @@
+---
+# spec: LNXSRV#elastic-agent
+- name: Remove the Elastic agent
+  when: endpoint_security_agent_active != 'elastic'
+  block:
+    - name: Stop Elastic agent
+      become: true
+      ansible.builtin.systemd:
+        name: elastic-agent
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Stop ElasticEndpoint service
+      become: true
+      ansible.builtin.systemd:
+        name: ElasticEndpoint
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Uninstall Elastic agent
+      become: true
+      ansible.builtin.apt:
+        name: elastic-agent
+        state: absent
+        purge: true
+
+    - name: Remove Elastic agent data
+      become: true
+      ansible.builtin.file:
+        path: /opt/Elastic
+        state: absent
+
+    # The repository is there for the agent, so it goes when the agent does.
+    # spec: LNXSRV#package-sources-and-updates
+    - name: Remove the Elastic package source
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/elastic.list
+        - /etc/apt/sources.list.d/artifacts_elastic_co_packages_9_x_apt.list
+        - /etc/apt/preferences.d/99-elastic
+        - /etc/apt/keyrings/elasticsearch.asc

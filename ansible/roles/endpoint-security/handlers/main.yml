@@ -4,3 +4,9 @@
   ansible.builtin.systemd:
     name: elastic-agent
     state: restarted
+
+- name: Restart mdatp
+  become: true
+  ansible.builtin.systemd:
+    name: mdatp
+    state: restarted
