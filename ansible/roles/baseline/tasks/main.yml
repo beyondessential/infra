@@ -35,6 +35,12 @@
 - name: Configure ubuntu user motd
   ansible.builtin.import_tasks: ubuntu-motd.yml
   tags: ubuntu-motd
+- name: Remove the emergency SSH key
+  ansible.builtin.import_tasks: ssh-keys.yml
+  tags: ssh-keys
+- name: Keep the SSM Agent
+  ansible.builtin.import_tasks: ssm-agent.yml
+  tags: ssm-agent
 - name: Configure journald
   ansible.builtin.import_tasks: journald.yml
   tags: journald

@@ -1,0 +1,29 @@
+---
+# The SSM Agent is how a developer gets a shell on an instance when Tailscale
+# is down, so it is kept installed and running on every EC2 instance.
+
+- name: Keep the SSM Agent on EC2 instances
+  when: ansible_facts['system_vendor'] == 'Amazon EC2'
+  block:
+    - name: Check whether the SSM Agent snap is installed
+      ansible.builtin.command: snap list amazon-ssm-agent
+      register: ssm_agent_snap
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # spec: LNXSRV#access
+    - name: Install the SSM Agent
+      become: true
+      when: ssm_agent_snap.rc != 0
+      ansible.builtin.command: snap install amazon-ssm-agent --classic
+      changed_when: true
+
+    # spec: LNXSRV#access
+    - name: Enable and start the SSM Agent
+      become: true
+      when: ssm_agent_snap.rc == 0 or not ansible_check_mode
+      ansible.builtin.systemd_service:
+        name: snap.amazon-ssm-agent.amazon-ssm-agent.service
+        enabled: true
+        state: started

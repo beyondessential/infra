@@ -13,7 +13,6 @@ import {
   hostnameCommands,
   tailscaleInstallCommands,
   tailscaleUpCommands,
-  emergencySshKeyCommands,
 } from '../common/cloudInit.ts';
 
 import { core, relayPort, relayName, nodeName, tailscaleTags, instanceType } from './config.ts';
@@ -80,7 +79,6 @@ const box = new aws.ec2.Instance(
             ...tailscaleUpCommands({ authKey, hostname }),
             ['ufw', 'allow', `${port}/udp`],
             ['tailscale', 'set', `--relay-server-port=${port}`],
-            ...emergencySshKeyCommands(),
           ]),
         ),
     ),

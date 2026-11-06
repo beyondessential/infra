@@ -171,7 +171,7 @@ The DNS record of an mSupply hostname is given by [LNXMSP](msupply.md#provisioni
 
 ## Retired deployments
 
-A retired deployment MUST have no instances, security group, instance backup plan, repository bucket or ACME users.
+A retired deployment MUST have no instances, instance profile, security group, instance backup plan, repository bucket or ACME users.
 
 The repository bucket of a retired deployment MUST be removed by a run after the run that removes its servers, with the protection that [LNXBAK](backups.md#repository-bucket) requires lifted for that run alone.
 

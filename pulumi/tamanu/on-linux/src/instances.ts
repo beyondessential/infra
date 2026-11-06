@@ -10,7 +10,7 @@ import {
   hostnameCommands,
   tailscaleInstallCommands,
   tailscaleUpCommands,
-  emergencySshKeyCommands,
+  ssmAgentInstallCommands,
 } from '../../../common/cloudInit.ts';
 
 import {
@@ -27,6 +27,7 @@ import {
 } from './config.ts';
 import { applyBackup } from './backup/aws.ts';
 import { sg } from './firewall.ts';
+import { instanceProfile } from './ssm.ts';
 import { applyDNS } from './dns.ts';
 import { region } from '../../../common/awsAccount.ts';
 import { alertsTopicArn } from '../../../common/coreRef.ts';
@@ -114,15 +115,17 @@ for (const [i, inst] of instances.entries()) {
       },
       subnetId: $network.publicWorkloadSubnetIds.apply((ids) => ids[i % ids.length]),
       vpcSecurityGroupIds: [sg.id],
+      // spec: LNXAWS#recovery-access
+      iamInstanceProfile: instanceProfile.name,
       // spec: LNXAWS#first-boot
       userData: all([authKey.key, tailscaleTags, inst.tailscaleName, inst.fqdn]).apply(
         ([key, tags, name, fqdn]) =>
           secret(
             cloudInitYaml([
               ...hostnameCommands(fqdn),
+              ...ssmAgentInstallCommands(),
               ...tailscaleInstallCommands(),
               ...tailscaleUpCommands({ authKey: key, hostname: name, advertiseTags: tags }),
-              ...emergencySshKeyCommands(),
             ]),
           ),
       ),

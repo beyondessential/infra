@@ -122,8 +122,8 @@ The `$core.name.split('/')[2]` trick derives the trailing part of a stack name (
 
 ### Compute / instances
 
-- **`cloudInit.ts`** — composable cloud-init command builders: `hostnameCommands`, `tailscaleInstallCommands`, `tailscaleUpCommands`, `emergencySshKeyCommands`, `btrfsSwapFileCommands`, `cloudInitYaml` to wrap them as YAML. Used by `TailscaleBox` and `tamanu-on-linux`.
-- **`TailscaleBox.ts`** — EC2 box that auto-joins Tailscale. Custom Ubuntu ARM64 AMI, IMDSv2, emergency SSH key. Short-lived (15 min) one-use auth key; the node itself is persistent.
+- **`cloudInit.ts`** — composable cloud-init command builders: `hostnameCommands`, `tailscaleInstallCommands`, `tailscaleUpCommands`, `ssmAgentInstallCommands`, `btrfsSwapFileCommands`, `cloudInitYaml` to wrap them as YAML. Used by `TailscaleBox` and `tamanu-on-linux`.
+- **`TailscaleBox.ts`** — EC2 box that auto-joins Tailscale. Custom Ubuntu ARM64 AMI, IMDSv2. Short-lived (15 min) one-use auth key; the node itself is persistent.
 - **`tailscaleKey.ts`** — creates a single-use, pre-authorised Tailscale auth key with configurable tags and expiry.
 - **`instances.json`** + **`refreshInstances.sh`** — curated Vantage dump of current-gen EC2 instance types, filtered to Nitro + enhanced networking + IPv6 + EBS-optimised, with on-demand and spot prices per region. Refreshed manually with the script. Read by `common/k8s/instanceTypeGroups.ts` to pick instance types dynamically.
 
@@ -185,7 +185,7 @@ The `$core.name.split('/')[2]` trick derives the trailing part of a stack name (
 Two files, no code, just values.
 
 - **`external.ts`** — things anyone could look up but that shouldn't be copy-pasted across stacks: AWS service principals (`AWS_STS`, `AWS_EC2`, `AWS_EKS`), GitHub Actions OIDC URL + thumbprints, convenience permission sets (`AWS_ECR_PULL`, `AWS_S3_READ`, `AWS_S3_MULTIPART`, etc.), and `alpineAmi(version, arch, userdata)` for finding official Alpine AMIs.
-- **`internal.ts`** — our specifics: org/root IDs, the custom Ubuntu ARM64 AMI IDs per region (for `tamanu-on-linux`), the tailnet domain (`tail53aef.ts.net`), log bucket names, the emergency SSH public key, the default Postgres version, and the Envoy Gateway class name.
+- **`internal.ts`** — our specifics: org/root IDs, the custom Ubuntu ARM64 AMI IDs per region (for `tamanu-on-linux`), the tailnet domain (`tail53aef.ts.net`), log bucket names, the default Postgres version, and the Envoy Gateway class name.
 
 ---
 
