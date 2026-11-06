@@ -4,8 +4,7 @@ Specs: LNXAWS (first boot, recovery access) and LNXSRV (access). Runbook: `docs/
 
 ## Code
 
-- [ ] Remove `emergencySshKeyCommands` from `pulumi/common/cloudInit.ts` and `EMERGENCY_SSH_KEY` from `pulumi/constants/internal.ts`, and drop their uses in `pulumi/tamanu/on-linux/src/instances.ts`, `pulumi/common/TailscaleBox.ts`, `pulumi/ts-relay/index.ts` and `pulumi/ts-relay-verify/index.ts`. The `ops` key pair on the non-on-linux boxes stays.
-- [ ] Add an SSM agent install and start command to `cloudInit.ts`, before the Tailscale join, and use it in `instances.ts`. Check the install route on the BES Linux image (it does not ship the agent).
+- [ ] Remove `emergencySshKeyCommands` from `pulumi/common/cloudInit.ts` and `EMERGENCY_SSH_KEY` from `pulumi/constants/internal.ts`, and drop their uses in `pulumi/tamanu/on-linux/src/instances.ts`, `pulumi/common/TailscaleBox.ts`, `pulumi/ts-relay/index.ts` and `pulumi/ts-relay-verify/index.ts`.- [ ] Add an SSM agent install and start command to `cloudInit.ts`, before the Tailscale join, and use it in `instances.ts`. Check the install route on the BES Linux image (it does not ship the agent).
 - [ ] In `pulumi/tamanu/on-linux`, add one IAM role per stack with only `AmazonSSMManagedInstanceCore`, an instance profile, and attach it to the instances. Confirm the Pulumi preview shows an in-place update and no replacement. Use `ignoreChanges: ['users', 'roles', 'groups']` if the policy is an `aws-native` managed policy.
 - [ ] Remove the unused `sshKey` config in `pulumi/tamanu/on-linux/src/config.ts` if nothing reads it.
 
