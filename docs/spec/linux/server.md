@@ -205,7 +205,7 @@ A Linux server MUST set the [kernel parameters](https://docs.kernel.org/admin-gu
 | `kernel.sysrq` | `176` |
 | `kernel.apparmor_restrict_unprivileged_userns` | `1` |
 | `kernel.io_uring_disabled` | `1` |
-| `kernel.io_uring_group` | the group ID of `postgres` |
+| `kernel.io_uring_group` | the group ID of `postgres`, where PostgreSQL is installed |
 | `dev.tty.ldisc_autoload` | `0` |
 | `vm.unprivileged_userfaultfd` | `0` |
 | `fs.protected_fifos` | `2` |

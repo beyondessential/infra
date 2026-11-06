@@ -1,5 +1,7 @@
 # H4: kernel hardening and confinement
 
+Builds the Kernel hardening and Confinement sections of LNXSRV in the Ansible roles, along with the variables, catalogue and support docs that go with them.
+
 ## Decisions
 
 - Curated sysctl, module and boot-parameter set, not a benchmark wholesale.
@@ -11,25 +13,79 @@
 - Boot parameters are written by the playbooks and take effect whenever the server next reboots.
   No reboot is forced and no pending-reboot flag is set.
 - SysRq stays at Ubuntu's 176 so on-call keeps the serial-console recovery path.
-- Read-only container root filesystems go on their own card.
+- Read-only container root filesystems are on #N4.
+
+## Tech notes
+
+- **Kernel parameters** go in one file, `/etc/sysctl.d/99-bes-hardening.conf`, so they sort after Ubuntu's `10-*.conf` and the systemd defaults.
+  The per-interface keys (redirects, source routing, `rp_filter`) are written as `net.ipv4.conf.*.<key>` globs, not just as `all` and `default`.
+  `systemd-sysctl` re-runs from udev for every new interface and applies the globs to it, which covers podman and Tailscale interfaces created after boot.
+  The values are applied by restarting `systemd-sysctl`, since the `ansible.posix.sysctl` module can't express globs.
+- **io_uring** is split by role ownership.
+  The baseline sets `kernel.io_uring_disabled=1`.
+  The postgres role sets `kernel.io_uring_group` in its own file, `/etc/sysctl.d/99-postgres-io-uring.conf`, because the `postgres` group only exists once that role has run.
+  Between the two, only root can use io_uring, which is the intended state on a host without PostgreSQL.
+- **Kernel modules** move into one file, `/etc/modprobe.d/bes-kernel-modules.conf`, which carries `blacklist` and `install … /bin/false` for each module.
+  `cve-2026-linux-lpe.conf` is removed in the same task so the two files don't drift.
+  The task file and tag are renamed from `kernel-mitigations` to `kernel-modules`, matching the spec anchor, and the catalogue tags are regenerated.
+- **Boot parameters**:
+  - On GRUB hosts (EC2 and the BES images other than Pi), a drop-in `/etc/default/grub.d/99-bes-hardening.cfg` appends to `GRUB_CMDLINE_LINUX_DEFAULT`. It sorts after `50-cloudimg-settings.cfg`, so cloud-image parameters are kept. A change notifies an `update-grub` handler.
+  - On Pi hosts (`/boot/firmware/cmdline.txt` present, no GRUB), the parameters are merged into the single line of `cmdline.txt` token by token. On those hosts, `lockdown=integrity` is removed as a token when the switch is off.
+  - The merge logic goes in a small filter or task file that both paths share, so it can be unit-tested the way `test_baseline_ssh_keys.py` tests its task.
+- **Service sandboxes** are systemd drop-ins named `sandbox.conf`.
+  PostgreSQL's goes next to the existing `qos.conf` in `postgresql@.service.d/`, and munin-node's in `munin-node.service.d/`.
+  Each is `state: absent` when its name isn't in `sandboxes`, and notifies `Reload systemd` and the service's restart handler.
+  The directives map one to one onto the spec's restrictions: `NoNewPrivileges`, `CapabilityBoundingSet`, `ProtectSystem=strict` with `ReadWritePaths`, `ProtectHome`, `PrivateTmp`, `ProtectKernelTunables`, `ProtectKernelModules`, `ProtectKernelLogs`, `ProtectControlGroups`, `RestrictNamespaces`, `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK`, `SystemCallArchitectures=native` and `RestrictRealtime`.
+  PostgreSQL also gets `PrivateDevices`. Neither gets `MemoryDenyWriteExecute`.
+- **Container hardening** uses quadlet drop-ins named `hardening.conf` that set `DropCapability=all`, `AddCapability=NET_BIND_SERVICE` and `NoNewPrivileges=true`.
+  Tamanu's goes in the existing prefix directory `/etc/containers/systemd/tamanu-.container.d/` and mSupply's in `msupply.container.d/`.
+  Each is absent when `container_hardening_enabled` is false.
+  The drop-in only takes effect on the container's next restart, through the roles' existing restart flow.
+- **Variable defaults:** `kernel_lockdown_enabled` goes in `baseline/defaults`. `sandboxes` and `container_hardening_enabled` go in `common/defaults`, because postgres, munin, tamanu-single-install and msupply-install all depend on `common`.
 
 ## Verify on a test server before rollout
 
-- [ ] The bes-tools podman build is built with AppArmor support, so containers get `containers-default`. If it isn't, file it on the third-party-builds side.
+Use the Vagrant box (Ubuntu 24.04 cloud image) for everything except the EC2-specific items, then one staging instance.
+
+- [ ] The bes-tools podman build is built with AppArmor support: `podman info` shows AppArmor enabled, and a running container's `/proc/1/attr/current` names `containers-default`. If it isn't, create a card on the third-party-builds side and leave the podman assertion step below unticked.
 - [ ] Under `lockdown=integrity`, the Elastic Agent (Elastic Defend) still runs and reports.
-- [ ] The Tamanu frontend, API, patient portal and mSupply containers start with all capabilities dropped except `NET_BIND_SERVICE`, and with no-new-privileges set. Check what the images write at runtime, and which user they run as.
-- [ ] PostgreSQL 18 still uses io_uring with `io_uring_disabled=1` and `io_uring_group` set to postgres.
-- [ ] munin-node plugins still report under the sandbox, particularly the PostgreSQL plugins over the socket and any plugins configured with `user root`.
-- [ ] apport doesn't put `fs.suid_dumpable` back to 2. If it does, disable apport or keep it from overriding the value.
+- [ ] The Tamanu frontend, API, patient portal and mSupply containers start and serve with the hardening drop-in in place. Check what the images write at runtime and which user they run as.
+- [ ] PostgreSQL 18 still uses io_uring (`io_method = io_uring` and no fallback warning in the log) with `io_uring_disabled=1` and the group set.
+- [ ] PostgreSQL starts, accepts socket connections and writes its log under the sandbox, in both the single and the split layout.
+- [ ] munin-node plugins still report under the sandbox, particularly the PostgreSQL plugins over the socket and any plugins configured with `user root`. munin-node may need `CAP_KILL` to time out plugins running as another user. If it does, add "signalling the plugins it runs" to the Munin node's capabilities in LNXSRV.
+- [ ] apport doesn't put `fs.suid_dumpable` back to 2 when it starts. If it does, disable apport's core handling so the value holds.
+- [ ] The globbed per-interface keys hold on `podman0`, `tailscale0` and the primary interface after a reboot (`sysctl -a | rg redirects`).
+- [ ] After a reboot, `/proc/cmdline` carries the boot parameters, `/sys/kernel/security/lockdown` shows `[integrity]`, and the cloud-image parameters are still there.
 
 ## Build steps
 
-- [ ] `baseline`: sysctl file for the kernel-parameters table, applied at once.
-- [ ] `baseline`: extend the modprobe blocklist (rebuild initramfs and unload modules). Keep the known-vulnerable modules in their existing file or merge them, and retarget the `spec:` citations to `#kernel-modules`.
-- [ ] `baseline`: boot parameters through a GRUB drop-in (`/etc/default/grub.d/`) followed by `update-grub`, and through `cmdline.txt` on Pi hosts. Keep the existing parameters. `lockdown` depends on `kernel_lockdown_enabled`, and is removed when that is false.
-- [ ] `baseline`: AppArmor installed, enabled and its service enabled.
-- [ ] `postgres`: sandbox drop-in in `postgresql@.service.d/`, removed when `sandboxes` doesn't list `postgres`.
-- [ ] `munin`: sandbox drop-in for munin-node, removed when `sandboxes` doesn't list `munin`.
-- [ ] Tamanu and mSupply quadlets: `DropCapability=all`, `AddCapability=NET_BIND_SERVICE` and `NoNewPrivileges=true`, depending on `container_hardening_enabled`.
-- [ ] `variables.schema.json` and the catalogue entries for the three new variables. Run `uv run python catalogue.py tags` if any tags change.
-- [ ] `check-linux-lpe-2026.yml` and the kernel modules SOP: the play checks every module in the table, so update the SOP verdict table, since only some modules are known vulnerable.
+### Baseline role
+
+- [ ] Add `kernel-parameters.yml` with the `99-bes-hardening.conf` template and a `Reload sysctl` handler that restarts `systemd-sysctl`. Import it in `main.yml` with the tag `kernel-parameters` and cite `LNXSRV#kernel-parameters`.
+- [ ] Replace `kernel-mitigations.yml` with `kernel-modules.yml`: write `bes-kernel-modules.conf` from a list in role vars, remove `cve-2026-linux-lpe.conf`, notify `Rebuild initramfs`, and unload every listed module. Change the tag to `kernel-modules` and the citation to `LNXSRV#kernel-modules`.
+- [ ] Add `boot-parameters.yml`, with the GRUB drop-in path, the `cmdline.txt` path, a shared merge step and an `Update grub` handler. Add `kernel_lockdown_enabled: true` to `defaults/main.yml`. Tag `boot-parameters`, citing `LNXSRV#boot-parameters`.
+- [ ] Add `apparmor.yml`: install `apparmor`, enable and start `apparmor.service`, and fail with a clear message if `/sys/module/apparmor/parameters/enabled` isn't `Y`. Tag `apparmor`, citing `LNXSRV#apparmor`.
+
+### Service and container roles
+
+- [ ] `postgres`: add the io_uring group sysctl file and apply it, citing `LNXSRV#kernel-parameters`.
+- [ ] `postgres`: add the `sandbox.conf` drop-in, present or absent from `sandboxes`, citing `LNXSRV#service-sandboxes`.
+- [ ] `munin`: add the munin-node `sandbox.conf` drop-in the same way, notifying `Restart munin-node`.
+- [ ] `common/defaults`: add `sandboxes: [postgres, munin]` and `container_hardening_enabled: true`.
+- [ ] `tamanu-single-install/tasks/quadlets.yml`: add the `hardening.conf` drop-in in `tamanu-.container.d/`, citing `LNXSRV#containers`.
+- [ ] `msupply-install/tasks/quadlet.yml`: add the same drop-in in `msupply.container.d/`.
+- [ ] `podman`: once podman's AppArmor support is confirmed, assert that `podman info` reports AppArmor enabled, citing `LNXSRV#apparmor`.
+
+### Catalogue, checks and tests
+
+- [ ] `variables.schema.json`: add `kernel_lockdown_enabled` and `container_hardening_enabled` as booleans defaulting to true, and `sandboxes` as an array of unique values from the enum `postgres`, `munin`, defaulting to both. All cite `LNXSRV#inventory-variables`.
+- [ ] Run `uv run python catalogue.py tags` for the new and renamed baseline tags.
+- [ ] `check-linux-lpe-2026.yml`: check every module in the blocklist. Modules outside the CVE groups are reported with their group instead of a CVE.
+- [ ] Unit test the boot-parameter merge (`ansible/tests/test_baseline_boot_parameters.py`), covering: parameters appended to an existing line, an existing parameter kept, `lockdown` removed when the switch is off, and the merge staying idempotent.
+- [ ] `uv run ansible-lint`, and `--syntax-check` on `base-install.yml`, `tamanu-install.yml` and `tamanu-upgrade.yml`.
+
+### Support docs
+
+- [ ] `docs/sops/linux-check-kernel-modules.md`: the verdict table covers modules that are unused rather than vulnerable, and the line about the block living in `cve-2026-linux-lpe.conf` and being temporary goes.
+- [ ] `docs/reference/linux-paths-and-units.md`: replace the `cve-2026-linux-lpe.conf` row, and add rows for `99-bes-hardening.conf`, `99-postgres-io-uring.conf`, the GRUB drop-in, and the `sandbox.conf` and `hardening.conf` drop-ins.
+- [ ] Add a short entry to the support pack, following `curate-support-docs`, for turning off a switch on a server where the hardening breaks something: which variable, then which tag to re-run, and that `kernel_lockdown_enabled` only takes effect after a reboot.
