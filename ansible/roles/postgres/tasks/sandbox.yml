@@ -1,0 +1,67 @@
+---
+# spec: LNXSRV#service-sandboxes
+# The unit's own ExecStart is pg_ctlcluster run as root, which drops to the
+# postgres user itself. That needs CAP_SETUID and CAP_SETGID, which the sandbox
+# withholds, so the service runs as postgres from the start.
+- name: Sandbox PostgreSQL
+  when: "'postgres' in sandboxes"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/postgresql@.service.d/sandbox.conf
+    mode: "0644"
+    content: |
+      [Service]
+      User=postgres
+      Group=postgres
+      NoNewPrivileges=true
+      CapabilityBoundingSet=
+      ProtectSystem=strict
+      ReadWritePaths=/var/lib/postgresql /var/run/postgresql /var/log/postgresql
+      ProtectHome=true
+      PrivateTmp=true
+      PrivateDevices=true
+      ProtectKernelTunables=true
+      ProtectKernelModules=true
+      ProtectKernelLogs=true
+      ProtectControlGroups=true
+      RestrictNamespaces=true
+      RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+      SystemCallArchitectures=native
+      RestrictRealtime=true
+  register: pg_sandbox_applied
+  notify: Reload systemd
+
+- name: Remove the PostgreSQL sandbox
+  when: "'postgres' not in sandboxes"
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/postgresql@.service.d/sandbox.conf
+    state: absent
+  register: pg_sandbox_removed
+  notify: Reload systemd
+
+# The drop-in only takes effect when PostgreSQL next starts. Like tuning, it
+# restarts PostgreSQL itself except on prod, which is left for a scheduled restart.
+- name: Determine if the sandbox change needs a postgres restart
+  ansible.builtin.set_fact:
+    pg_sandbox_restart_required: "{{ pg_sandbox_applied is changed or pg_sandbox_removed is changed }}"
+
+- name: Restart postgres for the sandbox change
+  ansible.builtin.debug:
+    msg: the PostgreSQL sandbox changed, restarting postgres
+  changed_when: true
+  notify: Restart postgres
+  when:
+    - pg_sandbox_restart_required | bool
+    - (tailscale_name is not defined) or ('prod' not in tailscale_name)
+
+- name: Warn about pending postgres restart on prod
+  ansible.builtin.debug:
+    msg: >-
+      The PostgreSQL sandbox changed, but this is a prod server
+      ({{ tailscale_name | default('unknown') }}) so postgres was NOT restarted
+      automatically. Schedule a manual restart to apply it.
+  when:
+    - pg_sandbox_restart_required | bool
+    - tailscale_name is defined
+    - "'prod' in tailscale_name"

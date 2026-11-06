@@ -1,0 +1,28 @@
+---
+# spec: LNXSRV#apparmor
+- name: Install AppArmor
+  become: true
+  ansible.builtin.apt:
+    name: apparmor
+    state: present
+
+- name: Load AppArmor profiles at boot
+  become: true
+  ansible.builtin.systemd:
+    name: apparmor.service
+    state: started
+    enabled: true
+
+- name: Read whether the kernel has AppArmor enabled
+  become: true
+  ansible.builtin.slurp:
+    src: /sys/module/apparmor/parameters/enabled
+  register: baseline_apparmor_enabled
+  failed_when: false
+
+- name: Fail if the kernel does not have AppArmor enabled
+  when: baseline_apparmor_enabled.content | default('') | b64decode | trim != 'Y'
+  ansible.builtin.fail:
+    msg: >-
+      The kernel has AppArmor disabled (/sys/module/apparmor/parameters/enabled
+      is not Y), but servers must run with it enabled.

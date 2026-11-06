@@ -29,3 +29,15 @@ tailnet: tail53aef
 # the tamanu and msupply roles both render sites from it. Takes effect only where
 # the installed bestool serves the endpoint (see bestool/tasks/caddy-certificates.yml).
 caddy_canopy_certificates: true
+
+# Services that run under systemd sandboxing (LNXSRV#service-sandboxes). Drop a
+# name to run that service unrestricted. Defined here in `common` because the
+# postgres and munin roles both read it.
+sandboxes:
+  - postgres
+  - munin
+
+# Whether Tamanu and mSupply containers drop all capabilities but binding low
+# ports and cannot gain privileges (LNXSRV#containers). Defined here in `common`
+# because the tamanu and msupply roles both read it.
+container_hardening_enabled: true

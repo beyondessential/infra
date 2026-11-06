@@ -41,6 +41,12 @@ Builds the Kernel hardening and Confinement sections of LNXSRV in the Ansible ro
   Tamanu's goes in the existing prefix directory `/etc/containers/systemd/tamanu-.container.d/` and mSupply's in `msupply.container.d/`.
   Each is absent when `container_hardening_enabled` is false.
   The drop-in only takes effect on the container's next restart, through the roles' existing restart flow.
+- **PostgreSQL's sandbox runs the service as `postgres`.**
+  Debian's `postgresql@.service` starts `pg_ctlcluster` as root, which drops to the `postgres` user itself and needs `CAP_SETUID` and `CAP_SETGID`.
+  The drop-in sets `User=postgres` and `Group=postgres` so that an empty capability set still starts the service.
+  Unconfirmed against the unit on a real server: see the checks below.
+- **Restart on a sandbox change:** like tuning, the PostgreSQL sandbox restarts PostgreSQL unless the Tailscale name contains `prod`, where it prints a warning and leaves the restart.
+  The munin-node sandbox restarts munin-node.
 - **Variable defaults:** `kernel_lockdown_enabled` goes in `baseline/defaults`. `sandboxes` and `container_hardening_enabled` go in `common/defaults`, because postgres, munin, tamanu-single-install and msupply-install all depend on `common`.
 
 ## Verify on a test server before rollout
@@ -51,6 +57,7 @@ Use the Vagrant box (Ubuntu 24.04 cloud image) for everything except the EC2-spe
 - [ ] Under `lockdown=integrity`, the Elastic Agent (Elastic Defend) still runs and reports.
 - [ ] The Tamanu frontend, API, patient portal and mSupply containers start and serve with the hardening drop-in in place. Check what the images write at runtime and which user they run as.
 - [ ] PostgreSQL 18 still uses io_uring (`io_method = io_uring` and no fallback warning in the log) with `io_uring_disabled=1` and the group set.
+- [ ] The `postgresql@.service` unit starts with `User=postgres` and no capabilities. If it needs the privileges that `pg_ctlcluster` drops with, give it `CAP_SETUID CAP_SETGID` instead and say so in LNXSRV.
 - [ ] PostgreSQL starts, accepts socket connections and writes its log under the sandbox, in both the single and the split layout.
 - [ ] munin-node plugins still report under the sandbox, particularly the PostgreSQL plugins over the socket and any plugins configured with `user root`. munin-node may need `CAP_KILL` to time out plugins running as another user. If it does, add "signalling the plugins it runs" to the Munin node's capabilities in LNXSRV.
 - [ ] apport doesn't put `fs.suid_dumpable` back to 2 when it starts. If it does, disable apport's core handling so the value holds.
@@ -61,31 +68,31 @@ Use the Vagrant box (Ubuntu 24.04 cloud image) for everything except the EC2-spe
 
 ### Baseline role
 
-- [ ] Add `kernel-parameters.yml` with the `99-bes-hardening.conf` template and a `Reload sysctl` handler that restarts `systemd-sysctl`. Import it in `main.yml` with the tag `kernel-parameters` and cite `LNXSRV#kernel-parameters`.
-- [ ] Replace `kernel-mitigations.yml` with `kernel-modules.yml`: write `bes-kernel-modules.conf` from a list in role vars, remove `cve-2026-linux-lpe.conf`, notify `Rebuild initramfs`, and unload every listed module. Change the tag to `kernel-modules` and the citation to `LNXSRV#kernel-modules`.
-- [ ] Add `boot-parameters.yml`, with the GRUB drop-in path, the `cmdline.txt` path, a shared merge step and an `Update grub` handler. Add `kernel_lockdown_enabled: true` to `defaults/main.yml`. Tag `boot-parameters`, citing `LNXSRV#boot-parameters`.
-- [ ] Add `apparmor.yml`: install `apparmor`, enable and start `apparmor.service`, and fail with a clear message if `/sys/module/apparmor/parameters/enabled` isn't `Y`. Tag `apparmor`, citing `LNXSRV#apparmor`.
+- [x] Add `kernel-parameters.yml` with the `99-bes-hardening.conf` template and a `Reload sysctl` handler that restarts `systemd-sysctl`. Import it in `main.yml` with the tag `kernel-parameters` and cite `LNXSRV#kernel-parameters`.
+- [x] Replace `kernel-mitigations.yml` with `kernel-modules.yml`: write `bes-kernel-modules.conf` from a list in role vars, remove `cve-2026-linux-lpe.conf`, notify `Rebuild initramfs`, and unload every listed module. Change the tag to `kernel-modules` and the citation to `LNXSRV#kernel-modules`.
+- [x] Add `boot-parameters.yml`, with the GRUB drop-in path, the `cmdline.txt` path, a shared merge step and an `Update grub` handler. Add `kernel_lockdown_enabled: true` to `defaults/main.yml`. Tag `boot-parameters`, citing `LNXSRV#boot-parameters`.
+- [x] Add `apparmor.yml`: install `apparmor`, enable and start `apparmor.service`, and fail with a clear message if `/sys/module/apparmor/parameters/enabled` isn't `Y`. Tag `apparmor`, citing `LNXSRV#apparmor`.
 
 ### Service and container roles
 
-- [ ] `postgres`: add the io_uring group sysctl file and apply it, citing `LNXSRV#kernel-parameters`.
-- [ ] `postgres`: add the `sandbox.conf` drop-in, present or absent from `sandboxes`, citing `LNXSRV#service-sandboxes`.
-- [ ] `munin`: add the munin-node `sandbox.conf` drop-in the same way, notifying `Restart munin-node`.
-- [ ] `common/defaults`: add `sandboxes: [postgres, munin]` and `container_hardening_enabled: true`.
-- [ ] `tamanu-single-install/tasks/quadlets.yml`: add the `hardening.conf` drop-in in `tamanu-.container.d/`, citing `LNXSRV#containers`.
-- [ ] `msupply-install/tasks/quadlet.yml`: add the same drop-in in `msupply.container.d/`.
+- [x] `postgres`: add the io_uring group sysctl file and apply it, citing `LNXSRV#kernel-parameters`.
+- [x] `postgres`: add the `sandbox.conf` drop-in, present or absent from `sandboxes`, citing `LNXSRV#service-sandboxes`.
+- [x] `munin`: add the munin-node `sandbox.conf` drop-in the same way, notifying `Restart munin-node`.
+- [x] `common/defaults`: add `sandboxes: [postgres, munin]` and `container_hardening_enabled: true`.
+- [x] `tamanu-single-install/tasks/quadlets.yml`: add the `hardening.conf` drop-in in `tamanu-.container.d/`, citing `LNXSRV#containers`.
+- [x] `msupply-install/tasks/quadlet.yml`: add the same drop-in in `msupply.container.d/`.
 - [ ] `podman`: once podman's AppArmor support is confirmed, assert that `podman info` reports AppArmor enabled, citing `LNXSRV#apparmor`.
 
 ### Catalogue, checks and tests
 
-- [ ] `variables.schema.json`: add `kernel_lockdown_enabled` and `container_hardening_enabled` as booleans defaulting to true, and `sandboxes` as an array of unique values from the enum `postgres`, `munin`, defaulting to both. All cite `LNXSRV#inventory-variables`.
-- [ ] Run `uv run python catalogue.py tags` for the new and renamed baseline tags.
-- [ ] `check-linux-lpe-2026.yml`: check every module in the blocklist. Modules outside the CVE groups are reported with their group instead of a CVE.
-- [ ] Unit test the boot-parameter merge (`ansible/tests/test_baseline_boot_parameters.py`), covering: parameters appended to an existing line, an existing parameter kept, `lockdown` removed when the switch is off, and the merge staying idempotent.
-- [ ] `uv run ansible-lint`, and `--syntax-check` on `base-install.yml`, `tamanu-install.yml` and `tamanu-upgrade.yml`.
+- [x] `variables.schema.json`: add `kernel_lockdown_enabled` and `container_hardening_enabled` as booleans defaulting to true, and `sandboxes` as an array of unique values from the enum `postgres`, `munin`, defaulting to both. All cite `LNXSRV#inventory-variables`.
+- [x] Run `uv run python catalogue.py tags` for the new and renamed baseline tags.
+- [x] `check-linux-lpe-2026.yml`: check every module in the blocklist, read from the baseline role's vars. Modules outside the CVE groups are reported with their group instead of a CVE.
+- [x] Unit test the boot-parameter merge (`ansible/tests/test_baseline_boot_parameters.py`), covering: parameters appended to an existing line, an existing parameter kept, `lockdown` removed when the switch is off, and the merge staying idempotent.
+- [x] `uv run ansible-lint`, and `--syntax-check` on `base-install.yml`, `tamanu-install.yml` and `tamanu-upgrade.yml`.
 
 ### Support docs
 
-- [ ] `docs/sops/linux-check-kernel-modules.md`: the verdict table covers modules that are unused rather than vulnerable, and the line about the block living in `cve-2026-linux-lpe.conf` and being temporary goes.
-- [ ] `docs/reference/linux-paths-and-units.md`: replace the `cve-2026-linux-lpe.conf` row, and add rows for `99-bes-hardening.conf`, `99-postgres-io-uring.conf`, the GRUB drop-in, and the `sandbox.conf` and `hardening.conf` drop-ins.
-- [ ] Add a short entry to the support pack, following `curate-support-docs`, for turning off a switch on a server where the hardening breaks something: which variable, then which tag to re-run, and that `kernel_lockdown_enabled` only takes effect after a reboot.
+- [x] `docs/sops/linux-check-kernel-modules.md`: the verdict table covers modules that are unused rather than vulnerable, and the line about the block living in `cve-2026-linux-lpe.conf` and being temporary goes.
+- [x] `docs/reference/linux-paths-and-units.md`: replace the `cve-2026-linux-lpe.conf` row, and add rows for `99-bes-hardening.conf`, `99-postgres-io-uring.conf`, the GRUB drop-in, and the `sandbox.conf` and `hardening.conf` drop-ins.
+- [x] Add a short entry to the support pack, following `curate-support-docs`, for turning off a switch on a server where the hardening breaks something: which variable, then which tag to re-run, and that `kernel_lockdown_enabled` only takes effect after a reboot.

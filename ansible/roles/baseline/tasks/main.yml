@@ -50,9 +50,18 @@
 - name: Apply tuning
   ansible.builtin.import_tasks: tuning.yml
   tags: tuning
-- name: Configure kernel mitigations
-  ansible.builtin.import_tasks: kernel-mitigations.yml
-  tags: kernel-mitigations
+- name: Configure kernel parameters
+  ansible.builtin.import_tasks: kernel-parameters.yml
+  tags: kernel-parameters
+- name: Configure kernel modules
+  ansible.builtin.import_tasks: kernel-modules.yml
+  tags: kernel-modules
+- name: Configure boot parameters
+  ansible.builtin.import_tasks: boot-parameters.yml
+  tags: boot-parameters
+- name: Configure AppArmor
+  ansible.builtin.import_tasks: apparmor.yml
+  tags: apparmor
 - name: Configure btrfs maintenance
   ansible.builtin.import_tasks: btrfs-maintenance.yml
   tags: btrfs

@@ -1,0 +1,39 @@
+---
+# Kernel modules that servers must not load (LNXSRV#kernel-modules).
+# `group` is how the check-linux-lpe-2026 playbook reports modules that are not
+# part of a CVE.
+baseline_kernel_modules:
+  - { name: esp4, group: known vulnerable }
+  - { name: esp6, group: known vulnerable }
+  - { name: rxrpc, group: known vulnerable }
+  - { name: rds, group: known vulnerable }
+  - { name: rds_tcp, group: known vulnerable }
+  - { name: dccp, group: unused protocol }
+  - { name: sctp, group: unused protocol }
+  - { name: tipc, group: unused protocol }
+  - { name: n_hdlc, group: unused protocol }
+  - { name: ax25, group: unused protocol }
+  - { name: netrom, group: unused protocol }
+  - { name: rose, group: unused protocol }
+  - { name: x25, group: unused protocol }
+  - { name: appletalk, group: unused protocol }
+  - { name: can, group: unused protocol }
+  - { name: atm, group: unused protocol }
+  - { name: cramfs, group: unused filesystem }
+  - { name: freevxfs, group: unused filesystem }
+  - { name: jffs2, group: unused filesystem }
+  - { name: hfs, group: unused filesystem }
+  - { name: hfsplus, group: unused filesystem }
+  - { name: udf, group: unused filesystem }
+  - { name: firewire-core, group: unused hardware }
+  - { name: vivid, group: unused hardware }
+
+# Kernel command-line parameters that servers boot with (LNXSRV#boot-parameters).
+baseline_boot_parameters:
+  - slab_nomerge
+  - page_alloc.shuffle=1
+  - randomize_kstack_offset=on
+  - init_on_alloc=1
+  - vsyscall=none
+  - debugfs=off
+baseline_lockdown_parameter: lockdown=integrity

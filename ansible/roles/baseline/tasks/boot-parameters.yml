@@ -1,0 +1,60 @@
+---
+# Boot parameters take effect at the next boot; nothing here reboots the server
+# or flags it as needing one.
+- name: Compute the boot parameters
+  ansible.builtin.set_fact:
+    baseline_boot_wanted: "{{ baseline_boot_parameters + ([baseline_lockdown_parameter] if kernel_lockdown_enabled | bool else []) }}"
+    baseline_boot_unwanted: "{{ [] if kernel_lockdown_enabled | bool else [baseline_lockdown_parameter] }}"
+
+- name: Look for the Raspberry Pi kernel command line
+  ansible.builtin.stat:
+    path: /boot/firmware/cmdline.txt
+  register: baseline_pi_cmdline
+
+- name: Look for GRUB
+  ansible.builtin.stat:
+    path: /etc/default/grub
+  register: baseline_grub_defaults
+
+- name: Fail if the server has no boot configuration to write
+  when:
+    - not baseline_pi_cmdline.stat.exists
+    - not baseline_grub_defaults.stat.exists
+  ansible.builtin.fail:
+    msg: >-
+      Neither GRUB (/etc/default/grub) nor a Raspberry Pi kernel command line
+      (/boot/firmware/cmdline.txt) was found, so the boot parameters have
+      nowhere to go.
+
+# spec: LNXSRV#boot-parameters
+# The drop-in sorts after 50-cloudimg-settings.cfg and appends, so the
+# parameters of the cloud image are kept.
+- name: Set boot parameters in GRUB
+  when: baseline_grub_defaults.stat.exists
+  become: true
+  ansible.builtin.template:
+    src: grub-hardening.cfg.j2
+    dest: /etc/default/grub.d/99-bes-hardening.cfg
+    mode: "0644"
+  notify: Update grub
+
+# The Raspberry Pi bootloader reads the whole command line from one line of
+# cmdline.txt, so the parameters are merged into it token by token. The file
+# is on a FAT partition, where permissions cannot be set, so none are given.
+# spec: LNXSRV#boot-parameters
+- name: Read the Raspberry Pi kernel command line
+  when: not baseline_grub_defaults.stat.exists
+  become: true
+  ansible.builtin.slurp:
+    src: /boot/firmware/cmdline.txt
+  register: baseline_pi_cmdline_content
+
+- name: Set boot parameters on the Raspberry Pi
+  when: not baseline_grub_defaults.stat.exists
+  become: true
+  # noqa: risky-file-permissions
+  ansible.builtin.copy:
+    dest: /boot/firmware/cmdline.txt
+    content: |
+      {{ (baseline_pi_cmdline_content.content | b64decode)
+         | merge_cmdline(baseline_boot_wanted, baseline_boot_unwanted) }}

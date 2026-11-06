@@ -1,0 +1,26 @@
+---
+# spec: LNXSRV#kernel-modules
+- name: Block kernel modules
+  become: true
+  ansible.builtin.template:
+    src: bes-kernel-modules.conf.j2
+    dest: /etc/modprobe.d/bes-kernel-modules.conf
+    mode: "0644"
+  notify: Rebuild initramfs
+
+# Superseded by bes-kernel-modules.conf, which carries the same modules.
+- name: Remove the old kernel module block
+  become: true
+  ansible.builtin.file:
+    path: /etc/modprobe.d/cve-2026-linux-lpe.conf
+    state: absent
+  notify: Rebuild initramfs
+
+- name: Unload blocked kernel modules if currently loaded
+  become: true
+  community.general.modprobe:
+    name: "{{ item.name }}"
+    state: absent
+  loop: "{{ baseline_kernel_modules }}"
+  loop_control:
+    label: "{{ item.name }}"

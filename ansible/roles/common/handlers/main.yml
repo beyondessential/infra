@@ -41,6 +41,15 @@
   ansible.builtin.package_facts:
   tags: [always]
 
+# Restarted rather than reloaded because systemd-sysctl is a one-shot unit; the
+# restart re-applies every file in /etc/sysctl.d, globs included.
+- name: Reload sysctl
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-sysctl
+    state: restarted
+  tags: [always]
+
 - name: Reload systemd-networkd
   become: true
   ansible.builtin.systemd:

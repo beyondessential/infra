@@ -1,0 +1,2 @@
+# Managed by ansible (baseline/boot-parameters.yml).
+GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT {{ baseline_boot_wanted | join(' ') }}"

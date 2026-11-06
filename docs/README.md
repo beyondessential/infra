@@ -107,6 +107,7 @@ Tooling and agents recognise a support pack by `docs/ruled-out-actions.md` toget
 - [SOP: Convert a Linux server's disk layout](sops/linux-convert-disk-layout.md)
 - [SOP: Provision a Linux Tamanu server](sops/linux-provision-server.md)
 - [SOP: Restart PostgreSQL on a Linux server](sops/linux-restart-postgres.md)
+- [SOP: Relax the hardening on a Linux server](sops/linux-relax-hardening.md)
 - [SOP: Retire a Linux deployment](sops/linux-retire-deployment.md)
 - [SOP: Run the Linux playbooks](sops/linux-run-playbooks.md)
 - [SOP: Upgrade PostgreSQL on a Linux server](sops/linux-upgrade-postgres.md)

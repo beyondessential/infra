@@ -10,6 +10,10 @@
   ansible.builtin.include_tasks: btrfs-subvolume.yml
 - name: Install PostgreSQL packages
   ansible.builtin.include_tasks: packages.yml
+- name: Configure io_uring access for PostgreSQL
+  ansible.builtin.include_tasks: io-uring.yml
+- name: Sandbox PostgreSQL
+  ansible.builtin.include_tasks: sandbox.yml
 - name: Configure psql
   ansible.builtin.include_tasks: psql.yml
 - name: Configure PostgreSQL access

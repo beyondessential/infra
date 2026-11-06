@@ -28,6 +28,9 @@
     line: host 127.0.0.1
   notify: Restart munin-node
 
+- name: Sandbox munin-node
+  ansible.builtin.include_tasks: sandbox.yml
+
 - name: Enable and start munin-node
   become: true
   ansible.builtin.systemd:

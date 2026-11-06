@@ -11,15 +11,18 @@
 				"intent": "configure",
 				"tags": [
 					"accounting",
+					"apparmor",
 					"base",
 					"baseline",
 					"bash-history",
 					"bes-repo",
+					"boot-parameters",
 					"btrfs",
 					"chrony",
 					"io-scheduler",
 					"journald",
-					"kernel-mitigations",
+					"kernel-modules",
+					"kernel-parameters",
 					"locale",
 					"network",
 					"packages",
@@ -48,12 +51,14 @@
 				"tags": [
 					"accounting",
 					"app",
+					"apparmor",
 					"avahi",
 					"base",
 					"baseline",
 					"bash-history",
 					"bes-repo",
 					"bestool",
+					"boot-parameters",
 					"btrfs",
 					"caddy",
 					"chrony",
@@ -61,7 +66,8 @@
 					"io-scheduler",
 					"iti",
 					"journald",
-					"kernel-mitigations",
+					"kernel-modules",
+					"kernel-parameters",
 					"kopia",
 					"locale",
 					"msupply",
@@ -304,6 +310,14 @@
 				"spec": "LNXANS#inventory"
 			}
 		},
+		"container_hardening_enabled": {
+			"description": "Whether containers run without capabilities other than binding low ports, and cannot gain privileges.",
+			"type": "boolean",
+			"default": true,
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
+			}
+		},
 		"dangerously_leave_ufw_alone": {
 			"description": "Whether an unmanaged host firewall is left as the server has it.",
 			"type": "boolean",
@@ -349,6 +363,14 @@
 				"scope": [
 					"machine"
 				]
+			}
+		},
+		"kernel_lockdown_enabled": {
+			"description": "Whether the kernel boots in lockdown. Takes effect at the next reboot.",
+			"type": "boolean",
+			"default": true,
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
 			}
 		},
 		"managed_by_ansible": {
@@ -592,6 +614,26 @@
 			"x-canopy": {
 				"secret": true,
 				"spec": "LNXANS#inventory-variables"
+			}
+		},
+		"sandboxes": {
+			"description": "The services that run in their systemd sandbox.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "string",
+				"enum": [
+					"postgres",
+					"munin"
+				],
+				"title": "Service"
+			},
+			"default": [
+				"postgres",
+				"munin"
+			],
+			"x-canopy": {
+				"spec": "LNXSRV#inventory-variables"
 			}
 		},
 		"starship_version": {

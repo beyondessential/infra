@@ -1,0 +1,6 @@
+# Managed by ansible (baseline/kernel-modules.yml).
+{% for module in baseline_kernel_modules %}
+# {{ module.group }}
+blacklist {{ module.name }}
+install {{ module.name }} /bin/false
+{% endfor %}

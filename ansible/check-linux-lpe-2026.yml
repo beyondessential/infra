@@ -7,6 +7,8 @@
 #
 # Read-only. Reports per-host whether each vulnerable module is loaded,
 # loadable on demand, or has a modprobe install/blacklist mitigation in place.
+# The other modules the baseline blocks (unused protocols, filesystems and
+# hardware) are checked the same way and reported under their group, not a CVE.
 #
 # Set lpe_fail_on_exposed=true to fail the play on any unmitigated exposure.
 
@@ -14,6 +16,8 @@
   hosts: all
   gather_facts: true
   become: true
+  vars_files:
+    - roles/baseline/vars/main.yml
   vars:
     lpe_checks:
       - cve: CVE-2026-31431
@@ -28,7 +32,15 @@
       - cve: CVE-2026-43494
         name: PinTheft
         modules: [rds, rds_tcp]
-    lpe_all_modules: "{{ lpe_checks | map(attribute='modules') | flatten | unique | list }}"
+    lpe_cve_modules: "{{ lpe_checks | map(attribute='modules') | flatten | unique | list }}"
+    lpe_group_checks: >-
+      {%- set out = [] -%}
+      {%- for group, items in (baseline_kernel_modules | rejectattr('name', 'in', lpe_cve_modules) | groupby('group')) -%}
+        {%- set _ = out.append({'cve': '', 'name': group, 'modules': items | map(attribute='name') | list}) -%}
+      {%- endfor -%}
+      {{ out }}
+    lpe_all_checks: "{{ lpe_checks + lpe_group_checks }}"
+    lpe_all_modules: "{{ lpe_all_checks | map(attribute='modules') | flatten | unique | list }}"
 
   tasks:
     - name: Read /proc/modules
@@ -73,7 +85,7 @@
             {%- set mit = (lpe_mitigations.results | selectattr('item', 'equalto', mod) | first).stdout | trim -%}
             {%- set _ = out.update({mod: {
                 'on_disk': on_disk,
-                'loaded': mod in lpe_loaded,
+                'loaded': (mod | replace('-', '_')) in lpe_loaded,
                 'blocked': (mit | length) > 0,
               }}) -%}
           {%- endfor -%}
@@ -83,7 +95,7 @@
       ansible.builtin.set_fact:
         lpe_verdicts: >-
           {%- set verdicts = [] -%}
-          {%- for c in lpe_checks -%}
+          {%- for c in lpe_all_checks -%}
             {%- set loaded = [] -%}
             {%- set autoload = [] -%}
             {%- set blocked = [] -%}
@@ -125,7 +137,7 @@
                 ~ ', kernel ' ~ ansible_kernel ~ ')'
             ] -%}
           {%- for v in lpe_verdicts -%}
-            {%- set parts = ['- ' ~ v.name ~ ' (' ~ v.cve ~ '): ' ~ v.status] -%}
+            {%- set parts = ['- ' ~ v.name ~ (' (' ~ v.cve ~ ')' if v.cve else '') ~ ': ' ~ v.status] -%}
             {%- if v.loaded -%}{%- set _ = parts.append('loaded=' ~ (v.loaded | join(','))) -%}{%- endif -%}
             {%- if v.autoload -%}{%- set _ = parts.append('autoload-capable=' ~ (v.autoload | join(','))) -%}{%- endif -%}
             {%- if v.blocked -%}{%- set _ = parts.append('blocked=' ~ (v.blocked | join(','))) -%}{%- endif -%}
