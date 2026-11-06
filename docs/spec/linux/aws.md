@@ -17,6 +17,9 @@ The baseline of a server is specified by [LNXSRV](server.md), mSupply by [LNXMSP
 | gp3 | The general-purpose SSD volume type of EBS ([General purpose SSD volumes](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html)). |
 | Elastic IP address | A static public IPv4 address that is associated with an instance ([Elastic IP addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html)). |
 | security group | The stateful packet filter that controls the traffic to and from an instance ([Security groups](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html)). |
+| instance profile | The container that passes an IAM role to an instance ([Using instance profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html)). |
+| SSM Agent | The agent that lets AWS Systems Manager manage an instance ([SSM Agent](https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent.html)). |
+| Session Manager | The Systems Manager capability that opens a shell on an instance through the SSM Agent, with no inbound port ([Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)). |
 
 ## Instances and external servers
 
@@ -54,17 +57,25 @@ A change to the image, the root volume or the user data of an instance after its
 An instance MUST run the following steps from its user data at first boot, in order.
 
 1. Set the hostname to the server's fully qualified domain name.
+1. Install and start the SSM Agent.
 1. Join the tailnet with a single-use, pre-authorised key that expires after 6 hours, advertising the [Tailscale tags](https://tailscale.com/kb/1068/tags) of the deployment, under the Tailscale name of the server, with [Tailscale SSH](https://tailscale.com/kb/1193/tailscale-ssh) enabled and the user `ubuntu` as the operator.
-1. Add the fixed emergency public key `emergency@tamanu` to the authorized keys of the user `ubuntu`.
 
-> [!NOTE]
-> The emergency key is one key for every deployment.
-> It is the only access to an instance whose Tailscale membership has failed.
+An instance MUST NOT have an EC2 key pair, and its provisioning MUST NOT install an SSH public key on it.
 
 The user data of an instance MUST be held as a secret.
 
 > [!NOTE]
 > The user data contains the Tailscale key.
+
+## Recovery access
+
+An instance SHOULD have an instance profile whose role carries the AWS managed policy [`AmazonSSMManagedInstanceCore`](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSSMManagedInstanceCore.html) and no other permission.
+
+The instances of a deployment SHOULD share one such role.
+
+An instance with the instance profile and a running SSM Agent SHOULD accept Session Manager sessions whether or not it is a member of the tailnet, and whatever the inbound rules of its security group.
+
+The baseline keeps the SSM Agent installed and running, as [LNXSRV](server.md#access) requires.
 
 The Tailscale tags of a deployment's servers SHOULD default to `tag:server`, `tag:server-tamanu`, `tag:server-tamanu-<root>` where the zone has a root name, and `tag:server-tamanu-<type>` where the normalised stack name contains `demo`, `clone` or `prod`, with `<type>` the first of those it contains in that order.
 
@@ -144,6 +155,8 @@ The security group of a deployment MUST allow the inbound traffic in the followi
 
 The security group MUST allow all outbound traffic.
 
+A run MUST NOT revert a change made to the inbound or outbound rules of the security group outside the infrastructure stack.
+
 ## DNS records
 
 A deployment MUST publish the DNS records in the following table, each with a time to live of 300 seconds.
@@ -158,7 +171,7 @@ The DNS record of an mSupply hostname is given by [LNXMSP](msupply.md#provisioni
 
 ## Retired deployments
 
-A retired deployment MUST have no instances, security group, instance backup plan, repository bucket or ACME users.
+A retired deployment MUST have no instances, instance profile, security group, instance backup plan, repository bucket or ACME users.
 
 The repository bucket of a retired deployment MUST be removed by a run after the run that removes its servers, with the protection that [LNXBAK](backups.md#repository-bucket) requires lifted for that run alone.
 

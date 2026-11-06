@@ -1,0 +1,19 @@
+---
+# Removes the shared emergency public key that earlier first-boot user data
+# installed on every instance. Matches on the key material so a line is removed
+# whatever its comment, and leaves every other line in place.
+
+- name: Check whether the ubuntu user exists
+  ansible.builtin.getent:
+    database: passwd
+    key: ubuntu
+    fail_key: false
+
+# spec: LNXSRV#access
+- name: Remove the emergency key from the ubuntu user's authorized keys
+  become: true
+  when: ansible_facts.getent_passwd['ubuntu'] is not none
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_facts.getent_passwd['ubuntu'][4] }}/.ssh/authorized_keys"
+    regexp: AAAAC3NzaC1lZDI1NTE5AAAAIOpCpG0MNsBX6nNbq4jMMJwbw5c4PbuH1xBfDeNq8d0u
+    state: absent

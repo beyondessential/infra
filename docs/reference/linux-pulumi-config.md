@@ -29,7 +29,7 @@ Tailscale ACLs, tags and auto-approvals live in the BES tailnet policy repositor
 | `serverGroupId` | unset | Registers the bucket and roles with Canopy. |
 | `retired`, `retiredTargetBase`, `retiredHostMap` | `false`, unset, empty | [Retire a deployment](../sops/linux-retire-deployment.md). |
 | `billing:product`, `billing:stage`, `billing:deployment` | `tamanu`, the type guessed from the stack name or `prod` when none can be, unset | Become `billing.*` tags on every resource. |
-| `keyName`, `ipAllowList` | `ops`, unset | Read into constants that nothing uses. |
+| `ipAllowList` | unset | Read into a constant that nothing uses. |
 
 ## Servers
 

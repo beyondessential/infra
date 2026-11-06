@@ -1,5 +1,4 @@
 import { stringify as yamlStringify } from 'yaml';
-import { EMERGENCY_SSH_KEY } from '../constants/internal.ts';
 
 export function hostnameCommands(hostname: string): string[][] {
   return [['hostnamectl', 'set-hostname', hostname]];
@@ -38,10 +37,11 @@ export function tailscaleUpCommands(options: TailscaleUpOptions): string[][] {
 }
 
 // spec: LNXAWS#first-boot
-export function emergencySshKeyCommands(sshKey: string = EMERGENCY_SSH_KEY): string[][] {
+export function ssmAgentInstallCommands(): string[][] {
   return [
-    ['mkdir', '-p', '/home/ubuntu/.ssh'],
-    ['sh', '-c', `echo ${sshKey} >> /home/ubuntu/.ssh/authorized_keys`],
+    ['snap', 'wait', 'system', 'seed.loaded'],
+    ['sh', '-c', 'snap list amazon-ssm-agent || snap install amazon-ssm-agent --classic'],
+    ['systemctl', 'enable', '--now', 'snap.amazon-ssm-agent.amazon-ssm-agent.service'],
   ];
 }
 

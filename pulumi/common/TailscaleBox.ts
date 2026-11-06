@@ -16,7 +16,6 @@ import {
   hostnameCommands,
   tailscaleInstallCommands,
   tailscaleUpCommands,
-  emergencySshKeyCommands,
 } from './cloudInit.ts';
 import { ec2StatusAlarms } from './ec2StatusAlarms.ts';
 
@@ -88,7 +87,6 @@ export class TailscaleBox extends ComponentResource {
               ...hostnameCommands(name),
               ...tailscaleInstallCommands(),
               ...tailscaleUpCommands({ authKey: key, hostname: name }),
-              ...emergencySshKeyCommands(),
             ]),
           ),
         ),

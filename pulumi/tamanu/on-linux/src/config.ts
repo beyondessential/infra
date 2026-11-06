@@ -51,7 +51,6 @@ export const tailscaleBase = zoneRoot.apply((root) => {
 });
 
 export const namePrefix = cfg.get('namePrefix') ?? '';
-export const sshKey = cfg.get('keyName') ?? 'ops';
 export const hardDelete = cfg.getBoolean('hardDelete') ?? false;
 
 // When set, this stack does not provision its own kopia bucket, IAM users, or

@@ -10,7 +10,7 @@ The stack config reference is [Linux stack config](../reference/linux-pulumi-con
 1. Write `pulumi/tamanu/on-linux/Pulumi.<stack>.yaml`: `core`, the facility list, instance sizes, `external` or `externalIps` for servers outside AWS, `canopyInfra` and `serverGroupId` for backups. Set secrets with `pulumi config set --secret`. The file is gitignored; keep it that way.
 2. Preview with the policy pack: build it with `npm run build` in `pulumi/policies`, then `pulumi preview --policy-pack <path to pulumi/policies>`. **[diagnose]**
 3. A human runs `pulumi up`. **[dev-OTS]** It creates instances with their Elastic IPs, DNS records, the security group, the AWS Backup plan, the repository bucket and roles, and DNS-01 users for external servers.
-4. A new instance runs its first-boot user data and joins the tailnet with a key that is valid for 6 hours and works once. If the join fails (an Elastic IP quota is the example in the code), fix the cause within that window or the instance needs a new key ([server unreachable](../runbooks/linux-server-unreachable.md)).
+4. A new instance runs its first-boot user data and joins the tailnet with a key that is valid for 6 hours and works once. If the join fails (an Elastic IP quota is the example in the code), fix the cause within that window or the instance needs a new key. A developer can open a shell on the instance with Session Manager in the meantime ([server unreachable](../runbooks/linux-server-unreachable.md)).
 
 ## 2. An external server
 

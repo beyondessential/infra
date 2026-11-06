@@ -11,7 +11,6 @@ import {
   hostnameCommands,
   tailscaleInstallCommands,
   tailscaleUpCommands,
-  emergencySshKeyCommands,
 } from '../common/cloudInit.ts';
 
 import { core, instanceType, sshPublicKey, tailscaleTags, nodeName } from './config.ts';
@@ -75,7 +74,6 @@ const box = new aws.ec2.Instance(
           ...hostnameCommands(tailscaleName),
           ...tailscaleInstallCommands(),
           ...tailscaleUpCommands({ authKey, hostname: tailscaleName }),
-          ...emergencySshKeyCommands(),
           ...(sshPublicKey
             ? [['sh', '-c', `echo '${sshPublicKey}' >> /home/ubuntu/.ssh/authorized_keys`]]
             : []),

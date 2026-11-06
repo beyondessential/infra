@@ -12,6 +12,7 @@ The provisioning of servers in AWS is specified by [LNXAWS](aws.md), the databas
 | term | meaning |
 |---|---|
 | instance | An EC2 instance ([Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Instances.html)). |
+| SSM Agent | The agent that lets AWS Systems Manager manage an instance ([SSM Agent](https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent.html)). |
 | ufw | The Uncomplicated Firewall front end to the kernel packet filter ([UFW](https://help.ubuntu.com/community/UFW)). |
 | Munin | The graphing system whose node daemon collects plugin metrics ([Munin](https://munin-monitoring.org/)). |
 | upki | The client that keeps a local copy of certificate revocation data and checks certificates against it ([upki](https://github.com/rustls/upki)). |
@@ -78,6 +79,10 @@ The login user of a Linux server MUST be a member of the group `tamanu`.
 A Linux server SHOULD provide a helper that runs the command that joins the tailnet with the server's name, tags and login user as parameters.
 
 Where the login user is not `ubuntu`, the profile of the user `ubuntu` SHOULD print a warning that names the login user, on SSH sessions only.
+
+The baseline MUST remove the public key `emergency@tamanu` from the authorized keys of the user `ubuntu` where it is present, and MUST leave every other key in place.
+
+A server that is an instance MUST have the SSM Agent installed, enabled and running.
 
 ## Package sources and updates
 
