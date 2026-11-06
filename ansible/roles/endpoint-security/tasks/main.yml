@@ -1,0 +1,37 @@
+---
+# spec: LNXSRV#endpoint-security-agent
+- name: Check endpoint_security_agent
+  tags: [always]
+  ansible.builtin.assert:
+    that: endpoint_security_agent in ['none', 'elastic', 'defender']
+    fail_msg: "endpoint_security_agent must be none, elastic or defender, not {{ endpoint_security_agent }}"
+    quiet: true
+
+# An agent without the secret that enrols or onboards it counts as no agent.
+# spec: LNXSRV#endpoint-security-agent
+- name: Resolve the endpoint security agent
+  tags: [always]
+  ansible.builtin.set_fact:
+    endpoint_security_agent_active: >-
+      {%- set chosen = 'elastic' if elastic_agent_enabled | bool else endpoint_security_agent -%}
+      {%- if chosen == 'elastic' and elastic_agent_enrollment_token is defined -%}elastic
+      {%- elif chosen == 'defender' and defender_onboarding is defined -%}defender
+      {%- else -%}none
+      {%- endif -%}
+
+# Every agent but the chosen one goes first, whichever tag selects the run.
+- name: Remove the Elastic agent unless it is the endpoint security agent
+  ansible.builtin.import_tasks: elastic-remove.yml
+  tags: [elastic, defender]
+
+- name: Remove Defender unless it is the endpoint security agent
+  ansible.builtin.import_tasks: defender-remove.yml
+  tags: [elastic, defender]
+
+- name: Install the Elastic agent
+  ansible.builtin.import_tasks: elastic-install.yml
+  tags: [elastic]
+
+- name: Install Defender
+  ansible.builtin.import_tasks: defender-install.yml
+  tags: [defender]

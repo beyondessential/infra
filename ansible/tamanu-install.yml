@@ -50,8 +50,8 @@
     - role: kopia
       tags: [base, kopia]
 
-    - role: elastic-agent
-      tags: [base, elastic]
+    - role: endpoint-security
+      tags: [base, endpoint-security]
 
     - role: ufw
       when: not (dangerously_leave_ufw_alone | bool)

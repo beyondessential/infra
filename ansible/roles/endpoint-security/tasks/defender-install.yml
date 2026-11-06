@@ -1,0 +1,109 @@
+---
+# spec: LNXSRV#defender
+- name: Install Defender
+  when: endpoint_security_agent_active == 'defender'
+  block:
+    - name: Add Microsoft apt key
+      become: true
+      ansible.builtin.copy:
+        src: microsoft.asc
+        dest: /etc/apt/keyrings/microsoft.asc
+        mode: "0644"
+
+    # The name is the one Microsoft's own repository package uses, so that
+    # this replaces a source it left rather than duplicating it.
+    # spec: LNXSRV#package-sources-and-updates
+    - name: Add Microsoft repo
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/microsoft-prod.list
+        mode: "0644"
+        content: |
+          deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.asc] https://packages.microsoft.com/ubuntu/{{ ansible_facts['distribution_version'] }}/prod {{ ansible_facts['distribution_release'] }} main
+
+    # Only mdatp: the repository also carries packages that Ubuntu ships.
+    - name: Prioritise Microsoft repo for Defender
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/99-microsoft
+        mode: "0644"
+        content: |
+          Package: mdatp
+          Pin: origin packages.microsoft.com
+          Pin-Priority: 900
+
+    - name: Install Defender
+      become: true
+      ansible.builtin.apt:
+        name: mdatp
+        state: present
+        update_cache: true
+
+    - name: Onboard Defender
+      become: true
+      no_log: true
+      ansible.builtin.copy:
+        dest: /etc/opt/microsoft/mdatp/mdatp_onboard.json
+        content: "{{ defender_onboarding }}"
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Restart mdatp
+
+    - name: Create Defender managed configuration directory
+      become: true
+      ansible.builtin.file:
+        path: /etc/opt/microsoft/mdatp/managed
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # Only what Ansible owns: the rest of Defender's settings come from the Defender portal.
+    - name: Configure Defender
+      become: true
+      vars:
+        defender_managed_config:
+          antivirusEngine:
+            enforcementLevel: "{{ 'passive' if defender_passive | bool else 'real_time' }}"
+          exclusionSettings:
+            exclusions:
+              - $type: excludedPath
+                isDirectory: true
+                path: /var/lib/postgresql/
+              - $type: excludedFileName
+                name: postgres
+            mergePolicy: admin_only
+        defender_group_tag_config:
+          edr:
+            tags:
+              - key: GROUP
+                value: "{{ defender_group_tag | default('') }}"
+      ansible.builtin.copy:
+        dest: /etc/opt/microsoft/mdatp/managed/mdatp_managed.json
+        content: >-
+          {{
+            (defender_managed_config | combine(defender_group_tag_config if (defender_group_tag | default('')) else {}))
+            | to_nice_json
+          }}
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable Defender
+      become: true
+      ansible.builtin.systemd:
+        name: mdatp
+        state: started
+        enabled: true
+
+    # spec: LNXSRV#package-sources-and-updates
+    - name: Set Defender auto-upgrade
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/cron.weekly/apt-upgrade-mdatp
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          exec systemd-run --slice=background.slice --scope --quiet \
+            env DEBIAN_FRONTEND=noninteractive apt install -y mdatp

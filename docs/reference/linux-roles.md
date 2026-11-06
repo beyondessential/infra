@@ -9,7 +9,7 @@ Everything here is under `ansible/`.
 | playbook | hosts | what it does | tags |
 |---|---|---|---|
 | `base-install.yml` | all | `baseline`, `toolbox`, `tailscale` where `tailscale_name` is set, `podman`. Nothing Tamanu-specific. | `base` |
-| `tamanu-install.yml` | all, then `central`, then `facility` | The whole stack. Common play: split-layout volumes, `baseline`, `toolbox`, `postgres`, `tailscale`, `caddy`, `munin`, `podman`, `kopia`, `elastic-agent`, `ufw`, `iti`. Then per type: `postgres-database`, `tamanu-single-install`, `bestool`, and `msupply-install` on facilities. | `base`, `app`, `volumes`, per-role tags |
+| `tamanu-install.yml` | all, then `central`, then `facility` | The whole stack. Common play: split-layout volumes, `baseline`, `toolbox`, `postgres`, `tailscale`, `caddy`, `munin`, `podman`, `kopia`, `endpoint-security`, `ufw`, `iti`. Then per type: `postgres-database`, `tamanu-single-install`, `bestool`, and `msupply-install` on facilities. | `base`, `app`, `volumes`, per-role tags |
 | `tamanu-upgrade.yml` | all, `central`, `facility` | Asserts `tamanu_version` and `canopy_intent=upgrade`. Pre play repeats the install roles for the type, go play runs `tamanu-single-upgrade` (and `msupply-upgrade`). | `pre`, `go` |
 | `tamanu-frontend-upgrade.yml` | `central`, `facility` | Moves only `tamanu_frontend_version`. Needs `canopy_intent=upgrade`. | none |
 | `postgres-upgrade-check.yml` | all | Read-only. Prints one of `NO_POSTGRES`, `NO_UPGRADE_NEEDED`, `WILL_UPGRADE`, `UPGRADE_BLOCKED`, `UNKNOWN`. | none |
@@ -33,7 +33,7 @@ Everything here is under `ansible/`.
 | `caddy` | all | Package at `caddy_version`, socket activation, issuer, DNS-01 credentials, UDP buffers, backup definition, Munin plugin. | [runtime](../spec/linux/runtime.md#reverse-proxy) |
 | `munin` | all unless `munin_enabled` is false | `munin` and `munin-node`, node on loopback, tailnet vhost on 4950, nodatacow `/var/lib/munin`. | [server](../spec/linux/server.md#metrics) |
 | `kopia` | all | Removes the upstream Kopia repository and the self-run Kopia timers and connection. The `kopia` package and user come from `baseline`. | [backups](../spec/linux/backups.md) |
-| `elastic-agent` | all | Installs and enrols the agent where enabled with a token, otherwise removes it. | [server](../spec/linux/server.md#endpoint-security-agent) |
+| `endpoint-security` | all | Runs the one endpoint security agent the inventory chooses (the Elastic Agent or Defender) and removes the other. An agent without its enrolment token or onboarding file is removed. | [server](../spec/linux/server.md#endpoint-security-agent) |
 | `ufw` | all unless `dangerously_leave_ufw_alone` | Manages the rules where `ufw_managed`, otherwise stops and disables ufw. | [server](../spec/linux/server.md#host-firewall) |
 | `iti` | where `is_iti` is true | Raspberry Pi devices only. Not covered by the Tamanu server specs. | none |
 | `tamanu-single-common` | dependency of the `tamanu-single-*` roles | The `tamanu` user and group, `/etc/bestool` permissions, the `kopia` sudoers entry for `tamanu`, `/etc/tamanu/env`, image pruning. | [runtime](../spec/linux/runtime.md#configuration) |

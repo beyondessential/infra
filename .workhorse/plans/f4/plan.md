@@ -19,17 +19,21 @@ The spec is the endpoint security agent section of LNXSRV (`docs/spec/linux/serv
 
 ## Build
 
-- [ ] Restructure the `elastic-agent` role into an endpoint security role that resolves the chosen agent (override, then selector), removes the other agent first, then installs the chosen one
-- [ ] Defender install: Microsoft key under `/etc/apt/keyrings`, `packages.microsoft.com/ubuntu/<version>/prod` source with `signed-by`, pin 900, `mdatp` package
-- [ ] Onboarding: write `defender_onboarding` to `/etc/opt/microsoft/mdatp/mdatp_onboard.json` (mode 0600, `no_log`)
-- [ ] Managed config: template `mdatp_managed.json` with enforcement level, path and process exclusions, optional `GROUP` tag
-- [ ] Removal: stop and purge `mdatp`, remove `/etc/opt/microsoft/mdatp`
-- [ ] Weekly `mdatp` upgrade alongside the existing scheduled upgrades
-- [ ] Tags: keep `elastic`, add `defender`, and an umbrella tag for the whole agent selection; run `uv run python catalogue.py tags`
-- [ ] `ansible/variables.schema.json`: add `endpoint_security_agent` (enum), `defender_onboarding` (secret), `defender_passive`, `defender_group_tag`; update the description of `elastic_agent_enabled`
-- [ ] Support pack: `docs/reference/linux-roles.md`, `docs/reference/linux-credentials.md` (Defender onboarding file row), `docs/reference/linux-inventory.md` (secret variables list)
-- [ ] `// spec:` citations on the role tasks
+- [x] Restructure the `elastic-agent` role into an endpoint security role that resolves the chosen agent (override, then selector), removes the other agent first, then installs the chosen one
+- [x] Defender install: Microsoft key under `/etc/apt/keyrings`, `packages.microsoft.com/ubuntu/<version>/prod` source with `signed-by`, pin 900, `mdatp` package
+- [x] Onboarding: write `defender_onboarding` to `/etc/opt/microsoft/mdatp/mdatp_onboard.json` (mode 0600, `no_log`)
+- [x] Managed config: template `mdatp_managed.json` with enforcement level, path and process exclusions, optional `GROUP` tag
+- [x] Removal: stop and purge `mdatp`, remove `/etc/opt/microsoft/mdatp`
+- [x] Weekly `mdatp` upgrade alongside the existing scheduled upgrades
+- [x] Tags: keep `elastic`, add `defender`, and an umbrella tag for the whole agent selection; run `uv run python catalogue.py tags`
+- [x] `ansible/variables.schema.json`: add `endpoint_security_agent` (enum), `defender_onboarding` (secret), `defender_passive`, `defender_group_tag`; update the description of `elastic_agent_enabled`
+- [x] Support pack: `docs/reference/linux-roles.md`, `docs/reference/linux-credentials.md` (Defender onboarding file row), `docs/reference/linux-inventory.md` (secret variables list)
+- [x] `// spec:` citations on the role tasks
 - [ ] Check Defender on a test server with the kernel hardening of card H4 applied (see below)
+
+The role is `endpoint-security` (renamed from `elastic-agent`), split into remove and install task files per agent.
+Removal of both non-chosen agents runs under either the `elastic` or `defender` tag, ahead of any install, so a partial run cannot leave two agents.
+The `mdatp` pin is on the package alone (`Package: mdatp`), because the Microsoft repository also carries packages Ubuntu ships.
 
 ## Kernel hardening compatibility
 
