@@ -155,6 +155,8 @@ The security group of a deployment MUST allow the inbound traffic in the followi
 
 The security group MUST allow all outbound traffic.
 
+A run MUST NOT revert a change made to the inbound or outbound rules of the security group outside the infrastructure stack.
+
 ## DNS records
 
 A deployment MUST publish the DNS records in the following table, each with a time to live of 300 seconds.

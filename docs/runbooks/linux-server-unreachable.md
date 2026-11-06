@@ -40,7 +40,7 @@ Which server; EC2 instance or external; new or long-running; whether your own ta
 
 Support's steps end at diagnosis.
 A developer opens a shell on an instance with Session Manager: `aws ssm start-session --target <instance id>` in the instance's AWS account, or the console's Connect button. **[dev-OTS]**
-Session Manager needs no inbound port and no tailnet, so do not open TCP 22 in the security group.
+Session Manager needs no inbound port and no tailnet, so there is no need to change the security group.
 An instance that Session Manager cannot reach has no other way in, so the developer fixes its instance profile with a Pulumi update, or replaces it ([provision a server](../sops/linux-provision-server.md)), or attaches its root volume to another instance. **[dev-OTS]**
 For an external server, access is by whatever the site provides.
 
