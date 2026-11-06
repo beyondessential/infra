@@ -511,9 +511,9 @@ dependencies = [
 
 [[package]]
 name = "json5"
-version = "1.3.3"
+version = "1.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6efe947c4a8f66438994e559a1e1309ae2a315cabf67476f155e27281f11cbc1"
+checksum = "0348cde6df2b507ba3c3753beba226baba8567af588d6568cdb9877f02c75b60"
 dependencies = [
  "serde",
  "ucd-trie",
@@ -563,9 +563,9 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "minijinja"
-version = "3.0.1"
+version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "789a6b737c4a13bec43cd3c1b982aa8a8a192ff4bf444e0fb1fd5a324f064fd1"
+checksum = "00f5a04892e86ddb4fc254e9160835370b63a0d44042d3ab4725bc2dbcbab136"
 
 [[package]]
 name = "once_cell"
