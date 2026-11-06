@@ -29,3 +29,21 @@ The spec is the endpoint security agent section of LNXSRV (`docs/spec/linux/serv
 - [ ] `ansible/variables.schema.json`: add `endpoint_security_agent` (enum), `defender_onboarding` (secret), `defender_passive`, `defender_group_tag`; update the description of `elastic_agent_enabled`
 - [ ] Support pack: `docs/reference/linux-roles.md`, `docs/reference/linux-credentials.md` (Defender onboarding file row), `docs/reference/linux-inventory.md` (secret variables list)
 - [ ] `// spec:` citations on the role tasks
+- [ ] Check Defender on a test server with the kernel hardening of card H4 applied (see below)
+
+## Kernel hardening compatibility
+
+Card H4 adds kernel parameters, a wider module blocklist, `debugfs=off`, `lockdown=integrity` and AppArmor to the baseline.
+By kernel semantics nothing there should stop Defender:
+
+- Defender has no kernel module. Its event sensor is eBPF, and it falls back to netlink, which loses file and socket events, where eBPF cannot load.
+- Integrity lockdown blocks only BPF writes to user memory among the BPF and tracing operations. Kprobes, BPF kernel reads, perf and tracefs are restricted only under confidentiality lockdown.
+- `debugfs=off` leaves tracefs, which is a filesystem of its own at `/sys/kernel/tracing`.
+- `unprivileged_bpf_disabled`, `perf_event_paranoid` and `ptrace_scope` limit callers without capabilities. Defender's sensor runs as root.
+- None of the blocked modules are netfilter modules, which device isolation needs.
+
+`kptr_restrict=2` is the one setting that could matter: it hides kernel symbol addresses from root too, which breaks a sensor that resolves addresses itself instead of attaching by name.
+`io_uring_disabled=1` matters only if a Defender component that does not run as root uses io_uring.
+
+Confirm empirically: `mdatp health` reports healthy, with `supplementary_events_subsystem` as `ebpf` rather than a fallback. A server can be healthy while it has fallen back.
+If a hardening setting has to be relaxed for Defender, settle with H4 whether it becomes a per-server switch.
