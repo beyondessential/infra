@@ -38,6 +38,9 @@ The `mdatp` pin is on the package alone (`Package: mdatp`), because the Microsof
 Both removal and install files are keyed on the resolved agent alone, so the resolver's check of the enrolment token and the onboarding file is the only one.
 PostgreSQL's server binaries are excluded by full path, found at run time: Defender ignores a bare process name in an exclusion of global scope, which is the scope an exclusion takes when it names none.
 The managed configuration is not notified to the agent, because Defender reads all of what Ansible writes there without a restart; only the onboarding file needs one.
+An agent's secret counts as present only when it is non-empty, since a cleared inventory secret arrives as an empty string and would otherwise install an agent that is never enrolled or onboarded.
+Each agent's apt source, pin and key are removed with the agent, the Elastic side included, as the spec scopes both repositories to the servers running that agent.
+Everything the Microsoft repository carries other than `mdatp` is pinned below the Ubuntu archive, so no Microsoft build can replace an Ubuntu package by version. Checked in a Ubuntu 24.04 container: `mdatp` stays at 900 and the rest become uninstallable.
 
 ## Kernel hardening compatibility
 
