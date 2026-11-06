@@ -35,6 +35,10 @@ The role is `endpoint-security` (renamed from `elastic-agent`), split into remov
 Removal of both non-chosen agents runs under either the `elastic` or `defender` tag, ahead of any install, so a partial run cannot leave two agents.
 The `mdatp` pin is on the package alone (`Package: mdatp`), because the Microsoft repository also carries packages Ubuntu ships.
 
+Both removal and install files are keyed on the resolved agent alone, so the resolver's check of the enrolment token and the onboarding file is the only one.
+PostgreSQL's server binaries are excluded by full path, found at run time: Defender ignores a bare process name in an exclusion of global scope, which is the scope an exclusion takes when it names none.
+The managed configuration is not notified to the agent, because Defender reads all of what Ansible writes there without a restart; only the onboarding file needs one.
+
 ## Kernel hardening compatibility
 
 Card H4 adds kernel parameters, a wider module blocklist, `debugfs=off`, `lockdown=integrity` and AppArmor to the baseline.
