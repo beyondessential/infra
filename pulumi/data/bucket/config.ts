@@ -15,6 +15,8 @@ export const ROLE_NAME = cfg.get('role') ?? `gha-s3-${normalizedStack}`;
 
 export const GHA_CLAIMS: string[] = cfg.getObject('ghaClaims') ?? [];
 
+export const WEB_ACL_ID = cfg.get('webAclId');
+
 export const ZONE_ID = 'Z07801321MEVDI0D1XE18';
 export const LOGS_BUCKET = LOGS_BUCKETS.DATA;
 
