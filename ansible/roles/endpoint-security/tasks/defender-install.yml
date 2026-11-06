@@ -59,20 +59,33 @@
         group: root
         mode: "0755"
 
+    # Defender ignores a bare process name in an exclusion of global scope, which is
+    # the scope an exclusion has when it names none, so each server binary is excluded
+    # by its full path. A server part way through a major upgrade runs two of them.
+    - name: Find the PostgreSQL server binaries
+      become: true
+      ansible.builtin.find:
+        paths: /usr/lib/postgresql
+        patterns: postgres
+        file_type: file
+        recurse: true
+      register: defender_postgres_binaries
+
     # Only what Ansible owns: the rest of Defender's settings come from the Defender portal.
     - name: Configure Defender
       become: true
       vars:
+        defender_postgres_exclusions: >-
+          {%- set exclusions = [] -%}
+          {%- for binary in defender_postgres_binaries.files | map(attribute='path') | sort -%}
+          {%- set _ = exclusions.append({'$type': 'excludedFileName', 'name': binary}) -%}
+          {%- endfor -%}
+          {{ exclusions }}
         defender_managed_config:
           antivirusEngine:
             enforcementLevel: "{{ 'passive' if defender_passive | bool else 'real_time' }}"
           exclusionSettings:
-            exclusions:
-              - $type: excludedPath
-                isDirectory: true
-                path: /var/lib/postgresql/
-              - $type: excludedFileName
-                name: postgres
+            exclusions: "{{ [{'$type': 'excludedPath', 'isDirectory': true, 'path': '/var/lib/postgresql/'}] + defender_postgres_exclusions }}"
             mergePolicy: admin_only
         defender_group_tag_config:
           edr:
