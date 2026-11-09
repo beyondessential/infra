@@ -161,6 +161,7 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
     const deadline = begun + WAIT_MINUTES * 60_000;
     let last = '';
     let problem = '';
+    let running = '';
     while (Date.now() < deadline) {
       const live = (await api.getNamespacedCustomObject({
         group: 'argoproj.io',
@@ -175,6 +176,8 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
       if ((op?.phase === 'Failed' || op?.phase === 'Error') && finished > begun - CLOCK_SKEW_MS) {
         throw new Error(`Argo CD sync ${op.phase}: ${op.message ?? 'no message'}`);
       }
+      // Argo CD starts no newer sync while one runs, so what it waits on is the blocker.
+      running = op?.phase === 'Running' ? (op.message ?? '') : '';
       const comparison =
         status.conditions?.find((c) => c.type === 'ComparisonError')?.message ?? '';
       if (comparison !== problem) {
@@ -194,7 +197,7 @@ export function waitForHealthy(app: k8s.apiextensions.CustomResource): Output<st
       await new Promise((resolve) => setTimeout(resolve, POLL_SECONDS * 1000));
     }
     throw new Error(
-      `Application ${name} was ${last} after ${WAIT_MINUTES} minutes${problem ? `: ${problem}` : ''}`,
+      `Application ${name} was ${last} after ${WAIT_MINUTES} minutes${problem ? `: ${problem}` : ''}${running ? `; its sync is ${running}` : ''}`,
     );
   });
 }
