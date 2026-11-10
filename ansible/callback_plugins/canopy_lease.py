@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import signal
 import threading
 import urllib.error
 import urllib.request
@@ -71,9 +72,31 @@ class CallbackModule(CallbackBase):
             return
         self._keeper = threading.Thread(target=self._keep, args=(self._lease,), daemon=True)
         self._keeper.start()
+        for signum in (signal.SIGTERM, signal.SIGHUP):
+            self._release_when_ended_by(signum)
 
     def v2_playbook_on_stats(self, stats):
         self._release()
+
+    def _release_when_ended_by(self, signum):
+        """A terminated or hung-up run never reaches its stats or its exit
+        hooks, so the lease would be held until it expires."""
+        before = signal.getsignal(signum)
+        if before == signal.SIG_IGN:
+            return
+        owner = os.getpid()
+
+        def leave(signum, frame):
+            # Workers are forks that inherit this, and the lease is not theirs.
+            if os.getpid() == owner:
+                self._release()
+            if callable(before):
+                before(signum, frame)
+            else:
+                signal.signal(signum, signal.SIG_DFL)
+                os.kill(os.getpid(), signum)
+
+        signal.signal(signum, leave)
 
     def _keep(self, lease):
         while not self._stop.wait(EXTEND_EVERY):

@@ -9,9 +9,11 @@ that matched no hosts.
 import json
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -994,6 +996,41 @@ class BeingHandedALease(PluginTestCase):
             result = self.run_playbook(self.source(), canopy.url, CANOPY_LEASE=LEASE["id"])
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertEqual(canopy.calls, ["for_group", "release_lease"])
+
+    def run_ended_by(self, signum):
+        """A play still going when the run is sent `signum`."""
+        if shutil.which("ansible-playbook") is None:
+            self.skipTest("ansible-playbook is not on PATH")
+        play = Path(self.workdir.name, "play.yml")
+        play.write_text(
+            "- hosts: all\n"
+            "  gather_facts: false\n"
+            "  connection: local\n"
+            "  tasks:\n"
+            "    - command: sleep 60\n"
+        )
+        with StubCanopy() as canopy:
+            run = subprocess.Popen(
+                ["ansible-playbook", "-i", str(self.source()), str(play)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=self.environment(canopy.url, CANOPY_LEASE=LEASE["id"]),
+                cwd=self.workdir.name,
+            )
+            for line in run.stdout:
+                if line.startswith("TASK"):
+                    break
+            time.sleep(1)
+            run.send_signal(signum)
+            run.communicate(timeout=60)
+        return canopy.calls
+
+    def test_a_terminated_run_releases_the_lease(self):
+        self.assertEqual(self.run_ended_by(signal.SIGTERM), ["for_group", "release_lease"])
+
+    def test_a_run_whose_terminal_closes_releases_the_lease(self):
+        self.assertEqual(self.run_ended_by(signal.SIGHUP), ["for_group", "release_lease"])
 
     def test_an_inventory_that_builds_nothing_releases_the_lease_before_stopping(self):
         body = served()
