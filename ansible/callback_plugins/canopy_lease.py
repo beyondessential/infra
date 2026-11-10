@@ -40,7 +40,8 @@ def _post(base, path, payload):
     request = urllib.request.Request(
         f"{base}/api/ansible/{path}",
         data=json.dumps(payload).encode(),
-        headers={"content-type": "application/json"},
+        # Canopy holds a caller that names neither a session nor itself to read-only.
+        headers={"content-type": "application/json", "x-canopy-client": "ansible"},
     )
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
         response.read()

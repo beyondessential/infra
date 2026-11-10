@@ -30,6 +30,7 @@ A run handed a run lease MUST send Canopy the playbook, the limit, the tags to r
 
 A run MUST hold the run lease for as long as the play runs, MUST extend it at intervals of 8 minutes, and MUST release it when the play ends.
 A run MUST do so for a run lease that was handed to it as for one that it took.
+A run MUST name itself to Canopy as a command on every request, in the header `x-canopy-client`, since Canopy refuses a change from a caller that names neither a session nor itself.
 
 An inventory source MUST include only the machines whose own variables set `managed_by_ansible` to true, as [INV](https://github.com/beyondessential/canopy/blob/main/.workhorse/specs/private-server/ansible/overview.md#managed-machines) defines.
 
