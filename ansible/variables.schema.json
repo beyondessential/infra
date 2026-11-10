@@ -315,7 +315,7 @@
 		"container_hardening_enabled": {
 			"description": "Whether containers run without capabilities other than binding low ports, and cannot gain privileges.",
 			"type": "boolean",
-			"default": true,
+			"default": false,
 			"x-canopy": {
 				"spec": "LNXSRV#inventory-variables"
 			}

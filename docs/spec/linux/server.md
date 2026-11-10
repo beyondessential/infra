@@ -449,4 +449,4 @@ The variables in the following table configure the host arrangement of a Linux s
 | `baseline_dns_servers` | Cloudflare's resolvers over IPv4 and IPv6 | The DNS servers queried alongside the network's resolver, none when empty. |
 | `kernel_lockdown_enabled` | `true` | Whether the kernel boots in lockdown, as [Boot parameters](#boot-parameters) gives. |
 | `sandboxes` | `[postgres, munin]` | The services that run in their [service sandbox](#service-sandboxes), by name. |
-| `container_hardening_enabled` | `true` | Whether the [containers](#containers) of the server run without capabilities and privilege gain. |
+| `container_hardening_enabled` | `false` | Whether the [containers](#containers) of the server run without capabilities and privilege gain. |
