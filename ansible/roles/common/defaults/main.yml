@@ -40,4 +40,4 @@ sandboxes:
 # Whether Tamanu and mSupply containers drop all capabilities but binding low
 # ports and cannot gain privileges (LNXSRV#containers). Defined here in `common`
 # because the tamanu and msupply roles both read it.
-container_hardening_enabled: true
+container_hardening_enabled: false
