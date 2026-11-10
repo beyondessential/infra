@@ -189,6 +189,9 @@ class StubCanopy:
                 stub.paths.append(self.path)
                 if prefix != "/api/ansible":
                     status, content_type, body = 404, "application/json", refusal(f"no such path {self.path}")
+                elif path != "for_group" and not self.headers.get("x-canopy-client"):
+                    # As canopy does: a write from a caller naming neither a session nor itself.
+                    status, content_type, body = 403, "application/json", refusal("this needs write mode")
                 else:
                     if path == "take_lease":
                         stub.requests.append(sent)

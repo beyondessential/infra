@@ -378,7 +378,8 @@ class InventoryModule(BaseInventoryPlugin):
         request = urllib.request.Request(
             url,
             data=json.dumps(payload).encode(),
-            headers={"content-type": "application/json"},
+            # Canopy holds a caller that names neither a session nor itself to read-only.
+            headers={"content-type": "application/json", "x-canopy-client": "ansible"},
         )
         opener = urllib.request.build_opener(NoRedirect)
         try:
