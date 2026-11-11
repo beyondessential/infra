@@ -6,3 +6,4 @@ await failIfIncorrectCluster();
 import './namespace.ts';
 import './roles.ts';
 import './manager.ts';
+import './gha-canopy.ts';
