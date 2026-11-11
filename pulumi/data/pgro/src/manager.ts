@@ -271,6 +271,8 @@ new k8s.apps.v1.Deployment(
         },
         spec: {
           serviceAccountName: 'postgres-restore-operator',
+          // Canopy's image is built for arm64 only.
+          nodeSelector: { 'kubernetes.io/arch': 'arm64' },
           securityContext: {
             runAsNonRoot: true,
             runAsUser: 65534,
