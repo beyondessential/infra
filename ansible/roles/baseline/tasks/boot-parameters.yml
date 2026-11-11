@@ -11,26 +11,30 @@
     path: /boot/firmware/cmdline.txt
   register: baseline_pi_cmdline
 
+# GRUB is found by the grub.cfg it boots from rather than by /etc/default/grub:
+# where a separate /boot is not mounted the defaults are there but update-grub
+# has nowhere to write.
 - name: Look for GRUB
   ansible.builtin.stat:
-    path: /etc/default/grub
-  register: baseline_grub_defaults
+    path: /boot/grub/grub.cfg
+  register: baseline_grub_cfg
 
 - name: Fail if the server has no boot configuration to write
   when:
     - not baseline_pi_cmdline.stat.exists
-    - not baseline_grub_defaults.stat.exists
+    - not baseline_grub_cfg.stat.exists
   ansible.builtin.fail:
     msg: >-
-      Neither GRUB (/etc/default/grub) nor a Raspberry Pi kernel command line
-      (/boot/firmware/cmdline.txt) was found, so the boot parameters have
-      nowhere to go.
+      Neither a GRUB configuration (/boot/grub/grub.cfg) nor a Raspberry Pi
+      kernel command line (/boot/firmware/cmdline.txt) was found, so the boot
+      parameters have nowhere to go. Where /boot is a separate partition, check
+      that it is mounted and listed in /etc/fstab.
 
 # spec: LNXSRV#boot-parameters
 # The drop-in sorts after 50-cloudimg-settings.cfg and appends, so the
 # parameters of the cloud image are kept.
 - name: Set boot parameters in GRUB
-  when: baseline_grub_defaults.stat.exists
+  when: baseline_grub_cfg.stat.exists
   become: true
   ansible.builtin.template:
     src: grub-hardening.cfg.j2
@@ -43,14 +47,14 @@
 # is on a FAT partition, where permissions cannot be set, so none are given.
 # spec: LNXSRV#boot-parameters
 - name: Read the Raspberry Pi kernel command line
-  when: not baseline_grub_defaults.stat.exists
+  when: not baseline_grub_cfg.stat.exists
   become: true
   ansible.builtin.slurp:
     src: /boot/firmware/cmdline.txt
   register: baseline_pi_cmdline_content
 
 - name: Set boot parameters on the Raspberry Pi
-  when: not baseline_grub_defaults.stat.exists
+  when: not baseline_grub_cfg.stat.exists
   become: true
   # noqa: risky-file-permissions
   ansible.builtin.copy:

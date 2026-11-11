@@ -43,6 +43,7 @@ Handlers are tagged `always`, so a tag-limited run still reloads or restarts wha
 - A change to PostgreSQL settings that needs a restart is not applied on a production server, whose Tailscale name contains `prod`: the run prints a warning and leaves the restart to you ([restart pending](../runbooks/linux-postgres-restart-pending.md)).
 - An installation run (`base-install.yml`, `tamanu-install.yml`) does not restart the Tamanu services, except for the rolling restart that follows a PostgreSQL restart ([LNXANS](../spec/linux/ansible.md#installation)). `/etc/tamanu/env` and `local.json5` change on disk and take effect when the services next restart. The upgrade playbooks do stop and start the services ([upgrade Tamanu](linux-upgrade-tamanu.md)).
 - The first run on a host does not wire the Munin PostgreSQL plugins, because `munin` runs after `postgres`. They appear on the next run.
+- Write the boot parameters on a server whose separate `/boot` partition is not mounted: the run stops at the `baseline` role's boot configuration check, because GRUB's `grub.cfg` is not there ([boot-parameters.yml](../../ansible/roles/baseline/tasks/boot-parameters.yml)). Mount `/boot` (and `/boot/efi`), add both to `/etc/fstab` with `nofail`, and run again. **[dev-OTS]**
 - Read the inventory from anywhere but Canopy: there is no cache and no offline mode, so a run stops where Canopy cannot be reached ([playbook refused](../runbooks/linux-playbook-refused.md)).
 
 ## After
