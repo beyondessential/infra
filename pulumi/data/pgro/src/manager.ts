@@ -6,9 +6,7 @@ import {
   image,
   maxConcurrentRestores,
   tailscaleAuthkey,
-  canopyBaseUrl,
-  canopyDeviceKey,
-  canopyPgdataPvcSize,
+  canopyTailnetUrl,
   builderPullUser,
   builderPullPat,
 } from './config.ts';
@@ -44,44 +42,19 @@ const configMap = new k8s.core.v1.ConfigMap(
   { parent: ns },
 );
 
-// Tailscale sidecar authkey (tag:pgro-operator). Presence enables the sidecar
-// and, with it, the canopy path over the tailnet.
-const authkeySecret = tailscaleAuthkey
-  ? new k8s.core.v1.Secret(
-      'pgro-operator-tailscale-authkey',
-      {
-        metadata: {
-          name: 'pgro-operator-tailscale-authkey',
-          namespace,
-        },
-        stringData: {
-          TS_AUTHKEY: tailscaleAuthkey,
-        },
-      },
-      { parent: ns },
-    )
-  : undefined;
-
-// The operator's own device private key (P-256 EC, PEM). bestool-canopy
-// self-signs a short-lived cert from it; its public key is the canopy device
-// identity, promoted to backup-restore canopy-side. pgro reads the first
-// entry of this Secret and uses it as its mTLS identity when the tailnet
-// probe fails.
-if (canopyDeviceKey) {
-  new k8s.core.v1.Secret(
-    'pgro-canopy-device-key',
-    {
-      metadata: {
-        name: 'pgro-canopy-device-key',
-        namespace,
-      },
-      stringData: {
-        'device.pem': canopyDeviceKey,
-      },
+const authkeySecret = new k8s.core.v1.Secret(
+  'pgro-operator-tailscale-authkey',
+  {
+    metadata: {
+      name: 'pgro-operator-tailscale-authkey',
+      namespace,
     },
-    { parent: ns },
-  );
-}
+    stringData: {
+      TS_AUTHKEY: tailscaleAuthkey,
+    },
+  },
+  { parent: ns },
+);
 
 new k8s.core.v1.Service(
   'postgres-restore-operator',
@@ -138,24 +111,15 @@ const controllerEnv: k8s.types.input.core.v1.EnvVar[] = [
     name: 'OPERATOR_SERVICE_NAME',
     value: 'postgres-restore-operator',
   },
+  {
+    name: 'CANOPY_TAILNET_URL',
+    value: canopyTailnetUrl,
+  },
+  {
+    name: 'CANOPY_PROXY_IMAGE',
+    value: image,
+  },
 ];
-
-// Canopy integration. CANOPY_BASE_URL opts the operator into the canopy path;
-// the client prefers the tailnet SOCKS5 proxy the sidecar exposes on
-// [::1]:1055 (its default) and falls back to mTLS against this URL. It needs
-// at least one working transport — the tailnet sidecar (authkey) or the mTLS
-// device key — or bestool-canopy errors on construction. So require the base
-// URL plus either transport.
-const canopyActive = !!(canopyBaseUrl && (authkeySecret || canopyDeviceKey));
-if (canopyActive) {
-  controllerEnv.push({ name: 'CANOPY_BASE_URL', value: canopyBaseUrl! });
-  if (canopyDeviceKey) {
-    controllerEnv.push({ name: 'CANOPY_DEVICE_CERT_SECRET', value: 'pgro-canopy-device-key' });
-  }
-  if (canopyPgdataPvcSize) {
-    controllerEnv.push({ name: 'CANOPY_PGDATA_PVC_SIZE', value: canopyPgdataPvcSize });
-  }
-}
 
 // pgro copies this into each build namespace it creates, so it lives here in
 // the operator's namespace rather than in any replica's.
@@ -189,6 +153,7 @@ const containers: k8s.types.input.core.v1.Container[] = [
   {
     name: 'controller',
     image,
+    command: ['pgro'],
     env: controllerEnv,
     ports: [
       {
@@ -235,15 +200,12 @@ const containers: k8s.types.input.core.v1.Container[] = [
         drop: ['ALL'],
       },
     },
+    volumeMounts: [{ name: 'tailscale-socket', mountPath: '/var/run/tailscale', readOnly: true }],
   },
-];
-
-// Tailscale sidecar — the primary production network path to canopy.
-// bestool-canopy's CanopyClient auto-probes canopy.tail53aef.ts.net through
-// the SOCKS5 proxy this exposes on [::1]:1055. Tailnet state persists in the
-// pgro-operator-tailscale-state Secret (scoped Role in roles.ts).
-if (authkeySecret) {
-  containers.push({
+  // pgro reaches Canopy only through this sidecar's SOCKS5 proxy on [::1]:1055.
+  // Tailnet state persists in the pgro-operator-tailscale-state Secret (scoped
+  // Role in roles.ts).
+  {
     name: 'tailscale',
     image: `ghcr.io/tailscale/tailscale:v${TAILSCALE_VERSION}`,
     env: [
@@ -278,8 +240,9 @@ if (authkeySecret) {
         memory: '256Mi',
       },
     },
-  });
-}
+    volumeMounts: [{ name: 'tailscale-socket', mountPath: '/var/run/tailscale' }],
+  },
+];
 
 new k8s.apps.v1.Deployment(
   'postgres-restore-operator',
@@ -308,6 +271,8 @@ new k8s.apps.v1.Deployment(
         },
         spec: {
           serviceAccountName: 'postgres-restore-operator',
+          // Canopy's image is built for arm64 only.
+          nodeSelector: { 'kubernetes.io/arch': 'arm64' },
           securityContext: {
             runAsNonRoot: true,
             runAsUser: 65534,
@@ -315,6 +280,7 @@ new k8s.apps.v1.Deployment(
             fsGroup: 65534,
           },
           containers,
+          volumes: [{ name: 'tailscale-socket', emptyDir: {} }],
         },
       },
     },
