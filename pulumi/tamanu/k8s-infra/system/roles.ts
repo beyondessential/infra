@@ -1,5 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from './namespace.ts';
+import { deployerSubjects } from '../deployerSubjects.ts';
 
 // Deployer needs read access to tamanu-system to read secrets and config templates
 // that get copied into deployment namespaces.
@@ -29,12 +30,7 @@ new k8s.rbac.v1.RoleBinding('tamanu-system-deploy', {
     kind: 'Role',
     name: deploySystemRole.metadata.name,
   },
-  subjects: [
-    {
-      kind: 'Group',
-      name: 'tailscale:tamanu-deploy',
-    },
-  ],
+  subjects: deployerSubjects,
 });
 
 // Engineers need write access to config templates and secrets

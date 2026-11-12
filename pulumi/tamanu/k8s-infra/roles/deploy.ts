@@ -1,5 +1,6 @@
 import * as k8s from '@pulumi/kubernetes';
 import { namespace } from '../superns.ts';
+import { deployerSubjects } from '../deployerSubjects.ts';
 
 // Minimal cluster-level permissions for namespace operations.
 // With SubnamespaceAnchors, we only need to read namespaces (HNC creates them).
@@ -33,12 +34,7 @@ new k8s.rbac.v1.ClusterRoleBinding('tamanu-deploy-cluster', {
     kind: 'ClusterRole',
     name: clusterRole.metadata.name,
   },
-  subjects: [
-    {
-      kind: 'Group',
-      name: 'tailscale:tamanu-deploy',
-    },
-  ],
+  subjects: deployerSubjects,
 });
 
 // Permissions needed for a tamanu/on-k8s deployment.
@@ -148,12 +144,7 @@ new k8s.rbac.v1.RoleBinding('tamanu-super-deploy', {
     kind: 'ClusterRole',
     name: deployRole.metadata.name,
   },
-  subjects: [
-    {
-      kind: 'Group',
-      name: 'tailscale:tamanu-deploy',
-    },
-  ],
+  subjects: deployerSubjects,
 });
 
 new k8s.rbac.v1.RoleBinding('tamanu-super-deploy-view', {
@@ -166,10 +157,5 @@ new k8s.rbac.v1.RoleBinding('tamanu-super-deploy-view', {
     kind: 'ClusterRole',
     name: 'view',
   },
-  subjects: [
-    {
-      kind: 'Group',
-      name: 'tailscale:tamanu-deploy',
-    },
-  ],
+  subjects: deployerSubjects,
 });
