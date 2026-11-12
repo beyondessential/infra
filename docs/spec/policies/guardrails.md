@@ -28,6 +28,7 @@ The pack MUST contain the rules in the following table.
 | `guardduty-single-owner` | Resources of the GuardDuty provider module. | [Resource validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [GuardDuty ownership](#guardduty-ownership) |
 | `deployment-pvc-needs-recreate` | Deployments that mount a claim. | [Stack validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [Deployment rollout strategy](#deployment-rollout-strategy) |
 | `efs-access-point-scoped` | EFS storage classes and EFS persistent volumes. | [Stack validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [EFS access point scope](#efs-access-point-scope) |
+| `deployer-bindings-include-people` | RoleBindings and ClusterRoleBindings that name the deployer group. | [Stack validation policy](https://www.pulumi.com/docs/iac/crossguard/core-concepts/). | [Deployer bindings](#deployer-bindings) |
 
 Every rule MUST be [mandatory](https://www.pulumi.com/docs/iac/crossguard/core-concepts/).
 
@@ -124,6 +125,18 @@ The pack MUST NOT report a storage class or PersistentVolume that names any othe
 > A subpath that two claims share, or that sits at the filesystem root, puts the content of other claims within that deletion.
 > A volume handle that names the filesystem and no access point reaches the whole filesystem.
 > Without a unique directory, a rebuilt claim adopts the directory its predecessor left behind.
+
+## Deployer bindings
+
+The groups that the rule checks, and the requirement on the bindings that name the deployer group, are specified in [K8SNSP](../kubernetes/namespaces.md#human-deployers).
+
+The pack MUST reject a RoleBinding or ClusterRoleBinding that has a Group subject named `tailscale:tamanu-deploy` and lacks a Group subject named `tailscale:engineer`, `tailscale:tamanu-engineer` or `tailscale:oncall`.
+
+The pack MUST accept a binding that has a Group subject for each of the four groups.
+
+The pack MUST NOT report a binding that has no Group subject named `tailscale:tamanu-deploy`, or a subject of another kind with that name, or a resource of any other type.
+
+A violation report MUST name each of the three groups that the binding lacks.
 
 ## Build and tests
 

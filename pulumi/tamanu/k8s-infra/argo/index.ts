@@ -10,6 +10,7 @@ import {
   rendererImage,
   unknownConfigKeys,
 } from '../../../common/tamanuRenderer.ts';
+import { deployerSubjects } from '../deployerSubjects.ts';
 
 // What Tamanu deployments need from the shared Argo CD controller in
 // k8s-essentials, which must be installed first: the plugin that renders them,
@@ -70,8 +71,9 @@ new k8s.apiextensions.CustomResource('argo-project-tamanu', {
   },
 });
 
-// Tamanu CD writes the Application for a deployment, through the same Tailscale
-// identity it deploys with. It can do nothing else in this namespace.
+// Tamanu CD writes the Application for a deployment, through the same Tailscale identity it
+// deploys with, and engineers and on-calls write one by hand under their own groups. None of
+// them can do anything else in this namespace.
 const role = new k8s.rbac.v1.Role('argo-tamanu-deploy', {
   metadata: { name: 'tamanu-deploy', namespace: namespaceName },
   rules: [
@@ -86,7 +88,7 @@ const role = new k8s.rbac.v1.Role('argo-tamanu-deploy', {
 new k8s.rbac.v1.RoleBinding('argo-tamanu-deploy', {
   metadata: { name: 'tamanu-deploy', namespace: namespaceName },
   roleRef: { apiGroup: 'rbac.authorization.k8s.io', kind: 'Role', name: role.metadata.name },
-  subjects: [{ kind: 'Group', name: 'tailscale:tamanu-deploy' }],
+  subjects: deployerSubjects,
 });
 
 // A promotion restarts the repo server, so that it serves the channel's new image, and then

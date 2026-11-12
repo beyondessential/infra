@@ -167,6 +167,18 @@ An access group MUST NOT be bound to `cluster-admin` by a ClusterRoleBinding.
 
 A binding of an access group to `cluster-admin` MUST be a RoleBinding.
 
+## Human deployers
+
+A person in the access group `tailscale:engineer`, `tailscale:tamanu-engineer` or `tailscale:oncall` MUST be able to deploy Tamanu by hand, with the access that [Tamanu CD](../overview.md#tamanu-cd) has.
+
+Each binding in the table in [Access groups](#access-groups) whose group is `tailscale:tamanu-deploy` MUST also name the groups `tailscale:engineer`, `tailscale:tamanu-engineer` and `tailscale:oncall`.
+
+The permissions that a binding of `tailscale:tamanu-deploy` grants, and the limits of [Deployer limits](#deployer-limits) on them, are the same for each group it names.
+
+> [!NOTE]
+> The `oncall` bounds in [Roles](#roles) describe the `oncall` role.
+> An on-call holds the permissions of the `tamanu-deploy` role in addition, within the namespaces where that role is bound.
+
 ## Roles
 
 Each role MUST grant the permissions its purpose needs and no others.
