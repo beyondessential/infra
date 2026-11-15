@@ -1,0 +1,6 @@
+name: outbreak-detection
+description: Namespace, service account and S3 access for the disease-outbreak-detection pipeline
+runtime:
+  name: nodejs
+  options:
+    typescript: false
