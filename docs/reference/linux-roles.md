@@ -29,7 +29,7 @@ Everything here is under `ansible/`.
 | `tailscale` | where `tailscale_name` is set | Repository, package, `ts-up` helper, and the Tailscale `listen_addresses` and `pg_hba` entries for PostgreSQL. | [server](../spec/linux/server.md#access) |
 | `podman` | all | Podman, crun, netavark and aardvark from the BES repository, the `podman0` network, the resolver route for `tamanu.internal`, daily dangling-image prune. | [runtime](../spec/linux/runtime.md#container-runtime) |
 | `postgres` | all | PGDG repository, version detection, `@postgres` subvolume, packages, access, `alertd` role, Munin plugins, btrfs tuning, quota, WAL settings, tuning, io_uring group, service sandbox, backup definitions, major upgrade. | [database](../spec/linux/database.md) |
-| `postgres-database` | `central`, `facility` | The `tamanu` database and its owner, with a derived password. | [database](../spec/linux/database.md#roles-and-credentials) |
+| `postgres-database` | `central`, `facility` | The `tamanu` database and its owner, with a derived password. Lets `alertd` switch to the owner on PostgreSQL 16 or later. | [database](../spec/linux/database.md#roles-and-credentials) |
 | `caddy` | all | Package at `caddy_version`, socket activation, issuer, DNS-01 credentials, UDP buffers, backup definition, Munin plugin. | [runtime](../spec/linux/runtime.md#reverse-proxy) |
 | `munin` | all unless `munin_enabled` is false | `munin` and `munin-node`, node on loopback and in its sandbox, tailnet vhost on 4950, nodatacow `/var/lib/munin`. | [server](../spec/linux/server.md#metrics) |
 | `kopia` | all | Removes the upstream Kopia repository and the self-run Kopia timers and connection. The `kopia` package and user come from `baseline`. | [backups](../spec/linux/backups.md) |
