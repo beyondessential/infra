@@ -113,8 +113,6 @@ The role `alertd` MUST exist on every server that runs PostgreSQL, with the attr
 
 On PostgreSQL 16 or later, the role `alertd` MUST be a member of the role that owns the Tamanu database, with the `SET` option and without the `INHERIT` option, so that it holds the owner's privileges only after `SET ROLE`.
 
-On a PostgreSQL version lower than 16, the role `alertd` MUST NOT be a member of the role that owns the Tamanu database.
-
 The user name map `alertd` MUST map the operating system user `root` to the role `alertd`.
 
 Where the Munin node is installed, its PostgreSQL plugins MUST connect over the socket as the role `alertd` to the database `postgres`.
