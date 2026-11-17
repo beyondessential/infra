@@ -27,3 +27,45 @@
     method: scram-sha-256
     address: "" # workaround for https://github.com/ansible-collections/community.postgresql/issues/777 (fixed in 3.9.1)
   notify: Reload postgres
+
+# The alertd role has INHERIT, so before PostgreSQL 16 (no per-grant options) a
+# grant would hand it the owner's write access on every connection.
+# spec: LNXDB#roles-and-credentials
+- name: Check whether the alertd role can be granted '{{ postgres_username }}'
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    query: >-
+      SELECT 1 FROM pg_roles
+      WHERE rolname = %(member)s
+      AND current_setting('server_version_num')::int >= 160000
+    named_args:
+      member: "{{ alertd_db_role }}"
+  register: postgres_alertd_grantable
+  changed_when: false
+
+- name: Check whether the alertd role can already switch to '{{ postgres_username }}'
+  become: true
+  become_user: postgres
+  when: postgres_alertd_grantable.rowcount > 0
+  community.postgresql.postgresql_query:
+    query: >-
+      SELECT 1 FROM pg_auth_members
+      WHERE roleid = %(owner)s::regrole
+      AND member = %(member)s::regrole
+      AND set_option AND NOT inherit_option
+    named_args:
+      owner: "{{ postgres_username }}"
+      member: "{{ alertd_db_role }}"
+  register: postgres_alertd_granted
+  changed_when: false
+
+# spec: LNXDB#roles-and-credentials
+- name: Let the alertd role switch, without inheriting, to '{{ postgres_username }}'
+  become: true
+  become_user: postgres
+  when:
+    - postgres_alertd_grantable.rowcount > 0
+    - postgres_alertd_granted.rowcount == 0
+  community.postgresql.postgresql_query:
+    query: 'GRANT "{{ postgres_username }}" TO "{{ alertd_db_role }}" WITH INHERIT FALSE, SET TRUE'
