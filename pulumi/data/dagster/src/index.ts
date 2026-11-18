@@ -6,6 +6,7 @@ import './serviceAccount.ts';
 import './secrets.ts';
 import './helm.ts';
 import './ingress.ts';
+import './egress.ts';
 import './rbac.ts';
 
 export { namespace } from './namespace.ts';

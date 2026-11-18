@@ -1,4 +1,4 @@
-import { interpolate, jsonStringify, type Output } from '@pulumi/pulumi';
+import { getStack, interpolate, jsonStringify, type Output } from '@pulumi/pulumi';
 import * as awsClassic from '@pulumi/aws';
 import * as awsNative from '@pulumi/aws-native';
 import { failIfIncorrectAccountOrRegion, cfg, tags } from '../../common/coreRef.ts';
@@ -9,9 +9,8 @@ import { accountId, region } from '../../common/awsAccount.ts';
 import { AWS_S3_WRITE_ACTIONS } from '../../constants/external.ts';
 import {
   DAGSTER_COMPUTE_LOGS_PREFIX,
-  DB_PROXY_NAMESPACE,
-  DAGSTER_NAMESPACE_PATTERN,
   DAGSTER_SERVICE_ACCOUNT,
+  dagsterNamespace,
 } from '../../constants/dagster.ts';
 
 await failIfIncorrectAccountOrRegion();
@@ -19,7 +18,8 @@ await failIfIncorrectAccountOrRegion();
 // spec: DAGS#aws-identity
 const oidcProviderArn = new CrossStack(cfg.require('k8s-core')).k8sCoreOutput().oidcProviderArn;
 
-const namespacePattern = cfg.get('namespacePattern') ?? DAGSTER_NAMESPACE_PATTERN;
+// The namespace of the dagster stack with the same stack name.
+const namespace = dagsterNamespace(getStack());
 
 // Holds the compute logs of runs, which are kept as long as the runs that
 // reference them.
@@ -109,14 +109,13 @@ managedPolicyArns.push(rdsConnectPolicy.policyArn);
 const dagsterRole = eksServiceAccount('dagster', {
   serviceAccountName: DAGSTER_SERVICE_ACCOUNT,
   oidcProviderArn,
-  namespace: namespacePattern,
-  pinServiceAccount: true,
+  namespace,
   managedPolicyArns,
 });
 
 // Read by the dagster stack, which takes these as given.
 export const dagsterRoleArn = dagsterRole.arn;
 export const computeLogsBucket = logsBucket.bucketName;
-export const dbHost = `${dbInstanceIdentifier}.${DB_PROXY_NAMESPACE}.svc.cluster.local`;
+export const dbHost = dbInstance.address;
 export const dbPort = dbInstance.port;
 export { dbUser, region };
