@@ -9,9 +9,11 @@
     keyFile: "/run/secrets/tamanu-config-key",
   },
 
+  {% if tamanu_version is match('v?[0-9]') and tamanu_version | regex_replace('^v', '') is version('2.62.0', '<') %}
   proxy: {
     trusted: "loopback, linklocal, uniquelocal",
   },
+  {% endif %}
 
   db: {
     name: "{{ tamanu_db_name }}",
@@ -20,7 +22,9 @@
     password: "{{ lookup('ansible.builtin.password', '/dev/null', seed=ansible_facts['machine_id'] + salt + 'postgres' + tamanu_db_user, chars=['ascii_letters', 'digits']) }}",
     host: "/var/run/postgresql",
     port: null,
+    {% if tamanu_version is match('v?[0-9]') and tamanu_version | regex_replace('^v', '') is version('2.62.0', '<') %}
     migrateOnStartup: false,
+    {% endif %}
     reportSchemas: {
       connections: {
         raw: {
@@ -47,9 +51,11 @@
   {% endif %}
 
   {% if tamanu_server_type == 'central' %}
+  {% if tamanu_version is match('v?[0-9]') and tamanu_version | regex_replace('^v', '') is version('2.62.0', '<') %}
   disk: {
     diskPath: '/var/lib/postgresql',
   },
+  {% endif %}
   {% if patient_portal_enabled %}
   patientPortal: {
     portalUrl: "https://{{ patient_portal_fqdn }}",
