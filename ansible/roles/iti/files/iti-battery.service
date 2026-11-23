@@ -1,0 +1,12 @@
+[Unit]
+Description=Iti UPS battery monitoring
+After=network.target
+Requires=iti-lcd-server.service
+
+[Service]
+ExecStart=/usr/bin/iti-bestool --log-timeless iti battery --watch 10sec --estimate --json --update-screen 220
+Restart=always
+RestartSec=60s
+
+[Install]
+WantedBy=multi-user.target
