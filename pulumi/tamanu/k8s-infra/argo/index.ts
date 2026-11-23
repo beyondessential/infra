@@ -48,7 +48,14 @@ if (renderRepoToken) {
       namespace: namespaceName,
       labels: { 'argocd.argoproj.io/secret-type': 'repository' },
     },
-    stringData: { type: 'git', url: RENDER_REPO, username: 'git', password: renderRepoToken },
+    stringData: {
+      type: 'git',
+      url: RENDER_REPO,
+      username: 'git',
+      password: renderRepoToken,
+      // Unscoped, any project's Application naming this repository could clone it with the token.
+      project: 'tamanu',
+    },
   });
 }
 
