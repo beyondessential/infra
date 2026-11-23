@@ -1,4 +1,5 @@
 import * as k8s from '@pulumi/kubernetes';
+import { cfg } from '../../../common/cfg.ts';
 import { argoNamespace } from '../../../common/k8s/argo.ts';
 import { argoPlugin } from '../../../common/k8s/argoPlugin.ts';
 import {
@@ -36,6 +37,19 @@ function pluginConfig(channel: Channel): string {
     '    args: [--format, stream]',
     '',
   ].join('\n');
+}
+
+// The repo server clones the render repository anonymously unless it holds a token for it.
+const renderRepoToken = cfg.getSecret('renderRepoToken');
+if (renderRepoToken) {
+  new k8s.core.v1.Secret('argo-repo-render', {
+    metadata: {
+      name: 'repo-render',
+      namespace: namespaceName,
+      labels: { 'argocd.argoproj.io/secret-type': 'repository' },
+    },
+    stringData: { type: 'git', url: RENDER_REPO, username: 'git', password: renderRepoToken },
+  });
 }
 
 const plugins = CHANNELS.map((channel) =>

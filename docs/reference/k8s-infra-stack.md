@@ -28,6 +28,7 @@ Keys under `tamanu-k8s-infra:` unless noted.
 | `pgsnap:imageTag` | no | Image tag of the pgsnap operator. Omit the key and the operator is not deployed. |
 | `argoEnabled` | no, default `false` | Adds the Tamanu side of Argo CD: the render plugins, the `tamanu` AppProject and the deployer's access to Applications. Needs Argo CD installed by [k8s-essentials](k8s-essentials-config.md) first. |
 | `argoNamespace` | no, default `argocd-system` | Must match the k8s-essentials value. |
+| `renderRepoToken` | no (secret) | Token Argo CD clones `https://github.com/beyondessential/infra` with, read access to that repository's contents. Becomes the repository secret `repo-render` in the Argo CD namespace. Required once the repository is private. |
 
 The stack will not preview without the three required secrets.
 Set them with `pulumi config set --secret`, never in a file you commit.
