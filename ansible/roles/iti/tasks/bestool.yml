@@ -3,7 +3,7 @@
 # and units need a full bestool build. Install it as iti-bestool so the apt
 # bestool stays the canonical `bestool` in PATH. The role's copies of the iti
 # scripts and units call iti-bestool, where bestool's own call plain `bestool`.
-# They are bestool v1.7.1's services/, so re-diff them when bestool_version moves.
+# They follow bestool v1.7.1's services/, so re-diff them when bestool_version moves.
 - name: Download iti-bestool
   become: true
   ansible.builtin.get_url:
