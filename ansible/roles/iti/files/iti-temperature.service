@@ -1,6 +1,6 @@
 [Unit]
 Description=Iti core temperature monitoring
-After=network.target
+After=network.target iti-lcd-server.service
 Requires=iti-lcd-server.service
 
 [Service]
