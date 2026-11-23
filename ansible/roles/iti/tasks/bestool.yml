@@ -1,9 +1,9 @@
 ---
 # The deb in bes-tools doesn't include the iti subcommand; the iti LCD scripts
 # and units need a full bestool build. Install it as iti-bestool so the apt
-# bestool stays the canonical `bestool` in PATH. The role's copies of the iti
-# scripts and units call iti-bestool, where bestool's own call plain `bestool`.
-# They are bestool v1.7.1's services/, so re-diff them when bestool_version moves.
+# bestool stays the canonical `bestool` in PATH. The iti scripts and units in
+# files/ are bestool v1.7.1's services/ with `bestool` changed to iti-bestool,
+# so re-diff them when bestool_version moves.
 - name: Download iti-bestool
   become: true
   ansible.builtin.get_url:
