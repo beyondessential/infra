@@ -291,6 +291,21 @@ impl Config {
 /// or the `DB_RAW_*` and `DB_REPORTING_*` variables that carried their logins.
 const TAMANU_MANAGES_REPORT_ROLES: &str = "2.60.0-0";
 
+/// The first Tamanu release that reads the central refresh-token signing secret
+/// from `AUTH_REFRESH_TOKEN_SECRET`. Earlier releases are given it as
+/// `AUTH_REFRESH_SECRET`, through the `auth.refreshSecret` config key.
+const TAMANU_READS_REFRESH_TOKEN_SECRET_ENV: &str = "2.62.0-0";
+
+impl Config {
+	/// Whether central takes its refresh-token secret as `AUTH_REFRESH_TOKEN_SECRET`
+	/// rather than `AUTH_REFRESH_SECRET`. An unresolvable version reads as too old.
+	/// Getting this wrong leaves a server that refuses to start (2.69 and later),
+	/// or with no refresh secret at all.
+	pub fn has_refresh_token_secret_env(&self) -> bool {
+		self.at_least_version(TAMANU_READS_REFRESH_TOKEN_SECRET_ENV)
+	}
+}
+
 impl Config {
 	/// Whether the deployment still needs the `raw` and `reporting` database
 	/// roles, their password Secrets and the variables that read them. An
@@ -479,6 +494,22 @@ mod tests {
 		p.image_tag = "v2.70.0".into();
 		let cfg = Config::derive(&p).unwrap();
 		assert!(!cfg.at_least_version("2.65.0-0"));
+	}
+
+	#[test]
+	fn refresh_token_secret_env_starts_at_2_62() {
+		let mut p = params("sha-abcdef");
+		for (version, renamed) in [
+			(None, false),
+			(Some("2.61.9"), false),
+			(Some("2.62.0-beta.1"), true),
+			(Some("2.62.0"), true),
+			(Some("2.69.0"), true),
+		] {
+			p.app_version = version.map(Into::into);
+			let cfg = Config::derive(&p).unwrap();
+			assert_eq!(cfg.has_refresh_token_secret_env(), renamed, "{version:?}");
+		}
 	}
 
 	#[test]

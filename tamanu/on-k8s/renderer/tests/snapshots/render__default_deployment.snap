@@ -301,7 +301,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  custom-environment-variables.json: '{"auth":{"refreshSecret":"AUTH_REFRESH_SECRET","secret":"AUTH_SECRET"},"countryTimeZone":"TZ","crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"},"db":{"host":"DB_HOST","name":"DB_NAME","password":"DB_PASSWORD","username":"DB_USERNAME"},"errors":{"apiKey":"BUGSNAG_API_KEY"},"localisation":{"timeZone":"TZ"},"mailgun":{"apiKey":"MAILGUN_API_KEY","domain":"MAILGUN_DOMAIN","from":"MAILGUN_FROM"},"tupaiaApiClient":{"auth":{"password":"TUPAIA_API_PASSWORD","username":"TUPAIA_API_USERNAME"}}}'
+  custom-environment-variables.json: '{"auth":{"secret":"AUTH_SECRET"},"countryTimeZone":"TZ","crypto":{"keyFile":"CRYPTO_KEY_FILE","settingsPsk":"CRYPTO_SETTINGS_PSK"},"db":{"host":"DB_HOST","name":"DB_NAME","password":"DB_PASSWORD","username":"DB_USERNAME"},"errors":{"apiKey":"BUGSNAG_API_KEY"},"localisation":{"timeZone":"TZ"},"mailgun":{"apiKey":"MAILGUN_API_KEY","domain":"MAILGUN_DOMAIN","from":"MAILGUN_FROM"},"tupaiaApiClient":{"auth":{"password":"TUPAIA_API_PASSWORD","username":"TUPAIA_API_USERNAME"}}}'
   local.json5: |-
     {
       canonicalHostName: 'https://central.main.cd.tamanu.app',
@@ -488,7 +488,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -677,7 +677,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -840,7 +840,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -1003,7 +1003,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -3574,7 +3574,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -3726,7 +3726,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -3894,7 +3894,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
