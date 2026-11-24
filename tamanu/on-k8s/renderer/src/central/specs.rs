@@ -179,9 +179,14 @@ impl<'a> PodSpecFactory<'a> {
 				secret_ref("DB_REPORTING_PASSWORD", &reporting, "password"),
 			]);
 		}
+		let refresh_secret_env = if cfg.has_refresh_token_secret_env() {
+			"AUTH_REFRESH_TOKEN_SECRET"
+		} else {
+			"AUTH_REFRESH_SECRET"
+		};
 		out.extend([
 			secret_ref("AUTH_SECRET", &auth, names::AUTH_SECRET_KEY),
-			secret_ref("AUTH_REFRESH_SECRET", &auth, names::AUTH_REFRESH_SECRET_KEY),
+			secret_ref(refresh_secret_env, &auth, names::AUTH_REFRESH_SECRET_KEY),
 		]);
 		out
 	}
@@ -238,10 +243,7 @@ pub fn deployment(
 /// come from which environment variables.
 pub fn config_from_env(cfg: &Config) -> Value {
 	let mut env = json!({
-		"auth": {
-			"secret": "AUTH_SECRET",
-			"refreshSecret": "AUTH_REFRESH_SECRET",
-		},
+		"auth": { "secret": "AUTH_SECRET" },
 		"db": {
 			"host": "DB_HOST",
 			"username": "DB_USERNAME",
@@ -271,6 +273,10 @@ pub fn config_from_env(cfg: &Config) -> Value {
 	});
 	if cfg.has_legacy_report_roles() {
 		env["db"]["reportSchemas"] = postgres::legacy_report_schemas_env();
+	}
+	// From 2.62 the refresh secret is read from the environment directly.
+	if !cfg.has_refresh_token_secret_env() {
+		env["auth"]["refreshSecret"] = json!("AUTH_REFRESH_SECRET");
 	}
 	env
 }
@@ -323,7 +329,7 @@ mod tests {
 				"MAILGUN_FROM",
 				"BUGSNAG_API_KEY",
 				"AUTH_SECRET",
-				"AUTH_REFRESH_SECRET",
+				"AUTH_REFRESH_TOKEN_SECRET",
 			]
 		);
 		let env = pod["containers"][0]["env"].as_array().unwrap();
@@ -423,6 +429,35 @@ mod tests {
 		assert_eq!(got, serde_json::from_str::<Value>(sent).unwrap());
 		assert_eq!(auth["secret"], "AUTH_SECRET");
 		assert_eq!(auth["refreshSecret"], "AUTH_REFRESH_SECRET");
+	}
+
+	#[test]
+	fn the_refresh_secret_is_named_for_what_the_release_reads() {
+		let secret_env_at = |version| {
+			let cfg = crate::central::test_support::cfg_at(version);
+			let pods = PodSpecFactory::new(&cfg, None);
+			let pod =
+				serde_json::to_value(pods.pod_spec(PodArgs::new("server", ["serve"]))).unwrap();
+			let names = env_names(&pod)
+				.iter()
+				.filter(|n| n.starts_with("AUTH_REFRESH"))
+				.map(|n| n.to_string())
+				.collect::<Vec<_>>();
+			(
+				names,
+				config_from_env(&cfg)["auth"].get("refreshSecret").cloned(),
+			)
+		};
+		for version in [Some("2.61.9"), None] {
+			let (names, mapped) = secret_env_at(version);
+			assert_eq!(names, ["AUTH_REFRESH_SECRET"], "{version:?}");
+			assert_eq!(mapped, Some(json!("AUTH_REFRESH_SECRET")), "{version:?}");
+		}
+		for version in [Some("2.62.0"), Some("2.69.0")] {
+			let (names, mapped) = secret_env_at(version);
+			assert_eq!(names, ["AUTH_REFRESH_TOKEN_SECRET"], "{version:?}");
+			assert_eq!(mapped, None, "{version:?}");
+		}
 	}
 
 	#[test]

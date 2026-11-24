@@ -143,7 +143,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -332,7 +332,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -495,7 +495,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -658,7 +658,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -1049,7 +1049,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -1201,7 +1201,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
@@ -1369,7 +1369,7 @@ spec:
             secretKeyRef:
               key: authSecret
               name: config-secrets-central
-        - name: AUTH_REFRESH_SECRET
+        - name: AUTH_REFRESH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
               key: authRefreshSecret
