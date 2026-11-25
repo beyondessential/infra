@@ -27,7 +27,7 @@ if (domain) {
     zoneImport
       ? {
           import: zoneImport,
-          ignoreChanges: ['vpcs', 'hostedZoneConfig', 'description'],
+          ignoreChanges: ['vpcs', 'hostedZoneConfig', 'hostedZoneFeatures', 'description'],
         }
       : {
           // the zone may have a trailing dot or may not,
@@ -86,7 +86,7 @@ const extraZoneResources = extraZones.map(
       extraZoneImports[name]
         ? {
             import: extraZoneImports[name],
-            ignoreChanges: ['vpcs', 'hostedZoneConfig', 'description'],
+            ignoreChanges: ['vpcs', 'hostedZoneConfig', 'hostedZoneFeatures', 'description'],
           }
         : { ignoreChanges: ['name', 'description'] },
     ),
