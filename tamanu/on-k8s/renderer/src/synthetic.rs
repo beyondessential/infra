@@ -17,6 +17,12 @@ use crate::waves;
 
 const NAME: &str = "synthetic-tests";
 
+/// How long the tests rest between rounds, in seconds. A round sends enough requests at every
+/// server to create hundreds of records, so running them back to back swamps a deployment's
+/// data and any person using it alongside. The image's own default is one minute.
+// spec: K8STDR#synthetic-tests
+const CYCLE_DELAY_SECONDS: &str = "1800";
+
 fn quantities(cpu: &str, memory: &str) -> BTreeMap<String, Quantity> {
 	BTreeMap::from([
 		("cpu".into(), Quantity(cpu.into())),
@@ -84,6 +90,7 @@ pub fn synthetic_tests(cfg: &Config) -> Result<Vec<Value>> {
 						env: Some(vec![
 							env("CENTRAL_TARGETS", central),
 							env("FACILITY_TARGETS", facilities),
+							env("CYCLE_DELAY", CYCLE_DELAY_SECONDS),
 						]),
 						resources: Some(ResourceRequirements {
 							requests: Some(quantities("50m", "128Mi")),
