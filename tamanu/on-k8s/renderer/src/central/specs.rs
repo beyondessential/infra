@@ -104,7 +104,10 @@ impl<'a> PodSpecFactory<'a> {
 			// from pressuring the node (peaks seen are ~500Mi).
 			requests: Some(
 				[
-					("cpu".to_owned(), Quantity(cpu_request.unwrap_or("5m").into())),
+					(
+						"cpu".to_owned(),
+						Quantity(cpu_request.unwrap_or("5m").into()),
+					),
 					("memory".to_owned(), Quantity("256Mi".into())),
 				]
 				.into(),
