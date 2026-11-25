@@ -783,10 +783,10 @@ spec:
           limits:
             memory: 1Gi
           requests:
-            cpu: 5m
+            cpu: 50m
             memory: 200Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000
@@ -965,10 +965,10 @@ spec:
           limits:
             memory: 1Gi
           requests:
-            cpu: 5m
+            cpu: 50m
             memory: 200Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000
