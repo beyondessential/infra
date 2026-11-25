@@ -189,7 +189,6 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 		// Facility servers sit near a p95 of 50m of CPU across deployments, and at the default 5m
 		// they lose to their neighbours on a busy node, so a rollout starts them slowly.
 		cpu_request: Some("50m"),
-		..Default::default()
 	});
 
 	let mut out = vec![
