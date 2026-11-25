@@ -32,6 +32,8 @@ pub struct PodArgs<'a> {
 	pub container: ContainerArgs,
 	/// Selects the pods whose replicas are spread across nodes.
 	pub spread: Option<crate::meta::Labels>,
+	/// A CPU request other than the default, for a pod that is busier than the typical one.
+	pub cpu_request: Option<&'static str>,
 }
 
 impl<'a> PodFactory<'a> {
@@ -51,6 +53,7 @@ impl<'a> PodFactory<'a> {
 			env: extra_env,
 			container,
 			spread,
+			cpu_request,
 		} = args;
 		let cfg = self.cfg;
 		let scheduling = workload_scheduling(cfg, spread.as_ref());
@@ -87,7 +90,7 @@ impl<'a> PodFactory<'a> {
 		let quantity = |s: &str| Quantity(s.into());
 		let resources = ResourceRequirements {
 			requests: Some(BTreeMap::from([
-				("cpu".into(), quantity("5m")),
+				("cpu".into(), quantity(cpu_request.unwrap_or("5m"))),
 				("memory".into(), quantity("200Mi")),
 			])),
 			limits: app_memory_limit(pod_type),

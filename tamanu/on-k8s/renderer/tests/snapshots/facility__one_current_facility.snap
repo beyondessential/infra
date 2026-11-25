@@ -783,7 +783,7 @@ spec:
           limits:
             memory: 1Gi
           requests:
-            cpu: 5m
+            cpu: 50m
             memory: 200Mi
         startupProbe:
           failureThreshold: 300
@@ -965,7 +965,7 @@ spec:
           limits:
             memory: 1Gi
           requests:
-            cpu: 5m
+            cpu: 50m
             memory: 200Mi
         startupProbe:
           failureThreshold: 300
