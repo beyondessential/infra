@@ -36,6 +36,10 @@ export const NGINXINGRESS_VERSION = '4.15.1';
 // helm chart version
 export const OPENCOST_VERSION = '2.5.11';
 
+// https://artifacthub.io/packages/helm/metrics-server/metrics-server
+// helm chart version (3.14.0 deploys metrics-server v0.9.0)
+export const METRICS_SERVER_VERSION = '3.14.0';
+
 // https://artifacthub.io/packages/helm/prometheus-community/prometheus
 // helm chart version
 export const PROMETHEUS_VERSION = '28.13.0';

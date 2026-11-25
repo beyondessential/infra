@@ -52,7 +52,7 @@ Stack config files (`Pulumi.<stack>.yaml`) are gitignored: pull them with [refre
 | Envoy Gateway, Gateway API CRDs, GatewayClass `envoy`, HTTP/3 admission policy | k8s-essentials | `envoyGateway.ts` | `envoy-gateway-system` |
 | NGINX ingress (optional) | k8s-essentials | `ingress.ts` | `ingress-system` |
 | Tailscale operator, optional exit node | k8s-essentials | `tailscale.ts` | `tailscale-system` |
-| Prometheus, OpenCost, engineer `view` binding | k8s-essentials | `metrics/` | `metrics-system` |
+| Prometheus, metrics-server, OpenCost, engineer `view` binding | k8s-essentials | `metrics/` | `metrics-system` |
 | CloudNativePG, Barman Cloud plugin, image catalogs | k8s-essentials | `postgres/cnpg.ts` | `cnpg-system` |
 | HNC | k8s-essentials | `hnc/` | `hnc-system` |
 | py-kube-downscaler | k8s-essentials | `downscaler.ts` | `kube-downscaler` |

@@ -27,7 +27,7 @@ The authority is the code: `rg 'cfg\.(get|require)' pulumi/k8s-essentials pulumi
 
 Envoy Gateway has no key here: `envoyGatewayEnabled` in the [k8s-core config](k8s-core-config.md) decides it.
 The proxy tags (`tailscaleProxyDefaultTags`) also come from k8s-core.
-Always installed: Prometheus, OpenCost, the engineer `view` binding on `metrics-system`, the Tailscale module (inert unless enabled), and the `oncall` and `data-engineer` roles.
+Always installed: Prometheus, metrics-server, OpenCost, the engineer `view` binding on `metrics-system`, the Tailscale module (inert unless enabled), and the `oncall` and `data-engineer` roles.
 PGRO, the restore operator, is not part of this stack (`pulumi/data/pgro`).
 
 ## Shape

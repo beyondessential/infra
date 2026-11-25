@@ -29,6 +29,7 @@ if (envoyGatewayEnabled) {
 }
 
 import './metrics/prometheus.ts';
+import './metrics/metricsServer.ts';
 import './metrics/opencost.ts';
 import './metrics/roles.ts';
 
