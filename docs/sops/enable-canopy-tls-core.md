@@ -92,6 +92,14 @@ pulumi config set --path 'extraZones[0]' <apex> -s bes/core/<stack>             
 ```
 
 Use an index one past the end of any existing list.
+A domain whose hosted zone already exists in the account is adopted instead, which keeps its records and name servers, so no delegation changes.
+Find the id with `aws route53 list-hosted-zones` under that account's `ReadAccess` profile, and import it in the same apply. **[dev-OTS]**
+
+```fish
+pulumi config set --path 'extraZoneImports["<apex>"]' <hosted-zone-id> -s bes/core/<stack>   # [dev-OTS]
+```
+
+The zone must be in the account of the core stack: Pulumi cannot adopt a zone from another account.
 If `core:canopyInfra` is already set, the same apply widens the `canopy-dns` policy to the new zone.
 The canopy stack then needs no new config, because naming a core stack brings every zone it publishes: preview and apply it (step 2) so the list gains the entry, then claim the domain (step 3). **[dev-OTS]**
 Deploy the core stack before the canopy stack, or the list names a zone the role cannot yet write.

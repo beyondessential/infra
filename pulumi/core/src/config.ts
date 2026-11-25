@@ -47,6 +47,10 @@ export const extraZones: string[] = cfg.getObject('extraZones') ?? [];
 
 export const zoneImport = cfg.get('zoneImport');
 
+// Hosted zone ids of extra zones that already exist in this account, by apex.
+// An extra zone named here is adopted instead of created.
+export const extraZoneImports: { [apex: string]: string } = cfg.getObject('extraZoneImports') ?? {};
+
 /**
  * The canopy-infra stack, where this account's zone is one Canopy manages.
  *

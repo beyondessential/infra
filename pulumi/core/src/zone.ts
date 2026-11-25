@@ -1,6 +1,13 @@
 import * as aws from '@pulumi/aws-native';
 import { interpolate, jsonStringify, type Output } from '@pulumi/pulumi';
-import { canopyInfra, domain, extraZones, tags as configTags, zoneImport } from './config.ts';
+import {
+  canopyInfra,
+  domain,
+  extraZoneImports,
+  extraZones,
+  tags as configTags,
+  zoneImport,
+} from './config.ts';
 import { CrossStack } from '../../common/CrossStack.ts';
 import { nativeTags } from '../../common/tags.ts';
 
@@ -76,7 +83,12 @@ const extraZoneResources = extraZones.map(
     new aws.route53.HostedZone(
       name,
       { name: `${name}.` },
-      { ignoreChanges: ['name', 'description'] },
+      extraZoneImports[name]
+        ? {
+            import: extraZoneImports[name],
+            ignoreChanges: ['vpcs', 'hostedZoneConfig', 'description'],
+          }
+        : { ignoreChanges: ['name', 'description'] },
     ),
 );
 

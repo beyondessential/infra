@@ -82,6 +82,7 @@ Under the `core:` namespace.
 | `domain` | string \| `false` | derived | Zone root. Derived from the stack name for the internal accounts and for `tamanu-{x}[-prod]` stacks (see `src/config.ts`), otherwise required. `domain: false` disables the zone. |
 | `zoneImport` | string | — | Zone ID to import instead of creating. |
 | `extraZones` | string[] | `[]` | Further hosted zones to create in this account, each a fully-qualified apex of its own; its NS must be delegated from the parent zone by hand. For accounts shared by several deployments that need distinct apex domains, or an account that holds a second domain. Where `canopyInfra` is set, Canopy manages these zones along with the primary one. |
+| `extraZoneImports` | object | `{}` | Hosted zone id of an `extraZones` domain that already exists in this account, by apex. A listed zone is adopted rather than created, and the id is read once: remove the entry after the first apply. |
 | `canopyInfra` | string | — | A `canopy-infra` stack reference. Set when Canopy manages this account's zone: it creates a role Canopy assumes to write the records it manages there. Unset means Canopy has no access. |
 
 `aws:region` is required too. The stack refuses to run without it, or when it differs from the region of the previous update (`src/guard.ts`), so that an aws-sso profile's default region can never move a core.
