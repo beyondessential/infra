@@ -98,6 +98,8 @@ No other workload MAY receive the model provider's key.
 > [!NOTE]
 > A test instance names no model, so it makes no calls to a model provider and every vulnerability stays open for an operator.
 
+Where a Canopy stack names a GitHub token, the monitor and backups workloads MUST receive it, and no other workload MAY.
+
 Where a Canopy stack names a shared backups stack, the backups workload MUST receive its provisioner, maintenance and device roles, and the public server MUST receive its device role.
 
 ## Database
