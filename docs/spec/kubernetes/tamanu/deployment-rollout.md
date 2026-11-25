@@ -190,12 +190,14 @@ The central server of a deployment whose task replica count is zero MUST keep it
 
 The synthetic tests Deployment MUST have exactly one replica.
 
+How a sync treats the replica count of a live Deployment is specified under [ignored differences](#ignored-differences).
+
+## Synthetic tests
+
 The synthetic tests Deployment MUST rest at least thirty minutes between rounds of tests.
 
 > [!NOTE]
 > A round creates hundreds of records on every server, so a shorter rest buries the data that people testing the deployment by hand are working with.
-
-How a sync treats the replica count of a live Deployment is specified under [ignored differences](#ignored-differences).
 
 ## Placement
 
