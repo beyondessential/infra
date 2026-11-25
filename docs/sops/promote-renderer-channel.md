@@ -16,7 +16,7 @@ Run the `infra-argo-tamanu-renderer promote` workflow (`.github/workflows/infra-
 | Input | Value |
 |---|---|
 | `channel` | `stable` |
-| `sha` | The commit of the build to promote, in full or at least seven characters, or empty for the latest build from `main`. The build must already exist, because a promotion never builds. |
+| `sha` | The commit of the build to promote, in full or at least seven characters, or empty for the latest build from `main`, which the run waits up to twenty minutes for if it is still building. A named commit's build must already exist, because a promotion never builds. |
 | `clusters` | Left at its default (`tamanu-internal-main shared-demos-demo`) unless repeating. |
 | `retag` | On. |
 

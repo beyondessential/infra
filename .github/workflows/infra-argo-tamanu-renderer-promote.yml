@@ -71,20 +71,34 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
           SHA: ${{ inputs.sha }}
           CLUSTERS: ${{ inputs.clusters }}
+          GH_TOKEN: ${{ github.token }}
+          BUILD_WAIT_SECONDS: 1200
         run: |
           case "$CHANNEL" in
             stable | canary) ;;
             *) echo "::error::unknown channel '$CHANNEL', use stable or canary"; exit 1 ;;
           esac
           if [ -z "$SHA" ]; then
-            # The renderer's CD moves the `main` tag to each build from main, and labels it with the
-            # commit it was built from.
-            SHA=$(skopeo inspect --override-os linux --override-arch amd64 "docker://$IMAGE:main" \
-              | jq -r '.Labels["org.opencontainers.image.revision"] // empty')
+            # The latest build from main is the build of the latest commit on main that touches the
+            # renderer, which is when its CD builds. The `main` image tag is no guide: it trails
+            # until that build finishes, so a promotion run straight after a merge would promote
+            # the build before it.
+            SHA=$(gh api "repos/$GITHUB_REPOSITORY/commits?sha=main&path=tamanu/on-k8s/renderer&per_page=1" \
+              --jq '.[0].sha // empty')
             if [ -z "$SHA" ]; then
-              echo "::error::could not find the commit of the latest build from main"; exit 1
+              echo "::error::could not find the latest commit on main that changes the renderer"; exit 1
             fi
             echo "::notice::promoting $SHA, the latest build from main"
+            # spec: K8STRO#promotion
+            # The build of that commit may still be running, so wait for its image to appear.
+            deadline=$((SECONDS + BUILD_WAIT_SECONDS))
+            until skopeo inspect --override-os linux --override-arch amd64 "docker://$IMAGE:sha-${SHA:0:7}" > /dev/null 2>&1; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "::error::the build of $SHA did not appear as $IMAGE:sha-${SHA:0:7} within ${BUILD_WAIT_SECONDS}s, check the renderer CD run for that commit"; exit 1
+              fi
+              echo "waiting for the build of $SHA"
+              sleep 15
+            done
           fi
           if ! [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
             echo "::error::'$SHA' is not a commit"; exit 1
