@@ -129,9 +129,9 @@ The Tamanu version of a deployment MUST be the version the stub read from the im
 
 A deployment MUST have a seed top-up Job only when it is configured to be topped up with generated data, by the parameter `seedSnapshot` being true.
 
-The seed top-up Job MUST run once for each image.
+The seed top-up Job MUST run once for each image and each change to its pod spec.
 
-The name of the seed top-up Job MUST be derived from the image tag and MUST begin with `central-seed-top-up-`.
+The name of the seed top-up Job MUST be derived from the image tag and its pod spec, so that a render that changes the pod creates a new Job rather than altering the old one, and MUST begin with `central-seed-top-up-`.
 
 The seed top-up Job MUST NOT be a sync hook and MUST NOT have a time to live after it finishes.
 

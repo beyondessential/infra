@@ -1,7 +1,7 @@
 //! The seed top-up Job, ported from `central/seedTopUp.ts`.
 
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
-use k8s_openapi::api::core::v1::PodTemplateSpec;
+use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -20,10 +20,13 @@ const ROUNDS: u32 = 3;
 const MIN_VERSION: &str = "2.65.0-0";
 
 // spec: K8STDR#seed-top-up
-fn job_name(image_tag: &str) -> String {
-	let digest = Sha256::digest(image_tag.as_bytes());
+fn job_name(image_tag: &str, pod: &PodSpec) -> serde_json::Result<String> {
+	let mut digest = Sha256::new();
+	digest.update(image_tag.as_bytes());
+	digest.update(serde_json::to_vec(pod)?);
+	let digest = digest.finalize();
 	let suffix: String = digest[..4].iter().map(|b| format!("{b:02x}")).collect();
-	format!("central-seed-top-up-{suffix}")
+	Ok(format!("central-seed-top-up-{suffix}"))
 }
 
 /// A seed snapshot holds only the data types its own version's generator knew
@@ -31,10 +34,12 @@ fn job_name(image_tag: &str) -> String {
 /// restored database.
 ///
 /// Each run adds more fake records, so it must run once per image and not on
-/// every sync. The Job is named by the image tag and is an ordinary resource:
-/// an unchanged image leaves it alone, and a new one creates a new Job and
-/// prunes the old. It must not be given a time to live, or Argo would create it
-/// again once it was cleaned up.
+/// every sync. The Job is named by the image tag and its pod spec, and is an
+/// ordinary resource: an unchanged image and render leave it alone, and a new
+/// one creates a new Job and prunes the old. A Job's pod template cannot be
+/// changed in place, so a render that alters the pod needs a new name even when
+/// the image is the same. It must not be given a time to live, or Argo would
+/// create it again once it was cleaned up.
 pub fn seed_top_up(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Option<Value>> {
 	if !cfg.seed_snapshot || !cfg.at_least_version(MIN_VERSION) {
 		return Ok(None);
@@ -51,9 +56,10 @@ pub fn seed_top_up(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Resul
 	let mut pod = pods.pod_spec(args);
 	pod.restart_policy = Some("Never".into());
 
+	let name = job_name(&cfg.image_tag, &pod)?;
 	let job = Job {
 		metadata: ObjectMeta {
-			name: Some(job_name(&cfg.image_tag)),
+			name: Some(name),
 			namespace: Some(cfg.namespace.clone()),
 			..Default::default()
 		},
@@ -118,10 +124,29 @@ mod tests {
 	}
 
 	#[test]
-	fn is_named_by_the_image_so_it_runs_once_per_image() {
-		assert_eq!(job_name("sha-aaa"), job_name("sha-aaa"));
-		assert_ne!(job_name("sha-aaa"), job_name("sha-bbb"));
-		assert!(job_name("sha-aaa").starts_with("central-seed-top-up-"));
+	fn is_named_by_the_image_and_pod_so_it_runs_once_per_render() {
+		let pod = PodSpec::default();
+		let other_pod = PodSpec {
+			hostname: Some("changed".into()),
+			..Default::default()
+		};
+		assert_eq!(
+			job_name("sha-aaa", &pod).unwrap(),
+			job_name("sha-aaa", &pod).unwrap()
+		);
+		assert_ne!(
+			job_name("sha-aaa", &pod).unwrap(),
+			job_name("sha-bbb", &pod).unwrap()
+		);
+		assert_ne!(
+			job_name("sha-aaa", &pod).unwrap(),
+			job_name("sha-aaa", &other_pod).unwrap()
+		);
+		assert!(
+			job_name("sha-aaa", &pod)
+				.unwrap()
+				.starts_with("central-seed-top-up-")
+		);
 	}
 
 	#[test]
