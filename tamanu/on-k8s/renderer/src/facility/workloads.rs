@@ -176,7 +176,10 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 			// ...then continuously check if it's up, and restart if it fails.
 			liveness_probe: Some(Probe {
 				period_seconds: Some(10),
-				failure_threshold: Some(2),
+				// A sync page can keep the server busy for seconds, so allow a slow answer
+				// and a minute of them before restarting it.
+				timeout_seconds: Some(5),
+				failure_threshold: Some(6),
 				http_get: Some(http_get()),
 				..Default::default()
 			}),

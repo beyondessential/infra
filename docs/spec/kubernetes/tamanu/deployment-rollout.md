@@ -129,9 +129,9 @@ The Tamanu version of a deployment MUST be the version the stub read from the im
 
 A deployment MUST have a seed top-up Job only when it is configured to be topped up with generated data, by the parameter `seedSnapshot` being true.
 
-The seed top-up Job MUST run once for each image.
+The seed top-up Job MUST run once for each image and each change to its pod spec.
 
-The name of the seed top-up Job MUST be derived from the image tag and MUST begin with `central-seed-top-up-`.
+The name of the seed top-up Job MUST be derived from the image tag and its pod spec, so that a render that changes the pod creates a new Job rather than altering the old one, and MUST begin with `central-seed-top-up-`.
 
 The seed top-up Job MUST NOT be a sync hook and MUST NOT have a time to live after it finishes.
 
@@ -157,6 +157,11 @@ An API server, a web frontend and a FHIR worker MUST be updated by rolling updat
 ## Server health
 
 An API server, a facility sync server and a web frontend MUST declare a [startup probe and a liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/), each of which fetches the root path of the server.
+
+The liveness probe of an API server and of a facility sync server MUST allow each check five seconds to answer and MUST tolerate six failed checks in a row before the server is restarted.
+
+> [!NOTE]
+> A sync page can occupy these servers for seconds at a time, and a probe that is stricter than that restarts a server in the middle of the sync it is serving, which then starts again from the beginning.
 
 ## Replicas
 

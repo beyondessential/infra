@@ -33,6 +33,8 @@ pub struct PodArgs {
 	pub container: ContainerArgs,
 	/// Selects the pods whose replicas are spread across nodes.
 	pub spread: Option<Labels>,
+	/// A CPU request other than the default, for a pod that is busier than the typical one.
+	pub cpu_request: Option<&'static str>,
 }
 
 impl PodArgs {
@@ -44,6 +46,7 @@ impl PodArgs {
 			volumes: vec![],
 			container: ContainerArgs::default(),
 			spread: None,
+			cpu_request: None,
 		}
 	}
 }
@@ -67,6 +70,7 @@ impl<'a> PodSpecFactory<'a> {
 			volumes: extra_volumes,
 			container,
 			spread,
+			cpu_request,
 		} = args;
 		let scheduling = workload_scheduling(cfg, spread.as_ref());
 
@@ -100,7 +104,10 @@ impl<'a> PodSpecFactory<'a> {
 			// from pressuring the node (peaks seen are ~500Mi).
 			requests: Some(
 				[
-					("cpu".to_owned(), Quantity("5m".into())),
+					(
+						"cpu".to_owned(),
+						Quantity(cpu_request.unwrap_or("5m").into()),
+					),
 					("memory".to_owned(), Quantity("256Mi".into())),
 				]
 				.into(),

@@ -53,6 +53,10 @@ pub fn api(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Vec<Va
 	args.env = vec![env("PORT", "3000")];
 	args.env.extend(synthetic_api_env(cfg));
 	args.spread = Some(labels(cfg, COMPONENT));
+	// Across deployments the central API's CPU use has a p95 near 30m and a p99 near 40m, with
+	// initial syncs briefly reaching 250m. At the default 5m it loses to its neighbours on a busy
+	// node and misses its liveness checks.
+	args.cpu_request = Some("50m");
 	args.container = ContainerArgs {
 		ports: vec![ContainerPort {
 			container_port: 3000,
@@ -70,7 +74,10 @@ pub fn api(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Vec<Va
 		// ...then continuously check it is up, and restart if it fails.
 		liveness_probe: Some(Probe {
 			period_seconds: Some(10),
-			failure_threshold: Some(2),
+			// A sync page can keep the server busy for seconds, so allow a slow answer
+			// and a minute of them before restarting it.
+			timeout_seconds: Some(5),
+			failure_threshold: Some(6),
 			http_get: Some(http_get()),
 			..Default::default()
 		}),

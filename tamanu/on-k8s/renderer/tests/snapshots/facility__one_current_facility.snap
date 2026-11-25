@@ -769,11 +769,12 @@ spec:
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
-          failureThreshold: 2
+          failureThreshold: 6
           httpGet:
             path: /
             port: 3000
           periodSeconds: 10
+          timeoutSeconds: 5
         name: server
         ports:
         - containerPort: 3000
@@ -950,11 +951,12 @@ spec:
         image: ghcr.io/beyondessential/tamanu-facility:sha-a25d1d40354fd2d38442bce75328310ca37abae9
         imagePullPolicy: IfNotPresent
         livenessProbe:
-          failureThreshold: 2
+          failureThreshold: 6
           httpGet:
             path: /
             port: 3000
           periodSeconds: 10
+          timeoutSeconds: 5
         name: server
         ports:
         - containerPort: 3000

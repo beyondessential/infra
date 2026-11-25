@@ -82,6 +82,8 @@ Each build of the renderer from the main branch MUST be promoted to `canary` aut
 
 Where the request names no commit, the promotion MUST promote the latest build from the main branch.
 
+Where that build has not finished, the promotion MUST wait for it, up to a time limit, and MUST fail if it does not appear, rather than promote an earlier build.
+
 Promotions MUST run one at a time.
 
 After a channel tag moves, a promotion MUST restart the Argo CD repo server of each cluster and wait for the restart to finish before it refreshes any Application.
