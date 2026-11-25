@@ -13,6 +13,19 @@ import { nativeTags } from '../../common/tags.ts';
 
 const CANOPY_RECORD_TYPES = ['A', 'AAAA', 'TXT'];
 
+// A zone's name may or may not carry a trailing dot, which confuses Pulumi into
+// recreating it. The rest is whatever the zone was created with elsewhere: a
+// comment, VPC associations, recovery features with read-only fields. The same
+// list applies whether or not the zone is being imported, so that removing the
+// import option after the first apply does not turn those into pending changes.
+const ZONE_IGNORE_CHANGES = [
+  'name',
+  'vpcs',
+  'hostedZoneConfig',
+  'hostedZoneFeatures',
+  'description',
+];
+
 let zone: aws.route53.HostedZone | undefined;
 let policy: aws.iam.ManagedPolicy | undefined;
 let canopyDnsRole: aws.iam.Role | undefined;
@@ -24,16 +37,7 @@ if (domain) {
     {
       name: `${domain}.`,
     },
-    zoneImport
-      ? {
-          import: zoneImport,
-          ignoreChanges: ['vpcs', 'hostedZoneConfig', 'hostedZoneFeatures', 'description'],
-        }
-      : {
-          // the zone may have a trailing dot or may not,
-          // this confuses Pulumi and it tries to recreate the zone
-          ignoreChanges: ['name', 'description'],
-        },
+    { import: zoneImport, ignoreChanges: ZONE_IGNORE_CHANGES },
   );
 
   // spec: CORE#zone
@@ -83,12 +87,7 @@ const extraZoneResources = extraZones.map(
     new aws.route53.HostedZone(
       name,
       { name: `${name}.` },
-      extraZoneImports[name]
-        ? {
-            import: extraZoneImports[name],
-            ignoreChanges: ['vpcs', 'hostedZoneConfig', 'hostedZoneFeatures', 'description'],
-          }
-        : { ignoreChanges: ['name', 'description'] },
+      { import: extraZoneImports[name], ignoreChanges: ZONE_IGNORE_CHANGES },
     ),
 );
 
