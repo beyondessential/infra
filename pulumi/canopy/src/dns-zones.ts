@@ -3,25 +3,32 @@ import { type Output, all } from '@pulumi/pulumi';
 import { cfg } from '../../common/k8s/coreRef.ts';
 import { CrossStack } from '../../common/CrossStack.ts';
 import { canopyInfra } from './canopy-infra.ts';
-import { type CoreZone, dnsZoneList } from './dns-zone-list.ts';
+import { type CoreZone, coreZones, dnsZoneList } from './dns-zone-list.ts';
 
 /**
  * Core stacks whose zone Canopy manages, as `bes/core/<stack>` references.
  *
  * Named by stack rather than by zone so nothing here carries a hosted zone id or
  * a role ARN: each core stack publishes its own, and a zone is added by pointing
- * that account's core stack at canopy-infra and naming it here.
+ * that account's core stack at canopy-infra and naming it here. A core stack
+ * brings its extra zones along with its primary one.
  *
  * Distinct from `domains`, which is Canopy's own web hostnames.
  */
 const zoneStacks: string[] = cfg.getObject('dnsZoneStacks') ?? [];
 
 // spec: CTLS#managed-zones
-const zones: Output<CoreZone>[] = zoneStacks.map((stack) => {
+const zones: Output<CoreZone[]>[] = zoneStacks.map((stack) => {
   const core = new CrossStack(stack);
   const zone = core.zone();
-  return all([core.accountId(), zone.name, zone.id, zone.canopyDnsRoleArn]).apply(
-    ([account, apex, id, roleArn]) => ({ stack, account, apex, id, roleArn }),
+  return all([
+    core.accountId(),
+    zone.name,
+    zone.id,
+    zone.canopyDnsRoleArn,
+    core.extraZoneIds(),
+  ]).apply(([account, apex, id, roleArn, extra]) =>
+    coreZones(stack, account, roleArn, { apex, id }, extra),
   );
 });
 
@@ -48,7 +55,7 @@ export const dnsZones: Output<string> | undefined =
           }
           // Which account Canopy's own identity is in, and so which zones it can
           // write without assuming anything.
-          return dnsZoneList(domainsRoleArn.split(':')[4], zones);
+          return dnsZoneList(domainsRoleArn.split(':')[4], zones.flat());
         },
       )
     : undefined;

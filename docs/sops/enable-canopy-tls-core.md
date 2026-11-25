@@ -76,11 +76,27 @@ The grant control appears only once the group holds a claim, so its absence is n
 Do not claim a domain whose names something else manages: a Canopy write replaces a record set wholesale.
 The Canopy `meta` hostname, published by external-dns in the apex zone, is one such name.
 
-## 4. One entry per zone
+## 4. Zones beyond the primary
 
 Enabling an apex does not enable the zones delegated out of it.
 A challenge record has to be written in the zone that is authoritative for the name; written in a parent, the delegation shadows it and validation fails with nothing wrong on the AWS side ([zone delegation](../spec/canopy/tls-issuance.md#zone-delegation)).
-Repeat steps 1 and 2 for each delegated zone, from its own core stack.
+
+A second domain held in the same account is an extra zone of that account's core stack.
+List it in `core:extraZones`, apply the core stack, and delegate it from its parent by hand using the name servers in the `extraZoneNS` output. **[dev-OTS]**
+
+```fish
+cd pulumi/core
+pulumi config set --path 'extraZones[0]' <apex> -s bes/core/<stack>              # [dev-OTS]
+./p-run <stack> preview --policy-pack ../policies                                # [diagnose]
+./p-run <stack> up --policy-pack ../policies                                     # [dev-OTS]
+```
+
+Use an index one past the end of any existing list.
+If `core:canopyInfra` is already set, the same apply widens the `canopy-dns` policy to the new zone.
+The canopy stack then needs no new config, because naming a core stack brings every zone it publishes: preview and apply it (step 2) so the list gains the entry, then claim the domain (step 3). **[dev-OTS]**
+Deploy the core stack before the canopy stack, or the list names a zone the role cannot yet write.
+
+A zone delegated into a different account needs its own core stack: repeat steps 1 and 2 from that stack.
 
 To see what is configured, read the canopy stack's `canopy:dnsZoneStacks` (`pulumi config -s bes/canopy/prod`). **[diagnose]**
 

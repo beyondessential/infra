@@ -8,8 +8,8 @@ The requirements are in the spec; the procedure is [enable-canopy-tls-core](../s
 | part | stack and file | what it is |
 |---|---|---|
 | Canopy DNS identity (`canopy-domains`) | `pulumi/canopy-infra/index.ts` | IRSA role in Canopy's own account for the service account `canopy-domains`. Holds `sts:AssumeRole` on `*` and direct `ChangeResourceRecordSets` on that account's own zone, limited to `A`, `AAAA` and `TXT`. Output `canopyDomainsRoleArn`. |
-| Zone role (`canopy-dns`) | `pulumi/core/src/zone.ts` | Role and managed policy in a member account. Trusts only `canopyDomainsRoleArn`. Created only when `core:canopyInfra` is set. Output `canopyDnsRoleArn`. |
-| Zone list | `pulumi/canopy/src/dns-zones.ts`, `dns-zone-list.ts` | Builds `CANOPY_DNS_ZONES` from the core stacks named in `canopy:dnsZoneStacks`, and puts it on every Canopy workload. |
+| Zone role (`canopy-dns`) | `pulumi/core/src/zone.ts` | Role and managed policy in a member account. Trusts only `canopyDomainsRoleArn`. The policy names the primary zone and every `core:extraZones` zone. Created only when `core:canopyInfra` is set and the core has a zone. Output `canopyDnsRoleArn`. |
+| Zone list | `pulumi/canopy/src/dns-zones.ts`, `dns-zone-list.ts` | Builds `CANOPY_DNS_ZONES` from the core stacks named in `canopy:dnsZoneStacks`, one entry per primary and extra zone, and puts it on every Canopy workload. |
 | ACME account | `pulumi/canopy/src/canopy-acme.ts`, `config.ts` | `CANOPY_ACME_ACCOUNT_KEY`, `CANOPY_ACME_DIRECTORY` and `CANOPY_ACME_CONTACT`, on the `domains` pod and `private-server` only. |
 
 ## Config keys
@@ -25,9 +25,10 @@ The requirements are in the spec; the procedure is [enable-canopy-tls-core](../s
 
 ## Outputs a core stack must publish for a zone
 
-`zoneName`, `zoneId`, `accountId`, and `canopyDnsRoleArn` when it has a zone role.
-`zoneName` and `zoneId` are absent when the core stack has `domain: false` or no zone; the canopy preview then fails with "publishes no DNS zone".
-Only the primary zone of a core stack is readable this way: hosted zones from `core:extraZones` are not published for Canopy.
+`zoneName`, `zoneId`, `accountId`, `extraZoneIds` and `canopyDnsRoleArn` when it has a zone role.
+`zoneName` and `zoneId` are absent when the core stack has `domain: false`; `extraZoneIds` is empty when it has no `core:extraZones`.
+A core stack with neither a primary zone nor an extra zone makes the canopy preview fail with "publishes no DNS zone".
+Naming a core stack in `canopy:dnsZoneStacks` brings all of its zones: there is no way to name only some.
 
 ## Zone list entry rule
 

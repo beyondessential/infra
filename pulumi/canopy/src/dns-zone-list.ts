@@ -16,6 +16,31 @@ export interface CoreZone {
 }
 
 /**
+ * The zones one core stack holds: its primary zone and each extra zone.
+ *
+ * All of them share the core's account and its one zone role, so a core named in
+ * the configuration brings every zone it holds. A core publishing no zone yields
+ * one entry with neither apex nor id, which `dnsZoneList` refuses.
+ */
+// spec: CTLS#managed-zones
+export function coreZones(
+  stack: string,
+  account: string,
+  roleArn: string | undefined,
+  primary: { apex?: string; id?: string },
+  extra: { [apex: string]: string } | undefined,
+): CoreZone[] {
+  const zones: CoreZone[] = [];
+  if (primary.apex && primary.id) {
+    zones.push({ stack, account, roleArn, ...primary });
+  }
+  for (const [apex, id] of Object.entries(extra ?? {})) {
+    zones.push({ stack, account, roleArn, apex, id });
+  }
+  return zones.length > 0 ? zones : [{ stack, account, roleArn }];
+}
+
+/**
  * Render `CANOPY_DNS_ZONES` — `apex=hosted-zone-id[=role-arn]` entries, comma
  * separated.
  *

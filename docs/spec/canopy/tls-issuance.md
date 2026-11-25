@@ -45,6 +45,8 @@ What a [core](../overview.md#core) publishes about its zone, its account and its
 
 The infrastructure MUST derive each entry of the list from the values that the core owning the zone publishes.
 
+The infrastructure MUST give the list an entry for every zone, primary and extra, that a core it is configured to manage publishes.
+
 The infrastructure MUST refuse to produce a list that has an entry for a core that publishes no zone.
 
 The infrastructure MUST refuse to produce a list that has an entry for a zone in another account whose core publishes no zone role.
@@ -78,13 +80,15 @@ The Canopy DNS identity MUST be permitted to perform [`sts:AssumeRole`](https://
 
 For the zone in its own account, the Canopy DNS identity MUST hold the permission in the following table, and no other permission on the zone.
 
-For the zone of its core, a zone role MUST grant the permission in the following table, and no other permission.
+For each zone of its core, primary and extra, a zone role MUST grant the permission in the following table, and no other permission.
 
 | element | value |
 |---|---|
 | action | [`route53:ChangeResourceRecordSets`](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/specifying-rrset-conditions.html) |
-| resource | The hosted zone of the one zone. |
+| resource | The hosted zone of the zone. |
 | condition | Every record type of a change is `A`, `AAAA` or `TXT`, by `route53:ChangeResourceRecordSetsRecordTypes`. |
+
+A zone role MUST NOT grant access to a hosted zone that is not a zone of its core.
 
 A permission granted to Canopy in a zone MUST NOT allow Canopy to change an NS record or an SOA record.
 
@@ -96,6 +100,8 @@ A permission granted to Canopy in a zone MUST NOT allow Canopy to list or read t
 The trust policy of a zone role MUST name the Canopy DNS identity as its only principal.
 
 A core that is not configured for Canopy MUST NOT have a zone role.
+
+A core that has no zone MUST NOT have a zone role.
 
 A core that is not configured for Canopy MUST NOT grant Canopy any access to its zone.
 

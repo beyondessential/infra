@@ -277,7 +277,7 @@ Defined in [CORE](core.md#network).
 
 ### Zone role
 
-The role a core creates for Canopy to assume in order to write records in that core's zone.
+The role a core creates for Canopy to assume in order to write records in that core's zones.
 Defined in [CTLS](canopy/tls-issuance.md#zone-access).
 
 ### Backup bucket

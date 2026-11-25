@@ -33,7 +33,7 @@ pulumi stack output -s bes/canopy-infra/prod | grep canopyDomainsRoleArn
 |---|---|---|
 | `<stack> (account <id>) publishes no canopyDnsRoleArn ... set canopyInfra on that stack and deploy it first` | The core stack has no zone role: step 1 of the procedure not done, or not deployed. | Set `core:canopyInfra` and apply that core stack ([procedure, step 1](../sops/enable-canopy-tls-core.md#1-point-the-core-stack-at-canopy)). **[dev-OTS]** |
 | `canopy-infra publishes no canopyDomainsRoleArn ...` | `canopy-infra` is not deployed. | Deploy it first. **[dev-OTS]** |
-| `<stack> publishes no DNS zone, so Canopy cannot manage one there` | The named core stack has `domain: false` or no zone. | Name a core stack that owns a zone, or fix its `domain`. **[dev-OTS]** |
+| `<stack> publishes no DNS zone, so Canopy cannot manage one there` | The named core stack has `domain: false` and no `core:extraZones`, or no zone. | Name a core stack that owns a zone, or fix its `domain`. **[dev-OTS]** |
 
 ## 5. Resolve
 

@@ -122,6 +122,15 @@ export class CrossStack {
     };
   }
 
+  /**
+   * Hosted zone id of each extra zone of a core, by apex. Undefined for a core not
+   * deployed since it began publishing them.
+   */
+  // from core
+  extraZoneIds(): Output<{ [apex: string]: string } | undefined> {
+    return this.get('extraZoneIds');
+  }
+
   // from core
   accountId(): Output<string> {
     return this.get('accountId');

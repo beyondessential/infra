@@ -63,59 +63,6 @@ if (domain) {
     },
     { ignoreChanges: ['users', 'roles', 'groups'] },
   );
-
-  // Canopy holds the zone access no server holds: it publishes the addresses of
-  // the names a group's servers register, and the challenge records that prove
-  // control of those names. It runs in the central account and reaches this zone
-  // by assuming this role, so the trust policy below is the effective gate — and
-  // Canopy's own side needs `sts:AssumeRole` besides (see canopy-infra).
-  //
-  // Gated on the ref: a stack that has not been pointed at Canopy gets no role,
-  // and its zone stays reachable only by the stack's own identities.
-  // spec: CTLS#zone-access
-  if (canopyInfra) {
-    const canopyDomainsRoleArn = new CrossStack(canopyInfra).get<string>('canopyDomainsRoleArn');
-    const tags = nativeTags(configTags, { Purpose: 'canopy-dns', ManagedBy: 'pulumi' });
-
-    canopyDnsRole = new aws.iam.Role('canopy-dns', {
-      description: `Let Canopy write the records it manages in ${domain}`,
-      assumeRolePolicyDocument: jsonStringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: { AWS: canopyDomainsRoleArn },
-            Action: 'sts:AssumeRole',
-          },
-        ],
-      }),
-      managedPolicyArns: [
-        new aws.iam.ManagedPolicy(
-          'canopy-dns',
-          {
-            description: `Write the records Canopy manages in ${domain}`,
-            policyDocument: jsonStringify({
-              Version: '2012-10-17',
-              Statement: [
-                {
-                  Effect: 'Allow',
-                  Action: 'route53:ChangeResourceRecordSets',
-                  Resource: interpolate`arn:aws:route53:::hostedzone/${zone.id}`,
-                  Condition: {
-                    'ForAllValues:StringEquals': {
-                      'route53:ChangeResourceRecordSetsRecordTypes': CANOPY_RECORD_TYPES,
-                    },
-                  },
-                },
-              ],
-            }),
-          },
-          { ignoreChanges: ['users', 'roles', 'groups'] },
-        ).policyArn,
-      ],
-      tags,
-    });
-  }
 }
 
 // spec: CORE#outputs
@@ -139,5 +86,65 @@ export const extraZoneIds: { [domain: string]: Output<string> } = Object.fromEnt
 export const extraZoneNS: { [domain: string]: Output<string[]> } = Object.fromEntries(
   extraZones.map((name, i) => [name, extraZoneResources[i].nameServers]),
 );
+
+// Canopy holds the zone access no server holds: it publishes the addresses of
+// the names a group's servers register, and the challenge records that prove
+// control of those names. It runs in the central account and reaches the zones
+// of this account by assuming this role, so the trust policy below is the
+// effective gate — and Canopy's own side needs `sts:AssumeRole` besides (see
+// canopy-infra). One role covers every zone of the account, primary and extra.
+//
+// Gated on the ref: a stack that has not been pointed at Canopy gets no role,
+// and its zones stay reachable only by the stack's own identities.
+// spec: CTLS#zone-access
+const canopyZoneIds: Output<string>[] = [
+  ...(zone ? [zone.id] : []),
+  ...extraZones.map((name) => extraZoneIds[name]),
+];
+if (canopyInfra && canopyZoneIds.length > 0) {
+  const canopyDomainsRoleArn = new CrossStack(canopyInfra).get<string>('canopyDomainsRoleArn');
+  const tags = nativeTags(configTags, { Purpose: 'canopy-dns', ManagedBy: 'pulumi' });
+  const zoneArns = canopyZoneIds.map((id) => interpolate`arn:aws:route53:::hostedzone/${id}`);
+  const apexes = [...(domain ? [domain] : []), ...extraZones].join(', ');
+
+  canopyDnsRole = new aws.iam.Role('canopy-dns', {
+    description: `Let Canopy write the records it manages in ${apexes}`,
+    assumeRolePolicyDocument: jsonStringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: canopyDomainsRoleArn },
+          Action: 'sts:AssumeRole',
+        },
+      ],
+    }),
+    managedPolicyArns: [
+      new aws.iam.ManagedPolicy(
+        'canopy-dns',
+        {
+          description: `Write the records Canopy manages in ${apexes}`,
+          policyDocument: jsonStringify({
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 'route53:ChangeResourceRecordSets',
+                Resource: zoneArns.length === 1 ? zoneArns[0] : zoneArns,
+                Condition: {
+                  'ForAllValues:StringEquals': {
+                    'route53:ChangeResourceRecordSetsRecordTypes': CANOPY_RECORD_TYPES,
+                  },
+                },
+              },
+            ],
+          }),
+        },
+        { ignoreChanges: ['users', 'roles', 'groups'] },
+      ).policyArn,
+    ],
+    tags,
+  });
+}
 
 export const canopyDnsRoleArn = canopyDnsRole?.arn;
