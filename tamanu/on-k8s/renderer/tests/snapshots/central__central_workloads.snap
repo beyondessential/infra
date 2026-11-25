@@ -168,7 +168,7 @@ spec:
             cpu: 50m
             memory: 256Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000

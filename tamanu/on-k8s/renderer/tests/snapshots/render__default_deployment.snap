@@ -513,7 +513,7 @@ spec:
             cpu: 50m
             memory: 256Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000
@@ -1262,7 +1262,7 @@ spec:
             cpu: 5m
             memory: 200Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000
@@ -1425,7 +1425,7 @@ spec:
             cpu: 5m
             memory: 200Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000
@@ -1822,7 +1822,7 @@ spec:
             cpu: 5m
             memory: 200Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000
@@ -1985,7 +1985,7 @@ spec:
             cpu: 5m
             memory: 200Mi
         startupProbe:
-          failureThreshold: 60
+          failureThreshold: 300
           httpGet:
             path: /
             port: 3000

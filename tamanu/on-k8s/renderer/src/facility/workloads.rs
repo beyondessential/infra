@@ -165,11 +165,12 @@ pub fn run_server(ctx: &Ctx<'_>, kind: ServerType, replicas: u32) -> Result<Vec<
 				name: Some("http".into()),
 				..Default::default()
 			}],
-			// Wait up to 60 seconds for the server to start...
+			// Wait up to five minutes for the server to start: a rollout starts many pods at once on
+			// busy nodes, and a server killed for starting slowly starts again from nothing...
 			// spec: K8STDR#server-health
 			startup_probe: Some(Probe {
 				period_seconds: Some(1),
-				failure_threshold: Some(60),
+				failure_threshold: Some(300),
 				http_get: Some(http_get()),
 				..Default::default()
 			}),
