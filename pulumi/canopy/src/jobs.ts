@@ -11,6 +11,7 @@ import { labels } from './labels.ts';
 import { dbReady } from './db.ts';
 import { acmeEnv } from './canopy-acme.ts';
 import { aiEnv } from './canopy-ai.ts';
+import { githubEnv } from './canopy-github.ts';
 import { ai, architecture, costLabels, slacker, normalizedStack } from './config.ts';
 
 // spec: K8SCNP#workloads
@@ -48,7 +49,7 @@ new k8s.apps.v1.Deployment(
         metadata: {
           labels: { ...labels('monitor'), ...costLabels },
         },
-        spec: spec('monitor', ['monitor'], {}, { pooled: true }),
+        spec: spec('monitor', ['monitor'], { env: githubEnv }, { pooled: true }),
       },
     },
   },
@@ -80,7 +81,7 @@ if (hasRecoveryVault) {
             'backups',
             ['backups'],
             // The sweep drops artifact bytes no registration reaches any more.
-            { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv] },
+            { env: [...recoveryEnv, ...sharedBackupsJobsEnv, ...artifactStoreEnv, ...githubEnv] },
             { serviceAccountName: canopyJobsSa, pooled: true },
           ),
         },

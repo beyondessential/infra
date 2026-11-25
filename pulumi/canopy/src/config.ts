@@ -161,6 +161,13 @@ export const ai = cfg.get('openrouterModel')
     }
   : undefined;
 
+/**
+ * Read access to the contents of the repositories Canopy reads from GitHub: the
+ * Ansible catalogue in infra, and the lockfiles of each repository it tracks for
+ * vulnerabilities. Optional: without it only public repositories can be read.
+ */
+export const githubToken = cfg.getSecret('githubToken');
+
 export const tailscaleClientId = cfg.require('tailscaleClientId');
 export const tailscaleClientSecret = cfg.requireSecret('tailscaleClientSecret');
 export const tailscaleHostname = cfg.require('tailscaleHostname');
