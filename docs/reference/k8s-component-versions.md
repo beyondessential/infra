@@ -16,6 +16,7 @@ The values are a snapshot read from the code; the file named is the authority, s
 | NGINX ingress | `4.15.1` | Helm chart | `pulumi/k8s-essentials/versions.ts` |
 | HNC | `1.1.0` | source tag built by an init container at pod start | `pulumi/k8s-essentials/versions.ts` |
 | OpenCost | `2.5.11` | Helm chart | `pulumi/k8s-essentials/versions.ts` |
+| metrics-server | `3.14.0` | Helm chart (metrics-server `v0.9.0`) | `pulumi/k8s-essentials/versions.ts` |
 | Prometheus | `28.13.0` | Helm chart | `pulumi/k8s-essentials/versions.ts` |
 | CloudNativePG | `0.27.1` | Helm chart | `pulumi/k8s-essentials/versions.ts` |
 | Barman Cloud plugin | `0.6.0` | Helm chart (plugin image `v0.12.0`) | `pulumi/k8s-essentials/versions.ts` |
