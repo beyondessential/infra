@@ -53,6 +53,10 @@ pub fn api(cfg: &Config, pods: &PodSpecFactory<'_>) -> serde_json::Result<Vec<Va
 	args.env = vec![env("PORT", "3000")];
 	args.env.extend(synthetic_api_env(cfg));
 	args.spread = Some(labels(cfg, COMPONENT));
+	// Across deployments the central API's CPU use has a p95 near 30m and a p99 near 40m, with
+	// initial syncs briefly reaching 250m. At the default 5m it loses to its neighbours on a busy
+	// node and misses its liveness checks.
+	args.cpu_request = Some("50m");
 	args.container = ContainerArgs {
 		ports: vec![ContainerPort {
 			container_port: 3000,
