@@ -362,6 +362,7 @@ fn synthetic_tests_run_an_artillery_deployment_aimed_at_every_server() {
 	insta::assert_debug_snapshot!((
 		value("CENTRAL_TARGETS"),
 		value("FACILITY_TARGETS"),
+		value("CYCLE_DELAY"),
 		deployment["spec"]["template"]["spec"]["containers"][0]["image"].clone(),
 	));
 
