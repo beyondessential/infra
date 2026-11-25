@@ -158,6 +158,11 @@ An API server, a web frontend and a FHIR worker MUST be updated by rolling updat
 
 An API server, a facility sync server and a web frontend MUST declare a [startup probe and a liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/), each of which fetches the root path of the server.
 
+The liveness probe of an API server and of a facility sync server MUST allow each check five seconds to answer and MUST tolerate six failed checks in a row before the server is restarted.
+
+> [!NOTE]
+> A sync page can occupy these servers for seconds at a time, and a probe that is stricter than that restarts a server in the middle of the sync it is serving, which then starts again from the beginning.
+
 ## Replicas
 
 The renderer MUST take the replica count of a workload from the setting for that workload on the central server or on facility servers where one is given, else from the setting for that workload on every server, else from the default.
