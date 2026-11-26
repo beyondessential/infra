@@ -77,6 +77,7 @@ Under the `core:` namespace.
 | `privateSubnets` | boolean | `false` (true via `forEksCluster`) | Private workload subnets + NAT. |
 | `publicSubnets` | boolean | `true` | Public workload subnets + IGW. |
 | `withGithubOidc` | boolean | `true` | GitHub Actions OIDC provider. |
+| `githubOidcImport` | string | — | ARN of the GitHub Actions OIDC provider that already exists in the account, adopted instead of created. Read once: remove it after the first apply. |
 | `enableDnsHostnames` | boolean | `true` | VPC DNS hostnames. Sometimes flipped off where EKS bootstrap required it. |
 | `tags` | object | `{}` | Extra tags applied to everything, merged into the default set. |
 | `domain` | string \| `false` | derived | Zone root. Derived from the stack name for the internal accounts and for `tamanu-{x}[-prod]` stacks (see `src/config.ts`), otherwise required. `domain: false` disables the zone. |

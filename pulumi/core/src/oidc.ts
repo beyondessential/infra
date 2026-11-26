@@ -1,17 +1,21 @@
 import * as awsClassic from '@pulumi/aws';
 import { AWS_STS, GITHUB_OIDC_THUMBPRINTS, GITHUB_OIDC_URL } from '../../constants/external.ts';
-import { withGithubOidc } from './config.ts';
+import { githubOidcImport, withGithubOidc } from './config.ts';
 
 // spec: CORE#deployment-identity
 let oidcProvider: awsClassic.iam.OpenIdConnectProvider | undefined;
 if (withGithubOidc) {
   // Github Actions OIDC roles for CD
-  oidcProvider = new awsClassic.iam.OpenIdConnectProvider('github-actions', {
-    clientIdLists: [AWS_STS],
-    url: GITHUB_OIDC_URL,
-    // Not strictly needed anymore for github
-    thumbprintLists: GITHUB_OIDC_THUMBPRINTS,
-  });
+  oidcProvider = new awsClassic.iam.OpenIdConnectProvider(
+    'github-actions',
+    {
+      clientIdLists: [AWS_STS],
+      url: GITHUB_OIDC_URL,
+      // Not strictly needed anymore for github
+      thumbprintLists: GITHUB_OIDC_THUMBPRINTS,
+    },
+    { import: githubOidcImport },
+  );
 }
 
 export const ghaOidc = {

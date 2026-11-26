@@ -6,6 +6,9 @@ export const forEksCluster = cfg.getBoolean('forEksCluster') ?? false;
 export const privateSubnets = (cfg.getBoolean('privateSubnets') ?? false) || forEksCluster;
 export const publicSubnets = cfg.getBoolean('publicSubnets') ?? true;
 export const withGithubOidc = (cfg.getBoolean('withGithubOidc') ?? true) || forEksCluster;
+// ARN of the GitHub Actions OIDC provider that already exists in this account,
+// to adopt instead of creating (an account holds one per issuer URL).
+export const githubOidcImport = cfg.get('githubOidcImport');
 export const enableDnsHostnames = cfg.getBoolean('enableDnsHostnames') ?? true;
 export const tags: { [key: string]: string } = cfg.getObject('tags') ?? {};
 
