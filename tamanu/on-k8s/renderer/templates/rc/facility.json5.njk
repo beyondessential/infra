@@ -1,7 +1,9 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
   db: {
+    {%- if migrateOnStartupInConfig %}
     migrateOnStartup: false,
+    {%- endif %}
   },
   sync: {
     enabled: true,

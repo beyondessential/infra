@@ -291,6 +291,10 @@ impl Config {
 /// or the `DB_RAW_*` and `DB_REPORTING_*` variables that carried their logins.
 const TAMANU_MANAGES_REPORT_ROLES: &str = "2.60.0-0";
 
+/// The first Tamanu release that reads only `MIGRATE_ON_STARTUP`, ignoring the
+/// `db.migrateOnStartup` config key.
+const TAMANU_READS_MIGRATE_ON_STARTUP_ENV: &str = "2.62.0-0";
+
 /// The first Tamanu release that reads the central refresh-token signing secret
 /// from `AUTH_REFRESH_TOKEN_SECRET`. Earlier releases are given it as
 /// `AUTH_REFRESH_SECRET`, through the `auth.refreshSecret` config key.
@@ -303,6 +307,14 @@ impl Config {
 	/// or with no refresh secret at all.
 	pub fn has_refresh_token_secret_env(&self) -> bool {
 		self.at_least_version(TAMANU_READS_REFRESH_TOKEN_SECRET_ENV)
+	}
+}
+
+impl Config {
+	/// Whether the config file still needs `db.migrateOnStartup: false`. An
+	/// unresolvable version reads as too old, so it is kept.
+	pub fn has_migrate_on_startup_config(&self) -> bool {
+		!self.at_least_version(TAMANU_READS_MIGRATE_ON_STARTUP_ENV)
 	}
 }
 

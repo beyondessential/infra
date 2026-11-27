@@ -1,7 +1,9 @@
 {
   canonicalHostName: 'https://{{ fqdn }}',
   db: {
+    {%- if migrateOnStartupInConfig %}
     migrateOnStartup: false,
+    {%- endif %}
   },
   sync: {
     enabled: true,
@@ -11,7 +13,7 @@
     host: '{{ centralApiUrl }}',
     email: 'admin@tamanu.io',
     password: '{{ provisioning.users["admin@tamanu.io"].password }}',
-    {% endif %}
+    {%- endif %}
     syncApiConnection: {
       host: '{{ syncApiUrl }}',
       port: {{ syncApiPort }},
