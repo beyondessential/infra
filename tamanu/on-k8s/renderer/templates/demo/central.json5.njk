@@ -19,7 +19,9 @@
     trusted: ['loopback', '{{ networkV4Cidr }}', '{{ networkV6Cidr }}'],
   },
   db: {
+    {%- if migrateOnStartupInConfig %}
     migrateOnStartup: false,
+    {%- endif %}
   },
   sync: {
     lookupTable: {

@@ -149,6 +149,10 @@ impl Templates {
 		};
 		ctx.insert("networkV4Cidr".into(), cfg.network_v4_cidr.clone().into());
 		ctx.insert("networkV6Cidr".into(), cfg.network_v6_cidr.clone().into());
+		ctx.insert(
+			"migrateOnStartupInConfig".into(),
+			cfg.has_migrate_on_startup_config().into(),
+		);
 		let rendered = environment()
 			.render_str(&source, to_jinja(&Value::Object(ctx)))
 			.with_context(|| format!("rendering {}/{}", name, kind.file()))?;
@@ -437,6 +441,28 @@ mod tests {
 				.unwrap()
 				.contains("legacy: true")
 		);
+	}
+
+	#[test]
+	fn migrate_on_startup_config_is_written_below_2_62_only() {
+		let central_text = |version: Option<&str>| {
+			render(
+				&cfg("basic", version),
+				&Templates::Embedded,
+				&json!({}),
+				&json!({}),
+			)
+			.unwrap()
+			.into_iter()
+			.find(|m| m["metadata"]["name"] == "config-central")
+			.unwrap()["data"]["local.json5"]
+				.as_str()
+				.unwrap()
+				.to_owned()
+		};
+		assert!(central_text(Some("2.61.4")).contains("migrateOnStartup: false"));
+		assert!(central_text(None).contains("migrateOnStartup: false"));
+		assert!(!central_text(Some("2.62.0")).contains("migrateOnStartup"));
 	}
 
 	#[test]
